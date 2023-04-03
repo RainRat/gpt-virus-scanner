@@ -15,7 +15,7 @@ try:
     with open('apikey.txt', 'r') as file:
         apikey = file.readline().strip()
 except FileNotFoundError:
-    print("OpenAI key file not found. No GPT data will be gathered...")
+    print("OpenAI key file not found. No GPT data will be included in report...")
 
 def motion_handler(tree, event):
     f = tkinter.font.Font(font='TkDefaultFont')
@@ -94,8 +94,7 @@ def button_click():
                 data.extend([13]*numtoadd)
             file_size=max(MAXLEN,len(data))
             np_data=np.expand_dims(np.array(data), axis=0)
-            #if greater than MAXLEN, always scan first MAXLEN and last MAXLEN, even if some bytes get scanned twice.
-            #getting last full MAXLEN into buffer is important because of appending viruses
+
             maxconf_pos=0
             maxconf=0
             for i in range(0, file_size-MAXLEN+1, MAXLEN): #end is file_size-MAXLEN because last bytes will be specifically scanned in a full buffer
