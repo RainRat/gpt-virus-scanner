@@ -159,6 +159,8 @@ def button_click():
 
 root = tk.Tk()
 root.geometry("800x500")
+root.title("GPT Virus Scanner")
+
 label = tk.Label(root, text="Path to scan")
 label.pack()
 
