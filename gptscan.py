@@ -2,7 +2,6 @@ import tkinter as tk
 import os
 import tkinter.ttk as ttk
 import tensorflow as tf
-import numpy as np
 import json
 from functools import partial
 import tkinter.font
@@ -24,7 +23,7 @@ try:
     with open('task.txt', 'r') as file:
         taskdesc = file.readlines()
 except FileNotFoundError:
-    print("OpenAI key file not found. No GPT data will be included in report...")
+    print("Task description file not found. No GPT data will be included in report...")
 if taskdesc=='':
     apikey='' #if task description missing, null the API key to not waste tokens
 
@@ -104,7 +103,7 @@ def button_click():
                 numtoadd=MAXLEN-len(data)
                 data.extend([13]*numtoadd)
             file_size=max(MAXLEN,len(data))
-            np_data=np.expand_dims(np.array(data), axis=0)
+            tf_data = tf.expand_dims(tf.constant(data), axis=0)
 
             maxconf_pos=0
             maxconf=0
@@ -113,7 +112,7 @@ def button_click():
                 if i>=MAXLEN and deep_var.get()==False:
                     continue
                 print ("Scanning at:", i)
-                result=modelscript.predict(np_data[:, i:i+1024], batch_size=1, steps=1)[0][0]
+                result=modelscript.predict(tf_data[:, i:i+1024], batch_size=1, steps=1)[0][0]
                 resultchecks.append(result)
                 if result>maxconf:
                     maxconf_pos=i
@@ -124,7 +123,7 @@ def button_click():
             #getting last full MAXLEN into buffer is important because of appending viruses
             if file_size>MAXLEN:
                 print ("Scanning at:", -MAXLEN)
-                result=modelscript.predict(np_data[:, -MAXLEN:], batch_size=1, steps=1)[0][0]
+                result=modelscript.predict(tf_data[:, -MAXLEN:], batch_size=1, steps=1)[0][0]
                 resultchecks.append(result)
                 if result>maxconf:
                     maxconf_pos=file_size-MAXLEN

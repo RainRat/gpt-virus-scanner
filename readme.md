@@ -29,7 +29,7 @@ This is more of a prototype than an actual product.
 ## Installation
 
 - Install Python
-- Add tensorflow, tkinter, openai, numpy packages to Python
+- Add tensorflow, tkinter, openai packages to Python
 - Get an OpenAI API key, put it in a file called apikey.txt
   - When you get your API key, check OpenAI's policy on data retention for yourself. I never see the contents of your files unless you send them an alternate way, but any files you send to OpenAI through your API key are associated with your account.
   
