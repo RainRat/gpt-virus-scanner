@@ -8,9 +8,7 @@ import tkinter.font
 import openai
 
 MAXLEN=1024
-extensions=['.asp', '.bas', '.bat', '.btm', '.cgi', '.cmd', '.csc', '.csh', '.hta', '.htm',
-  '.html', '.inf', '.ini', '.js', '.jse', '.lsp', '.mrc', '.php', '.pl', '.pro', '.ps1', '.py',
-  '.rb', '.reg', '.rex', '.sh', '.vbe', '.vbs', '.wbt', '.wsf', '.wsh']
+
 apikey=''
 try:
     with open('apikey.txt', 'r') as file:
@@ -21,11 +19,19 @@ except FileNotFoundError:
 taskdesc=''
 try:
     with open('task.txt', 'r') as file:
-        taskdesc = file.readlines()
+        taskdesc = file.readline().strip()
 except FileNotFoundError:
     print("Task description file not found. No GPT data will be included in report...")
 if taskdesc=='':
     apikey='' #if task description missing, null the API key to not waste tokens
+
+try:
+    with open('extensions.txt', 'r') as file:
+        lines = file.readlines()
+        extensions = [line.strip() for line in lines]
+except FileNotFoundError:
+    print("Extensions list not found! Will not be able to scan, exiting.")
+    exit()
 
 def motion_handler(tree, event):
     f = tkinter.font.Font(font='TkDefaultFont')
@@ -88,10 +94,8 @@ def sort_column(tv, col, reverse):
 
     
 def button_click():
-#    print(textbox.get())
     modelscript = tf.keras.models.load_model('scripts.h5')
     file_list=list_files(textbox.get())
-#    file_list.sort()
     for file_path in file_list:
         extension = os.path.splitext(file_path)[1]
         if any(extension == ext.lower() for ext in extensions):
@@ -133,7 +137,6 @@ def button_click():
             enduser_desc=""
             chatgpt_conf=0
             snippet=''.join(map(chr,bytes(data[maxconf_pos:maxconf_pos+1024]))).strip()
-            print (taskdesc)
             if max(resultchecks)>.5 and gpt_var.get()==True:
                 openai.api_key=apikey
                 try:
@@ -145,11 +148,7 @@ def button_click():
                         ]
                       )
                     print(response)
-                    # Write string to file
-                    with open('gpt-tmp.txt', 'w') as f:
-                        f.write(response.choices[0].message.content)
-                    with open('gpt-tmp.txt', 'r') as f:
-                        json_data = json.load(f)
+                    json_data = json.loads(response.choices[0].message.content)
                     admin_desc=json_data["administrator"]
                     enduser_desc=json_data["end-user"]
                     try:
