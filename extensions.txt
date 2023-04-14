@@ -6,6 +6,8 @@
 .cmd
 .csc
 .csh
+.fe
+.hht
 .hta
 .htm
 .html
@@ -13,7 +15,11 @@
 .ini
 .js
 .jse
+.lgp
 .lsp
+.lwp
+.mht
+.mhtml
 .mrc
 .php
 .pl
@@ -24,8 +30,12 @@
 .reg
 .rex
 .sh
+.smm
+.url
 .vbe
 .vbs
 .wbt
 .wsf
 .wsh
+.xhtml
+.xml
