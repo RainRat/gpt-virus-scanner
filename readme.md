@@ -22,7 +22,7 @@ This is more of a prototype than an actual product.
 ## Features
 
 - Uses built in list of file extensions to decide what to scan.
-- Comes with a automatic filter, which is its own fully-functional machine-learning model, to choose which files to send to ChatGPT.
+- Comes with an automatic filter, which is its own fully-functional machine-learning model, to choose which files to send to ChatGPT.
 - Asks ChatGPT for an administrator's description, an end-user's description, and a threat level.
 - Sort the scan results by clicking on the headers.
 

@@ -6,32 +6,101 @@ import json
 from functools import partial
 import tkinter.font
 import openai
+from pathlib import Path
+import tkinter.filedialog
 
 MAXLEN=1024
+EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
+MAX_RETRIES = 3
+gpt_cache = {}
 
-apikey=''
-try:
-    with open('apikey.txt', 'r') as file:
-        apikey = file.readline().strip()
-except FileNotFoundError:
+def load_file(filename, mode='single_line'):
+    try:
+        with open(filename, 'r') as file:
+            if mode == 'single_line':
+                return file.readline().strip()
+            elif mode == 'multi_line':
+                return file.read().splitlines()
+    except FileNotFoundError:
+        return ''
+
+apikey = load_file('apikey.txt')
+if not apikey:
     print("OpenAI key file not found. No GPT data will be included in report...")
 
-taskdesc=''
-try:
-    with open('task.txt', 'r') as file:
-        taskdesc = file.readline().strip()
-except FileNotFoundError:
+taskdesc = load_file('task.txt')
+if not taskdesc:
     print("Task description file not found. No GPT data will be included in report...")
-if taskdesc=='':
-    apikey='' #if task description missing, null the API key to not waste tokens
+    apikey = ''  #if task description missing, null the API key to not waste tokens
 
-try:
-    with open('extensions.txt', 'r') as file:
-        lines = file.readlines()
-        extensions = [line.strip() for line in lines]
-except FileNotFoundError:
+extensions = load_file('extensions.txt', mode='multi_line')
+if not extensions:
     print("Extensions list not found! Will not be able to scan, exiting.")
-    exit()
+    sys.exit()
+
+def update_progress(value):
+    progress['value'] = value
+    root.update_idletasks()
+
+def browse_button_click():
+    folder_selected = tkinter.filedialog.askdirectory()
+    textbox.delete(0, tk.END)
+    textbox.insert(0, folder_selected)
+    
+def extract_data_from_gpt_response(response):
+    try:
+        json_data = json.loads(response.choices[0].message.content)
+        missing_keys = [key for key in EXPECTED_KEYS if key not in json_data]
+        if missing_keys:
+            raise ValueError(f"Missing keys: {', '.join(missing_keys)}")\
+
+        threat_level_str=json_data.get("threat-level", None)
+        try:
+            threat_level = int(threat_level_str)
+        except ValueError:
+            raise ValueError(f"The 'threat-level' value '{threat_level_str}' is not a valid integer.")
+
+        if not 0 <= threat_level <= 100:
+            raise ValueError(f"The 'threat-level' value {threat_level} is not between 0 and 100 inclusive.")
+        return json_data
+    except (json.JSONDecodeError, ValueError) as e:
+        return str(e)
+
+def handle_gpt_response(snippet, taskdesc):
+    retries = 0
+    json_data = None
+    cache_key = hash(snippet)
+    if cache_key in gpt_cache:
+        return gpt_cache[cache_key]
+    messages = [
+        {"role": "system", "content": taskdesc},
+        {"role": "user", "content": snippet}
+    ]
+    openai.api_key = apikey
+    while retries < MAX_RETRIES and (json_data is None or isinstance(json_data, str)):
+
+        try:
+            response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            break
+
+        if response:
+            extracted_data = extract_data_from_gpt_response(response)
+            if isinstance(extracted_data, dict):
+                json_data = extracted_data
+            else:
+                print(extracted_data)
+                messages.append({"role": "assistant", "content": response.choices[0].message.content})
+                messages.append({"role": "user", "content": f"I encountered an issue: {extracted_data}. Could you correct your response?"})
+                retries += 1
+    if isinstance(json_data, dict):
+        gpt_cache[cache_key] = json_data
+        return json_data
+    else:
+        print("Failed to obtain a valid response from GPT after multiple retries.")
+        return None
+
 
 def motion_handler(tree, event):
     f = tkinter.font.Font(font='TkDefaultFont')
@@ -68,12 +137,8 @@ def motion_handler(tree, event):
             tree.item(iid, values=new_vals)
 
 def list_files(path):
-    file_list = []
-    for root, directories, files in os.walk(path):
-        for filename in files:
-            file_path = os.path.join(root, filename)
-            file_list.append(file_path)
-    return file_list
+    path = Path(path)
+    return [p for p in path.rglob('*') if p.is_file()]
 
 def sort_column(tv, col, reverse):
     l = [(tv.set(k, col), k) for k in tv.get_children("")]
@@ -92,12 +157,12 @@ def sort_column(tv, col, reverse):
     # Reverse sort order on subsequent clicks of the same column header
     tv.heading(col, command=lambda: sort_column(tv, col, not reverse))
 
-    
 def button_click():
     modelscript = tf.keras.models.load_model('scripts.h5')
     file_list=list_files(textbox.get())
-    for file_path in file_list:
-        extension = os.path.splitext(file_path)[1]
+    progress_bar["maximum"] = len(file_list)
+    for index, file_path in enumerate(file_list):
+        extension = Path(file_path).suffix
         if any(extension == ext.lower() for ext in extensions):
             print(file_path)
             with open(file_path, 'rb') as f:
@@ -113,7 +178,7 @@ def button_click():
             maxconf=0
             for i in range(0, file_size-MAXLEN+1, MAXLEN):
                 #end is file_size-MAXLEN because last bytes will be later scanned in a full buffer
-                if i>=MAXLEN and deep_var.get()==False:
+                if i >= MAXLEN and not deep_var.get():
                     continue
                 print ("Scanning at:", i)
                 result=modelscript.predict(tf_data[:, i:i+1024], batch_size=1, steps=1)[0][0]
@@ -121,7 +186,6 @@ def button_click():
                 if result>maxconf:
                     maxconf_pos=i
                     maxconf=result
-
 
             #if greater than MAXLEN, always scan last MAXLEN, even if some bytes get scanned twice.
             #getting last full MAXLEN into buffer is important because of appending viruses
@@ -132,42 +196,26 @@ def button_click():
                 if result>maxconf:
                     maxconf_pos=file_size-MAXLEN
                     maxconf=result
-            percent = "{:.0%}".format(maxconf)
-            admin_desc=""
-            enduser_desc=""
-            chatgpt_conf=0
+            percent = f"{maxconf:.0%}"
             snippet=''.join(map(chr,bytes(data[maxconf_pos:maxconf_pos+1024]))).strip()
             if max(resultchecks)>.5 and gpt_var.get()==True:
-                openai.api_key=apikey
-                try:
-                    response = openai.ChatCompletion.create(
-                      model="gpt-3.5-turbo",
-                      messages=[
-                            {"role": "system", "content": taskdesc},
-                            {"role": "user", "content": snippet},
-                        ]
-                      )
-                    print(response)
-                    json_data = json.loads(response.choices[0].message.content)
+                json_data = handle_gpt_response(snippet, taskdesc)
+                if json_data == None:
+                    admin_desc='JSON Parse Error'
+                    enduser_desc='JSON Parse Error'
+                    chatgpt_conf_percent='JSON Parse Error'
+                else:
                     admin_desc=json_data["administrator"]
                     enduser_desc=json_data["end-user"]
-                    try:
-                        chatgpt_conf = int(json_data["threat-level"])
-                    except ValueError:
-                        chatgpt_conf=-1
-                    chatgpt_conf=json_data["threat-level"]
-                except json.JSONDecodeError as e:
-                    admin_desc='JSON Parse Error'
-                    enduser_desc='JSON Parse Error'
-                    chatgpt_conf=0
-                if chatgpt_conf==-1:
-                    admin_desc='JSON Parse Error'
-                    enduser_desc='JSON Parse Error'
+                    chatgpt_conf_percent="{:.0%}".format(int(json_data["threat-level"])/100.)
+                        #threat-level checked for validity during retrieval, and entire
+                        #structure would be None if any check failed.
             snippet=''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
-            chatgpt_conf_percent="{:.0%}".format(chatgpt_conf/100.)
             if max(resultchecks)>.5 or all_var.get()==True:
                 tree.insert("", tk.END, values=(file_path,percent,admin_desc,enduser_desc,
                                                 chatgpt_conf_percent,snippet))
+        progress_bar["value"] = index + 1
+        root.update_idletasks()
 
 root = tk.Tk()
 root.geometry("800x500")
@@ -178,7 +226,8 @@ label.pack()
 
 textbox = tk.Entry(root)
 textbox.pack()
-
+select_dir_btn = tk.Button(root, text="Select Directory", command=browse_button_click)
+select_dir_btn.pack()
 deep_var = tk.BooleanVar()
 deep_checkbox = tk.Checkbutton(root, text="Deep scan", variable=deep_var)
 deep_checkbox.pack()
@@ -193,6 +242,8 @@ gpt_checkbox.pack()
 
 button = tk.Button(root, text="Scan now", command=button_click)
 button.pack()
+progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, length=100, mode='determinate')
+progress_bar.pack()
 style = ttk.Style(root)
 style.configure('Scanner.Treeview', rowheight=100)
 tree = ttk.Treeview(root, style='Scanner.Treeview')
@@ -227,5 +278,3 @@ tree.bind('<B1-Motion>', partial(motion_handler, tree))
 motion_handler(tree, None)   # Perform initial wrapping
 
 root.mainloop()
-
-
