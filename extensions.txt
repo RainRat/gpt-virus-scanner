@@ -3,6 +3,7 @@
 .bat
 .btm
 .cgi
+.cmake
 .cmd
 .csc
 .csh
@@ -13,10 +14,14 @@
 .html
 .inf
 .ini
+.jl
 .js
 .jse
+.jsp
+.jsx
 .lgp
 .lsp
+.lua
 .lwp
 .mht
 .mhtml
@@ -31,6 +36,8 @@
 .rex
 .sh
 .smm
+.tcl
+.ts
 .url
 .vbe
 .vbs

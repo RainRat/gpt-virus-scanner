@@ -46,7 +46,7 @@ def browse_button_click():
     folder_selected = tkinter.filedialog.askdirectory()
     textbox.delete(0, tk.END)
     textbox.insert(0, folder_selected)
-    
+
 def extract_data_from_gpt_response(response):
     try:
         json_data = json.loads(response.choices[0].message.content)
@@ -198,22 +198,26 @@ def button_click():
                     maxconf=result
             percent = f"{maxconf:.0%}"
             snippet=''.join(map(chr,bytes(data[maxconf_pos:maxconf_pos+1024]))).strip()
-            if max(resultchecks)>.5 and gpt_var.get()==True:
+            if max(resultchecks) > .5 and gpt_var.get():
                 json_data = handle_gpt_response(snippet, taskdesc)
-                if json_data == None:
-                    admin_desc='JSON Parse Error'
-                    enduser_desc='JSON Parse Error'
-                    chatgpt_conf_percent='JSON Parse Error'
+                if json_data is None:
+                    admin_desc = 'JSON Parse Error'
+                    enduser_desc = 'JSON Parse Error'
+                    chatgpt_conf_percent = 'JSON Parse Error'
                 else:
-                    admin_desc=json_data["administrator"]
-                    enduser_desc=json_data["end-user"]
-                    chatgpt_conf_percent="{:.0%}".format(int(json_data["threat-level"])/100.)
+                    admin_desc = json_data["administrator"]
+                    enduser_desc = json_data["end-user"]
+                    chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
                         #threat-level checked for validity during retrieval, and entire
                         #structure would be None if any check failed.
+            else:
+                admin_desc = ''
+                enduser_desc = ''
+                chatgpt_conf_percent = ''
             snippet=''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
             if max(resultchecks)>.5 or all_var.get()==True:
                 tree.insert("", tk.END, values=(file_path,percent,admin_desc,enduser_desc,
-                                                chatgpt_conf_percent,snippet))
+                                chatgpt_conf_percent,snippet))
         progress_bar["value"] = index + 1
         root.update_idletasks()
 
