@@ -70,6 +70,7 @@ def handle_gpt_response(snippet, taskdesc):
 
     retries = 0
     json_data = None
+    client = openai.OpenAI(api_key=apikey)
     cache_key = hash(snippet)
     if cache_key in gpt_cache:
         return gpt_cache[cache_key]
@@ -77,11 +78,10 @@ def handle_gpt_response(snippet, taskdesc):
         {"role": "system", "content": taskdesc},
         {"role": "user", "content": snippet}
     ]
-    openai.api_key = apikey
     while retries < MAX_RETRIES and (json_data is None or isinstance(json_data, str)):
 
         try:
-            response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
+            response = client.chat.completions.create(model="gpt-3.5-turbo", messages=messages)
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             break
