@@ -1,12 +1,15 @@
-import tkinter as tk
-import os
-import tkinter.ttk as ttk
+import csv
 import json
-from functools import partial
-import tkinter.font
-from pathlib import Path
-import tkinter.filedialog
+import os
 import sys
+from functools import partial
+from pathlib import Path
+
+import tkinter as tk
+import tkinter.filedialog
+import tkinter.font
+import tkinter.messagebox
+import tkinter.ttk as ttk
 
 MAXLEN=1024
 EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
@@ -224,6 +227,25 @@ def button_click():
         progress_bar["value"] = index + 1
         root.update_idletasks()
 
+
+def export_results():
+    file_path = tkinter.filedialog.asksaveasfilename(
+        defaultextension=".csv",
+        filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+        title="Export Scan Results",
+    )
+    if not file_path:
+        return
+
+    try:
+        with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(tree["columns"])
+            for item_id in tree.get_children():
+                writer.writerow(tree.item(item_id)["values"])
+    except OSError as err:
+        tkinter.messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
+
 def create_gui():
     global root, textbox, progress_bar, deep_var, all_var, gpt_var, tree
 
@@ -252,6 +274,8 @@ def create_gui():
 
     button = tk.Button(root, text="Scan now", command=button_click)
     button.pack()
+    export_button = tk.Button(root, text="Export CSV", command=export_results)
+    export_button.pack()
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, length=100, mode='determinate')
     progress_bar.pack()
     style = ttk.Style(root)
