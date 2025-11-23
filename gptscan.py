@@ -1,13 +1,12 @@
 import tkinter as tk
 import os
 import tkinter.ttk as ttk
-import tensorflow as tf
 import json
 from functools import partial
 import tkinter.font
-import openai
 from pathlib import Path
 import tkinter.filedialog
+import sys
 
 MAXLEN=1024
 EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
@@ -39,7 +38,7 @@ if not extensions:
     sys.exit()
 
 def update_progress(value):
-    progress['value'] = value
+    progress_bar['value'] = value
     root.update_idletasks()
 
 def browse_button_click():
@@ -52,9 +51,9 @@ def extract_data_from_gpt_response(response):
         json_data = json.loads(response.choices[0].message.content)
         missing_keys = [key for key in EXPECTED_KEYS if key not in json_data]
         if missing_keys:
-            raise ValueError(f"Missing keys: {', '.join(missing_keys)}")\
+            raise ValueError(f"Missing keys: {', '.join(missing_keys)}")
 
-        threat_level_str=json_data.get("threat-level", None)
+        threat_level_str = json_data.get("threat-level", None)
         try:
             threat_level = int(threat_level_str)
         except ValueError:
@@ -67,6 +66,8 @@ def extract_data_from_gpt_response(response):
         return str(e)
 
 def handle_gpt_response(snippet, taskdesc):
+    import openai
+
     retries = 0
     json_data = None
     cache_key = hash(snippet)
@@ -158,6 +159,8 @@ def sort_column(tv, col, reverse):
     tv.heading(col, command=lambda: sort_column(tv, col, not reverse))
 
 def button_click():
+    import tensorflow as tf
+
     modelscript = tf.keras.models.load_model('scripts.h5')
     file_list=list_files(textbox.get())
     progress_bar["maximum"] = len(file_list)
@@ -221,64 +224,71 @@ def button_click():
         progress_bar["value"] = index + 1
         root.update_idletasks()
 
-root = tk.Tk()
-root.geometry("800x500")
-root.title("GPT Virus Scanner")
+def create_gui():
+    global root, textbox, progress_bar, deep_var, all_var, gpt_var, tree
 
-label = tk.Label(root, text="Path to scan")
-label.pack()
+    root = tk.Tk()
+    root.geometry("800x500")
+    root.title("GPT Virus Scanner")
 
-textbox = tk.Entry(root)
-textbox.pack()
-select_dir_btn = tk.Button(root, text="Select Directory", command=browse_button_click)
-select_dir_btn.pack()
-deep_var = tk.BooleanVar()
-deep_checkbox = tk.Checkbutton(root, text="Deep scan", variable=deep_var)
-deep_checkbox.pack()
+    label = tk.Label(root, text="Path to scan")
+    label.pack()
 
-all_var = tk.BooleanVar()
-all_checkbox = tk.Checkbutton(root, text="Show all files", variable=all_var)
-all_checkbox.pack()
+    textbox = tk.Entry(root)
+    textbox.pack()
+    select_dir_btn = tk.Button(root, text="Select Directory", command=browse_button_click)
+    select_dir_btn.pack()
+    deep_var = tk.BooleanVar()
+    deep_checkbox = tk.Checkbutton(root, text="Deep scan", variable=deep_var)
+    deep_checkbox.pack()
 
-gpt_var = tk.BooleanVar()
-gpt_checkbox = tk.Checkbutton(root, text="Use ChatGPT", variable=gpt_var)
-gpt_checkbox.pack()
+    all_var = tk.BooleanVar()
+    all_checkbox = tk.Checkbutton(root, text="Show all files", variable=all_var)
+    all_checkbox.pack()
 
-button = tk.Button(root, text="Scan now", command=button_click)
-button.pack()
-progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, length=100, mode='determinate')
-progress_bar.pack()
-style = ttk.Style(root)
-style.configure('Scanner.Treeview', rowheight=100)
-tree = ttk.Treeview(root, style='Scanner.Treeview')
-tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
-tree.column("#0", width=0, stretch=tk.NO)
-tree.column("path", width=200, stretch=tk.NO, anchor="w")
-tree.column("own_conf", width=50, stretch=tk.NO, anchor="e")
-tree.column("admin_desc", width=200, stretch=tk.NO, anchor="w")
-tree.column("end-user_desc", width=200, stretch=tk.NO, anchor="w")
-tree.column("gpt_conf", width=50, stretch=tk.NO, anchor="e")
-tree.column("snippet", width=50, stretch=tk.NO, anchor="w")
+    gpt_var = tk.BooleanVar()
+    gpt_checkbox = tk.Checkbutton(root, text="Use ChatGPT", variable=gpt_var)
+    gpt_checkbox.pack()
 
-tree.heading("#0", text="")
-tree.heading("path", text="File Path", command=lambda: sort_column(tree, "path", False))
-tree.heading("own_conf", text="Own confidence",
-             command=lambda: sort_column(tree, "own_conf", False))
-tree.heading("admin_desc", text="Administrator Description",
-             command=lambda: sort_column(tree, "admin_desc", False))
-tree.heading("end-user_desc", text="End-User Description",
-             command=lambda: sort_column(tree, "end-user_desc", False))
-tree.heading("gpt_conf", text="ChatGPT confidence",
-             command=lambda: sort_column(tree, "gpt_conf", False))
-tree.heading("snippet", text="Snippet", command=lambda: sort_column(tree, "snippet", False))
+    button = tk.Button(root, text="Scan now", command=button_click)
+    button.pack()
+    progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, length=100, mode='determinate')
+    progress_bar.pack()
+    style = ttk.Style(root)
+    style.configure('Scanner.Treeview', rowheight=100)
+    tree = ttk.Treeview(root, style='Scanner.Treeview')
+    tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
+    tree.column("#0", width=0, stretch=tk.NO)
+    tree.column("path", width=200, stretch=tk.NO, anchor="w")
+    tree.column("own_conf", width=50, stretch=tk.NO, anchor="e")
+    tree.column("admin_desc", width=200, stretch=tk.NO, anchor="w")
+    tree.column("end-user_desc", width=200, stretch=tk.NO, anchor="w")
+    tree.column("gpt_conf", width=50, stretch=tk.NO, anchor="e")
+    tree.column("snippet", width=50, stretch=tk.NO, anchor="w")
 
-tree.pack(fill=tk.BOTH, expand=True)
+    tree.heading("#0", text="")
+    tree.heading("path", text="File Path", command=lambda: sort_column(tree, "path", False))
+    tree.heading("own_conf", text="Own confidence",
+                 command=lambda: sort_column(tree, "own_conf", False))
+    tree.heading("admin_desc", text="Administrator Description",
+                 command=lambda: sort_column(tree, "admin_desc", False))
+    tree.heading("end-user_desc", text="End-User Description",
+                 command=lambda: sort_column(tree, "end-user_desc", False))
+    tree.heading("gpt_conf", text="ChatGPT confidence",
+                 command=lambda: sort_column(tree, "gpt_conf", False))
+    tree.heading("snippet", text="Snippet", command=lambda: sort_column(tree, "snippet", False))
 
-scrollbar = ttk.Scrollbar(tree, orient="vertical", command=tree.yview)
-scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    tree.pack(fill=tk.BOTH, expand=True)
 
-tree.configure(yscrollcommand=scrollbar.set)
-tree.bind('<B1-Motion>', partial(motion_handler, tree))
-motion_handler(tree, None)   # Perform initial wrapping
+    scrollbar = ttk.Scrollbar(tree, orient="vertical", command=tree.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-root.mainloop()
+    tree.configure(yscrollcommand=scrollbar.set)
+    tree.bind('<B1-Motion>', partial(motion_handler, tree))
+    motion_handler(tree, None)   # Perform initial wrapping
+    return root
+
+
+if __name__ == "__main__":
+    app_root = create_gui()
+    app_root.mainloop()
