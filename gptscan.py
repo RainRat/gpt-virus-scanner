@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import queue
 import sys
 import threading
 from functools import partial
@@ -16,6 +17,7 @@ MAXLEN = 1024
 EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
 MAX_RETRIES = 3
 gpt_cache = {}
+ui_queue = queue.Queue()
 
 def load_file(filename, mode='single_line'):
     try:
@@ -50,6 +52,20 @@ def configure_progress(max_value):
     progress_bar["maximum"] = max_value
     progress_bar["value"] = 0
     root.update_idletasks()
+
+
+def enqueue_ui_update(func, *args, **kwargs):
+    ui_queue.put((func, args, kwargs))
+
+
+def process_ui_queue():
+    while not ui_queue.empty():
+        func, args, kwargs = ui_queue.get()
+        try:
+            func(*args, **kwargs)
+        finally:
+            ui_queue.task_done()
+    root.after(50, process_ui_queue)
 
 def browse_button_click():
     folder_selected = tkinter.filedialog.askdirectory()
@@ -198,7 +214,7 @@ def run_scan(scan_path, deep_scan, show_all, use_gpt):
 
     modelscript = tf.keras.models.load_model('scripts.h5')
     file_list = list_files(scan_path)
-    root.after(0, partial(configure_progress, len(file_list)))
+    enqueue_ui_update(configure_progress, len(file_list))
     for index, file_path in enumerate(file_list):
         extension = Path(file_path).suffix
         if any(extension == ext.lower() for ext in extensions):
@@ -262,8 +278,8 @@ def run_scan(scan_path, deep_scan, show_all, use_gpt):
                     chatgpt_conf_percent,
                     snippet,
                 )
-                root.after(0, partial(tree.insert, "", tk.END, values=values))
-        root.after(0, partial(update_progress, index + 1))
+                enqueue_ui_update(tree.insert, "", tk.END, values=values)
+        enqueue_ui_update(update_progress, index + 1)
 
 
 def export_results():
@@ -328,6 +344,7 @@ def create_gui():
     tree.column("end-user_desc", width=200, stretch=tk.NO, anchor="w")
     tree.column("gpt_conf", width=50, stretch=tk.NO, anchor="e")
     tree.column("snippet", width=50, stretch=tk.NO, anchor="w")
+    root.after(0, process_ui_queue)
 
     tree.heading("#0", text="")
     tree.heading("path", text="File Path", command=lambda: sort_column(tree, "path", False))
