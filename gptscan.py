@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import sys
+import threading
 from functools import partial
 from pathlib import Path
 
@@ -11,7 +12,7 @@ import tkinter.font
 import tkinter.messagebox
 import tkinter.ttk as ttk
 
-MAXLEN=1024
+MAXLEN = 1024
 EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
 MAX_RETRIES = 3
 gpt_cache = {}
@@ -42,6 +43,12 @@ if not extensions:
 
 def update_progress(value):
     progress_bar['value'] = value
+    root.update_idletasks()
+
+
+def configure_progress(max_value):
+    progress_bar["maximum"] = max_value
+    progress_bar["value"] = 0
     root.update_idletasks()
 
 def browse_button_click():
@@ -171,49 +178,65 @@ def sort_column(tv, col, reverse):
     tv.heading(col, command=lambda: sort_column(tv, col, not reverse))
 
 def button_click():
+    scan_path = textbox.get()
+    if not scan_path:
+        tkinter.messagebox.showerror("Scan Error", "Please select a directory to scan.")
+        return
+
+    scan_args = (
+        scan_path,
+        deep_var.get(),
+        all_var.get(),
+        gpt_var.get(),
+    )
+    scan_thread = threading.Thread(target=run_scan, args=scan_args, daemon=True)
+    scan_thread.start()
+
+
+def run_scan(scan_path, deep_scan, show_all, use_gpt):
     import tensorflow as tf
 
     modelscript = tf.keras.models.load_model('scripts.h5')
-    file_list=list_files(textbox.get())
-    progress_bar["maximum"] = len(file_list)
+    file_list = list_files(scan_path)
+    root.after(0, partial(configure_progress, len(file_list)))
     for index, file_path in enumerate(file_list):
         extension = Path(file_path).suffix
         if any(extension == ext.lower() for ext in extensions):
             print(file_path)
             with open(file_path, 'rb') as f:
                 data = list(f.read())
-            resultchecks=[]
-            if len(data)<=MAXLEN:
-                numtoadd=MAXLEN-len(data)
-                data.extend([13]*numtoadd)
-            file_size=max(MAXLEN,len(data))
+            resultchecks = []
+            if len(data) <= MAXLEN:
+                numtoadd = MAXLEN - len(data)
+                data.extend([13] * numtoadd)
+            file_size = max(MAXLEN, len(data))
             tf_data = tf.expand_dims(tf.constant(data), axis=0)
 
-            maxconf_pos=0
-            maxconf=0
-            for i in range(0, file_size-MAXLEN+1, MAXLEN):
-                #end is file_size-MAXLEN because last bytes will be later scanned in a full buffer
-                if i >= MAXLEN and not deep_var.get():
+            maxconf_pos = 0
+            maxconf = 0
+            for i in range(0, file_size - MAXLEN + 1, MAXLEN):
+                # end is file_size-MAXLEN because last bytes will be later scanned in a full buffer
+                if i >= MAXLEN and not deep_scan:
                     continue
-                print ("Scanning at:", i)
-                result=modelscript.predict(tf_data[:, i:i+1024], batch_size=1, steps=1)[0][0]
+                print("Scanning at:", i)
+                result = modelscript.predict(tf_data[:, i:i + 1024], batch_size=1, steps=1)[0][0]
                 resultchecks.append(result)
-                if result>maxconf:
-                    maxconf_pos=i
-                    maxconf=result
+                if result > maxconf:
+                    maxconf_pos = i
+                    maxconf = result
 
-            #if greater than MAXLEN, always scan last MAXLEN, even if some bytes get scanned twice.
-            #getting last full MAXLEN into buffer is important because of appending viruses
-            if file_size>MAXLEN:
-                print ("Scanning at:", -MAXLEN)
-                result=modelscript.predict(tf_data[:, -MAXLEN:], batch_size=1, steps=1)[0][0]
+            # if greater than MAXLEN, always scan last MAXLEN, even if some bytes get scanned twice.
+            # getting last full MAXLEN into buffer is important because of appending viruses
+            if file_size > MAXLEN:
+                print("Scanning at:", -MAXLEN)
+                result = modelscript.predict(tf_data[:, -MAXLEN:], batch_size=1, steps=1)[0][0]
                 resultchecks.append(result)
-                if result>maxconf:
-                    maxconf_pos=file_size-MAXLEN
-                    maxconf=result
+                if result > maxconf:
+                    maxconf_pos = file_size - MAXLEN
+                    maxconf = result
             percent = f"{maxconf:.0%}"
-            snippet=''.join(map(chr,bytes(data[maxconf_pos:maxconf_pos+1024]))).strip()
-            if max(resultchecks) > .5 and gpt_var.get():
+            snippet = ''.join(map(chr, bytes(data[maxconf_pos:maxconf_pos + 1024]))).strip()
+            if max(resultchecks) > .5 and use_gpt:
                 json_data = handle_gpt_response(snippet, taskdesc)
                 if json_data is None:
                     admin_desc = 'JSON Parse Error'
@@ -223,18 +246,24 @@ def button_click():
                     admin_desc = json_data["administrator"]
                     enduser_desc = json_data["end-user"]
                     chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
-                        #threat-level checked for validity during retrieval, and entire
-                        #structure would be None if any check failed.
+                    # threat-level checked for validity during retrieval, and entire
+                    # structure would be None if any check failed.
             else:
                 admin_desc = ''
                 enduser_desc = ''
                 chatgpt_conf_percent = ''
-            snippet=''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
-            if max(resultchecks)>.5 or all_var.get()==True:
-                tree.insert("", tk.END, values=(file_path,percent,admin_desc,enduser_desc,
-                                chatgpt_conf_percent,snippet))
-        progress_bar["value"] = index + 1
-        root.update_idletasks()
+            snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+            if max(resultchecks) > .5 or show_all is True:
+                values = (
+                    file_path,
+                    percent,
+                    admin_desc,
+                    enduser_desc,
+                    chatgpt_conf_percent,
+                    snippet,
+                )
+                root.after(0, partial(tree.insert, "", tk.END, values=values))
+        root.after(0, partial(update_progress, index + 1))
 
 
 def export_results():
@@ -254,6 +283,7 @@ def export_results():
                 writer.writerow(tree.item(item_id)["values"])
     except OSError as err:
         tkinter.messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
+
 
 def create_gui():
     global root, textbox, progress_bar, deep_var, all_var, gpt_var, tree
