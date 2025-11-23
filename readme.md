@@ -46,6 +46,15 @@ python gptscan.py
 - Deep scan: By default, the prefilter will scan the first and last 1024 bytes of each file. Deep scan will scan every byte of the file, top to bottom.
 - Use ChatGPT: Use ChatGPT to assess the interesting files.
 
+## Testing
+
+- Install development dependencies: `python -m pip install pytest openai` (and `python3-tk` from your package manager if Tkinter is missing).
+- Run the automated test suite:
+
+```bash
+python -m pytest
+```
+
 ## Contributing
 
 - Send a pull request, and I'll add reasonable changes.
