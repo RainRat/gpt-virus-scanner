@@ -1,0 +1,1 @@
+suspicious_code()
