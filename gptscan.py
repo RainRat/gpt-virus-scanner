@@ -80,6 +80,8 @@ def handle_gpt_response(snippet, taskdesc):
         chat_completion = getattr(openai, "ChatCompletion", None)
         if chat_completion is None:
             raise AttributeError("openai client missing ChatCompletion")
+        if apikey:
+            openai.api_key = apikey
         create_completion = partial(chat_completion.create, model="gpt-3.5-turbo")
     cache_key = hash(snippet)
     if cache_key in gpt_cache:
