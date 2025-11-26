@@ -11,7 +11,7 @@ from pathlib import Path
 import tkinter as tk
 import tkinter.filedialog
 import tkinter.font
-import tkinter.messagebox
+from tkinter import messagebox
 import tkinter.ttk as ttk
 
 MAXLEN = 1024
@@ -38,6 +38,8 @@ taskdesc = load_file('task.txt')
 if not taskdesc:
     print("Task description file not found. No GPT data will be included in report...")
     apikey = ''  #if task description missing, null the API key to not waste tokens
+
+GPT_ENABLED = bool(apikey and taskdesc)
 
 extensions = load_file('extensions.txt', mode='multi_line')
 if not extensions:
@@ -188,7 +190,7 @@ def sort_column(tv, col, reverse):
 def button_click():
     scan_path = textbox.get()
     if not scan_path:
-        tkinter.messagebox.showerror("Scan Error", "Please select a directory to scan.")
+        messagebox.showerror("Scan Error", "Please select a directory to scan.")
         return
 
     scan_args = (
@@ -242,7 +244,7 @@ def scan_files(scan_path, deep_scan, show_all, use_gpt):
 
             percent = f"{maxconf:.0%}"
             snippet = ''.join(map(chr, bytes(data[maxconf_pos:maxconf_pos + 1024]))).strip()
-            if max(resultchecks) > .5 and use_gpt:
+            if max(resultchecks) > .5 and use_gpt and GPT_ENABLED:
                 json_data = handle_gpt_response(snippet, taskdesc)
                 if json_data is None:
                     admin_desc = 'JSON Parse Error'
@@ -309,7 +311,7 @@ def export_results():
             for item_id in tree.get_children():
                 writer.writerow(tree.item(item_id)["values"])
     except OSError as err:
-        tkinter.messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
+        messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
 
 
 def create_gui():
@@ -336,6 +338,12 @@ def create_gui():
 
     gpt_var = tk.BooleanVar()
     gpt_checkbox = tk.Checkbutton(root, text="Use ChatGPT", variable=gpt_var)
+    if not GPT_ENABLED:
+        gpt_var.set(False)
+        gpt_checkbox.config(state="disabled")
+        messagebox.showwarning("GPT Disabled",
+                                       "apikey.txt or task.txt not found. GPT functionality is disabled.")
+
     gpt_checkbox.pack()
 
     button = tk.Button(root, text="Scan now", command=button_click)
