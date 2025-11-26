@@ -1,4 +1,5 @@
 import csv
+import csv
 import json
 import os
 import queue
@@ -200,12 +201,12 @@ def button_click():
     scan_thread.start()
 
 
-def run_scan(scan_path, deep_scan, show_all, use_gpt):
+def scan_files(scan_path, deep_scan, show_all, use_gpt):
     import tensorflow as tf
-
-    modelscript = tf.keras.models.load_model('scripts.h5')
+    modelscript = tf.keras.models.load_model('scripts.h5', compile=False)
     file_list = list_files(scan_path)
-    enqueue_ui_update(configure_progress, len(file_list))
+    yield ('progress', 0, len(file_list))
+
     for index, file_path in enumerate(file_list):
         extension = Path(file_path).suffix
         if any(extension == ext.lower() for ext in extensions):
@@ -222,7 +223,6 @@ def run_scan(scan_path, deep_scan, show_all, use_gpt):
             maxconf_pos = 0
             maxconf = 0
             for i in range(0, file_size - MAXLEN + 1, MAXLEN):
-                # end is file_size-MAXLEN because last bytes will be later scanned in a full buffer
                 if i >= MAXLEN and not deep_scan:
                     continue
                 print("Scanning at:", i)
@@ -232,8 +232,6 @@ def run_scan(scan_path, deep_scan, show_all, use_gpt):
                     maxconf_pos = i
                     maxconf = result
 
-            # if greater than MAXLEN, always scan last MAXLEN, even if some bytes get scanned twice.
-            # getting last full MAXLEN into buffer is important because of appending viruses
             if file_size > MAXLEN:
                 print("Scanning at:", -MAXLEN)
                 result = modelscript.predict(tf_data[:, -MAXLEN:], batch_size=1, steps=1)[0][0]
@@ -241,6 +239,7 @@ def run_scan(scan_path, deep_scan, show_all, use_gpt):
                 if result > maxconf:
                     maxconf_pos = file_size - MAXLEN
                     maxconf = result
+
             percent = f"{maxconf:.0%}"
             snippet = ''.join(map(chr, bytes(data[maxconf_pos:maxconf_pos + 1024]))).strip()
             if max(resultchecks) > .5 and use_gpt:
@@ -253,24 +252,45 @@ def run_scan(scan_path, deep_scan, show_all, use_gpt):
                     admin_desc = json_data["administrator"]
                     enduser_desc = json_data["end-user"]
                     chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
-                    # threat-level checked for validity during retrieval, and entire
-                    # structure would be None if any check failed.
             else:
                 admin_desc = ''
                 enduser_desc = ''
                 chatgpt_conf_percent = ''
             snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
-            if max(resultchecks) > .5 or show_all is True:
-                values = (
-                    file_path,
-                    percent,
-                    admin_desc,
-                    enduser_desc,
-                    chatgpt_conf_percent,
-                    snippet,
+            if max(resultchecks) > .5 or show_all:
+                yield (
+                    'result',
+                    (
+                        str(file_path),
+                        percent,
+                        admin_desc,
+                        enduser_desc,
+                        chatgpt_conf_percent,
+                        snippet,
+                    )
                 )
-                enqueue_ui_update(tree.insert, "", tk.END, values=values)
-        enqueue_ui_update(update_progress, index + 1)
+        yield ('progress', index + 1, len(file_list))
+
+
+def run_scan(scan_path, deep_scan, show_all, use_gpt):
+    for event_type, data in scan_files(scan_path, deep_scan, show_all, use_gpt):
+        if event_type == 'progress':
+            current, total = data[1], data[2]
+            if current == 0:
+                enqueue_ui_update(configure_progress, total)
+            else:
+                enqueue_ui_update(update_progress, current)
+        elif event_type == 'result':
+            enqueue_ui_update(tree.insert, "", tk.END, values=data)
+
+
+def run_cli(path, deep, show_all, use_gpt):
+    writer = csv.writer(sys.stdout)
+    writer.writerow(("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"))
+
+    for event_type, data in scan_files(path, deep, show_all, use_gpt):
+        if event_type == 'result':
+            writer.writerow(data)
 
 
 def export_results():
@@ -361,5 +381,19 @@ def create_gui():
 
 
 if __name__ == "__main__":
-    app_root = create_gui()
-    app_root.mainloop()
+    import argparse
+    parser = argparse.ArgumentParser(description="GPT Virus Scanner")
+    parser.add_argument('--cli', action='store_true', help='Run in command-line mode')
+    parser.add_argument('--path', type=str, help='Directory to scan')
+    parser.add_argument('--deep', action='store_true', help='Perform a deep scan')
+    parser.add_argument('--show-all', action='store_true', help='Show all files in the output')
+    parser.add_argument('--use-gpt', action='store_true', help='Use GPT for analysis')
+    args = parser.parse_args()
+
+    if args.cli:
+        if not args.path:
+            parser.error('--path is required in CLI mode')
+        run_cli(args.path, args.deep, args.show_all, args.use_gpt)
+    else:
+        app_root = create_gui()
+        app_root.mainloop()
