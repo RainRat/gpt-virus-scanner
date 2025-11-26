@@ -92,20 +92,11 @@ def extract_data_from_gpt_response(response):
         return str(e)
 
 def handle_gpt_response(snippet, taskdesc):
-    import openai
-
+    from openai import OpenAI
     retries = 0
     json_data = None
-    if hasattr(openai, "OpenAI"):
-        client = openai.OpenAI(api_key=apikey)
-        create_completion = partial(client.chat.completions.create, model="gpt-3.5-turbo")
-    else:
-        chat_completion = getattr(openai, "ChatCompletion", None)
-        if chat_completion is None:
-            raise AttributeError("openai client missing ChatCompletion")
-        if apikey:
-            openai.api_key = apikey
-        create_completion = partial(chat_completion.create, model="gpt-3.5-turbo")
+    client = OpenAI(api_key=apikey)
+    create_completion = partial(client.chat.completions.create, model="gpt-3.5-turbo")
     cache_key = hash(snippet)
     if cache_key in gpt_cache:
         return gpt_cache[cache_key]
