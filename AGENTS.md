@@ -37,3 +37,8 @@ This project is a hybrid security tool that combines a local TensorFlow/Keras de
 * Run `python -m pytest` from the repository root before submitting changes.
 * Update or add unit tests alongside code changes when behaviour changes.
 * You may do moderate refactoring if needed (ie. expose some code as a function in order to test it specifically)
+* The scripts.h5 file:
+    * Was trained on an older version of Tensorflow
+    * Was trained in 1024-byte chunks
+    * Was trained using ASCII 13 as a filler
+    * You won't be able to retrain it
