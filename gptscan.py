@@ -1,12 +1,15 @@
-import csv
+import asyncio
 import csv
 import json
 import os
 import queue
 import sys
 import threading
+import time
+from collections import deque
 from functools import partial
 from pathlib import Path
+from typing import Any, Callable, Deque, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import tkinter as tk
 import tkinter.filedialog
@@ -14,13 +17,23 @@ import tkinter.font
 from tkinter import messagebox
 import tkinter.ttk as ttk
 
-MAXLEN = 1024
-EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
-MAX_RETRIES = 3
-gpt_cache = {}
-ui_queue = queue.Queue()
 
-def load_file(filename, mode='single_line'):
+def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]:
+    """Read content from a file in either single-line or multi-line mode.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the file to read.
+    mode : str, optional
+        Reading mode; ``"single_line"`` returns the first line, while
+        ``"multi_line"`` returns all lines as a list. Defaults to ``"single_line"``.
+
+    Returns
+    -------
+    Union[str, List[str]]
+        The requested file content, or an empty string if the file is missing.
+    """
     try:
         with open(filename, 'r') as file:
             if mode == 'single_line':
@@ -30,38 +43,173 @@ def load_file(filename, mode='single_line'):
     except FileNotFoundError:
         return ''
 
-apikey = load_file('apikey.txt')
-if not apikey:
-    print("OpenAI key file not found. No GPT data will be included in report...")
 
-taskdesc = load_file('task.txt')
-if not taskdesc:
-    print("Task description file not found. No GPT data will be included in report...")
-    apikey = ''  #if task description missing, null the API key to not waste tokens
+class Config:
+    MAXLEN = 1024
+    EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
+    MAX_RETRIES = 3
+    RATE_LIMIT_PER_MINUTE = 60
+    MAX_CONCURRENT_REQUESTS = 5
+    gpt_cache: Dict[int, Dict[str, Any]] = {}
+    apikey: str = load_file('apikey.txt')
+    taskdesc: str = load_file('task.txt')
+    GPT_ENABLED: bool = False
+    extensions: Union[List[str], str] = []
+    extensions_set: set[str] = set()
+    extensions_missing: bool = False
 
-GPT_ENABLED = bool(apikey and taskdesc)
+    apikey_missing_message = (
+        "OpenAI key file not found. No GPT data will be included in report..."
+    )
+    task_missing_message = (
+        "Task description file not found. No GPT data will be included in report..."
+    )
+    extensions_missing_message = (
+        "Extensions list not found! Using default extensions: .py, .js, .bat, .ps1"
+    )
 
-extensions = load_file('extensions.txt', mode='multi_line')
-if not extensions:
-    print("Extensions list not found! Will not be able to scan, exiting.")
-    sys.exit()
+    @classmethod
+    def set_extensions(cls, extensions_list: List[str], missing: bool = False) -> None:
+        cls.extensions_missing = missing
+        cls.extensions = extensions_list
+        cls.extensions_set = {ext.strip().lower() for ext in extensions_list if ext.strip()}
 
-def update_progress(value):
+    @classmethod
+    def initialize(cls) -> None:
+        if not cls.apikey:
+            print(cls.apikey_missing_message)
+        if not cls.taskdesc:
+            print(cls.task_missing_message)
+            cls.apikey = ''
+        cls.GPT_ENABLED = bool(cls.apikey and cls.taskdesc)
+
+        loaded_extensions = load_file('extensions.txt', mode='multi_line')
+        if not loaded_extensions:
+            cls.set_extensions(['.py', '.js', '.bat', '.ps1'], missing=True)
+            print(cls.extensions_missing_message)
+        else:
+            cls.set_extensions(loaded_extensions)
+
+
+Config.initialize()
+
+ui_queue = queue.Queue()
+current_cancel_event: Optional[threading.Event] = None
+_model_cache: Optional[Any] = None
+_tf_module: Optional[Any] = None
+_model_lock = threading.Lock()
+_openai_client: Optional[Any] = None
+_async_openai_client: Optional[Any] = None
+
+
+def get_model() -> Any:
+    """Lazily load and cache the TensorFlow model per process."""
+
+    global _model_cache, _tf_module
+    if _model_cache is not None:
+        return _model_cache
+
+    with _model_lock:
+        if _model_cache is None:
+            if _tf_module is None:
+                import tensorflow as tf
+                _tf_module = tf
+            _model_cache = _tf_module.keras.models.load_model('scripts.h5', compile=False)
+    return _model_cache
+
+
+def get_openai_client() -> Any:
+    """Lazily instantiate and reuse the OpenAI client."""
+
+    global _openai_client
+    if _openai_client is None and Config.apikey:
+        from openai import OpenAI
+
+        _openai_client = OpenAI(api_key=Config.apikey)
+    return _openai_client
+
+
+class _SyncCompletionsAdapter:
+    def __init__(self, client: Any):
+        self._client = client
+
+    async def create(self, *args: Any, **kwargs: Any) -> Any:
+        return await asyncio.to_thread(self._client.chat.completions.create, *args, **kwargs)
+
+
+class _SyncChatAdapter:
+    def __init__(self, client: Any):
+        self.completions = _SyncCompletionsAdapter(client)
+
+
+class _SyncToAsyncOpenAIAdapter:
+    def __init__(self, client: Any):
+        self.chat = _SyncChatAdapter(client)
+
+
+def get_async_openai_client() -> Any:
+    """Lazily instantiate and reuse the asynchronous OpenAI client."""
+
+    global _async_openai_client
+    if _async_openai_client is None and Config.apikey:
+        try:
+            from openai import AsyncOpenAI
+
+            _async_openai_client = AsyncOpenAI(api_key=Config.apikey)
+        except ImportError:
+            client = get_openai_client()
+            if client is not None:
+                _async_openai_client = _SyncToAsyncOpenAIAdapter(client)
+    return _async_openai_client
+
+def update_progress(value: int) -> None:
+    """Update the progress bar to reflect current progress.
+
+    Parameters
+    ----------
+    value : int
+        Current progress count to display.
+    """
     progress_bar['value'] = value
     root.update_idletasks()
 
 
-def configure_progress(max_value):
+def configure_progress(max_value: int) -> None:
+    """Initialize progress bar values for a new scan.
+
+    Parameters
+    ----------
+    max_value : int
+        Total number of steps expected for the scan.
+    """
     progress_bar["maximum"] = max_value
     progress_bar["value"] = 0
     root.update_idletasks()
 
 
-def enqueue_ui_update(func, *args, **kwargs):
+def enqueue_ui_update(func: Callable, *args: Any, **kwargs: Any) -> None:
+    """Queue a UI update to be processed on the main thread.
+
+    Parameters
+    ----------
+    func : Callable
+        Function to execute on the UI thread.
+    *args
+        Positional arguments for ``func``.
+    **kwargs
+        Keyword arguments for ``func``.
+    """
     ui_queue.put((func, args, kwargs))
 
 
-def process_ui_queue():
+def process_ui_queue() -> None:
+    """Drain the UI queue, executing any pending UI updates.
+
+    Returns
+    -------
+    None
+        This function schedules itself to run again via ``root.after``.
+    """
     while not ui_queue.empty():
         func, args, kwargs = ui_queue.get()
         try:
@@ -70,232 +218,682 @@ def process_ui_queue():
             ui_queue.task_done()
     root.after(50, process_ui_queue)
 
-def browse_button_click():
+
+def browse_button_click() -> None:
+    """Handle the directory selection dialog and populate the textbox.
+
+    Returns
+    -------
+    None
+        The selected folder path is written into the GUI textbox.
+    """
     folder_selected = tkinter.filedialog.askdirectory()
     textbox.delete(0, tk.END)
     textbox.insert(0, folder_selected)
 
-def extract_data_from_gpt_response(response):
+
+class AsyncRateLimiter:
+    """Simple asynchronous rate limiter using a sliding one-minute window."""
+
+    def __init__(self, rate_per_minute: int):
+        self.rate_per_minute = max(1, rate_per_minute)
+        self._timestamps: Deque[float] = deque()
+        self._lock = asyncio.Lock()
+
+    async def acquire(self, on_wait: Optional[Callable[[float], None]] = None) -> None:
+        while True:
+            async with self._lock:
+                now = time.monotonic()
+                while self._timestamps and now - self._timestamps[0] >= 60:
+                    self._timestamps.popleft()
+
+                if len(self._timestamps) < self.rate_per_minute:
+                    self._timestamps.append(now)
+                    return
+
+                wait_time = 60 - (now - self._timestamps[0])
+                if on_wait:
+                    on_wait(wait_time)
+
+            await asyncio.sleep(wait_time)
+
+
+def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
+    """Parse and validate the JSON payload returned from the OpenAI API.
+
+    Parameters
+    ----------
+    response : Any
+        OpenAI response object expected to contain ``choices[0].message.content``
+        with JSON matching ``Config.EXPECTED_KEYS``.
+
+    Returns
+    -------
+    Union[Dict, str]
+        Parsed JSON dictionary when valid; otherwise, a human-readable error
+        message describing the parsing failure.
+    """
+    expected_keys = set(Config.EXPECTED_KEYS)
+
     try:
-        json_data = json.loads(response.choices[0].message.content)
-        missing_keys = [key for key in EXPECTED_KEYS if key not in json_data]
-        if missing_keys:
-            raise ValueError(f"Missing keys: {', '.join(missing_keys)}")
+        content = response.choices[0].message.content
+    except (AttributeError, IndexError, TypeError) as exc:
+        return f"Invalid response structure: {exc}"
 
-        threat_level_str = json_data.get("threat-level", None)
-        try:
-            threat_level = int(threat_level_str)
-        except ValueError:
-            raise ValueError(f"The 'threat-level' value '{threat_level_str}' is not a valid integer.")
+    try:
+        json_data = json.loads(content)
+    except json.JSONDecodeError as exc:
+        return str(exc)
 
-        if not 0 <= threat_level <= 100:
-            raise ValueError(f"The 'threat-level' value {threat_level} is not between 0 and 100 inclusive.")
-        return json_data
-    except (json.JSONDecodeError, ValueError) as e:
-        return str(e)
+    if not isinstance(json_data, dict):
+        return "Response JSON must be an object with expected keys."
 
-def handle_gpt_response(snippet, taskdesc):
-    from openai import OpenAI
+    missing_keys = [key for key in Config.EXPECTED_KEYS if key not in json_data]
+    if missing_keys:
+        return f"Missing keys: {', '.join(missing_keys)}"
+
+    extra_keys = set(json_data.keys()) - expected_keys
+    if extra_keys:
+        return f"Unexpected keys present: {', '.join(sorted(extra_keys))}"
+
+    threat_level_value = json_data.get("threat-level")
+    try:
+        threat_level = int(threat_level_value)
+    except (TypeError, ValueError):
+        return f"The 'threat-level' value '{threat_level_value}' is not a valid integer."
+
+    if not 0 <= threat_level <= 100:
+        return f"The 'threat-level' value {threat_level} is not between 0 and 100 inclusive."
+
+    json_data["threat-level"] = threat_level
+    return json_data
+
+
+async def async_handle_gpt_response(
+    snippet: str,
+    taskdesc: str,
+    rate_limiter: AsyncRateLimiter,
+    semaphore: asyncio.Semaphore,
+    wait_callback: Optional[Callable[[float], None]] = None,
+) -> Optional[Dict]:
+    """Request GPT analysis asynchronously with retry, caching and rate limits."""
+
     retries = 0
-    json_data = None
-    client = OpenAI(api_key=apikey)
-    create_completion = partial(client.chat.completions.create, model="gpt-3.5-turbo")
+    json_data: Optional[Union[Dict, str]] = None
     cache_key = hash(snippet)
-    if cache_key in gpt_cache:
-        return gpt_cache[cache_key]
-    messages = [
-        {"role": "system", "content": taskdesc},
-        {"role": "user", "content": snippet}
-    ]
-    while retries < MAX_RETRIES and (json_data is None or isinstance(json_data, str)):
+    if cache_key in Config.gpt_cache:
+        return Config.gpt_cache[cache_key]
 
-        try:
-            response = create_completion(messages=messages)
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            break
-
-        if response:
-            extracted_data = extract_data_from_gpt_response(response)
-            if isinstance(extracted_data, dict):
-                json_data = extracted_data
-            else:
-                print(extracted_data)
-                messages.append({"role": "assistant", "content": response.choices[0].message.content})
-                messages.append({"role": "user", "content": f"I encountered an issue: {extracted_data}. Could you correct your response?"})
-                retries += 1
-    if isinstance(json_data, dict):
-        gpt_cache[cache_key] = json_data
-        return json_data
-    else:
-        print("Failed to obtain a valid response from GPT after multiple retries.")
+    client = get_async_openai_client()
+    if client is None:
         return None
 
+    create_completion = partial(client.chat.completions.create, model="gpt-3.5-turbo")
+    messages = [
+        {"role": "system", "content": taskdesc},
+        {"role": "user", "content": snippet},
+    ]
 
-def motion_handler(tree, event):
-    f = tkinter.font.Font(font='TkDefaultFont')
-    # A helper function that will wrap a given value based on column width
-    def adjust_newlines(val, width, pad=10):
-        if not isinstance(val, str):
-            return val
+    while retries < Config.MAX_RETRIES and (json_data is None or isinstance(json_data, str)):
+        await rate_limiter.acquire(on_wait=wait_callback)
+        try:
+            async with semaphore:
+                response = await create_completion(messages=messages)
+        except Exception as err:  # pragma: no cover - safety net
+            status_code = getattr(err, "status_code", None)
+            if status_code == 429 or "429" in str(getattr(err, "status", "")) or "rate limit" in str(err).lower():
+                backoff = 2 ** retries
+                retries += 1
+                await asyncio.sleep(backoff)
+                continue
+            print(f"An unexpected error occurred: {err}")
+            break
+
+        extracted_data = extract_data_from_gpt_response(response)
+        if isinstance(extracted_data, dict):
+            json_data = extracted_data
         else:
-            words = val.split()
-            lines = [[],]
-            for word in words:
-                line = lines[-1] + [word,]
-                if f.measure(' '.join(line)) < (width - pad):
-                    lines[-1].append(word)
-                else:
-                    lines[-1] = ' '.join(lines[-1])
-                    lines.append([word,])
+            print(extracted_data)
+            messages.append({"role": "assistant", "content": response.choices[0].message.content})
+            messages.append({"role": "user", "content": f"I encountered an issue: {extracted_data}. Could you correct your response?"})
+            retries += 1
 
-            if isinstance(lines[-1], list):
-                lines[-1] = ' '.join(lines[-1])
+    if isinstance(json_data, dict):
+        Config.gpt_cache[cache_key] = json_data
+        return json_data
 
-            return '\n'.join(lines)
+    print("Failed to obtain a valid response from GPT after multiple retries.")
+    return None
+
+
+def handle_gpt_response(
+    snippet: str,
+    taskdesc: str,
+    rate_limiter: Optional[AsyncRateLimiter] = None,
+    semaphore: Optional[asyncio.Semaphore] = None,
+    wait_callback: Optional[Callable[[float], None]] = None,
+) -> Optional[Dict]:
+    """Synchronous wrapper to fetch GPT analysis using the async implementation."""
+
+    limiter = rate_limiter or AsyncRateLimiter(Config.RATE_LIMIT_PER_MINUTE)
+    gate = semaphore or asyncio.Semaphore(Config.MAX_CONCURRENT_REQUESTS)
+    return asyncio.run(
+        async_handle_gpt_response(
+            snippet,
+            taskdesc,
+            rate_limiter=limiter,
+            semaphore=gate,
+            wait_callback=wait_callback,
+        )
+    )
+
+
+def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Callable[[str], int]] = None) -> Any:
+    """Wrap strings based on the available column width."""
+    if not isinstance(val, str):
+        return val
+
+    measure = measure or tkinter.font.Font(font='TkDefaultFont').measure
+    words = val.split()
+    lines: List[Union[str, List[str]]] = [[]]
+    for word in words:
+        line = lines[-1] + [word]
+        if measure(' '.join(line)) < (width - pad):
+            lines[-1].append(word)
+        else:
+            lines[-1] = ' '.join(lines[-1])
+            lines.append([word])
+
+    if isinstance(lines[-1], list):
+        lines[-1] = ' '.join(lines[-1])
+
+    return '\n'.join(lines)
+
+
+def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
+    """Wrap long cell values so they fit within the visible column width."""
 
     if (event is None) or (tree.identify_region(event.x, event.y) == "separator"):
-        # You may be able to use this to only adjust the two columns that you care about
-        # print(tree.identify_column(event.x))
-
         col_widths = [tree.column(cid)['width'] for cid in tree['columns']]
 
         for iid in tree.get_children():
-            new_vals = []
-            for (v,w) in zip(tree.item(iid)['values'], col_widths):
-                new_vals.append(adjust_newlines(v, w))
+            values = tree.item(iid)['values']
+            new_vals = [adjust_newlines(v, w) for v, w in zip(values, col_widths)]
             tree.item(iid, values=new_vals)
 
-def list_files(path):
+
+def list_files(path: str) -> List[Path]:
+    """Recursively collect files under a directory path.
+
+    Parameters
+    ----------
+    path : str
+        Root directory to traverse.
+
+    Returns
+    -------
+    List[Path]
+        All files found under ``path``.
+    """
     path = Path(path)
     return [p for p in path.rglob('*') if p.is_file()]
 
-def sort_column(tv, col, reverse):
-    l = [(tv.set(k, col), k) for k in tv.get_children("")]
-    if col == "own_conf" or col =="gpt_conf":
-        # Convert percentage strings to floats for sorting
-        l = [(float(val.strip("%")), k) for val, k in l]
+
+def parse_percent(val: str, default: float = -1.0) -> float:
+    """Convert a percentage string to a float, returning ``default`` on error."""
+    if not isinstance(val, str):
+        return default
+
+    text = val.strip()
+    if not text or not text.endswith('%'):
+        return default
+
+    try:
+        return float(text.strip('%'))
+    except ValueError:
+        return default
+
+
+def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
+    """Sort a Treeview column, toggling sort order on subsequent clicks.
+
+    Parameters
+    ----------
+    tv : ttk.Treeview
+        Treeview widget containing the data to sort.
+    col : str
+        Column identifier to sort.
+    reverse : bool
+        Sort order; ``True`` for descending and ``False`` for ascending.
+    """
+    values_with_ids = [(tv.set(k, col), k) for k in tv.get_children("")]
+    if col in {"own_conf", "gpt_conf"}:
+        values_with_ids = [(parse_percent(val), k) for val, k in values_with_ids]
     else:
-        # Treat other columns as text
-        l = [(val, k) for val, k in l]
+        values_with_ids = [(val, k) for val, k in values_with_ids]
 
-    l.sort(reverse=reverse)
+    values_with_ids.sort(key=lambda item: item[0], reverse=reverse)
 
-    for index, (val, k) in enumerate(l):
+    for index, (_, k) in enumerate(values_with_ids):
         tv.move(k, "", index)
 
     # Reverse sort order on subsequent clicks of the same column header
     tv.heading(col, command=lambda: sort_column(tv, col, not reverse))
 
-def button_click():
+
+def insert_tree_row(values: Tuple[Any, ...]) -> None:
+    """Insert a row into the treeview with wrapped text."""
+
+    col_widths = [tree.column(cid)['width'] for cid in tree['columns']]
+    wrapped_values = [adjust_newlines(v, w) for v, w in zip(values, col_widths)]
+    tree.insert("", tk.END, values=wrapped_values)
+
+
+def set_scanning_state(is_scanning: bool) -> None:
+    """Enable or disable controls based on scanning state."""
+
+    scan_button.config(state="disabled" if is_scanning else "normal")
+    cancel_button.config(state="normal" if is_scanning else "disabled")
+
+
+def finish_scan_state() -> None:
+    """Reset scanning controls when a scan finishes or is cancelled."""
+
+    global current_cancel_event
+    current_cancel_event = None
+    set_scanning_state(False)
+
+
+def button_click() -> None:
+    """Trigger a scan in a background thread using the selected path.
+
+    Returns
+    -------
+    None
+        Starts a daemon thread to run the scan.
+    """
+    global current_cancel_event
+
+    if current_cancel_event is not None:
+        return
+
     scan_path = textbox.get()
     if not scan_path:
         messagebox.showerror("Scan Error", "Please select a directory to scan.")
         return
 
+    if not os.path.exists('scripts.h5'):
+        messagebox.showerror("Scan Error", "Model file scripts.h5 not found.")
+        return
+
+    current_cancel_event = threading.Event()
+    set_scanning_state(True)
     scan_args = (
         scan_path,
         deep_var.get(),
         all_var.get(),
         gpt_var.get(),
+        current_cancel_event,
     )
     scan_thread = threading.Thread(target=run_scan, args=scan_args, daemon=True)
     scan_thread.start()
 
 
-def scan_files(scan_path, deep_scan, show_all, use_gpt):
-    import tensorflow as tf
-    modelscript = tf.keras.models.load_model('scripts.h5', compile=False)
+def cancel_scan() -> None:
+    """Signal the active scan to stop."""
+
+    if current_cancel_event:
+        current_cancel_event.set()
+
+
+def scan_files(
+    scan_path: str,
+    deep_scan: bool,
+    show_all: bool,
+    use_gpt: bool,
+    cancel_event: Optional[threading.Event] = None,
+    rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
+    max_concurrent_requests: int = Config.MAX_CONCURRENT_REQUESTS,
+) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
+    """Scan files for malicious content and optionally request GPT analysis.
+
+    Parameters
+    ----------
+    scan_path : str
+        Directory path to search for files.
+    deep_scan : bool
+        Whether to scan overlapping 1024-byte windows beyond the first block.
+    show_all : bool
+        Whether to yield all scanned files regardless of confidence threshold.
+    use_gpt : bool
+        Whether to request GPT analysis when the local model is confident.
+    rate_limit : int
+        Maximum number of GPT requests permitted per minute.
+    max_concurrent_requests : int
+        Maximum number of GPT requests executed concurrently.
+
+    Yields
+    ------
+    Generator[Tuple[str, Tuple[Any, ...]], None, None]
+        Tuples indicating either progress updates or result rows for the UI/CLI.
+    """
+    global _tf_module
+    cancel_event = cancel_event or threading.Event()
+    modelscript = get_model()
+    tf_module = _tf_module
+    if tf_module is None:
+        import tensorflow as tf
+        tf_module = tf
+        _tf_module = tf_module
     file_list = list_files(scan_path)
-    yield ('progress', 0, len(file_list))
+    total_progress = len(file_list)
+    progress_count = 0
+    yield ('progress', (progress_count, total_progress, None))
+
+    gpt_requests: List[Dict[str, Any]] = []
 
     for index, file_path in enumerate(file_list):
-        extension = Path(file_path).suffix
-        if any(extension == ext.lower() for ext in extensions):
+        if cancel_event.is_set():
+            break
+        extension = Path(file_path).suffix.lower()
+        if extension in Config.extensions_set:
             print(file_path)
-            with open(file_path, 'rb') as f:
-                data = list(f.read())
-            resultchecks = []
-            if len(data) <= MAXLEN:
-                numtoadd = MAXLEN - len(data)
-                data.extend([13] * numtoadd)
-            file_size = max(MAXLEN, len(data))
-            tf_data = tf.expand_dims(tf.constant(data), axis=0)
-
-            maxconf_pos = 0
-            maxconf = 0
-            for i in range(0, file_size - MAXLEN + 1, MAXLEN):
-                if i >= MAXLEN and not deep_scan:
-                    continue
-                print("Scanning at:", i)
-                result = modelscript.predict(tf_data[:, i:i + 1024], batch_size=1, steps=1)[0][0]
-                resultchecks.append(result)
-                if result > maxconf:
-                    maxconf_pos = i
-                    maxconf = result
-
-            if file_size > MAXLEN:
-                print("Scanning at:", -MAXLEN)
-                result = modelscript.predict(tf_data[:, -MAXLEN:], batch_size=1, steps=1)[0][0]
-                resultchecks.append(result)
-                if result > maxconf:
-                    maxconf_pos = file_size - MAXLEN
-                    maxconf = result
-
-            percent = f"{maxconf:.0%}"
-            snippet = ''.join(map(chr, bytes(data[maxconf_pos:maxconf_pos + 1024]))).strip()
-            if max(resultchecks) > .5 and use_gpt and GPT_ENABLED:
-                json_data = handle_gpt_response(snippet, taskdesc)
-                if json_data is None:
-                    admin_desc = 'JSON Parse Error'
-                    enduser_desc = 'JSON Parse Error'
-                    chatgpt_conf_percent = 'JSON Parse Error'
-                else:
-                    admin_desc = json_data["administrator"]
-                    enduser_desc = json_data["end-user"]
-                    chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
-            else:
-                admin_desc = ''
-                enduser_desc = ''
-                chatgpt_conf_percent = ''
-            snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
-            if max(resultchecks) > .5 or show_all:
+            try:
+                file_size = Path(file_path).stat().st_size
+            except OSError as err:
                 yield (
                     'result',
                     (
                         str(file_path),
-                        percent,
-                        admin_desc,
-                        enduser_desc,
-                        chatgpt_conf_percent,
-                        snippet,
+                        'Error',
+                        '',
+                        '',
+                        '',
+                        f"Error reading file metadata: {err}",
                     )
                 )
-        yield ('progress', index + 1, len(file_list))
+                progress_count = index + 1
+                yield ('progress', (progress_count, total_progress, None))
+                continue
 
+            def pad_window(data: bytes) -> List[int]:
+                padded = list(data)
+                if len(padded) < Config.MAXLEN:
+                    padded.extend([13] * (Config.MAXLEN - len(padded)))
+                return padded
 
-def run_scan(scan_path, deep_scan, show_all, use_gpt):
-    for event_type, data in scan_files(scan_path, deep_scan, show_all, use_gpt):
-        if event_type == 'progress':
-            current, total = data[1], data[2]
-            if current == 0:
-                enqueue_ui_update(configure_progress, total)
+            def predict_window(window_bytes: bytes) -> Tuple[float, bytes]:
+                padded_data = pad_window(window_bytes)
+                tf_data = tf_module.expand_dims(tf_module.constant(padded_data), axis=0)
+                prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
+                return float(prediction), bytes(padded_data)
+
+            def iter_windows(fh, size: int) -> Generator[Tuple[int, bytes], None, None]:
+                if size == 0:
+                    yield 0, b""
+                    return
+
+                if not deep_scan:
+                    fh.seek(0)
+                    yield 0, fh.read(Config.MAXLEN)
+
+                    last_start = max(0, size - Config.MAXLEN)
+                    if last_start > 0:
+                        fh.seek(last_start)
+                        yield last_start, fh.read(Config.MAXLEN)
+                    return
+
+                offset = 0
+                while offset < size:
+                    fh.seek(offset)
+                    chunk = fh.read(Config.MAXLEN)
+                    if not chunk:
+                        break
+                    yield offset, chunk
+                    offset += Config.MAXLEN
+
+                if size > Config.MAXLEN:
+                    last_start = size - Config.MAXLEN
+                    if last_start % Config.MAXLEN != 0:
+                        fh.seek(last_start)
+                        final_chunk = fh.read(Config.MAXLEN)
+                        if final_chunk:
+                            yield last_start, final_chunk
+
+            resultchecks: List[float] = []
+            maxconf = 0.0
+            max_window_bytes = b""
+            error_message: Optional[str] = None
+
+            try:
+                with open(file_path, 'rb') as f:
+                    for offset, window in iter_windows(f, file_size):
+                        if cancel_event.is_set():
+                            break
+                        print("Scanning at:", offset if offset > 0 else 0)
+                        result, padded_bytes = predict_window(window)
+                        resultchecks.append(result)
+                        if result > maxconf:
+                            maxconf = result
+                            max_window_bytes = padded_bytes
+            except (PermissionError, OSError, UnicodeDecodeError) as err:
+                error_message = f"Error reading file: {err}"
+
+            best_result = max(resultchecks, default=0)
+            if error_message is not None:
+                yield (
+                    'result',
+                    (
+                        str(file_path),
+                        'Error',
+                        '',
+                        '',
+                        '',
+                        error_message,
+                    )
+                )
+            elif resultchecks:
+                percent = f"{maxconf:.0%}"
+                snippet = ''.join(map(chr, max_window_bytes)).strip()
+                cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+                if best_result > .5 and use_gpt and Config.GPT_ENABLED:
+                    gpt_requests.append(
+                        {
+                            "path": str(file_path),
+                            "percent": percent,
+                            "snippet": snippet,
+                            "cleaned_snippet": cleaned_snippet,
+                        }
+                    )
+                elif best_result > .5 or show_all:
+                    yield (
+                        'result',
+                        (
+                            str(file_path),
+                            percent,
+                            '',
+                            '',
+                            '',
+                            cleaned_snippet,
+                        )
+                    )
+        progress_count = index + 1
+        yield ('progress', (progress_count, total_progress, None))
+
+    if cancel_event.is_set():
+        return
+
+    if use_gpt and Config.GPT_ENABLED and gpt_requests:
+        async def process_requests(requests: Iterable[Dict[str, Any]]):
+            rate_limiter = AsyncRateLimiter(rate_limit)
+            semaphore = asyncio.Semaphore(max_concurrent_requests)
+            wait_messages: List[str] = []
+
+            def wait_notifier(_wait_time: float) -> None:
+                wait_messages.append("Waiting for API rate limit...")
+
+            async def run_request(request: Dict[str, Any]):
+                json_data = await async_handle_gpt_response(
+                    request["snippet"],
+                    Config.taskdesc,
+                    rate_limiter=rate_limiter,
+                    semaphore=semaphore,
+                    wait_callback=wait_notifier,
+                )
+                return request, json_data
+
+            tasks = [asyncio.create_task(run_request(request)) for request in requests]
+            results: List[Tuple[Dict[str, Any], Optional[Dict]]] = []
+            for completed in asyncio.as_completed(tasks):
+                results.append(await completed)
+            return results, wait_messages
+
+        total_progress += len(gpt_requests)
+        yield ('progress', (progress_count, total_progress, "Waiting for API rate limit..."))
+
+        results, wait_messages = asyncio.run(process_requests(gpt_requests))
+
+        for _ in wait_messages:
+            yield ('progress', (progress_count, total_progress, "Waiting for API rate limit..."))
+
+        for request, json_data in results:
+            if cancel_event.is_set():
+                break
+            if json_data is None:
+                admin_desc = 'JSON Parse Error'
+                enduser_desc = 'JSON Parse Error'
+                chatgpt_conf_percent = 'JSON Parse Error'
             else:
+                admin_desc = json_data["administrator"]
+                enduser_desc = json_data["end-user"]
+                chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
+
+            yield (
+                'result',
+                (
+                    request["path"],
+                    request["percent"],
+                    admin_desc,
+                    enduser_desc,
+                    chatgpt_conf_percent,
+                    request["cleaned_snippet"],
+                )
+            )
+            progress_count += 1
+            yield ('progress', (progress_count, total_progress, None))
+
+
+def run_scan(
+    scan_path: str,
+    deep_scan: bool,
+    show_all: bool,
+    use_gpt: bool,
+    cancel_event: threading.Event,
+    rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
+) -> None:
+    """Consume scan events and forward them to the UI thread.
+
+    Parameters
+    ----------
+    scan_path : str
+        Directory to scan.
+    deep_scan : bool
+        Whether to evaluate all 1024-byte windows.
+    show_all : bool
+        Whether to display all results regardless of confidence.
+    use_gpt : bool
+        Whether to enrich suspicious files with GPT output.
+    rate_limit : int
+        Maximum allowed GPT requests per minute.
+    """
+    last_total: Optional[int] = None
+    try:
+        for event_type, data in scan_files(
+            scan_path,
+            deep_scan,
+            show_all,
+            use_gpt,
+            cancel_event,
+            rate_limit=rate_limit,
+            max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+        ):
+            if cancel_event.is_set():
+                break
+            if event_type == 'progress':
+                if len(data) == 3:
+                    current, total, status = data
+                else:
+                    current, total = data
+                    status = None
+
+                if total != last_total:
+                    enqueue_ui_update(configure_progress, total)
+                    last_total = total
                 enqueue_ui_update(update_progress, current)
-        elif event_type == 'result':
-            enqueue_ui_update(tree.insert, "", tk.END, values=data)
+                if status:
+                    print(status)
+            elif event_type == 'result':
+                enqueue_ui_update(insert_tree_row, data)
+    finally:
+        enqueue_ui_update(finish_scan_state)
 
 
-def run_cli(path, deep, show_all, use_gpt):
+def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool, rate_limit: int) -> None:
+    """Run scans and stream results to stdout as CSV rows.
+
+    Parameters
+    ----------
+    path : str
+        Directory to scan.
+    deep : bool
+        Whether to evaluate all 1024-byte windows.
+    show_all : bool
+        Whether to emit every scanned file.
+    use_gpt : bool
+        Whether to request GPT analysis for confident detections.
+    rate_limit : int
+        Maximum allowed GPT requests per minute.
+    """
     writer = csv.writer(sys.stdout)
     writer.writerow(("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"))
 
-    for event_type, data in scan_files(path, deep, show_all, use_gpt):
+    cancel_event = threading.Event()
+    final_progress: Optional[Tuple[int, int]] = None
+
+    for event_type, data in scan_files(
+        path,
+        deep,
+        show_all,
+        use_gpt,
+        cancel_event,
+        rate_limit=rate_limit,
+        max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+    ):
         if event_type == 'result':
             writer.writerow(data)
+        elif event_type == 'progress':
+            if len(data) == 3:
+                current, total, status = data
+            else:
+                current, total = data
+                status = None
+            final_progress = (current, total)
+            print(f"Scanning: {current}/{total} files\r", end='', file=sys.stderr)
+            if status:
+                print(f"{status}\r", end='', file=sys.stderr)
+
+    if final_progress is not None:
+        print(file=sys.stderr)
 
 
-def export_results():
+def export_results() -> None:
+    """Save the current Treeview contents to a CSV chosen by the user.
+
+    Returns
+    -------
+    None
+        Writes the Treeview rows to the selected CSV path or shows an error.
+    """
     file_path = tkinter.filedialog.asksaveasfilename(
         defaultextension=".csv",
         filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
@@ -314,8 +912,15 @@ def export_results():
         messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
 
 
-def create_gui():
-    global root, textbox, progress_bar, deep_var, all_var, gpt_var, tree
+def create_gui() -> tk.Tk:
+    """Construct and return the main Tkinter GUI for the scanner.
+
+    Returns
+    -------
+    tk.Tk
+        Initialized Tk root instance ready for ``mainloop``.
+    """
+    global root, textbox, progress_bar, deep_var, all_var, gpt_var, tree, scan_button, cancel_button
 
     root = tk.Tk()
     root.geometry("800x500")
@@ -338,7 +943,7 @@ def create_gui():
 
     gpt_var = tk.BooleanVar()
     gpt_checkbox = tk.Checkbutton(root, text="Use ChatGPT", variable=gpt_var)
-    if not GPT_ENABLED:
+    if not Config.GPT_ENABLED:
         gpt_var.set(False)
         gpt_checkbox.config(state="disabled")
         messagebox.showwarning("GPT Disabled",
@@ -346,8 +951,17 @@ def create_gui():
 
     gpt_checkbox.pack()
 
-    button = tk.Button(root, text="Scan now", command=button_click)
-    button.pack()
+    if Config.extensions_missing:
+        default_exts = ', '.join(sorted(Config.extensions_set)) if Config.extensions_set else 'none'
+        messagebox.showwarning(
+            "Extensions Missing",
+            f"extensions.txt not found. Using default extensions: {default_exts}"
+        )
+
+    scan_button = tk.Button(root, text="Scan now", command=button_click)
+    scan_button.pack()
+    cancel_button = tk.Button(root, text="Cancel", command=cancel_scan, state="disabled")
+    cancel_button.pack()
     export_button = tk.Button(root, text="Export CSV", command=export_results)
     export_button.pack()
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, length=100, mode='determinate')
@@ -383,8 +997,9 @@ def create_gui():
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
     tree.configure(yscrollcommand=scrollbar.set)
-    tree.bind('<B1-Motion>', partial(motion_handler, tree))
+    tree.bind('<ButtonRelease-1>', partial(motion_handler, tree))
     motion_handler(tree, None)   # Perform initial wrapping
+    set_scanning_state(False)
     return root
 
 
@@ -396,12 +1011,27 @@ if __name__ == "__main__":
     parser.add_argument('--deep', action='store_true', help='Perform a deep scan')
     parser.add_argument('--show-all', action='store_true', help='Show all files in the output')
     parser.add_argument('--use-gpt', action='store_true', help='Use GPT for analysis')
+    parser.add_argument(
+        '--extensions',
+        type=str,
+        help='Comma-separated list of file extensions to scan (overrides extensions.txt)'
+    )
+    parser.add_argument(
+        '--rate-limit',
+        type=int,
+        default=Config.RATE_LIMIT_PER_MINUTE,
+        help='Maximum GPT requests per minute (default: 60)'
+    )
     args = parser.parse_args()
+
+    if args.extensions:
+        extension_list = [ext.strip() for ext in args.extensions.split(',') if ext.strip()]
+        Config.set_extensions(extension_list, missing=False)
 
     if args.cli:
         if not args.path:
             parser.error('--path is required in CLI mode')
-        run_cli(args.path, args.deep, args.show_all, args.use_gpt)
+        run_cli(args.path, args.deep, args.show_all, args.use_gpt, args.rate_limit)
     else:
         app_root = create_gui()
         app_root.mainloop()
