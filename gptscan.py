@@ -1,6 +1,5 @@
 import csv
 import json
-import os
 import queue
 import sys
 import threading
@@ -13,13 +12,6 @@ import tkinter.filedialog
 import tkinter.font
 from tkinter import messagebox
 import tkinter.ttk as ttk
-
-MAXLEN = 1024
-EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
-MAX_RETRIES = 3
-gpt_cache = {}
-ui_queue = queue.Queue()
-current_cancel_event: Optional[threading.Event] = None
 
 
 def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]:
@@ -47,21 +39,56 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
     except FileNotFoundError:
         return ''
 
-apikey = load_file('apikey.txt')
-if not apikey:
-    print("OpenAI key file not found. No GPT data will be included in report...")
 
-taskdesc = load_file('task.txt')
-if not taskdesc:
-    print("Task description file not found. No GPT data will be included in report...")
-    apikey = ''  #if task description missing, null the API key to not waste tokens
+class Config:
+    MAXLEN = 1024
+    EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
+    MAX_RETRIES = 3
+    gpt_cache: Dict[int, Dict[str, Any]] = {}
+    apikey: str = load_file('apikey.txt')
+    taskdesc: str = load_file('task.txt')
+    GPT_ENABLED: bool = False
+    extensions: Union[List[str], str] = []
+    extensions_set: set[str] = set()
+    extensions_missing: bool = False
 
-GPT_ENABLED = bool(apikey and taskdesc)
+    apikey_missing_message = (
+        "OpenAI key file not found. No GPT data will be included in report..."
+    )
+    task_missing_message = (
+        "Task description file not found. No GPT data will be included in report..."
+    )
+    extensions_missing_message = (
+        "Extensions list not found! Using default extensions: .py, .js, .bat, .ps1"
+    )
 
-extensions = load_file('extensions.txt', mode='multi_line')
-if not extensions:
-    print("Extensions list not found! Will not be able to scan, exiting.")
-    sys.exit()
+    @classmethod
+    def set_extensions(cls, extensions_list: List[str], missing: bool = False) -> None:
+        cls.extensions_missing = missing
+        cls.extensions = extensions_list
+        cls.extensions_set = {ext.strip().lower() for ext in extensions_list if ext.strip()}
+
+    @classmethod
+    def initialize(cls) -> None:
+        if not cls.apikey:
+            print(cls.apikey_missing_message)
+        if not cls.taskdesc:
+            print(cls.task_missing_message)
+            cls.apikey = ''
+        cls.GPT_ENABLED = bool(cls.apikey and cls.taskdesc)
+
+        loaded_extensions = load_file('extensions.txt', mode='multi_line')
+        if not loaded_extensions:
+            cls.set_extensions(['.py', '.js', '.bat', '.ps1'], missing=True)
+            print(cls.extensions_missing_message)
+        else:
+            cls.set_extensions(loaded_extensions)
+
+
+Config.initialize()
+
+ui_queue = queue.Queue()
+current_cancel_event: Optional[threading.Event] = None
 
 def update_progress(value: int) -> None:
     """Update the progress bar to reflect current progress.
@@ -140,7 +167,7 @@ def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
     ----------
     response : Any
         OpenAI response object expected to contain ``choices[0].message.content``
-        with JSON matching ``EXPECTED_KEYS``.
+        with JSON matching ``Config.EXPECTED_KEYS``.
 
     Returns
     -------
@@ -150,7 +177,7 @@ def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
     """
     try:
         json_data = json.loads(response.choices[0].message.content)
-        missing_keys = [key for key in EXPECTED_KEYS if key not in json_data]
+        missing_keys = [key for key in Config.EXPECTED_KEYS if key not in json_data]
         if missing_keys:
             raise ValueError(f"Missing keys: {', '.join(missing_keys)}")
 
@@ -186,16 +213,16 @@ def handle_gpt_response(snippet: str, taskdesc: str) -> Optional[Dict]:
     from openai import OpenAI
     retries = 0
     json_data = None
-    client = OpenAI(api_key=apikey)
+    client = OpenAI(api_key=Config.apikey)
     create_completion = partial(client.chat.completions.create, model="gpt-3.5-turbo")
     cache_key = hash(snippet)
-    if cache_key in gpt_cache:
-        return gpt_cache[cache_key]
+    if cache_key in Config.gpt_cache:
+        return Config.gpt_cache[cache_key]
     messages = [
         {"role": "system", "content": taskdesc},
         {"role": "user", "content": snippet}
     ]
-    while retries < MAX_RETRIES and (json_data is None or isinstance(json_data, str)):
+    while retries < Config.MAX_RETRIES and (json_data is None or isinstance(json_data, str)):
 
         try:
             response = create_completion(messages=messages)
@@ -213,7 +240,7 @@ def handle_gpt_response(snippet: str, taskdesc: str) -> Optional[Dict]:
                 messages.append({"role": "user", "content": f"I encountered an issue: {extracted_data}. Could you correct your response?"})
                 retries += 1
     if isinstance(json_data, dict):
-        gpt_cache[cache_key] = json_data
+        Config.gpt_cache[cache_key] = json_data
         return json_data
     else:
         print("Failed to obtain a valid response from GPT after multiple retries.")
@@ -408,24 +435,24 @@ def scan_files(
     for index, file_path in enumerate(file_list):
         if cancel_event.is_set():
             break
-        extension = Path(file_path).suffix
-        if any(extension == ext.lower() for ext in extensions):
+        extension = Path(file_path).suffix.lower()
+        if extension in Config.extensions_set:
             print(file_path)
             with open(file_path, 'rb') as f:
                 data = list(f.read())
             resultchecks = []
-            if len(data) <= MAXLEN:
-                numtoadd = MAXLEN - len(data)
+            if len(data) <= Config.MAXLEN:
+                numtoadd = Config.MAXLEN - len(data)
                 data.extend([13] * numtoadd)
-            file_size = max(MAXLEN, len(data))
+            file_size = max(Config.MAXLEN, len(data))
             tf_data = tf.expand_dims(tf.constant(data), axis=0)
 
             maxconf_pos = 0
             maxconf = 0
-            for i in range(0, file_size - MAXLEN + 1, MAXLEN):
+            for i in range(0, file_size - Config.MAXLEN + 1, Config.MAXLEN):
                 if cancel_event.is_set():
                     break
-                if i >= MAXLEN and not deep_scan:
+                if i >= Config.MAXLEN and not deep_scan:
                     continue
                 print("Scanning at:", i)
                 result = modelscript.predict(tf_data[:, i:i + 1024], batch_size=1, steps=1)[0][0]
@@ -434,18 +461,18 @@ def scan_files(
                     maxconf_pos = i
                     maxconf = result
 
-            if file_size > MAXLEN and not cancel_event.is_set():
-                print("Scanning at:", -MAXLEN)
-                result = modelscript.predict(tf_data[:, -MAXLEN:], batch_size=1, steps=1)[0][0]
+            if file_size > Config.MAXLEN and not cancel_event.is_set():
+                print("Scanning at:", -Config.MAXLEN)
+                result = modelscript.predict(tf_data[:, -Config.MAXLEN:], batch_size=1, steps=1)[0][0]
                 resultchecks.append(result)
                 if result > maxconf:
-                    maxconf_pos = file_size - MAXLEN
+                    maxconf_pos = file_size - Config.MAXLEN
                     maxconf = result
 
             percent = f"{maxconf:.0%}"
             snippet = ''.join(map(chr, bytes(data[maxconf_pos:maxconf_pos + 1024]))).strip()
-            if max(resultchecks) > .5 and use_gpt and GPT_ENABLED:
-                json_data = handle_gpt_response(snippet, taskdesc)
+            if max(resultchecks) > .5 and use_gpt and Config.GPT_ENABLED:
+                json_data = handle_gpt_response(snippet, Config.taskdesc)
                 if json_data is None:
                     admin_desc = 'JSON Parse Error'
                     enduser_desc = 'JSON Parse Error'
@@ -585,13 +612,20 @@ def create_gui() -> tk.Tk:
 
     gpt_var = tk.BooleanVar()
     gpt_checkbox = tk.Checkbutton(root, text="Use ChatGPT", variable=gpt_var)
-    if not GPT_ENABLED:
+    if not Config.GPT_ENABLED:
         gpt_var.set(False)
         gpt_checkbox.config(state="disabled")
         messagebox.showwarning("GPT Disabled",
                                        "apikey.txt or task.txt not found. GPT functionality is disabled.")
 
     gpt_checkbox.pack()
+
+    if Config.extensions_missing:
+        default_exts = ', '.join(sorted(Config.extensions_set)) if Config.extensions_set else 'none'
+        messagebox.showwarning(
+            "Extensions Missing",
+            f"extensions.txt not found. Using default extensions: {default_exts}"
+        )
 
     scan_button = tk.Button(root, text="Scan now", command=button_click)
     scan_button.pack()
@@ -646,7 +680,16 @@ if __name__ == "__main__":
     parser.add_argument('--deep', action='store_true', help='Perform a deep scan')
     parser.add_argument('--show-all', action='store_true', help='Show all files in the output')
     parser.add_argument('--use-gpt', action='store_true', help='Use GPT for analysis')
+    parser.add_argument(
+        '--extensions',
+        type=str,
+        help='Comma-separated list of file extensions to scan (overrides extensions.txt)'
+    )
     args = parser.parse_args()
+
+    if args.extensions:
+        extension_list = [ext.strip() for ext in args.extensions.split(',') if ext.strip()]
+        Config.set_extensions(extension_list, missing=False)
 
     if args.cli:
         if not args.path:

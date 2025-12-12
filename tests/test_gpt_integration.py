@@ -20,8 +20,8 @@ class _MockResponse:
 
 
 def test_handle_gpt_response_returns_cached_result(monkeypatch):
-    gptscan.gpt_cache = {}
-    gptscan.apikey = "dummy"
+    gptscan.Config.gpt_cache = {}
+    gptscan.Config.apikey = "dummy"
     responses = [_MockResponse('{"administrator": "Admin", "end-user": "User", "threat-level": 50}')]
     mock_completions = _MockCompletions(responses)
 
@@ -39,8 +39,8 @@ def test_handle_gpt_response_returns_cached_result(monkeypatch):
 
 
 def test_handle_gpt_response_retries_after_invalid_json(monkeypatch):
-    gptscan.gpt_cache = {}
-    gptscan.apikey = "dummy"
+    gptscan.Config.gpt_cache = {}
+    gptscan.Config.apikey = "dummy"
     invalid_response = _MockResponse('{"administrator": "Admin"}')
     valid_response = _MockResponse('{"administrator": "Admin", "end-user": "User", "threat-level": 70}')
     mock_completions = _MockCompletions([invalid_response, valid_response])
@@ -49,7 +49,7 @@ def test_handle_gpt_response_retries_after_invalid_json(monkeypatch):
         def __init__(self, api_key):
             self.chat = SimpleNamespace(completions=mock_completions)
     monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=MockOpenAI))
-    monkeypatch.setattr(gptscan, "MAX_RETRIES", 3)
+    monkeypatch.setattr(gptscan.Config, "MAX_RETRIES", 3)
 
     result = gptscan.handle_gpt_response("another snippet", "task")
 
@@ -87,11 +87,11 @@ def test_scan_files_does_not_call_gpt_when_disabled(monkeypatch, tmp_path):
     monkeypatch.setattr(gptscan, "handle_gpt_response", mock_handle_gpt_response)
 
     # Temporarily disable GPT functionality
-    monkeypatch.setattr(gptscan, "GPT_ENABLED", False)
+    monkeypatch.setattr(gptscan.Config, "GPT_ENABLED", False)
 
     # Create a dummy file for scanning
     (tmp_path / "test.txt").write_text("malicious content")
-    monkeypatch.setattr(gptscan, "extensions", [".txt"])
+    gptscan.Config.set_extensions([".txt"], missing=False)
 
     # Execute the scan and consume the generator
     scan_results = list(gptscan.scan_files(scan_path=str(tmp_path), deep_scan=False, show_all=True, use_gpt=True))
