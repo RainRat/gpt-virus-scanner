@@ -34,7 +34,7 @@ This project is a hybrid security tool that combines a local TensorFlow/Keras de
 ## Critical Notes for Agents
 * **Security:** Do not commit `apikey.txt` or real API keys to version control.
 * **Legacy Code:** You may encounter `openai.ChatCompletion`. This is deprecated. Refactor to use the `openai.OpenAI` client.
-* Run `python -m pytest` from the repository root before submitting changes.
+* Always run `pytest` from the repository root before submitting changes, unless it is a documentation-only change. Try to fix any test failures, even if you don't think you caused them.
 * Update or add unit tests alongside code changes when behaviour changes.
 * You may do moderate refactoring if needed (ie. expose some code as a function in order to test it specifically)
 * The scripts.h5 file:
