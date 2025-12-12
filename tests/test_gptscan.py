@@ -1,10 +1,37 @@
 import json
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 import gptscan
+
+
+class _FakeTree:
+    def __init__(self, rows, column_map=None):
+        self.data = rows
+        self.order = list(rows.keys())
+        self.heading_calls = {}
+        self.column_map = column_map or {}
+
+    def set(self, iid, col):
+        return self.data[iid]["values"][self.column_map.get(col, 0)]
+
+    def get_children(self, *_):
+        return tuple(self.order)
+
+    def move(self, iid, _, index):
+        self.order.remove(iid)
+        self.order.insert(index, iid)
+
+    def heading(self, col, command=None):
+        self.heading_calls[col] = command
+
+    def column(self, cid):
+        return {"width": 10}
+
+    def item(self, iid):
+        return self.data[iid]
 
 
 def test_load_file_single_line(tmp_path):
@@ -97,33 +124,87 @@ def test_list_files_returns_files_only(tmp_path):
 
 
 def test_sort_column_orders_treeview():
-    class _FakeTree:
-        def __init__(self):
-            self.data = {
-                "item1": {"values": ("b", "10%")},
-                "item2": {"values": ("a", "30%")},
-            }
-            self.order = ["item1", "item2"]
-            self.heading_calls = {}
-
-        def set(self, iid, col):
-            columns = {"name": 0, "own_conf": 1}
-            return self.data[iid]["values"][columns[col]]
-
-        def get_children(self, *_):
-            return tuple(self.order)
-
-        def move(self, iid, _, index):
-            self.order.remove(iid)
-            self.order.insert(index, iid)
-
-        def heading(self, col, command=None):
-            self.heading_calls[col] = command
-
-    tree = _FakeTree()
+    tree = _FakeTree(
+        {
+            "item1": {"values": ("b", "10%")},
+            "item2": {"values": ("a", "30%")},
+        },
+        column_map={"name": 0, "own_conf": 1},
+    )
 
     gptscan.sort_column(tree, "name", False)
     assert tree.get_children("") == ("item2", "item1")
 
     gptscan.sort_column(tree, "own_conf", False)
     assert tree.get_children("") == ("item1", "item2")
+
+
+def test_sort_column_empty_tree():
+    tree = _FakeTree({}, column_map={"name": 0})
+
+    gptscan.sort_column(tree, "name", False)
+
+    assert tree.get_children("") == ()
+
+
+def test_sort_column_single_item():
+    tree = _FakeTree({"item1": {"values": ("only",)}}, column_map={"name": 0})
+
+    gptscan.sort_column(tree, "name", False)
+
+    assert tree.get_children("") == ("item1",)
+
+
+def test_sort_column_equal_values():
+    tree = _FakeTree(
+        {
+            "item1": {"values": ("same",)},
+            "item2": {"values": ("same",)},
+        },
+        column_map={"name": 0},
+    )
+
+    gptscan.sort_column(tree, "name", False)
+
+    assert tree.get_children("") == ("item1", "item2")
+
+
+def test_sort_column_reverse_toggle():
+    tree = _FakeTree(
+        {
+            "item1": {"values": ("b",)},
+            "item2": {"values": ("a",)},
+        },
+        column_map={"name": 0},
+    )
+
+    gptscan.sort_column(tree, "name", False)
+    assert tree.get_children("") == ("item2", "item1")
+
+    # Trigger reverse sort using stored command
+    tree.heading_calls["name"]()
+    assert tree.get_children("") == ("item1", "item2")
+
+
+def test_sort_column_with_invalid_percentages():
+    tree = _FakeTree(
+        {
+            "item1": {"values": ("JSON Parse Error",)},
+            "item2": {"values": ("",)},
+            "item3": {"values": ("30%",)},
+            "item4": {"values": ("5%",)},
+        },
+        column_map={"gpt_conf": 0},
+    )
+
+    gptscan.sort_column(tree, "gpt_conf", False)
+
+    assert tree.get_children("") == ("item1", "item2", "item4", "item3")
+
+
+def test_adjust_newlines_wraps_text():
+    text = "lorem ipsum dolor"
+
+    wrapped = gptscan.adjust_newlines(text, width=6, pad=0, measure=len)
+
+    assert wrapped.split("\n") == ["lorem", "ipsum", "dolor"]
