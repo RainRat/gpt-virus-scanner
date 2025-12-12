@@ -19,6 +19,7 @@ EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
 MAX_RETRIES = 3
 gpt_cache = {}
 ui_queue = queue.Queue()
+current_cancel_event: Optional[threading.Event] = None
 
 
 def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]:
@@ -219,46 +220,37 @@ def handle_gpt_response(snippet: str, taskdesc: str) -> Optional[Dict]:
         return None
 
 
-def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
-    """Wrap long cell values so they fit within the visible column width.
+def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Callable[[str], int]] = None) -> Any:
+    """Wrap strings based on the available column width."""
+    if not isinstance(val, str):
+        return val
 
-    Parameters
-    ----------
-    tree : ttk.Treeview
-        Treeview widget whose values should be wrapped.
-    event : Optional[tk.Event]
-        Drag or resize event triggering the reflow; ``None`` performs an
-        initial adjustment.
-    """
-    f = tkinter.font.Font(font='TkDefaultFont')
-
-    def adjust_newlines(val: Any, width: int, pad: int = 10) -> Any:
-        """Wrap strings based on the available column width."""
-        if not isinstance(val, str):
-            return val
+    measure = measure or tkinter.font.Font(font='TkDefaultFont').measure
+    words = val.split()
+    lines: List[Union[str, List[str]]] = [[]]
+    for word in words:
+        line = lines[-1] + [word]
+        if measure(' '.join(line)) < (width - pad):
+            lines[-1].append(word)
         else:
-            words = val.split()
-            lines = [[],]
-            for word in words:
-                line = lines[-1] + [word,]
-                if f.measure(' '.join(line)) < (width - pad):
-                    lines[-1].append(word)
-                else:
-                    lines[-1] = ' '.join(lines[-1])
-                    lines.append([word,])
+            lines[-1] = ' '.join(lines[-1])
+            lines.append([word])
 
-            if isinstance(lines[-1], list):
-                lines[-1] = ' '.join(lines[-1])
+    if isinstance(lines[-1], list):
+        lines[-1] = ' '.join(lines[-1])
 
-            return '\n'.join(lines)
+    return '\n'.join(lines)
+
+
+def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
+    """Wrap long cell values so they fit within the visible column width."""
 
     if (event is None) or (tree.identify_region(event.x, event.y) == "separator"):
         col_widths = [tree.column(cid)['width'] for cid in tree['columns']]
 
         for iid in tree.get_children():
-            new_vals = []
-            for (v,w) in zip(tree.item(iid)['values'], col_widths):
-                new_vals.append(adjust_newlines(v, w))
+            values = tree.item(iid)['values']
+            new_vals = [adjust_newlines(v, w) for v, w in zip(values, col_widths)]
             tree.item(iid, values=new_vals)
 
 
@@ -279,6 +271,21 @@ def list_files(path: str) -> List[Path]:
     return [p for p in path.rglob('*') if p.is_file()]
 
 
+def parse_percent(val: str, default: float = -1.0) -> float:
+    """Convert a percentage string to a float, returning ``default`` on error."""
+    if not isinstance(val, str):
+        return default
+
+    text = val.strip()
+    if not text or not text.endswith('%'):
+        return default
+
+    try:
+        return float(text.strip('%'))
+    except ValueError:
+        return default
+
+
 def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
     """Sort a Treeview column, toggling sort order on subsequent clicks.
 
@@ -291,21 +298,42 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
     reverse : bool
         Sort order; ``True`` for descending and ``False`` for ascending.
     """
-    l = [(tv.set(k, col), k) for k in tv.get_children("")]
-    if col == "own_conf" or col =="gpt_conf":
-        # Convert percentage strings to floats for sorting
-        l = [(float(val.strip("%")), k) for val, k in l]
+    values_with_ids = [(tv.set(k, col), k) for k in tv.get_children("")]
+    if col in {"own_conf", "gpt_conf"}:
+        values_with_ids = [(parse_percent(val), k) for val, k in values_with_ids]
     else:
-        # Treat other columns as text
-        l = [(val, k) for val, k in l]
+        values_with_ids = [(val, k) for val, k in values_with_ids]
 
-    l.sort(reverse=reverse)
+    values_with_ids.sort(key=lambda item: item[0], reverse=reverse)
 
-    for index, (val, k) in enumerate(l):
+    for index, (_, k) in enumerate(values_with_ids):
         tv.move(k, "", index)
 
     # Reverse sort order on subsequent clicks of the same column header
     tv.heading(col, command=lambda: sort_column(tv, col, not reverse))
+
+
+def insert_tree_row(values: Tuple[Any, ...]) -> None:
+    """Insert a row into the treeview with wrapped text."""
+
+    col_widths = [tree.column(cid)['width'] for cid in tree['columns']]
+    wrapped_values = [adjust_newlines(v, w) for v, w in zip(values, col_widths)]
+    tree.insert("", tk.END, values=wrapped_values)
+
+
+def set_scanning_state(is_scanning: bool) -> None:
+    """Enable or disable controls based on scanning state."""
+
+    scan_button.config(state="disabled" if is_scanning else "normal")
+    cancel_button.config(state="normal" if is_scanning else "disabled")
+
+
+def finish_scan_state() -> None:
+    """Reset scanning controls when a scan finishes or is cancelled."""
+
+    global current_cancel_event
+    current_cancel_event = None
+    set_scanning_state(False)
 
 
 def button_click() -> None:
@@ -316,22 +344,43 @@ def button_click() -> None:
     None
         Starts a daemon thread to run the scan.
     """
+    global current_cancel_event
+
+    if current_cancel_event is not None:
+        return
+
     scan_path = textbox.get()
     if not scan_path:
         messagebox.showerror("Scan Error", "Please select a directory to scan.")
         return
 
+    current_cancel_event = threading.Event()
+    set_scanning_state(True)
     scan_args = (
         scan_path,
         deep_var.get(),
         all_var.get(),
         gpt_var.get(),
+        current_cancel_event,
     )
     scan_thread = threading.Thread(target=run_scan, args=scan_args, daemon=True)
     scan_thread.start()
 
 
-def scan_files(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
+def cancel_scan() -> None:
+    """Signal the active scan to stop."""
+
+    if current_cancel_event:
+        current_cancel_event.set()
+
+
+def scan_files(
+    scan_path: str,
+    deep_scan: bool,
+    show_all: bool,
+    use_gpt: bool,
+    cancel_event: Optional[threading.Event] = None,
+) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for malicious content and optionally request GPT analysis.
 
     Parameters
@@ -351,11 +400,14 @@ def scan_files(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool) -
         Tuples indicating either progress updates or result rows for the UI/CLI.
     """
     import tensorflow as tf
+    cancel_event = cancel_event or threading.Event()
     modelscript = tf.keras.models.load_model('scripts.h5', compile=False)
     file_list = list_files(scan_path)
     yield ('progress', 0, len(file_list))
 
     for index, file_path in enumerate(file_list):
+        if cancel_event.is_set():
+            break
         extension = Path(file_path).suffix
         if any(extension == ext.lower() for ext in extensions):
             print(file_path)
@@ -371,6 +423,8 @@ def scan_files(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool) -
             maxconf_pos = 0
             maxconf = 0
             for i in range(0, file_size - MAXLEN + 1, MAXLEN):
+                if cancel_event.is_set():
+                    break
                 if i >= MAXLEN and not deep_scan:
                     continue
                 print("Scanning at:", i)
@@ -380,7 +434,7 @@ def scan_files(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool) -
                     maxconf_pos = i
                     maxconf = result
 
-            if file_size > MAXLEN:
+            if file_size > MAXLEN and not cancel_event.is_set():
                 print("Scanning at:", -MAXLEN)
                 result = modelscript.predict(tf_data[:, -MAXLEN:], batch_size=1, steps=1)[0][0]
                 resultchecks.append(result)
@@ -420,7 +474,7 @@ def scan_files(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool) -
         yield ('progress', index + 1, len(file_list))
 
 
-def run_scan(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool) -> None:
+def run_scan(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool, cancel_event: threading.Event) -> None:
     """Consume scan events and forward them to the UI thread.
 
     Parameters
@@ -434,15 +488,20 @@ def run_scan(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool) -> 
     use_gpt : bool
         Whether to enrich suspicious files with GPT output.
     """
-    for event_type, data in scan_files(scan_path, deep_scan, show_all, use_gpt):
-        if event_type == 'progress':
-            current, total = data[1], data[2]
-            if current == 0:
-                enqueue_ui_update(configure_progress, total)
-            else:
-                enqueue_ui_update(update_progress, current)
-        elif event_type == 'result':
-            enqueue_ui_update(tree.insert, "", tk.END, values=data)
+    try:
+        for event_type, data in scan_files(scan_path, deep_scan, show_all, use_gpt, cancel_event):
+            if cancel_event.is_set():
+                break
+            if event_type == 'progress':
+                current, total = data[1], data[2]
+                if current == 0:
+                    enqueue_ui_update(configure_progress, total)
+                else:
+                    enqueue_ui_update(update_progress, current)
+            elif event_type == 'result':
+                enqueue_ui_update(insert_tree_row, data)
+    finally:
+        enqueue_ui_update(finish_scan_state)
 
 
 def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool) -> None:
@@ -462,7 +521,9 @@ def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool) -> None:
     writer = csv.writer(sys.stdout)
     writer.writerow(("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"))
 
-    for event_type, data in scan_files(path, deep, show_all, use_gpt):
+    cancel_event = threading.Event()
+
+    for event_type, data in scan_files(path, deep, show_all, use_gpt, cancel_event):
         if event_type == 'result':
             writer.writerow(data)
 
@@ -501,7 +562,7 @@ def create_gui() -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, deep_var, all_var, gpt_var, tree
+    global root, textbox, progress_bar, deep_var, all_var, gpt_var, tree, scan_button, cancel_button
 
     root = tk.Tk()
     root.geometry("800x500")
@@ -532,8 +593,10 @@ def create_gui() -> tk.Tk:
 
     gpt_checkbox.pack()
 
-    button = tk.Button(root, text="Scan now", command=button_click)
-    button.pack()
+    scan_button = tk.Button(root, text="Scan now", command=button_click)
+    scan_button.pack()
+    cancel_button = tk.Button(root, text="Cancel", command=cancel_scan, state="disabled")
+    cancel_button.pack()
     export_button = tk.Button(root, text="Export CSV", command=export_results)
     export_button.pack()
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, length=100, mode='determinate')
@@ -569,8 +632,9 @@ def create_gui() -> tk.Tk:
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
     tree.configure(yscrollcommand=scrollbar.set)
-    tree.bind('<B1-Motion>', partial(motion_handler, tree))
+    tree.bind('<ButtonRelease-1>', partial(motion_handler, tree))
     motion_handler(tree, None)   # Perform initial wrapping
+    set_scanning_state(False)
     return root
 
 
