@@ -459,7 +459,7 @@ def scan_files(
         tf_module = tf
         _tf_module = tf_module
     file_list = list_files(scan_path)
-    yield ('progress', 0, len(file_list))
+    yield ('progress', (0, len(file_list)))
 
     for index, file_path in enumerate(file_list):
         if cancel_event.is_set():
@@ -467,67 +467,130 @@ def scan_files(
         extension = Path(file_path).suffix.lower()
         if extension in Config.extensions_set:
             print(file_path)
-            with open(file_path, 'rb') as f:
-                data = list(f.read())
-            resultchecks = []
-            if len(data) <= Config.MAXLEN:
-                numtoadd = Config.MAXLEN - len(data)
-                data.extend([13] * numtoadd)
-            file_size = max(Config.MAXLEN, len(data))
-            tf_data = tf_module.expand_dims(tf_module.constant(data), axis=0)
-
-            maxconf_pos = 0
-            maxconf = 0
-            for i in range(0, file_size - Config.MAXLEN + 1, Config.MAXLEN):
-                if cancel_event.is_set():
-                    break
-                if i >= Config.MAXLEN and not deep_scan:
-                    continue
-                print("Scanning at:", i)
-                result = modelscript.predict(tf_data[:, i:i + 1024], batch_size=1, steps=1)[0][0]
-                resultchecks.append(result)
-                if result > maxconf:
-                    maxconf_pos = i
-                    maxconf = result
-
-            if file_size > Config.MAXLEN and not cancel_event.is_set():
-                print("Scanning at:", -Config.MAXLEN)
-                result = modelscript.predict(tf_data[:, -Config.MAXLEN:], batch_size=1, steps=1)[0][0]
-                resultchecks.append(result)
-                if result > maxconf:
-                    maxconf_pos = file_size - Config.MAXLEN
-                    maxconf = result
-
-            percent = f"{maxconf:.0%}"
-            snippet = ''.join(map(chr, bytes(data[maxconf_pos:maxconf_pos + 1024]))).strip()
-            if max(resultchecks) > .5 and use_gpt and Config.GPT_ENABLED:
-                json_data = handle_gpt_response(snippet, Config.taskdesc)
-                if json_data is None:
-                    admin_desc = 'JSON Parse Error'
-                    enduser_desc = 'JSON Parse Error'
-                    chatgpt_conf_percent = 'JSON Parse Error'
-                else:
-                    admin_desc = json_data["administrator"]
-                    enduser_desc = json_data["end-user"]
-                    chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
-            else:
-                admin_desc = ''
-                enduser_desc = ''
-                chatgpt_conf_percent = ''
-            snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
-            if max(resultchecks) > .5 or show_all:
+            try:
+                file_size = Path(file_path).stat().st_size
+            except OSError as err:
                 yield (
                     'result',
                     (
                         str(file_path),
-                        percent,
-                        admin_desc,
-                        enduser_desc,
-                        chatgpt_conf_percent,
-                        snippet,
+                        'Error',
+                        '',
+                        '',
+                        '',
+                        f"Error reading file metadata: {err}",
                     )
                 )
-        yield ('progress', index + 1, len(file_list))
+                yield ('progress', (index + 1, len(file_list)))
+                continue
+
+            def pad_window(data: bytes) -> List[int]:
+                padded = list(data)
+                if len(padded) < Config.MAXLEN:
+                    padded.extend([13] * (Config.MAXLEN - len(padded)))
+                return padded
+
+            def predict_window(window_bytes: bytes) -> Tuple[float, bytes]:
+                padded_data = pad_window(window_bytes)
+                tf_data = tf_module.expand_dims(tf_module.constant(padded_data), axis=0)
+                prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
+                return float(prediction), bytes(padded_data)
+
+            def iter_windows(fh, size: int) -> Generator[Tuple[int, bytes], None, None]:
+                if size == 0:
+                    yield 0, b""
+                    return
+
+                if not deep_scan:
+                    fh.seek(0)
+                    yield 0, fh.read(Config.MAXLEN)
+
+                    last_start = max(0, size - Config.MAXLEN)
+                    if last_start > 0:
+                        fh.seek(last_start)
+                        yield last_start, fh.read(Config.MAXLEN)
+                    return
+
+                offset = 0
+                while offset < size:
+                    fh.seek(offset)
+                    chunk = fh.read(Config.MAXLEN)
+                    if not chunk:
+                        break
+                    yield offset, chunk
+                    offset += Config.MAXLEN
+
+                if size > Config.MAXLEN:
+                    last_start = size - Config.MAXLEN
+                    if last_start % Config.MAXLEN != 0:
+                        fh.seek(last_start)
+                        final_chunk = fh.read(Config.MAXLEN)
+                        if final_chunk:
+                            yield last_start, final_chunk
+
+            resultchecks: List[float] = []
+            maxconf = 0.0
+            max_window_bytes = b""
+            error_message: Optional[str] = None
+
+            try:
+                with open(file_path, 'rb') as f:
+                    for offset, window in iter_windows(f, file_size):
+                        if cancel_event.is_set():
+                            break
+                        print("Scanning at:", offset if offset > 0 else 0)
+                        result, padded_bytes = predict_window(window)
+                        resultchecks.append(result)
+                        if result > maxconf:
+                            maxconf = result
+                            max_window_bytes = padded_bytes
+            except (PermissionError, OSError, UnicodeDecodeError) as err:
+                error_message = f"Error reading file: {err}"
+
+            best_result = max(resultchecks, default=0)
+            if error_message is not None:
+                yield (
+                    'result',
+                    (
+                        str(file_path),
+                        'Error',
+                        '',
+                        '',
+                        '',
+                        error_message,
+                    )
+                )
+            elif resultchecks:
+                percent = f"{maxconf:.0%}"
+                snippet = ''.join(map(chr, max_window_bytes)).strip()
+                if best_result > .5 and use_gpt and Config.GPT_ENABLED:
+                    json_data = handle_gpt_response(snippet, Config.taskdesc)
+                    if json_data is None:
+                        admin_desc = 'JSON Parse Error'
+                        enduser_desc = 'JSON Parse Error'
+                        chatgpt_conf_percent = 'JSON Parse Error'
+                    else:
+                        admin_desc = json_data["administrator"]
+                        enduser_desc = json_data["end-user"]
+                        chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
+                else:
+                    admin_desc = ''
+                    enduser_desc = ''
+                    chatgpt_conf_percent = ''
+                snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+                if best_result > .5 or show_all:
+                    yield (
+                        'result',
+                        (
+                            str(file_path),
+                            percent,
+                            admin_desc,
+                            enduser_desc,
+                            chatgpt_conf_percent,
+                            snippet,
+                        )
+                    )
+        yield ('progress', (index + 1, len(file_list)))
 
 
 def run_scan(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool, cancel_event: threading.Event) -> None:
@@ -549,7 +612,7 @@ def run_scan(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool, can
             if cancel_event.is_set():
                 break
             if event_type == 'progress':
-                current, total = data[1], data[2]
+                current, total = data
                 if current == 0:
                     enqueue_ui_update(configure_progress, total)
                 else:
@@ -578,10 +641,18 @@ def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool) -> None:
     writer.writerow(("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"))
 
     cancel_event = threading.Event()
+    final_progress: Optional[Tuple[int, int]] = None
 
     for event_type, data in scan_files(path, deep, show_all, use_gpt, cancel_event):
         if event_type == 'result':
             writer.writerow(data)
+        elif event_type == 'progress':
+            current, total = data
+            final_progress = (current, total)
+            print(f"Scanning: {current}/{total} files\r", end='', file=sys.stderr)
+
+    if final_progress is not None:
+        print(file=sys.stderr)
 
 
 def export_results() -> None:
