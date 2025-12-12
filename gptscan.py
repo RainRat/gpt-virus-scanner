@@ -1,5 +1,6 @@
 import csv
 import json
+import os
 import queue
 import sys
 import threading
@@ -89,6 +90,25 @@ Config.initialize()
 
 ui_queue = queue.Queue()
 current_cancel_event: Optional[threading.Event] = None
+_model_cache: Optional[Any] = None
+_tf_module: Optional[Any] = None
+_model_lock = threading.Lock()
+
+
+def get_model() -> Any:
+    """Lazily load and cache the TensorFlow model per process."""
+
+    global _model_cache, _tf_module
+    if _model_cache is not None:
+        return _model_cache
+
+    with _model_lock:
+        if _model_cache is None:
+            if _tf_module is None:
+                import tensorflow as tf
+                _tf_module = tf
+            _model_cache = _tf_module.keras.models.load_model('scripts.h5', compile=False)
+    return _model_cache
 
 def update_progress(value: int) -> None:
     """Update the progress bar to reflect current progress.
@@ -381,6 +401,10 @@ def button_click() -> None:
         messagebox.showerror("Scan Error", "Please select a directory to scan.")
         return
 
+    if not os.path.exists('scripts.h5'):
+        messagebox.showerror("Scan Error", "Model file scripts.h5 not found.")
+        return
+
     current_cancel_event = threading.Event()
     set_scanning_state(True)
     scan_args = (
@@ -426,9 +450,14 @@ def scan_files(
     Generator[Tuple[str, Tuple[Any, ...]], None, None]
         Tuples indicating either progress updates or result rows for the UI/CLI.
     """
-    import tensorflow as tf
+    global _tf_module
     cancel_event = cancel_event or threading.Event()
-    modelscript = tf.keras.models.load_model('scripts.h5', compile=False)
+    modelscript = get_model()
+    tf_module = _tf_module
+    if tf_module is None:
+        import tensorflow as tf
+        tf_module = tf
+        _tf_module = tf_module
     file_list = list_files(scan_path)
     yield ('progress', 0, len(file_list))
 
@@ -445,7 +474,7 @@ def scan_files(
                 numtoadd = Config.MAXLEN - len(data)
                 data.extend([13] * numtoadd)
             file_size = max(Config.MAXLEN, len(data))
-            tf_data = tf.expand_dims(tf.constant(data), axis=0)
+            tf_data = tf_module.expand_dims(tf_module.constant(data), axis=0)
 
             maxconf_pos = 0
             maxconf = 0

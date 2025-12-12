@@ -208,3 +208,45 @@ def test_adjust_newlines_wraps_text():
     wrapped = gptscan.adjust_newlines(text, width=6, pad=0, measure=len)
 
     assert wrapped.split("\n") == ["lorem", "ipsum", "dolor"]
+
+
+def test_scan_files_uses_cached_model(monkeypatch, tmp_path):
+    class FakeTensor:
+        def __init__(self, data):
+            self.data = data
+
+        def __getitem__(self, key):
+            if isinstance(key, tuple):
+                slice_obj = key[1]
+                return FakeTensor(self.data[slice_obj])
+            return self.data[key]
+
+    load_calls = {"count": 0}
+
+    class FakeModel:
+        def predict(self, *_args, **_kwargs):
+            return [[0.1]]
+
+    def fake_load_model(_path, compile=False):
+        load_calls["count"] += 1
+        return FakeModel()
+
+    fake_models = SimpleNamespace(load_model=fake_load_model)
+    fake_tf = SimpleNamespace(
+        keras=SimpleNamespace(models=fake_models),
+        constant=lambda data: FakeTensor(list(data)),
+        expand_dims=lambda tensor, axis=0: tensor,
+    )
+
+    sample_file = tmp_path / "sample.txt"
+    sample_file.write_text("abc")
+
+    monkeypatch.setattr(gptscan, "_tf_module", fake_tf, raising=False)
+    monkeypatch.setattr(gptscan, "_model_cache", None, raising=False)
+    monkeypatch.setattr(gptscan, "list_files", lambda _path: [str(sample_file)])
+    gptscan.Config.set_extensions([".txt"], missing=False)
+
+    list(gptscan.scan_files(str(tmp_path), deep_scan=False, show_all=True, use_gpt=False, cancel_event=None))
+    list(gptscan.scan_files(str(tmp_path), deep_scan=False, show_all=True, use_gpt=False, cancel_event=None))
+
+    assert load_calls["count"] == 1
