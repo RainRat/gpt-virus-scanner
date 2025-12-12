@@ -1,4 +1,5 @@
 import json
+import builtins
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -202,6 +203,22 @@ def test_sort_column_with_invalid_percentages():
     assert tree.get_children("") == ("item1", "item2", "item4", "item3")
 
 
+def test_run_cli_reports_progress(monkeypatch, capsys):
+    def fake_scan_files(_path, _deep, _show_all, _use_gpt, _cancel_event=None):
+        yield ('progress', (0, 2))
+        yield ('result', ("/tmp/a", "10%", "", "", "", "snippet"))
+        yield ('progress', (2, 2))
+
+    monkeypatch.setattr(gptscan, "scan_files", fake_scan_files)
+
+    gptscan.run_cli("/tmp", deep=False, show_all=False, use_gpt=False)
+
+    captured = capsys.readouterr()
+    assert "Scanning: 0/2 files\r" in captured.err
+    assert "Scanning: 2/2 files" in captured.err
+    assert "path,own_conf" not in captured.err
+
+
 def test_adjust_newlines_wraps_text():
     text = "lorem ipsum dolor"
 
@@ -250,3 +267,27 @@ def test_scan_files_uses_cached_model(monkeypatch, tmp_path):
     list(gptscan.scan_files(str(tmp_path), deep_scan=False, show_all=True, use_gpt=False, cancel_event=None))
 
     assert load_calls["count"] == 1
+
+
+def test_scan_files_handles_permission_error(monkeypatch, tmp_path):
+    blocked_file = tmp_path / "blocked.txt"
+    blocked_file.write_text("content")
+
+    gptscan.Config.set_extensions([".txt"], missing=False)
+    monkeypatch.setattr(gptscan, "list_files", lambda _path: [str(blocked_file)])
+
+    real_open = builtins.open
+
+    def fake_open(path, mode='r', *args, **kwargs):
+        if str(path) == str(blocked_file) and 'b' in mode:
+            raise PermissionError("permission denied")
+        return real_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(gptscan, "open", fake_open, raising=False)
+
+    results = list(gptscan.scan_files(str(tmp_path), deep_scan=False, show_all=True, use_gpt=False, cancel_event=None))
+
+    error_result = next((event for event in results if event[0] == 'result'), None)
+    assert error_result is not None
+    assert error_result[1][1] == 'Error'
+    assert "permission denied" in error_result[1][5]
