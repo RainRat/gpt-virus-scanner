@@ -1,12 +1,15 @@
+import asyncio
 import csv
 import json
 import os
 import queue
 import sys
 import threading
+import time
+from collections import deque
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Callable, Deque, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import tkinter as tk
 import tkinter.filedialog
@@ -45,6 +48,8 @@ class Config:
     MAXLEN = 1024
     EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
     MAX_RETRIES = 3
+    RATE_LIMIT_PER_MINUTE = 60
+    MAX_CONCURRENT_REQUESTS = 5
     gpt_cache: Dict[int, Dict[str, Any]] = {}
     apikey: str = load_file('apikey.txt')
     taskdesc: str = load_file('task.txt')
@@ -93,6 +98,8 @@ current_cancel_event: Optional[threading.Event] = None
 _model_cache: Optional[Any] = None
 _tf_module: Optional[Any] = None
 _model_lock = threading.Lock()
+_openai_client: Optional[Any] = None
+_async_openai_client: Optional[Any] = None
 
 
 def get_model() -> Any:
@@ -109,6 +116,51 @@ def get_model() -> Any:
                 _tf_module = tf
             _model_cache = _tf_module.keras.models.load_model('scripts.h5', compile=False)
     return _model_cache
+
+
+def get_openai_client() -> Any:
+    """Lazily instantiate and reuse the OpenAI client."""
+
+    global _openai_client
+    if _openai_client is None and Config.apikey:
+        from openai import OpenAI
+
+        _openai_client = OpenAI(api_key=Config.apikey)
+    return _openai_client
+
+
+class _SyncCompletionsAdapter:
+    def __init__(self, client: Any):
+        self._client = client
+
+    async def create(self, *args: Any, **kwargs: Any) -> Any:
+        return await asyncio.to_thread(self._client.chat.completions.create, *args, **kwargs)
+
+
+class _SyncChatAdapter:
+    def __init__(self, client: Any):
+        self.completions = _SyncCompletionsAdapter(client)
+
+
+class _SyncToAsyncOpenAIAdapter:
+    def __init__(self, client: Any):
+        self.chat = _SyncChatAdapter(client)
+
+
+def get_async_openai_client() -> Any:
+    """Lazily instantiate and reuse the asynchronous OpenAI client."""
+
+    global _async_openai_client
+    if _async_openai_client is None and Config.apikey:
+        try:
+            from openai import AsyncOpenAI
+
+            _async_openai_client = AsyncOpenAI(api_key=Config.apikey)
+        except ImportError:
+            client = get_openai_client()
+            if client is not None:
+                _async_openai_client = _SyncToAsyncOpenAIAdapter(client)
+    return _async_openai_client
 
 def update_progress(value: int) -> None:
     """Update the progress bar to reflect current progress.
@@ -180,6 +232,32 @@ def browse_button_click() -> None:
     textbox.insert(0, folder_selected)
 
 
+class AsyncRateLimiter:
+    """Simple asynchronous rate limiter using a sliding one-minute window."""
+
+    def __init__(self, rate_per_minute: int):
+        self.rate_per_minute = max(1, rate_per_minute)
+        self._timestamps: Deque[float] = deque()
+        self._lock = asyncio.Lock()
+
+    async def acquire(self, on_wait: Optional[Callable[[float], None]] = None) -> None:
+        while True:
+            async with self._lock:
+                now = time.monotonic()
+                while self._timestamps and now - self._timestamps[0] >= 60:
+                    self._timestamps.popleft()
+
+                if len(self._timestamps) < self.rate_per_minute:
+                    self._timestamps.append(now)
+                    return
+
+                wait_time = 60 - (now - self._timestamps[0])
+                if on_wait:
+                    on_wait(wait_time)
+
+            await asyncio.sleep(wait_time)
+
+
 def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
     """Parse and validate the JSON payload returned from the OpenAI API.
 
@@ -195,76 +273,119 @@ def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
         Parsed JSON dictionary when valid; otherwise, a human-readable error
         message describing the parsing failure.
     """
+    expected_keys = set(Config.EXPECTED_KEYS)
+
     try:
-        json_data = json.loads(response.choices[0].message.content)
-        missing_keys = [key for key in Config.EXPECTED_KEYS if key not in json_data]
-        if missing_keys:
-            raise ValueError(f"Missing keys: {', '.join(missing_keys)}")
+        content = response.choices[0].message.content
+    except (AttributeError, IndexError, TypeError) as exc:
+        return f"Invalid response structure: {exc}"
 
-        threat_level_str = json_data.get("threat-level", None)
-        try:
-            threat_level = int(threat_level_str)
-        except ValueError:
-            raise ValueError(f"The 'threat-level' value '{threat_level_str}' is not a valid integer.")
+    try:
+        json_data = json.loads(content)
+    except json.JSONDecodeError as exc:
+        return str(exc)
 
-        if not 0 <= threat_level <= 100:
-            raise ValueError(f"The 'threat-level' value {threat_level} is not between 0 and 100 inclusive.")
-        return json_data
-    except (json.JSONDecodeError, ValueError) as e:
-        return str(e)
+    if not isinstance(json_data, dict):
+        return "Response JSON must be an object with expected keys."
+
+    missing_keys = [key for key in Config.EXPECTED_KEYS if key not in json_data]
+    if missing_keys:
+        return f"Missing keys: {', '.join(missing_keys)}"
+
+    extra_keys = set(json_data.keys()) - expected_keys
+    if extra_keys:
+        return f"Unexpected keys present: {', '.join(sorted(extra_keys))}"
+
+    threat_level_value = json_data.get("threat-level")
+    try:
+        threat_level = int(threat_level_value)
+    except (TypeError, ValueError):
+        return f"The 'threat-level' value '{threat_level_value}' is not a valid integer."
+
+    if not 0 <= threat_level <= 100:
+        return f"The 'threat-level' value {threat_level} is not between 0 and 100 inclusive."
+
+    json_data["threat-level"] = threat_level
+    return json_data
 
 
-def handle_gpt_response(snippet: str, taskdesc: str) -> Optional[Dict]:
-    """Request GPT analysis for a snippet with retry and caching support.
+async def async_handle_gpt_response(
+    snippet: str,
+    taskdesc: str,
+    rate_limiter: AsyncRateLimiter,
+    semaphore: asyncio.Semaphore,
+    wait_callback: Optional[Callable[[float], None]] = None,
+) -> Optional[Dict]:
+    """Request GPT analysis asynchronously with retry, caching and rate limits."""
 
-    Parameters
-    ----------
-    snippet : str
-        The code or text snippet to analyze.
-    taskdesc : str
-        Prompt content that instructs GPT on how to respond.
-
-    Returns
-    -------
-    Optional[Dict]
-        Parsed JSON data containing administrator/end-user descriptions and
-        threat level, or ``None`` if retries are exhausted.
-    """
-    from openai import OpenAI
     retries = 0
-    json_data = None
-    client = OpenAI(api_key=Config.apikey)
-    create_completion = partial(client.chat.completions.create, model="gpt-3.5-turbo")
+    json_data: Optional[Union[Dict, str]] = None
     cache_key = hash(snippet)
     if cache_key in Config.gpt_cache:
         return Config.gpt_cache[cache_key]
+
+    client = get_async_openai_client()
+    if client is None:
+        return None
+
+    create_completion = partial(client.chat.completions.create, model="gpt-3.5-turbo")
     messages = [
         {"role": "system", "content": taskdesc},
-        {"role": "user", "content": snippet}
+        {"role": "user", "content": snippet},
     ]
-    while retries < Config.MAX_RETRIES and (json_data is None or isinstance(json_data, str)):
 
+    while retries < Config.MAX_RETRIES and (json_data is None or isinstance(json_data, str)):
+        await rate_limiter.acquire(on_wait=wait_callback)
         try:
-            response = create_completion(messages=messages)
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            async with semaphore:
+                response = await create_completion(messages=messages)
+        except Exception as err:  # pragma: no cover - safety net
+            status_code = getattr(err, "status_code", None)
+            if status_code == 429 or "429" in str(getattr(err, "status", "")) or "rate limit" in str(err).lower():
+                backoff = 2 ** retries
+                retries += 1
+                await asyncio.sleep(backoff)
+                continue
+            print(f"An unexpected error occurred: {err}")
             break
 
-        if response:
-            extracted_data = extract_data_from_gpt_response(response)
-            if isinstance(extracted_data, dict):
-                json_data = extracted_data
-            else:
-                print(extracted_data)
-                messages.append({"role": "assistant", "content": response.choices[0].message.content})
-                messages.append({"role": "user", "content": f"I encountered an issue: {extracted_data}. Could you correct your response?"})
-                retries += 1
+        extracted_data = extract_data_from_gpt_response(response)
+        if isinstance(extracted_data, dict):
+            json_data = extracted_data
+        else:
+            print(extracted_data)
+            messages.append({"role": "assistant", "content": response.choices[0].message.content})
+            messages.append({"role": "user", "content": f"I encountered an issue: {extracted_data}. Could you correct your response?"})
+            retries += 1
+
     if isinstance(json_data, dict):
         Config.gpt_cache[cache_key] = json_data
         return json_data
-    else:
-        print("Failed to obtain a valid response from GPT after multiple retries.")
-        return None
+
+    print("Failed to obtain a valid response from GPT after multiple retries.")
+    return None
+
+
+def handle_gpt_response(
+    snippet: str,
+    taskdesc: str,
+    rate_limiter: Optional[AsyncRateLimiter] = None,
+    semaphore: Optional[asyncio.Semaphore] = None,
+    wait_callback: Optional[Callable[[float], None]] = None,
+) -> Optional[Dict]:
+    """Synchronous wrapper to fetch GPT analysis using the async implementation."""
+
+    limiter = rate_limiter or AsyncRateLimiter(Config.RATE_LIMIT_PER_MINUTE)
+    gate = semaphore or asyncio.Semaphore(Config.MAX_CONCURRENT_REQUESTS)
+    return asyncio.run(
+        async_handle_gpt_response(
+            snippet,
+            taskdesc,
+            rate_limiter=limiter,
+            semaphore=gate,
+            wait_callback=wait_callback,
+        )
+    )
 
 
 def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Callable[[str], int]] = None) -> Any:
@@ -431,6 +552,8 @@ def scan_files(
     show_all: bool,
     use_gpt: bool,
     cancel_event: Optional[threading.Event] = None,
+    rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
+    max_concurrent_requests: int = Config.MAX_CONCURRENT_REQUESTS,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for malicious content and optionally request GPT analysis.
 
@@ -444,6 +567,10 @@ def scan_files(
         Whether to yield all scanned files regardless of confidence threshold.
     use_gpt : bool
         Whether to request GPT analysis when the local model is confident.
+    rate_limit : int
+        Maximum number of GPT requests permitted per minute.
+    max_concurrent_requests : int
+        Maximum number of GPT requests executed concurrently.
 
     Yields
     ------
@@ -459,7 +586,11 @@ def scan_files(
         tf_module = tf
         _tf_module = tf_module
     file_list = list_files(scan_path)
-    yield ('progress', (0, len(file_list)))
+    total_progress = len(file_list)
+    progress_count = 0
+    yield ('progress', (progress_count, total_progress, None))
+
+    gpt_requests: List[Dict[str, Any]] = []
 
     for index, file_path in enumerate(file_list):
         if cancel_event.is_set():
@@ -481,7 +612,8 @@ def scan_files(
                         f"Error reading file metadata: {err}",
                     )
                 )
-                yield ('progress', (index + 1, len(file_list)))
+                progress_count = index + 1
+                yield ('progress', (progress_count, total_progress, None))
                 continue
 
             def pad_window(data: bytes) -> List[int]:
@@ -563,37 +695,102 @@ def scan_files(
             elif resultchecks:
                 percent = f"{maxconf:.0%}"
                 snippet = ''.join(map(chr, max_window_bytes)).strip()
+                cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
                 if best_result > .5 and use_gpt and Config.GPT_ENABLED:
-                    json_data = handle_gpt_response(snippet, Config.taskdesc)
-                    if json_data is None:
-                        admin_desc = 'JSON Parse Error'
-                        enduser_desc = 'JSON Parse Error'
-                        chatgpt_conf_percent = 'JSON Parse Error'
-                    else:
-                        admin_desc = json_data["administrator"]
-                        enduser_desc = json_data["end-user"]
-                        chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
-                else:
-                    admin_desc = ''
-                    enduser_desc = ''
-                    chatgpt_conf_percent = ''
-                snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
-                if best_result > .5 or show_all:
+                    gpt_requests.append(
+                        {
+                            "path": str(file_path),
+                            "percent": percent,
+                            "snippet": snippet,
+                            "cleaned_snippet": cleaned_snippet,
+                        }
+                    )
+                elif best_result > .5 or show_all:
                     yield (
                         'result',
                         (
                             str(file_path),
                             percent,
-                            admin_desc,
-                            enduser_desc,
-                            chatgpt_conf_percent,
-                            snippet,
+                            '',
+                            '',
+                            '',
+                            cleaned_snippet,
                         )
                     )
-        yield ('progress', (index + 1, len(file_list)))
+        progress_count = index + 1
+        yield ('progress', (progress_count, total_progress, None))
+
+    if cancel_event.is_set():
+        return
+
+    if use_gpt and Config.GPT_ENABLED and gpt_requests:
+        async def process_requests(requests: Iterable[Dict[str, Any]]):
+            rate_limiter = AsyncRateLimiter(rate_limit)
+            semaphore = asyncio.Semaphore(max_concurrent_requests)
+            wait_messages: List[str] = []
+
+            def wait_notifier(_wait_time: float) -> None:
+                wait_messages.append("Waiting for API rate limit...")
+
+            async def run_request(request: Dict[str, Any]):
+                json_data = await async_handle_gpt_response(
+                    request["snippet"],
+                    Config.taskdesc,
+                    rate_limiter=rate_limiter,
+                    semaphore=semaphore,
+                    wait_callback=wait_notifier,
+                )
+                return request, json_data
+
+            tasks = [asyncio.create_task(run_request(request)) for request in requests]
+            results: List[Tuple[Dict[str, Any], Optional[Dict]]] = []
+            for completed in asyncio.as_completed(tasks):
+                results.append(await completed)
+            return results, wait_messages
+
+        total_progress += len(gpt_requests)
+        yield ('progress', (progress_count, total_progress, "Waiting for API rate limit..."))
+
+        results, wait_messages = asyncio.run(process_requests(gpt_requests))
+
+        for _ in wait_messages:
+            yield ('progress', (progress_count, total_progress, "Waiting for API rate limit..."))
+
+        for request, json_data in results:
+            if cancel_event.is_set():
+                break
+            if json_data is None:
+                admin_desc = 'JSON Parse Error'
+                enduser_desc = 'JSON Parse Error'
+                chatgpt_conf_percent = 'JSON Parse Error'
+            else:
+                admin_desc = json_data["administrator"]
+                enduser_desc = json_data["end-user"]
+                chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
+
+            yield (
+                'result',
+                (
+                    request["path"],
+                    request["percent"],
+                    admin_desc,
+                    enduser_desc,
+                    chatgpt_conf_percent,
+                    request["cleaned_snippet"],
+                )
+            )
+            progress_count += 1
+            yield ('progress', (progress_count, total_progress, None))
 
 
-def run_scan(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool, cancel_event: threading.Event) -> None:
+def run_scan(
+    scan_path: str,
+    deep_scan: bool,
+    show_all: bool,
+    use_gpt: bool,
+    cancel_event: threading.Event,
+    rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
+) -> None:
     """Consume scan events and forward them to the UI thread.
 
     Parameters
@@ -606,24 +803,42 @@ def run_scan(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool, can
         Whether to display all results regardless of confidence.
     use_gpt : bool
         Whether to enrich suspicious files with GPT output.
+    rate_limit : int
+        Maximum allowed GPT requests per minute.
     """
+    last_total: Optional[int] = None
     try:
-        for event_type, data in scan_files(scan_path, deep_scan, show_all, use_gpt, cancel_event):
+        for event_type, data in scan_files(
+            scan_path,
+            deep_scan,
+            show_all,
+            use_gpt,
+            cancel_event,
+            rate_limit=rate_limit,
+            max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+        ):
             if cancel_event.is_set():
                 break
             if event_type == 'progress':
-                current, total = data
-                if current == 0:
-                    enqueue_ui_update(configure_progress, total)
+                if len(data) == 3:
+                    current, total, status = data
                 else:
-                    enqueue_ui_update(update_progress, current)
+                    current, total = data
+                    status = None
+
+                if total != last_total:
+                    enqueue_ui_update(configure_progress, total)
+                    last_total = total
+                enqueue_ui_update(update_progress, current)
+                if status:
+                    print(status)
             elif event_type == 'result':
                 enqueue_ui_update(insert_tree_row, data)
     finally:
         enqueue_ui_update(finish_scan_state)
 
 
-def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool) -> None:
+def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool, rate_limit: int) -> None:
     """Run scans and stream results to stdout as CSV rows.
 
     Parameters
@@ -636,6 +851,8 @@ def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool) -> None:
         Whether to emit every scanned file.
     use_gpt : bool
         Whether to request GPT analysis for confident detections.
+    rate_limit : int
+        Maximum allowed GPT requests per minute.
     """
     writer = csv.writer(sys.stdout)
     writer.writerow(("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"))
@@ -643,13 +860,27 @@ def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool) -> None:
     cancel_event = threading.Event()
     final_progress: Optional[Tuple[int, int]] = None
 
-    for event_type, data in scan_files(path, deep, show_all, use_gpt, cancel_event):
+    for event_type, data in scan_files(
+        path,
+        deep,
+        show_all,
+        use_gpt,
+        cancel_event,
+        rate_limit=rate_limit,
+        max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+    ):
         if event_type == 'result':
             writer.writerow(data)
         elif event_type == 'progress':
-            current, total = data
+            if len(data) == 3:
+                current, total, status = data
+            else:
+                current, total = data
+                status = None
             final_progress = (current, total)
             print(f"Scanning: {current}/{total} files\r", end='', file=sys.stderr)
+            if status:
+                print(f"{status}\r", end='', file=sys.stderr)
 
     if final_progress is not None:
         print(file=sys.stderr)
@@ -785,6 +1016,12 @@ if __name__ == "__main__":
         type=str,
         help='Comma-separated list of file extensions to scan (overrides extensions.txt)'
     )
+    parser.add_argument(
+        '--rate-limit',
+        type=int,
+        default=Config.RATE_LIMIT_PER_MINUTE,
+        help='Maximum GPT requests per minute (default: 60)'
+    )
     args = parser.parse_args()
 
     if args.extensions:
@@ -794,7 +1031,7 @@ if __name__ == "__main__":
     if args.cli:
         if not args.path:
             parser.error('--path is required in CLI mode')
-        run_cli(args.path, args.deep, args.show_all, args.use_gpt)
+        run_cli(args.path, args.deep, args.show_all, args.use_gpt, args.rate_limit)
     else:
         app_root = create_gui()
         app_root.mainloop()

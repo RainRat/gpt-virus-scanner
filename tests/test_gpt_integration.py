@@ -22,6 +22,8 @@ class _MockResponse:
 def test_handle_gpt_response_returns_cached_result(monkeypatch):
     gptscan.Config.gpt_cache = {}
     gptscan.Config.apikey = "dummy"
+    gptscan._openai_client = None
+    gptscan._async_openai_client = None
     responses = [_MockResponse('{"administrator": "Admin", "end-user": "User", "threat-level": 50}')]
     mock_completions = _MockCompletions(responses)
 
@@ -41,6 +43,8 @@ def test_handle_gpt_response_returns_cached_result(monkeypatch):
 def test_handle_gpt_response_retries_after_invalid_json(monkeypatch):
     gptscan.Config.gpt_cache = {}
     gptscan.Config.apikey = "dummy"
+    gptscan._openai_client = None
+    gptscan._async_openai_client = None
     invalid_response = _MockResponse('{"administrator": "Admin"}')
     valid_response = _MockResponse('{"administrator": "Admin", "end-user": "User", "threat-level": 70}')
     mock_completions = _MockCompletions([invalid_response, valid_response])

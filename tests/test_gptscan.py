@@ -1,5 +1,6 @@
-import json
+import asyncio
 import builtins
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -109,6 +110,61 @@ def test_extract_data_from_gpt_response_invalid_threat_level():
     assert "not a valid integer" in error
 
 
+def test_extract_data_from_gpt_response_rejects_extra_keys():
+    response = _MockResponse(
+        json.dumps(
+            {
+                "administrator": "Admin",
+                "end-user": "User",
+                "threat-level": 50,
+                "extra": "field",
+            }
+        )
+    )
+
+    error = gptscan.extract_data_from_gpt_response(response)
+
+    assert "Unexpected keys" in error
+
+
+def test_extract_data_from_gpt_response_rejects_non_object():
+    response = _MockResponse(json.dumps([1, 2, 3]))
+
+    error = gptscan.extract_data_from_gpt_response(response)
+
+    assert "must be an object" in error
+
+
+def test_extract_data_from_gpt_response_none_root():
+    response = _MockResponse("null")
+
+    error = gptscan.extract_data_from_gpt_response(response)
+
+    assert "must be an object" in error
+
+
+def test_extract_data_from_gpt_response_coerces_threat_level_string():
+    response = _MockResponse(
+        json.dumps(
+            {
+                "administrator": "Admin",
+                "end-user": "User",
+                "threat-level": "80",
+            }
+        )
+    )
+
+    parsed = gptscan.extract_data_from_gpt_response(response)
+
+    assert parsed["threat-level"] == 80
+
+
+def test_extract_data_from_gpt_response_invalid_structure():
+    error = gptscan.extract_data_from_gpt_response(object())
+
+    assert "Invalid response structure" in error
+
+
 def test_list_files_returns_files_only(tmp_path):
     nested = tmp_path / "nested"
     nested.mkdir()
@@ -204,14 +260,14 @@ def test_sort_column_with_invalid_percentages():
 
 
 def test_run_cli_reports_progress(monkeypatch, capsys):
-    def fake_scan_files(_path, _deep, _show_all, _use_gpt, _cancel_event=None):
+    def fake_scan_files(_path, _deep, _show_all, _use_gpt, _cancel_event=None, **_kwargs):
         yield ('progress', (0, 2))
         yield ('result', ("/tmp/a", "10%", "", "", "", "snippet"))
         yield ('progress', (2, 2))
 
     monkeypatch.setattr(gptscan, "scan_files", fake_scan_files)
 
-    gptscan.run_cli("/tmp", deep=False, show_all=False, use_gpt=False)
+    gptscan.run_cli("/tmp", deep=False, show_all=False, use_gpt=False, rate_limit=1)
 
     captured = capsys.readouterr()
     assert "Scanning: 0/2 files\r" in captured.err
@@ -291,3 +347,48 @@ def test_scan_files_handles_permission_error(monkeypatch, tmp_path):
     assert error_result is not None
     assert error_result[1][1] == 'Error'
     assert "permission denied" in error_result[1][5]
+
+
+def test_async_handle_gpt_response_uses_cache(monkeypatch):
+    gptscan.Config.gpt_cache = {}
+
+    completions = SimpleNamespace(calls=[])
+
+    async def fake_create(messages=None, model=None):
+        completions.calls.append(messages)
+        return _MockResponse(
+            json.dumps(
+                {
+                    "administrator": "Admin",
+                    "end-user": "User",
+                    "threat-level": 42,
+                }
+            )
+        )
+
+    fake_client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create)))
+
+    monkeypatch.setattr(gptscan, "get_async_openai_client", lambda: fake_client)
+
+    limiter = gptscan.AsyncRateLimiter(10)
+    semaphore = asyncio.Semaphore(2)
+
+    first = asyncio.run(
+        gptscan.async_handle_gpt_response(
+            "code snippet",
+            "task",
+            rate_limiter=limiter,
+            semaphore=semaphore,
+        )
+    )
+    second = asyncio.run(
+        gptscan.async_handle_gpt_response(
+            "code snippet",
+            "task",
+            rate_limiter=limiter,
+            semaphore=semaphore,
+        )
+    )
+
+    assert first == second
+    assert len(completions.calls) == 1
