@@ -1,5 +1,4 @@
 import csv
-import csv
 import json
 import os
 import queue
@@ -7,6 +6,7 @@ import sys
 import threading
 from functools import partial
 from pathlib import Path
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
 
 import tkinter as tk
 import tkinter.filedialog
@@ -20,7 +20,23 @@ MAX_RETRIES = 3
 gpt_cache = {}
 ui_queue = queue.Queue()
 
-def load_file(filename, mode='single_line'):
+
+def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]:
+    """Read content from a file in either single-line or multi-line mode.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the file to read.
+    mode : str, optional
+        Reading mode; ``"single_line"`` returns the first line, while
+        ``"multi_line"`` returns all lines as a list. Defaults to ``"single_line"``.
+
+    Returns
+    -------
+    Union[str, List[str]]
+        The requested file content, or an empty string if the file is missing.
+    """
     try:
         with open(filename, 'r') as file:
             if mode == 'single_line':
@@ -46,22 +62,54 @@ if not extensions:
     print("Extensions list not found! Will not be able to scan, exiting.")
     sys.exit()
 
-def update_progress(value):
+def update_progress(value: int) -> None:
+    """Update the progress bar to reflect current progress.
+
+    Parameters
+    ----------
+    value : int
+        Current progress count to display.
+    """
     progress_bar['value'] = value
     root.update_idletasks()
 
 
-def configure_progress(max_value):
+def configure_progress(max_value: int) -> None:
+    """Initialize progress bar values for a new scan.
+
+    Parameters
+    ----------
+    max_value : int
+        Total number of steps expected for the scan.
+    """
     progress_bar["maximum"] = max_value
     progress_bar["value"] = 0
     root.update_idletasks()
 
 
-def enqueue_ui_update(func, *args, **kwargs):
+def enqueue_ui_update(func: Callable, *args: Any, **kwargs: Any) -> None:
+    """Queue a UI update to be processed on the main thread.
+
+    Parameters
+    ----------
+    func : Callable
+        Function to execute on the UI thread.
+    *args
+        Positional arguments for ``func``.
+    **kwargs
+        Keyword arguments for ``func``.
+    """
     ui_queue.put((func, args, kwargs))
 
 
-def process_ui_queue():
+def process_ui_queue() -> None:
+    """Drain the UI queue, executing any pending UI updates.
+
+    Returns
+    -------
+    None
+        This function schedules itself to run again via ``root.after``.
+    """
     while not ui_queue.empty():
         func, args, kwargs = ui_queue.get()
         try:
@@ -70,12 +118,35 @@ def process_ui_queue():
             ui_queue.task_done()
     root.after(50, process_ui_queue)
 
-def browse_button_click():
+
+def browse_button_click() -> None:
+    """Handle the directory selection dialog and populate the textbox.
+
+    Returns
+    -------
+    None
+        The selected folder path is written into the GUI textbox.
+    """
     folder_selected = tkinter.filedialog.askdirectory()
     textbox.delete(0, tk.END)
     textbox.insert(0, folder_selected)
 
-def extract_data_from_gpt_response(response):
+
+def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
+    """Parse and validate the JSON payload returned from the OpenAI API.
+
+    Parameters
+    ----------
+    response : Any
+        OpenAI response object expected to contain ``choices[0].message.content``
+        with JSON matching ``EXPECTED_KEYS``.
+
+    Returns
+    -------
+    Union[Dict, str]
+        Parsed JSON dictionary when valid; otherwise, a human-readable error
+        message describing the parsing failure.
+    """
     try:
         json_data = json.loads(response.choices[0].message.content)
         missing_keys = [key for key in EXPECTED_KEYS if key not in json_data]
@@ -94,7 +165,23 @@ def extract_data_from_gpt_response(response):
     except (json.JSONDecodeError, ValueError) as e:
         return str(e)
 
-def handle_gpt_response(snippet, taskdesc):
+
+def handle_gpt_response(snippet: str, taskdesc: str) -> Optional[Dict]:
+    """Request GPT analysis for a snippet with retry and caching support.
+
+    Parameters
+    ----------
+    snippet : str
+        The code or text snippet to analyze.
+    taskdesc : str
+        Prompt content that instructs GPT on how to respond.
+
+    Returns
+    -------
+    Optional[Dict]
+        Parsed JSON data containing administrator/end-user descriptions and
+        threat level, or ``None`` if retries are exhausted.
+    """
     from openai import OpenAI
     retries = 0
     json_data = None
@@ -132,10 +219,21 @@ def handle_gpt_response(snippet, taskdesc):
         return None
 
 
-def motion_handler(tree, event):
+def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
+    """Wrap long cell values so they fit within the visible column width.
+
+    Parameters
+    ----------
+    tree : ttk.Treeview
+        Treeview widget whose values should be wrapped.
+    event : Optional[tk.Event]
+        Drag or resize event triggering the reflow; ``None`` performs an
+        initial adjustment.
+    """
     f = tkinter.font.Font(font='TkDefaultFont')
-    # A helper function that will wrap a given value based on column width
-    def adjust_newlines(val, width, pad=10):
+
+    def adjust_newlines(val: Any, width: int, pad: int = 10) -> Any:
+        """Wrap strings based on the available column width."""
         if not isinstance(val, str):
             return val
         else:
@@ -155,9 +253,6 @@ def motion_handler(tree, event):
             return '\n'.join(lines)
 
     if (event is None) or (tree.identify_region(event.x, event.y) == "separator"):
-        # You may be able to use this to only adjust the two columns that you care about
-        # print(tree.identify_column(event.x))
-
         col_widths = [tree.column(cid)['width'] for cid in tree['columns']]
 
         for iid in tree.get_children():
@@ -166,11 +261,36 @@ def motion_handler(tree, event):
                 new_vals.append(adjust_newlines(v, w))
             tree.item(iid, values=new_vals)
 
-def list_files(path):
+
+def list_files(path: str) -> List[Path]:
+    """Recursively collect files under a directory path.
+
+    Parameters
+    ----------
+    path : str
+        Root directory to traverse.
+
+    Returns
+    -------
+    List[Path]
+        All files found under ``path``.
+    """
     path = Path(path)
     return [p for p in path.rglob('*') if p.is_file()]
 
-def sort_column(tv, col, reverse):
+
+def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
+    """Sort a Treeview column, toggling sort order on subsequent clicks.
+
+    Parameters
+    ----------
+    tv : ttk.Treeview
+        Treeview widget containing the data to sort.
+    col : str
+        Column identifier to sort.
+    reverse : bool
+        Sort order; ``True`` for descending and ``False`` for ascending.
+    """
     l = [(tv.set(k, col), k) for k in tv.get_children("")]
     if col == "own_conf" or col =="gpt_conf":
         # Convert percentage strings to floats for sorting
@@ -187,7 +307,15 @@ def sort_column(tv, col, reverse):
     # Reverse sort order on subsequent clicks of the same column header
     tv.heading(col, command=lambda: sort_column(tv, col, not reverse))
 
-def button_click():
+
+def button_click() -> None:
+    """Trigger a scan in a background thread using the selected path.
+
+    Returns
+    -------
+    None
+        Starts a daemon thread to run the scan.
+    """
     scan_path = textbox.get()
     if not scan_path:
         messagebox.showerror("Scan Error", "Please select a directory to scan.")
@@ -203,7 +331,25 @@ def button_click():
     scan_thread.start()
 
 
-def scan_files(scan_path, deep_scan, show_all, use_gpt):
+def scan_files(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
+    """Scan files for malicious content and optionally request GPT analysis.
+
+    Parameters
+    ----------
+    scan_path : str
+        Directory path to search for files.
+    deep_scan : bool
+        Whether to scan overlapping 1024-byte windows beyond the first block.
+    show_all : bool
+        Whether to yield all scanned files regardless of confidence threshold.
+    use_gpt : bool
+        Whether to request GPT analysis when the local model is confident.
+
+    Yields
+    ------
+    Generator[Tuple[str, Tuple[Any, ...]], None, None]
+        Tuples indicating either progress updates or result rows for the UI/CLI.
+    """
     import tensorflow as tf
     modelscript = tf.keras.models.load_model('scripts.h5', compile=False)
     file_list = list_files(scan_path)
@@ -274,7 +420,20 @@ def scan_files(scan_path, deep_scan, show_all, use_gpt):
         yield ('progress', index + 1, len(file_list))
 
 
-def run_scan(scan_path, deep_scan, show_all, use_gpt):
+def run_scan(scan_path: str, deep_scan: bool, show_all: bool, use_gpt: bool) -> None:
+    """Consume scan events and forward them to the UI thread.
+
+    Parameters
+    ----------
+    scan_path : str
+        Directory to scan.
+    deep_scan : bool
+        Whether to evaluate all 1024-byte windows.
+    show_all : bool
+        Whether to display all results regardless of confidence.
+    use_gpt : bool
+        Whether to enrich suspicious files with GPT output.
+    """
     for event_type, data in scan_files(scan_path, deep_scan, show_all, use_gpt):
         if event_type == 'progress':
             current, total = data[1], data[2]
@@ -286,7 +445,20 @@ def run_scan(scan_path, deep_scan, show_all, use_gpt):
             enqueue_ui_update(tree.insert, "", tk.END, values=data)
 
 
-def run_cli(path, deep, show_all, use_gpt):
+def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool) -> None:
+    """Run scans and stream results to stdout as CSV rows.
+
+    Parameters
+    ----------
+    path : str
+        Directory to scan.
+    deep : bool
+        Whether to evaluate all 1024-byte windows.
+    show_all : bool
+        Whether to emit every scanned file.
+    use_gpt : bool
+        Whether to request GPT analysis for confident detections.
+    """
     writer = csv.writer(sys.stdout)
     writer.writerow(("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"))
 
@@ -295,7 +467,14 @@ def run_cli(path, deep, show_all, use_gpt):
             writer.writerow(data)
 
 
-def export_results():
+def export_results() -> None:
+    """Save the current Treeview contents to a CSV chosen by the user.
+
+    Returns
+    -------
+    None
+        Writes the Treeview rows to the selected CSV path or shows an error.
+    """
     file_path = tkinter.filedialog.asksaveasfilename(
         defaultextension=".csv",
         filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
@@ -314,7 +493,14 @@ def export_results():
         messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
 
 
-def create_gui():
+def create_gui() -> tk.Tk:
+    """Construct and return the main Tkinter GUI for the scanner.
+
+    Returns
+    -------
+    tk.Tk
+        Initialized Tk root instance ready for ``mainloop``.
+    """
     global root, textbox, progress_bar, deep_var, all_var, gpt_var, tree
 
     root = tk.Tk()
