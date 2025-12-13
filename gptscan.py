@@ -585,6 +585,51 @@ def scan_files(
         import tensorflow as tf
         tf_module = tf
         _tf_module = tf_module
+
+    def pad_window(data: bytes) -> List[int]:
+        padded = list(data)
+        if len(padded) < Config.MAXLEN:
+            padded.extend([13] * (Config.MAXLEN - len(padded)))
+        return padded
+
+    def predict_window(window_bytes: bytes) -> Tuple[float, bytes]:
+        padded_data = pad_window(window_bytes)
+        tf_data = tf_module.expand_dims(tf_module.constant(padded_data), axis=0)
+        prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
+        return float(prediction), bytes(padded_data)
+
+    def iter_windows(fh, size: int) -> Generator[Tuple[int, bytes], None, None]:
+        if size == 0:
+            yield 0, b""
+            return
+
+        if not deep_scan:
+            fh.seek(0)
+            yield 0, fh.read(Config.MAXLEN)
+
+            last_start = max(0, size - Config.MAXLEN)
+            if last_start > 0:
+                fh.seek(last_start)
+                yield last_start, fh.read(Config.MAXLEN)
+            return
+
+        offset = 0
+        while offset < size:
+            fh.seek(offset)
+            chunk = fh.read(Config.MAXLEN)
+            if not chunk:
+                break
+            yield offset, chunk
+            offset += Config.MAXLEN
+
+        if size > Config.MAXLEN:
+            last_start = size - Config.MAXLEN
+            if last_start % Config.MAXLEN != 0:
+                fh.seek(last_start)
+                final_chunk = fh.read(Config.MAXLEN)
+                if final_chunk:
+                    yield last_start, final_chunk
+
     file_list = list_files(scan_path)
     total_progress = len(file_list)
     progress_count = 0
@@ -616,49 +661,6 @@ def scan_files(
                 yield ('progress', (progress_count, total_progress, None))
                 continue
 
-            def pad_window(data: bytes) -> List[int]:
-                padded = list(data)
-                if len(padded) < Config.MAXLEN:
-                    padded.extend([13] * (Config.MAXLEN - len(padded)))
-                return padded
-
-            def predict_window(window_bytes: bytes) -> Tuple[float, bytes]:
-                padded_data = pad_window(window_bytes)
-                tf_data = tf_module.expand_dims(tf_module.constant(padded_data), axis=0)
-                prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
-                return float(prediction), bytes(padded_data)
-
-            def iter_windows(fh, size: int) -> Generator[Tuple[int, bytes], None, None]:
-                if size == 0:
-                    yield 0, b""
-                    return
-
-                if not deep_scan:
-                    fh.seek(0)
-                    yield 0, fh.read(Config.MAXLEN)
-
-                    last_start = max(0, size - Config.MAXLEN)
-                    if last_start > 0:
-                        fh.seek(last_start)
-                        yield last_start, fh.read(Config.MAXLEN)
-                    return
-
-                offset = 0
-                while offset < size:
-                    fh.seek(offset)
-                    chunk = fh.read(Config.MAXLEN)
-                    if not chunk:
-                        break
-                    yield offset, chunk
-                    offset += Config.MAXLEN
-
-                if size > Config.MAXLEN:
-                    last_start = size - Config.MAXLEN
-                    if last_start % Config.MAXLEN != 0:
-                        fh.seek(last_start)
-                        final_chunk = fh.read(Config.MAXLEN)
-                        if final_chunk:
-                            yield last_start, final_chunk
 
             resultchecks: List[float] = []
             maxconf = 0.0
