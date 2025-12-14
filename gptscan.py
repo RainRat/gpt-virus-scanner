@@ -275,10 +275,7 @@ def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
     """
     expected_keys = set(Config.EXPECTED_KEYS)
 
-    try:
-        content = response.choices[0].message.content
-    except (AttributeError, IndexError, TypeError) as exc:
-        return f"Invalid response structure: {exc}"
+    content = response.choices[0].message.content
 
     try:
         json_data = json.loads(content)
@@ -339,9 +336,13 @@ async def async_handle_gpt_response(
         try:
             async with semaphore:
                 response = await create_completion(messages=messages)
+            extracted_data = extract_data_from_gpt_response(response)
         except Exception as err:  # pragma: no cover - safety net
             status_code = getattr(err, "status_code", None)
-            if status_code == 429 or "429" in str(getattr(err, "status", "")) or "rate limit" in str(err).lower():
+            is_rate_limit = status_code == 429 or "429" in str(getattr(err, "status", "")) or "rate limit" in str(err).lower()
+            is_structure_error = isinstance(err, (AttributeError, IndexError, TypeError))
+
+            if is_rate_limit or is_structure_error:
                 backoff = 2 ** retries
                 retries += 1
                 await asyncio.sleep(backoff)
@@ -349,7 +350,6 @@ async def async_handle_gpt_response(
             print(f"An unexpected error occurred: {err}")
             break
 
-        extracted_data = extract_data_from_gpt_response(response)
         if isinstance(extracted_data, dict):
             json_data = extracted_data
         else:

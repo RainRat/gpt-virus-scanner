@@ -160,9 +160,8 @@ def test_extract_data_from_gpt_response_coerces_threat_level_string():
 
 
 def test_extract_data_from_gpt_response_invalid_structure():
-    error = gptscan.extract_data_from_gpt_response(object())
-
-    assert "Invalid response structure" in error
+    with pytest.raises(AttributeError):
+        gptscan.extract_data_from_gpt_response(object())
 
 
 def test_list_files_returns_files_only(tmp_path):
