@@ -228,8 +228,9 @@ def browse_button_click() -> None:
         The selected folder path is written into the GUI textbox.
     """
     folder_selected = tkinter.filedialog.askdirectory()
-    textbox.delete(0, tk.END)
-    textbox.insert(0, folder_selected)
+    if folder_selected:
+        textbox.delete(0, tk.END)
+        textbox.insert(0, folder_selected)
 
 
 class AsyncRateLimiter:
