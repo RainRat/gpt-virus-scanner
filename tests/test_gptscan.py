@@ -58,6 +58,10 @@ def test_load_file_missing_returns_empty_string():
     assert gptscan.load_file("non_existent_file.txt") == ""
 
 
+def test_load_file_missing_multiline_returns_empty_list():
+    assert gptscan.load_file("non_existent_file_multiline.txt", mode="multi_line") == []
+
+
 class _MockChoice:
     def __init__(self, content: str):
         self.message = SimpleNamespace(content=content)
@@ -330,6 +334,13 @@ def test_scan_files_handles_permission_error(monkeypatch, tmp_path):
 
     gptscan.Config.set_extensions([".txt"], missing=False)
     monkeypatch.setattr(gptscan, "list_files", lambda _path: [str(blocked_file)])
+
+    # Mock TensorFlow model dependencies
+    monkeypatch.setattr(gptscan, "get_model", lambda: SimpleNamespace(predict=lambda *a, **k: [[0.0]]))
+    monkeypatch.setattr(gptscan, "_tf_module", SimpleNamespace(
+        constant=lambda x: x,
+        expand_dims=lambda x, axis: x
+    ), raising=False)
 
     real_open = builtins.open
 
