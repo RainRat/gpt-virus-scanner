@@ -367,28 +367,6 @@ async def async_handle_gpt_response(
     return None
 
 
-def handle_gpt_response(
-    snippet: str,
-    taskdesc: str,
-    rate_limiter: Optional[AsyncRateLimiter] = None,
-    semaphore: Optional[asyncio.Semaphore] = None,
-    wait_callback: Optional[Callable[[float], None]] = None,
-) -> Optional[Dict]:
-    """Synchronous wrapper to fetch GPT analysis using the async implementation."""
-
-    limiter = rate_limiter or AsyncRateLimiter(Config.RATE_LIMIT_PER_MINUTE)
-    gate = semaphore or asyncio.Semaphore(Config.MAX_CONCURRENT_REQUESTS)
-    return asyncio.run(
-        async_handle_gpt_response(
-            snippet,
-            taskdesc,
-            rate_limiter=limiter,
-            semaphore=gate,
-            wait_callback=wait_callback,
-        )
-    )
-
-
 def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Callable[[str], int]] = None) -> Any:
     """Wrap strings based on the available column width."""
     if not isinstance(val, str):
