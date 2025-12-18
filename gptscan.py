@@ -448,8 +448,6 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
     values_with_ids = [(tv.set(k, col), k) for k in tv.get_children("")]
     if col in {"own_conf", "gpt_conf"}:
         values_with_ids = [(parse_percent(val), k) for val, k in values_with_ids]
-    else:
-        values_with_ids = [(val, k) for val, k in values_with_ids]
 
     values_with_ids.sort(key=lambda item: item[0], reverse=reverse)
 
