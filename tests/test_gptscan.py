@@ -264,9 +264,9 @@ def test_sort_column_with_invalid_percentages():
 
 def test_run_cli_reports_progress(monkeypatch, capsys):
     def fake_scan_files(_path, _deep, _show_all, _use_gpt, _cancel_event=None, **_kwargs):
-        yield ('progress', (0, 2))
+        yield ('progress', (0, 2, None))
         yield ('result', ("/tmp/a", "10%", "", "", "", "snippet"))
-        yield ('progress', (2, 2))
+        yield ('progress', (2, 2, None))
 
     monkeypatch.setattr(gptscan, "scan_files", fake_scan_files)
 

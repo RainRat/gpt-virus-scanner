@@ -552,7 +552,9 @@ def scan_files(
     Yields
     ------
     Generator[Tuple[str, Tuple[Any, ...]], None, None]
-        Tuples indicating either progress updates or result rows for the UI/CLI.
+        Tuples indicating events:
+        - ('progress', (current: int, total: int, status: Optional[str]))
+        - ('result', (path: str, own_conf: str, admin: str, user: str, gpt: str, snippet: str))
     """
     global _tf_module
     cancel_event = cancel_event or threading.Event()
@@ -799,11 +801,7 @@ def run_scan(
             if cancel_event.is_set():
                 break
             if event_type == 'progress':
-                if len(data) == 3:
-                    current, total, status = data
-                else:
-                    current, total = data
-                    status = None
+                current, total, status = data
 
                 if total != last_total:
                     enqueue_ui_update(configure_progress, total)
@@ -851,11 +849,7 @@ def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool, rate_limit: in
         if event_type == 'result':
             writer.writerow(data)
         elif event_type == 'progress':
-            if len(data) == 3:
-                current, total, status = data
-            else:
-                current, total = data
-                status = None
+            current, total, status = data
             final_progress = (current, total)
             print(f"Scanning: {current}/{total} files\r", end='', file=sys.stderr)
             if status:
