@@ -655,7 +655,7 @@ def scan_files(
                         if result > maxconf:
                             maxconf = result
                             max_window_bytes = padded_bytes
-            except (PermissionError, OSError, UnicodeDecodeError) as err:
+            except OSError as err:
                 error_message = f"Error reading file: {err}"
 
             best_result = max(resultchecks, default=0)

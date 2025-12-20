@@ -65,3 +65,31 @@ def test_scan_files_deep_scan_coverage(monkeypatch, tmp_path, mock_scan_dependen
 
     # Verify the model was called the expected number of times
     assert mock_scan_dependencies.call_count == expected_calls
+
+
+def test_scan_files_handles_permission_error(monkeypatch, tmp_path, mock_scan_dependencies):
+    # Setup
+    test_file = tmp_path / "protected.bin"
+    test_file.write_bytes(b"secret")
+
+    monkeypatch.setattr(gptscan.Config, "extensions_set", {".bin"})
+    monkeypatch.setattr(gptscan, "list_files", lambda p: [str(test_file)])
+
+    # Mock open to raise PermissionError
+    def mock_open(*args, **kwargs):
+        raise PermissionError("Access denied")
+
+    monkeypatch.setattr("builtins.open", mock_open)
+
+    results = list(gptscan.scan_files(str(tmp_path), deep_scan=False, show_all=True, use_gpt=False))
+
+    # Verify we get an Error result
+    # Result format: ('result', (path, 'Error', '', '', '', error_msg))
+    # results[0] is progress (0, 1, None)
+    # results[1] is result
+    # results[2] is progress (1, 1, None)
+    assert len(results) == 3
+    res_type, res_data = results[1]
+    assert res_type == 'result'
+    assert res_data[1] == 'Error'
+    assert "Access denied" in res_data[5]
