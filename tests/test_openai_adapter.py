@@ -40,7 +40,7 @@ def test_get_async_openai_client_uses_native_async(monkeypatch):
     client = gptscan.get_async_openai_client()
 
     assert client is mock_async_cls.return_value
-    mock_async_cls.assert_called_once_with(api_key="dummy_key")
+    mock_async_cls.assert_called_once_with(api_key="dummy_key", base_url=None)
 
 
 def test_get_async_openai_client_fallback_to_adapter(monkeypatch):
@@ -60,7 +60,7 @@ def test_get_async_openai_client_fallback_to_adapter(monkeypatch):
 
     assert isinstance(client, gptscan._SyncToAsyncOpenAIAdapter)
 
-    mock_sync_cls.assert_called_with(api_key="dummy_key")
+    mock_sync_cls.assert_called_with(api_key="dummy_key", base_url=None)
     assert client.chat.completions._client == mock_sync_cls.return_value
 
 def test_get_async_openai_client_returns_none_if_no_api_key(monkeypatch):
