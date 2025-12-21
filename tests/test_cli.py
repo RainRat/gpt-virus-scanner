@@ -6,9 +6,9 @@ import pytest
 def test_run_cli_output_csv_format(monkeypatch, capsys):
     # Mock scan_files to yield predictable results
     def mock_scan_files(*args, **kwargs):
-        yield ('progress', (0, 1))
+        yield ('progress', (0, 1, None))
         yield ('result', ("/path/file.py", "95%", "Admin Info", "User Info", "90%", "print('test')"))
-        yield ('progress', (1, 1))
+        yield ('progress', (1, 1, None))
 
     monkeypatch.setattr(gptscan, "scan_files", mock_scan_files)
 
