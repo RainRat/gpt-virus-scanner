@@ -523,6 +523,53 @@ def cancel_scan() -> None:
         current_cancel_event.set()
 
 
+def pad_window(data: bytes, maxlen: Optional[int] = None) -> List[int]:
+    """Pad the data with ASCII 13 to meet the maxlen requirement."""
+    if maxlen is None:
+        maxlen = Config.MAXLEN
+    padded = list(data)
+    if len(padded) < maxlen:
+        padded.extend([13] * (maxlen - len(padded)))
+    return padded
+
+
+def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
+    """Yield file chunks for scanning."""
+    if maxlen is None:
+        maxlen = Config.MAXLEN
+
+    if size == 0:
+        yield 0, b""
+        return
+
+    if not deep_scan:
+        fh.seek(0)
+        yield 0, fh.read(maxlen)
+
+        last_start = max(0, size - maxlen)
+        if last_start > 0:
+            fh.seek(last_start)
+            yield last_start, fh.read(maxlen)
+        return
+
+    offset = 0
+    while offset < size:
+        fh.seek(offset)
+        chunk = fh.read(maxlen)
+        if not chunk:
+            break
+        yield offset, chunk
+        offset += maxlen
+
+    if size > maxlen:
+        last_start = size - maxlen
+        if last_start % maxlen != 0:
+            fh.seek(last_start)
+            final_chunk = fh.read(maxlen)
+            if final_chunk:
+                yield last_start, final_chunk
+
+
 def scan_files(
     scan_path: str,
     deep_scan: bool,
@@ -565,49 +612,11 @@ def scan_files(
         tf_module = tf
         _tf_module = tf_module
 
-    def pad_window(data: bytes) -> List[int]:
-        padded = list(data)
-        if len(padded) < Config.MAXLEN:
-            padded.extend([13] * (Config.MAXLEN - len(padded)))
-        return padded
-
     def predict_window(window_bytes: bytes) -> Tuple[float, bytes]:
         padded_data = pad_window(window_bytes)
         tf_data = tf_module.expand_dims(tf_module.constant(padded_data), axis=0)
         prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
         return float(prediction), bytes(padded_data)
-
-    def iter_windows(fh, size: int) -> Generator[Tuple[int, bytes], None, None]:
-        if size == 0:
-            yield 0, b""
-            return
-
-        if not deep_scan:
-            fh.seek(0)
-            yield 0, fh.read(Config.MAXLEN)
-
-            last_start = max(0, size - Config.MAXLEN)
-            if last_start > 0:
-                fh.seek(last_start)
-                yield last_start, fh.read(Config.MAXLEN)
-            return
-
-        offset = 0
-        while offset < size:
-            fh.seek(offset)
-            chunk = fh.read(Config.MAXLEN)
-            if not chunk:
-                break
-            yield offset, chunk
-            offset += Config.MAXLEN
-
-        if size > Config.MAXLEN:
-            last_start = size - Config.MAXLEN
-            if last_start % Config.MAXLEN != 0:
-                fh.seek(last_start)
-                final_chunk = fh.read(Config.MAXLEN)
-                if final_chunk:
-                    yield last_start, final_chunk
 
     file_list = list_files(scan_path)
     total_progress = len(file_list)
@@ -648,7 +657,7 @@ def scan_files(
 
             try:
                 with open(file_path, 'rb') as f:
-                    for offset, window in iter_windows(f, file_size):
+                    for offset, window in iter_windows(f, file_size, deep_scan):
                         if cancel_event.is_set():
                             break
                         print("Scanning at:", offset if offset > 0 else 0)
