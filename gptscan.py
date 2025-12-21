@@ -57,9 +57,12 @@ class Config:
     extensions: Union[List[str], str] = []
     extensions_set: set[str] = set()
     extensions_missing: bool = False
+    provider: str = "openai"
+    model_name: str = "gpt-3.5-turbo"
+    api_base: Optional[str] = None
 
     apikey_missing_message = (
-        "OpenAI key file not found. No GPT data will be included in report..."
+        "OpenAI key file not found. GPT functionality may be limited..."
     )
     task_missing_message = (
         "Task description file not found. No GPT data will be included in report..."
@@ -80,8 +83,10 @@ class Config:
             print(cls.apikey_missing_message)
         if not cls.taskdesc:
             print(cls.task_missing_message)
-            cls.apikey = ''
-        cls.GPT_ENABLED = bool(cls.apikey and cls.taskdesc)
+
+        # Enable GPT if task description is present.
+        # Specific provider requirements (like API key) are checked at runtime.
+        cls.GPT_ENABLED = bool(cls.taskdesc)
 
         loaded_extensions = load_file('extensions.txt', mode='multi_line')
         if not loaded_extensions:
@@ -122,10 +127,22 @@ def get_openai_client() -> Any:
     """Lazily instantiate and reuse the OpenAI client."""
 
     global _openai_client
-    if _openai_client is None and Config.apikey:
+
+    api_key = Config.apikey
+    if Config.provider == "ollama" and not api_key:
+        api_key = "ollama"
+
+    if _openai_client is None and api_key:
         from openai import OpenAI
 
-        _openai_client = OpenAI(api_key=Config.apikey)
+        base_url = Config.api_base
+        if not base_url:
+            if Config.provider == "openrouter":
+                base_url = "https://openrouter.ai/api/v1"
+            elif Config.provider == "ollama":
+                base_url = "http://localhost:11434/v1"
+
+        _openai_client = OpenAI(api_key=api_key, base_url=base_url)
     return _openai_client
 
 
@@ -151,11 +168,23 @@ def get_async_openai_client() -> Any:
     """Lazily instantiate and reuse the asynchronous OpenAI client."""
 
     global _async_openai_client
-    if _async_openai_client is None and Config.apikey:
+
+    api_key = Config.apikey
+    if Config.provider == "ollama" and not api_key:
+        api_key = "ollama"
+
+    if _async_openai_client is None and api_key:
+        base_url = Config.api_base
+        if not base_url:
+            if Config.provider == "openrouter":
+                base_url = "https://openrouter.ai/api/v1"
+            elif Config.provider == "ollama":
+                base_url = "http://localhost:11434/v1"
+
         try:
             from openai import AsyncOpenAI
 
-            _async_openai_client = AsyncOpenAI(api_key=Config.apikey)
+            _async_openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         except ImportError:
             client = get_openai_client()
             if client is not None:
@@ -326,7 +355,7 @@ async def async_handle_gpt_response(
     if client is None:
         return None
 
-    create_completion = partial(client.chat.completions.create, model="gpt-3.5-turbo")
+    create_completion = partial(client.chat.completions.create, model=Config.model_name)
     messages = [
         {"role": "system", "content": taskdesc},
         {"role": "user", "content": snippet},
@@ -925,9 +954,45 @@ def create_gui() -> tk.Tk:
         gpt_var.set(False)
         gpt_checkbox.config(state="disabled")
         messagebox.showwarning("GPT Disabled",
-                                       "apikey.txt or task.txt not found. GPT functionality is disabled.")
+                                       "task.txt not found. GPT functionality is disabled.")
 
     gpt_checkbox.pack()
+
+    # Provider Settings
+    provider_frame = tk.Frame(root)
+    provider_frame.pack(pady=5)
+
+    tk.Label(provider_frame, text="Provider:").pack(side=tk.LEFT)
+    provider_var = tk.StringVar(value=Config.provider)
+    provider_combo = ttk.Combobox(provider_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=10)
+    provider_combo.pack(side=tk.LEFT, padx=5)
+
+    tk.Label(provider_frame, text="Model:").pack(side=tk.LEFT)
+    model_var = tk.StringVar(value=Config.model_name)
+    model_entry = tk.Entry(provider_frame, textvariable=model_var, width=15)
+    model_entry.pack(side=tk.LEFT, padx=5)
+
+    def on_provider_change(event):
+        p = provider_var.get()
+        Config.provider = p
+
+        # Reset clients so they are recreated with new settings
+        global _openai_client, _async_openai_client
+        _openai_client = None
+        _async_openai_client = None
+
+        if p == "ollama":
+            model_var.set("llama2")
+        else:
+            model_var.set("gpt-3.5-turbo")
+        Config.model_name = model_var.get()
+
+    provider_combo.bind("<<ComboboxSelected>>", on_provider_change)
+
+    def on_model_change(*args):
+        Config.model_name = model_var.get()
+
+    model_var.trace_add("write", on_model_change)
 
     if Config.extensions_missing:
         default_exts = ', '.join(sorted(Config.extensions_set)) if Config.extensions_set else 'none'
@@ -1000,7 +1065,33 @@ if __name__ == "__main__":
         default=Config.RATE_LIMIT_PER_MINUTE,
         help='Maximum GPT requests per minute (default: 60)'
     )
+    parser.add_argument(
+        '--provider',
+        type=str,
+        default='openai',
+        choices=['openai', 'openrouter', 'ollama'],
+        help='Cloud provider for analysis (default: openai)'
+    )
+    parser.add_argument(
+        '--model',
+        type=str,
+        help='Model name to use (default depends on provider)'
+    )
+    parser.add_argument(
+        '--api-base',
+        type=str,
+        help='Custom API base URL'
+    )
     args = parser.parse_args()
+
+    Config.provider = args.provider
+    if args.api_base:
+        Config.api_base = args.api_base
+
+    if args.model:
+        Config.model_name = args.model
+    elif Config.provider == 'ollama':
+        Config.model_name = 'llama2'
 
     if args.extensions:
         extension_list = [ext.strip() for ext in args.extensions.split(',') if ext.strip()]
