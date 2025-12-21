@@ -29,7 +29,7 @@ def test_handle_gpt_response_returns_cached_result(monkeypatch):
     mock_completions = _MockCompletions(responses)
 
     class MockOpenAI:
-        def __init__(self, api_key):
+        def __init__(self, api_key, **kwargs):
             self.chat = SimpleNamespace(completions=mock_completions)
 
     monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=MockOpenAI))
@@ -58,7 +58,7 @@ def test_handle_gpt_response_retries_after_invalid_json(monkeypatch):
     mock_completions = _MockCompletions([invalid_response, valid_response])
 
     class MockOpenAI:
-        def __init__(self, api_key):
+        def __init__(self, api_key, **kwargs):
             self.chat = SimpleNamespace(completions=mock_completions)
     monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=MockOpenAI))
     monkeypatch.setattr(gptscan.Config, "MAX_RETRIES", 3)

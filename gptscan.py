@@ -930,47 +930,59 @@ def create_gui() -> tk.Tk:
     global root, textbox, progress_bar, deep_var, all_var, gpt_var, tree, scan_button, cancel_button
 
     root = tk.Tk()
-    root.geometry("800x500")
+    root.geometry("1000x600")
     root.title("GPT Virus Scanner")
 
-    label = tk.Label(root, text="Path to scan")
-    label.pack()
+    # Configure grid weights to ensure resizing behaves correctly
+    root.columnconfigure(0, weight=1)
+    root.rowconfigure(5, weight=1)  # The row containing the Treeview
 
-    textbox = tk.Entry(root)
-    textbox.pack()
-    select_dir_btn = tk.Button(root, text="Select Directory", command=browse_button_click)
-    select_dir_btn.pack()
+    # --- Input Frame ---
+    input_frame = tk.Frame(root)
+    input_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+    input_frame.columnconfigure(1, weight=1)
+
+    tk.Label(input_frame, text="Path to scan:").grid(row=0, column=0, sticky="w", padx=(0, 5))
+    textbox = tk.Entry(input_frame)
+    textbox.grid(row=0, column=1, sticky="ew", padx=5)
+    select_dir_btn = tk.Button(input_frame, text="Select Directory", command=browse_button_click)
+    select_dir_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
+
+    # --- Options Frame ---
+    options_frame = tk.Frame(root)
+    options_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+
     deep_var = tk.BooleanVar()
-    deep_checkbox = tk.Checkbutton(root, text="Deep scan", variable=deep_var)
-    deep_checkbox.pack()
+    deep_checkbox = tk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
+    deep_checkbox.pack(side=tk.LEFT, padx=10)
 
     all_var = tk.BooleanVar()
-    all_checkbox = tk.Checkbutton(root, text="Show all files", variable=all_var)
-    all_checkbox.pack()
+    all_checkbox = tk.Checkbutton(options_frame, text="Show all files", variable=all_var)
+    all_checkbox.pack(side=tk.LEFT, padx=10)
 
     gpt_var = tk.BooleanVar()
-    gpt_checkbox = tk.Checkbutton(root, text="Use ChatGPT", variable=gpt_var)
+    gpt_checkbox = tk.Checkbutton(options_frame, text="Use ChatGPT", variable=gpt_var)
+    gpt_checkbox.pack(side=tk.LEFT, padx=10)
+
     if not Config.GPT_ENABLED:
         gpt_var.set(False)
         gpt_checkbox.config(state="disabled")
         messagebox.showwarning("GPT Disabled",
                                        "task.txt not found. GPT functionality is disabled.")
 
-    gpt_checkbox.pack()
+    # --- Provider Frame ---
+    provider_frame = tk.LabelFrame(root, text="Provider Settings")
+    provider_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
 
-    # Provider Settings
-    provider_frame = tk.Frame(root)
-    provider_frame.pack(pady=5)
-
-    tk.Label(provider_frame, text="Provider:").pack(side=tk.LEFT)
+    tk.Label(provider_frame, text="Provider:").pack(side=tk.LEFT, padx=5, pady=5)
     provider_var = tk.StringVar(value=Config.provider)
-    provider_combo = ttk.Combobox(provider_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=10)
-    provider_combo.pack(side=tk.LEFT, padx=5)
+    provider_combo = ttk.Combobox(provider_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
+    provider_combo.pack(side=tk.LEFT, padx=5, pady=5)
 
-    tk.Label(provider_frame, text="Model:").pack(side=tk.LEFT)
+    tk.Label(provider_frame, text="Model:").pack(side=tk.LEFT, padx=5, pady=5)
     model_var = tk.StringVar(value=Config.model_name)
-    model_entry = tk.Entry(provider_frame, textvariable=model_var, width=15)
-    model_entry.pack(side=tk.LEFT, padx=5)
+    model_entry = tk.Entry(provider_frame, textvariable=model_var, width=20)
+    model_entry.pack(side=tk.LEFT, padx=5, pady=5)
 
     def on_provider_change(event):
         p = provider_var.get()
@@ -1001,17 +1013,31 @@ def create_gui() -> tk.Tk:
             f"extensions.txt not found. Using default extensions: {default_exts}"
         )
 
-    scan_button = tk.Button(root, text="Scan now", command=button_click)
-    scan_button.pack()
-    cancel_button = tk.Button(root, text="Cancel", command=cancel_scan, state="disabled")
-    cancel_button.pack()
-    export_button = tk.Button(root, text="Export CSV", command=export_results)
-    export_button.pack()
-    progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, length=100, mode='determinate')
-    progress_bar.pack()
+    # --- Action Frame ---
+    action_frame = tk.Frame(root)
+    action_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+
+    scan_button = tk.Button(action_frame, text="Scan now", command=button_click)
+    scan_button.pack(side=tk.LEFT, padx=5)
+    cancel_button = tk.Button(action_frame, text="Cancel", command=cancel_scan, state="disabled")
+    cancel_button.pack(side=tk.LEFT, padx=5)
+    export_button = tk.Button(action_frame, text="Export CSV", command=export_results)
+    export_button.pack(side=tk.RIGHT, padx=5)
+
+    # --- Progress Bar ---
+    progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, mode='determinate')
+    progress_bar.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
+
+    # --- Treeview ---
     style = ttk.Style(root)
-    style.configure('Scanner.Treeview', rowheight=100)
-    tree = ttk.Treeview(root, style='Scanner.Treeview')
+    style.configure('Scanner.Treeview', rowheight=50)
+
+    tree_frame = tk.Frame(root)
+    tree_frame.grid(row=5, column=0, sticky="nsew", padx=10, pady=5)
+    tree_frame.columnconfigure(0, weight=1)
+    tree_frame.rowconfigure(0, weight=1)
+
+    tree = ttk.Treeview(tree_frame, style='Scanner.Treeview')
     tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
     tree.column("#0", width=0, stretch=tk.NO)
     tree.column("path", width=200, stretch=tk.NO, anchor="w")
@@ -1034,13 +1060,13 @@ def create_gui() -> tk.Tk:
                  command=lambda: sort_column(tree, "gpt_conf", False))
     tree.heading("snippet", text="Snippet", command=lambda: sort_column(tree, "snippet", False))
 
-    tree.pack(fill=tk.BOTH, expand=True)
-
-    scrollbar = ttk.Scrollbar(tree, orient="vertical", command=tree.yview)
-    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+    scrollbar.grid(row=0, column=1, sticky="ns")
 
     tree.configure(yscrollcommand=scrollbar.set)
     tree.bind('<ButtonRelease-1>', partial(motion_handler, tree))
+    tree.grid(row=0, column=0, sticky="nsew")
+
     motion_handler(tree, None)   # Perform initial wrapping
     set_scanning_state(False)
     return root
