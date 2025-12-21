@@ -607,10 +607,6 @@ def scan_files(
     cancel_event = cancel_event or threading.Event()
     modelscript = get_model()
     tf_module = _tf_module
-    if tf_module is None:
-        import tensorflow as tf
-        tf_module = tf
-        _tf_module = tf_module
 
     def predict_window(window_bytes: bytes) -> Tuple[float, bytes]:
         padded_data = pad_window(window_bytes)
