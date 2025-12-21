@@ -1,72 +1,92 @@
 # GPT Virus Scanner
 
-## Description
+## What is this?
 
-Can ChatGPT be used as a Virus Scanner? Yes.
+This is a proof-of-concept security tool that checks your script files for malicious code. It works in two stages:
+1.  **Local Scan:** A built-in AI model checks your files quickly.
+2.  **Cloud Analysis:** If a file looks suspicious, it sends a snippet to OpenAI (ChatGPT) for a detailed report.
 
-This is more of a prototype than an actual product.
+**Note:** This is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, Batch) but not compiled executables or archives.
 
-- Only scans scripts
-- No archive scanning
-- No executables scanning
-- No malware removal
-- No real-time scanner
+## Requirements
 
-## Technologies Used
-
-- Python
-- Tensorflow
-- Tkinter
-- ChatGPT API
-
-## Features
-
-- Uses built in list of file extensions to decide what to scan.
-- Comes with an automatic filter, which is its own fully-functional machine-learning model, to choose which files to send to ChatGPT.
-- Asks ChatGPT for an administrator's description, an end-user's description, and a threat level.
-- Sort the scan results by clicking on the headers.
+*   **Python 3.8** or newer.
+*   **TensorFlow** (for the local AI model).
+*   **OpenAI** (for the detailed analysis).
+*   **Tkinter** (for the graphical interface).
 
 ## Installation
 
-- Install Python
-- Add tensorflow, tkinter, openai packages to Python
-- Get an OpenAI API key, put it in a file called apikey.txt
-  - When you get your API key, check OpenAI's policy on data retention for yourself. I never see the contents of your files unless you send them an alternate way, but any files you send to OpenAI through your API key are associated with your account.
-  
-## Usage
+1.  **Install Python** from [python.org](https://www.python.org/).
+2.  **Install the required libraries** by running this command in your terminal:
 
-- Run the program
+    ```bash
+    pip install tensorflow openai
+    ```
 
-```batch
-python gptscan.py
-```
-![Scan Results](gpt-virus-scan.png)
+    *Linux users:* You might need to install Tkinter separately:
+    ```bash
+    sudo apt-get install python3-tk
+    ```
 
-- Show all files: List all files scanned
-- Deep scan: By default, the prefilter will scan the first and last 1024 bytes of each file. Deep scan will scan every byte of the file, top to bottom.
-- Use ChatGPT: Use ChatGPT to assess the interesting files.
+3.  **Set up your API Key:**
+    *   Get an API key from [OpenAI](https://platform.openai.com/).
+    *   Create a file named `apikey.txt` in the same folder as `gptscan.py`.
+    *   Paste your API key into that file (and nothing else).
 
-## Testing
+    *Privacy Note:* Files are sent to OpenAI only if you enable the "Use ChatGPT" option. Check OpenAI's data policy to understand how they handle your data.
 
-- Install development dependencies: `python -m pip install pytest openai` (and `python3-tk` from your package manager if Tkinter is missing).
-- Run the automated test suite:
+## How to Use
+
+### Graphical Interface (GUI)
+
+Just run the script to open the window:
 
 ```bash
-python -m pytest
+python gptscan.py
 ```
+
+*   **Select Directory:** Choose the folder you want to scan.
+*   **Deep Scan:** Check this to scan the entire file (slower). By default, it only checks the beginning and end of files.
+*   **Show all files:** Check this to see every file scanned, not just the suspicious ones.
+*   **Use ChatGPT:** Check this to get a detailed report for suspicious files.
+
+You can sort the results by clicking on the column headers.
+
+![Scan Results](gpt-virus-scan.png)
+
+### Command Line (CLI)
+
+You can also run scans from the terminal. This is useful for automated tasks.
+
+**Example:**
+```bash
+python gptscan.py --cli --path "./my_scripts" --use-gpt
+```
+
+**Options:**
+*   `--cli`: Runs in command-line mode (required).
+*   `--path <folder>`: The folder to scan (required).
+*   `--deep`: Performs a full file scan.
+*   `--show-all`: Lists all files, even safe ones.
+*   `--use-gpt`: Enables OpenAI analysis for suspicious files.
+*   `--extensions "py,js,bat"`: Overrides the default list of file types to scan.
 
 ## Contributing
 
-- Send a pull request, and I'll add reasonable changes.
-- The pre-ChatGPT filter scans the file in 1024-byte chunks, and only interesting files get sent to ChatGPT. It's also what chooses only the interesting part of the file to send.
-  - The filter is a LSTM machine learning model trained on examples of clean and malware files.
-  - You can contribute examples of false positive or false negatives, and I'll use them in a future update, but it's not scanning for specific malware; it might take a few dozen of a specific type of sample to get it to flip its opinion on that type. Send me a private message.
-  - The 1024-byte window will be too small to see what some malware is up to. It could be increased, but it would require more training samples to fully take advantage of the increase.
+We welcome improvements!
 
+*   **False Positives/Negatives:** The local AI looks at files in small chunks (1024 bytes) and isn't perfect. If you find a file it misidentifies, please send us an example so we can retrain the model.
+*   **Code:** Pull requests are welcome. Please run the tests before submitting:
+
+    ```bash
+    pip install pytest
+    python -m pytest
+    ```
 
 ## Credits
 
-Thanks to contributors on [Stack Overflow](https://stackoverflow.com/questions/51131812/wrap-text-inside-row-in-tkinter-treeview) who I borrowed code to make the GUI. 
+Thanks to the [Stack Overflow](https://stackoverflow.com/questions/51131812/wrap-text-inside-row-in-tkinter-treeview) community for the GUI code inspiration.
 
 ## License
 
