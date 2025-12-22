@@ -12,7 +12,10 @@ This is a proof-of-concept security tool that checks your script files for malic
 
 *   **Python 3.8** or newer.
 *   **TensorFlow** (for the local AI model).
-*   **OpenAI** (for the detailed analysis).
+*   **LLM Provider** (Optional, for detailed analysis):
+    *   **OpenAI** (requires API key)
+    *   **OpenRouter** (requires API key)
+    *   **Ollama** (requires local installation)
 *   **Tkinter** (for the graphical interface).
 
 ## Installation
@@ -34,12 +37,17 @@ This is a proof-of-concept security tool that checks your script files for malic
     sudo apt-get install python3-tk
     ```
 
-4.  **Set up your API Key:**
-    *   Get an API key from [OpenAI](https://platform.openai.com/).
+4.  **Set up your Provider (Optional):**
+
+    If you want to use cloud analysis (OpenAI or OpenRouter), you need an API key:
     *   Create a file named `apikey.txt` in the same folder as `gptscan.py`.
     *   Paste your API key into that file (and nothing else).
 
-    *Privacy Note:* Files are sent to OpenAI only if you enable the "Use ChatGPT" option. Check OpenAI's data policy to understand how they handle your data.
+    *   **OpenAI:** Get a key from [OpenAI](https://platform.openai.com/).
+    *   **OpenRouter:** Get a key from [OpenRouter](https://openrouter.ai/).
+    *   **Ollama:** No API key needed! Just ensure Ollama is running locally (default: `http://localhost:11434`).
+
+    *Privacy Note:* Files are sent to the provider only if you enable the "Use ChatGPT" option. Check your provider's data policy.
 
 ## How to Use
 
@@ -55,6 +63,7 @@ python gptscan.py
 *   **Deep Scan:** Check this to scan the entire file (slower). By default, it only checks the beginning and end of files.
 *   **Show all files:** Check this to see every file scanned, not just the suspicious ones.
 *   **Use ChatGPT:** Check this to get a detailed report for suspicious files.
+*   **Provider Settings:** Choose between OpenAI, OpenRouter, or Ollama, and specify the model.
 
 You can sort the results by clicking on the column headers.
 
@@ -74,9 +83,12 @@ python gptscan.py --cli --path "./my_scripts" --use-gpt
 *   `--path <folder>`: The folder to scan (required).
 *   `--deep`: Scans the entire file instead of just the start and end (slower).
 *   `--show-all`: Lists all files, even safe ones.
-*   `--use-gpt`: Sends suspicious code to OpenAI for analysis.
+*   `--use-gpt`: Sends suspicious code to the LLM for analysis.
 *   `--extensions "py,js,bat"`: Scans these file types instead of the defaults.
-*   `--rate-limit <number>`: Sets the maximum OpenAI requests per minute (default: 60).
+*   `--rate-limit <number>`: Sets the maximum requests per minute (default: 60).
+*   `--provider <name>`: Choose 'openai', 'openrouter', or 'ollama' (default: openai).
+*   `--model <name>`: Specify the model name (e.g., 'gpt-4', 'llama2').
+*   `--api-base <url>`: Set a custom API URL.
 
 ## Contributing
 
