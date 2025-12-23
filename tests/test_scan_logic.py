@@ -52,7 +52,7 @@ def test_scan_files_deep_scan_coverage(monkeypatch, tmp_path, mock_scan_dependen
     monkeypatch.setattr(gptscan.Config, "extensions_set", {".bin"})
 
     # Mock list_files to return only our test file
-    monkeypatch.setattr(gptscan, "list_files", lambda p: [str(test_file)])
+    monkeypatch.setattr(gptscan, "list_files", lambda p: [test_file])
 
     # Execute scan with deep_scan=True
     # Convert generator to list to ensure execution
@@ -73,7 +73,7 @@ def test_scan_files_handles_permission_error(monkeypatch, tmp_path, mock_scan_de
     test_file.write_bytes(b"secret")
 
     monkeypatch.setattr(gptscan.Config, "extensions_set", {".bin"})
-    monkeypatch.setattr(gptscan, "list_files", lambda p: [str(test_file)])
+    monkeypatch.setattr(gptscan, "list_files", lambda p: [test_file])
 
     # Mock open to raise PermissionError
     def mock_open(*args, **kwargs):

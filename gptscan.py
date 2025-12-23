@@ -654,11 +654,11 @@ def scan_files(
     for index, file_path in enumerate(file_list):
         if cancel_event.is_set():
             break
-        extension = Path(file_path).suffix.lower()
+        extension = file_path.suffix.lower()
         if extension in Config.extensions_set:
             print(file_path)
             try:
-                file_size = Path(file_path).stat().st_size
+                file_size = file_path.stat().st_size
             except OSError as err:
                 yield (
                     'result',
