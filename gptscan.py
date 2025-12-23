@@ -123,26 +123,35 @@ def get_model() -> Any:
     return _model_cache
 
 
+def _get_provider_config() -> Tuple[Optional[str], Optional[str]]:
+    """Determine the API key and base URL based on the current configuration."""
+    api_key = Config.apikey
+    if Config.provider == "ollama" and not api_key:
+        api_key = "ollama"
+
+    if not api_key:
+        return None, None
+
+    base_url = Config.api_base
+    if not base_url:
+        if Config.provider == "openrouter":
+            base_url = "https://openrouter.ai/api/v1"
+        elif Config.provider == "ollama":
+            base_url = "http://localhost:11434/v1"
+
+    return api_key, base_url
+
+
 def get_openai_client() -> Any:
     """Lazily instantiate and reuse the OpenAI client."""
 
     global _openai_client
 
-    api_key = Config.apikey
-    if Config.provider == "ollama" and not api_key:
-        api_key = "ollama"
-
-    if _openai_client is None and api_key:
-        from openai import OpenAI
-
-        base_url = Config.api_base
-        if not base_url:
-            if Config.provider == "openrouter":
-                base_url = "https://openrouter.ai/api/v1"
-            elif Config.provider == "ollama":
-                base_url = "http://localhost:11434/v1"
-
-        _openai_client = OpenAI(api_key=api_key, base_url=base_url)
+    if _openai_client is None:
+        api_key, base_url = _get_provider_config()
+        if api_key:
+            from openai import OpenAI
+            _openai_client = OpenAI(api_key=api_key, base_url=base_url)
     return _openai_client
 
 
@@ -169,26 +178,18 @@ def get_async_openai_client() -> Any:
 
     global _async_openai_client
 
-    api_key = Config.apikey
-    if Config.provider == "ollama" and not api_key:
-        api_key = "ollama"
+    if _async_openai_client is None:
+        api_key, base_url = _get_provider_config()
 
-    if _async_openai_client is None and api_key:
-        base_url = Config.api_base
-        if not base_url:
-            if Config.provider == "openrouter":
-                base_url = "https://openrouter.ai/api/v1"
-            elif Config.provider == "ollama":
-                base_url = "http://localhost:11434/v1"
+        if api_key:
+            try:
+                from openai import AsyncOpenAI
 
-        try:
-            from openai import AsyncOpenAI
-
-            _async_openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
-        except ImportError:
-            client = get_openai_client()
-            if client is not None:
-                _async_openai_client = _SyncToAsyncOpenAIAdapter(client)
+                _async_openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+            except ImportError:
+                client = get_openai_client()
+                if client is not None:
+                    _async_openai_client = _SyncToAsyncOpenAIAdapter(client)
     return _async_openai_client
 
 def update_progress(value: int) -> None:
