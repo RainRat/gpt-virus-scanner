@@ -21,7 +21,7 @@ This is a proof-of-concept security tool that checks your script files for malic
 ## Installation
 
 1.  **Get the code:**
-    Clone this repository or download the files. You need `gptscan.py`, `scripts.h5`, and `task.txt` in the same folder.
+    Clone this repository or download the files. You need `gptscan.py`, `scripts.h5`, `task.txt`, and `extensions.txt` in the same folder.
 
 2.  **Install Python** from [python.org](https://www.python.org/).
 
