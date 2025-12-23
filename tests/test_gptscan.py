@@ -319,7 +319,7 @@ def test_scan_files_uses_cached_model(monkeypatch, tmp_path):
 
     monkeypatch.setattr(gptscan, "_tf_module", fake_tf, raising=False)
     monkeypatch.setattr(gptscan, "_model_cache", None, raising=False)
-    monkeypatch.setattr(gptscan, "list_files", lambda _path: [str(sample_file)])
+    monkeypatch.setattr(gptscan, "list_files", lambda _path: [sample_file])
     gptscan.Config.set_extensions([".txt"], missing=False)
 
     list(gptscan.scan_files(str(tmp_path), deep_scan=False, show_all=True, use_gpt=False, cancel_event=None))
@@ -333,7 +333,7 @@ def test_scan_files_handles_permission_error(monkeypatch, tmp_path):
     blocked_file.write_text("content")
 
     gptscan.Config.set_extensions([".txt"], missing=False)
-    monkeypatch.setattr(gptscan, "list_files", lambda _path: [str(blocked_file)])
+    monkeypatch.setattr(gptscan, "list_files", lambda _path: [blocked_file])
 
     # Mock TensorFlow model dependencies
     monkeypatch.setattr(gptscan, "get_model", lambda: SimpleNamespace(predict=lambda *a, **k: [[0.0]]))
