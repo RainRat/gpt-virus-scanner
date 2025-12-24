@@ -1112,38 +1112,38 @@ def create_gui() -> tk.Tk:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="GPT Virus Scanner")
-    parser.add_argument('--cli', action='store_true', help='Run in command-line mode')
-    parser.add_argument('--path', type=str, help='Directory to scan')
-    parser.add_argument('--deep', action='store_true', help='Perform a deep scan')
-    parser.add_argument('--show-all', action='store_true', help='Show all files in the output')
-    parser.add_argument('--use-gpt', action='store_true', help='Use GPT for analysis')
+    parser.add_argument('--cli', action='store_true', help='Run the scanner without a window (command-line only).')
+    parser.add_argument('--path', type=str, help='The folder you want to scan for viruses.')
+    parser.add_argument('--deep', action='store_true', help='Scan the entire file (slower but more thorough).')
+    parser.add_argument('--show-all', action='store_true', help='List every file scanned, even safe ones.')
+    parser.add_argument('--use-gpt', action='store_true', help='Send suspicious files to ChatGPT for a detailed report.')
     parser.add_argument(
         '--extensions',
         type=str,
-        help='Comma-separated list of file extensions to scan (overrides extensions.txt)'
+        help='Scan these file types instead of the defaults (e.g., .py,.js).'
     )
     parser.add_argument(
         '--rate-limit',
         type=int,
         default=Config.RATE_LIMIT_PER_MINUTE,
-        help='Maximum GPT requests per minute (default: 60)'
+        help='Max number of analysis requests per minute (default: 60).'
     )
     parser.add_argument(
         '--provider',
         type=str,
         default='openai',
         choices=['openai', 'openrouter', 'ollama'],
-        help='Cloud provider for analysis (default: openai)'
+        help='Choose which AI service to use (default: openai).'
     )
     parser.add_argument(
         '--model',
         type=str,
-        help='Model name to use (default depends on provider)'
+        help='Specific AI model name (e.g., gpt-4).'
     )
     parser.add_argument(
         '--api-base',
         type=str,
-        help='Custom API base URL'
+        help='Custom web address for the API.'
     )
     args = parser.parse_args()
 
