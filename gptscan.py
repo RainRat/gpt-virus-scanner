@@ -1114,7 +1114,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="GPT Virus Scanner")
     parser.add_argument('--cli', action='store_true', help='Run in command-line mode')
-    parser.add_argument('--path', type=str, help='Directory to scan')
+    parser.add_argument('--path', type=str, help='Directory to scan (default: current directory)')
     parser.add_argument('--deep', action='store_true', help='Perform a deep scan')
     parser.add_argument('--show-all', action='store_true', help='Show all files in the output')
     parser.add_argument('--use-gpt', action='store_true', help='Use GPT for analysis')
@@ -1162,9 +1162,8 @@ if __name__ == "__main__":
         Config.set_extensions(extension_list, missing=False)
 
     if args.cli:
-        if not args.path:
-            parser.error('--path is required in CLI mode')
-        run_cli(args.path, args.deep, args.show_all, args.use_gpt, args.rate_limit)
+        scan_path = args.path if args.path else "."
+        run_cli(scan_path, args.deep, args.show_all, args.use_gpt, args.rate_limit)
     else:
         app_root = create_gui()
         app_root.mainloop()
