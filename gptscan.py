@@ -420,7 +420,7 @@ def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Calla
     lines: List[Union[str, List[str]]] = [[]]
     for word in words:
         line = lines[-1] + [word]
-        if measure(' '.join(line)) < (width - pad):
+        if not lines[-1] or measure(' '.join(line)) < (width - pad):
             lines[-1].append(word)
         else:
             lines[-1] = ' '.join(lines[-1])
