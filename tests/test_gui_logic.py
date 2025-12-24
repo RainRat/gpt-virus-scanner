@@ -61,10 +61,16 @@ def test_finish_scan_state_resets_state(monkeypatch):
     monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
     monkeypatch.setattr(gptscan, 'cancel_button', mock_cancel_button, raising=False)
 
+    # Mock status_label
+    mock_status_label = MagicMock()
+    monkeypatch.setattr(gptscan, 'status_label', mock_status_label, raising=False)
+    monkeypatch.setattr(gptscan, 'root', MagicMock(), raising=False)
+
     # Action
     gptscan.finish_scan_state()
 
     # Assert
+    mock_status_label.config.assert_called_with(text="Ready")
     assert gptscan.current_cancel_event is None
     mock_scan_button.config.assert_called_with(state="normal")
     mock_cancel_button.config.assert_called_with(state="disabled")
@@ -147,10 +153,16 @@ def test_button_click_starts_scan(monkeypatch):
     mock_thread_cls.return_value = mock_thread_instance
     monkeypatch.setattr(gptscan.threading, 'Thread', mock_thread_cls)
 
+    # Mock status_label
+    mock_status_label = MagicMock()
+    monkeypatch.setattr(gptscan, 'status_label', mock_status_label, raising=False)
+    monkeypatch.setattr(gptscan, 'root', MagicMock(), raising=False)
+
     # Action
     gptscan.button_click()
 
     # Assert
+    mock_status_label.config.assert_called_with(text="Starting scan...")
     assert gptscan.current_cancel_event is not None
     mock_scan_button.config.assert_called_with(state="disabled")
 
