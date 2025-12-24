@@ -192,6 +192,19 @@ def get_async_openai_client() -> Any:
                     _async_openai_client = _SyncToAsyncOpenAIAdapter(client)
     return _async_openai_client
 
+
+def update_status(message: str) -> None:
+    """Update the status label with the given message.
+
+    Parameters
+    ----------
+    message : str
+        The message to display in the status label.
+    """
+    status_label.config(text=message)
+    root.update_idletasks()
+
+
 def update_progress(value: int) -> None:
     """Update the progress bar to reflect current progress.
 
@@ -509,6 +522,7 @@ def finish_scan_state() -> None:
     global current_cancel_event
     current_cancel_event = None
     set_scanning_state(False)
+    update_status("Ready")
 
 
 def button_click() -> None:
@@ -535,6 +549,7 @@ def button_click() -> None:
 
     current_cancel_event = threading.Event()
     set_scanning_state(True)
+    update_status("Starting scan...")
     scan_args = (
         scan_path,
         deep_var.get(),
@@ -647,7 +662,7 @@ def scan_files(
     file_list = list_files(scan_path)
     total_progress = len(file_list)
     progress_count = 0
-    yield ('progress', (progress_count, total_progress, None))
+    yield ('progress', (progress_count, total_progress, "Scanning..."))
 
     gpt_requests: List[Dict[str, Any]] = []
 
@@ -844,6 +859,7 @@ def run_scan(
                 enqueue_ui_update(update_progress, current)
                 if status:
                     print(status)
+                    enqueue_ui_update(update_status, status)
             elif event_type == 'result':
                 enqueue_ui_update(insert_tree_row, data)
     finally:
@@ -928,7 +944,7 @@ def create_gui() -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, deep_var, all_var, gpt_var, tree, scan_button, cancel_button
+    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, tree, scan_button, cancel_button
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -936,7 +952,7 @@ def create_gui() -> tk.Tk:
 
     # Configure grid weights to ensure resizing behaves correctly
     root.columnconfigure(0, weight=1)
-    root.rowconfigure(5, weight=1)  # The row containing the Treeview
+    root.rowconfigure(6, weight=1)  # The row containing the Treeview
 
     # --- Input Frame ---
     input_frame = tk.Frame(root)
@@ -1047,12 +1063,15 @@ def create_gui() -> tk.Tk:
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, mode='determinate')
     progress_bar.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
 
+    status_label = tk.Label(root, text="Ready", anchor="w")
+    status_label.grid(row=5, column=0, sticky="ew", padx=10, pady=(0, 5))
+
     # --- Treeview ---
     style = ttk.Style(root)
     style.configure('Scanner.Treeview', rowheight=50)
 
     tree_frame = tk.Frame(root)
-    tree_frame.grid(row=5, column=0, sticky="nsew", padx=10, pady=5)
+    tree_frame.grid(row=6, column=0, sticky="nsew", padx=10, pady=5)
     tree_frame.columnconfigure(0, weight=1)
     tree_frame.rowconfigure(0, weight=1)
 
