@@ -58,7 +58,7 @@ class Config:
     extensions_set: set[str] = set()
     extensions_missing: bool = False
     provider: str = "openai"
-    model_name: str = "gpt-3.5-turbo"
+    model_name: str = "gpt-4o"
     api_base: Optional[str] = None
 
     apikey_missing_message = (
@@ -982,8 +982,20 @@ def create_gui() -> tk.Tk:
 
     tk.Label(provider_frame, text="Model:").pack(side=tk.LEFT, padx=5, pady=5)
     model_var = tk.StringVar(value=Config.model_name)
-    model_entry = tk.Entry(provider_frame, textvariable=model_var, width=20)
-    model_entry.pack(side=tk.LEFT, padx=5, pady=5)
+    model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
+    model_combo.pack(side=tk.LEFT, padx=5, pady=5)
+
+    def update_model_presets(provider: str):
+        if provider == "openai":
+            model_combo['values'] = ["gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"]
+        elif provider == "ollama":
+            model_combo['values'] = ["llama2", "llama3", "mistral", "mixtral"]
+        elif provider == "openrouter":
+            model_combo['values'] = ["gpt-4o", "anthropic/claude-3-opus", "anthropic/claude-3-sonnet", "google/gemini-pro"]
+        else:
+            model_combo['values'] = []
+
+    update_model_presets(Config.provider)
 
     def on_provider_change(event):
         p = provider_var.get()
@@ -994,10 +1006,16 @@ def create_gui() -> tk.Tk:
         _openai_client = None
         _async_openai_client = None
 
+        update_model_presets(p)
+
         if p == "ollama":
             model_var.set("llama2")
         else:
-            model_var.set("gpt-3.5-turbo")
+            # Default to the first preset if available, else keep current or specific default
+            if model_combo['values']:
+                model_var.set(model_combo['values'][0])
+            else:
+                model_var.set("gpt-4o")
         Config.model_name = model_var.get()
 
     provider_combo.bind("<<ComboboxSelected>>", on_provider_change)
