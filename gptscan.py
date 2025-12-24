@@ -573,8 +573,7 @@ def pad_window(data: bytes, maxlen: Optional[int] = None) -> List[int]:
     if maxlen is None:
         maxlen = Config.MAXLEN
     padded = list(data)
-    if len(padded) < maxlen:
-        padded.extend([13] * (maxlen - len(padded)))
+    padded.extend([13] * (maxlen - len(padded)))
     return padded
 
 
