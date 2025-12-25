@@ -93,3 +93,39 @@ def test_scan_files_handles_permission_error(monkeypatch, tmp_path, mock_scan_de
     assert res_type == 'result'
     assert res_data[1] == 'Error'
     assert "Access denied" in res_data[5]
+
+def test_scan_files_metadata_error(monkeypatch, tmp_path, mock_scan_dependencies):
+    """Test that scan_files handles OSErrors when reading file metadata (e.g. size)."""
+    # Setup
+    # We need a mock Path object that acts like a path but fails on stat()
+    mock_path = MagicMock()
+    mock_path.suffix = ".bin"
+    mock_path.stat.side_effect = OSError("Metadata inaccessible")
+    mock_path.__str__.return_value = "/path/to/bad_file.bin"
+
+    # Mock Config to include our file extension
+    monkeypatch.setattr(gptscan.Config, "extensions_set", {".bin"})
+
+    # Mock list_files to return our mock path
+    monkeypatch.setattr(gptscan, "list_files", lambda p: [mock_path])
+
+    # Execute scan
+    results = list(gptscan.scan_files(
+        scan_path=str(tmp_path),
+        deep_scan=False,
+        show_all=True,
+        use_gpt=False
+    ))
+
+    # Verify we get an Error result
+    # Sequence: Progress(start), Result(Error), Progress(update)
+    assert len(results) == 3
+
+    # Check result item
+    event_type, event_data = results[1]
+    assert event_type == 'result'
+
+    path, own_conf, admin, user, gpt, snippet = event_data
+    assert path == "/path/to/bad_file.bin"
+    assert own_conf == 'Error'
+    assert "Metadata inaccessible" in snippet
