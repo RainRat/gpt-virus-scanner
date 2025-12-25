@@ -18,22 +18,21 @@ This project is a hybrid security tool that combines a local TensorFlow/Keras de
 * **Python Version:** 3.8+ recommended.
 * **Dependencies:**
     * `tensorflow` (Heavy dependency, ensure compatibility with your local CUDA/CPU setup).
-    * `openai` (Note: The codebase currently uses pre-1.0.0 syntax and needs upgrading).
+    * `openai` (v1.0+ syntax used, including `AsyncOpenAI`).
     * `tkinter` (Usually included with Python, but may need separate install on Linux).
 * **Files Required for Execution:**
     * `scripts.h5`: The trained model (binary).
-    * `apikey.txt`: OpenAI API key.
     * `task.txt`: The system prompt for the LLM.
-    * `extensions.txt`: List of file extensions to scan.
+    * `apikey.txt`: (Optional) OpenAI/Provider API key.
+    * `extensions.txt`: (Optional) List of file extensions to scan.
 
 ## Code Conventions
 * **Formatting:** The current codebase is loosely formatted. New contributions should aim for PEP8 compliance.
 * **Error Handling:** GUI operations should not crash the main thread. Use `try/except` blocks liberally when dealing with file I/O and API calls.
-* **Threading:** The current application runs entirely on the main thread. Any long-running operations (like scanning or network requests) block the UI. **Priority should be given to moving these tasks to background threads.**
+* **Threading:** Scanning operations run on a background thread to keep the UI responsive. UI updates are marshaled back to the main thread via a queue.
 
 ## Critical Notes for Agents
 * **Security:** Do not commit `apikey.txt` or real API keys to version control.
-* **Legacy Code:** You may encounter `openai.ChatCompletion`. This is deprecated. Refactor to use the `openai.OpenAI` client.
 * Always run `pytest` from the repository root before submitting changes, unless it is a documentation-only change. Try to fix any test failures, even if you don't think you caused them.
 * Update or add unit tests alongside code changes when behaviour changes.
 * You may do moderate refactoring if needed (ie. expose some code as a function in order to test it specifically)

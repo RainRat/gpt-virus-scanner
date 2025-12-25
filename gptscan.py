@@ -965,8 +965,13 @@ def export_results() -> None:
         messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
 
 
-def create_gui() -> tk.Tk:
+def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     """Construct and return the main Tkinter GUI for the scanner.
+
+    Parameters
+    ----------
+    initial_path : str, optional
+        If provided, pre-fill the scan path textbox.
 
     Returns
     -------
@@ -990,6 +995,8 @@ def create_gui() -> tk.Tk:
 
     tk.Label(input_frame, text="Path to scan:").grid(row=0, column=0, sticky="w", padx=(0, 5))
     textbox = tk.Entry(input_frame)
+    if initial_path:
+        textbox.insert(0, initial_path)
     textbox.grid(row=0, column=1, sticky="ew", padx=5)
     select_dir_btn = tk.Button(input_frame, text="Select Directory", command=browse_button_click)
     select_dir_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
@@ -1142,6 +1149,7 @@ def create_gui() -> tk.Tk:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="GPT Virus Scanner")
+    parser.add_argument('target', nargs='?', help='The folder you want to scan for viruses.')
     parser.add_argument('--cli', action='store_true', help='Run the scanner without a window (command-line only).')
     parser.add_argument('--path', type=str, help='The folder you want to scan for viruses.')
     parser.add_argument('--deep', action='store_true', help='Scan the entire file (slower but more thorough).')
@@ -1195,6 +1203,8 @@ if __name__ == "__main__":
         extension_list = [ext.strip() for ext in args.extensions.split(',') if ext.strip()]
         Config.set_extensions(extension_list, missing=False)
 
+    scan_target = args.target or args.path
+
     if args.cli:
         scan_targets = []
         if args.path:
@@ -1207,5 +1217,5 @@ if __name__ == "__main__":
 
         run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit)
     else:
-        app_root = create_gui()
+        app_root = create_gui(initial_path=scan_target)
         app_root.mainloop()
