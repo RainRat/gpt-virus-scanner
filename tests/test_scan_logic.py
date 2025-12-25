@@ -57,7 +57,7 @@ def test_scan_files_deep_scan_coverage(monkeypatch, tmp_path, mock_scan_dependen
     # Execute scan with deep_scan=True
     # Convert generator to list to ensure execution
     list(gptscan.scan_files(
-        scan_path=str(tmp_path),
+        scan_targets=str(tmp_path),
         deep_scan=True,
         show_all=True,
         use_gpt=False
