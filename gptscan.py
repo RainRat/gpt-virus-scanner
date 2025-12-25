@@ -1002,11 +1002,11 @@ def create_gui() -> tk.Tk:
 
     def update_model_presets(provider: str):
         if provider == "openai":
-            model_combo['values'] = ["gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"]
+            model_combo['values'] = ["gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini", "gpt-4-turbo", "gpt-3.5-turbo"]
         elif provider == "ollama":
-            model_combo['values'] = ["llama2", "llama3", "mistral", "mixtral"]
+            model_combo['values'] = ["llama3.2", "llama3.1", "deepseek-r1", "phi4", "mistral", "gemma2"]
         elif provider == "openrouter":
-            model_combo['values'] = ["gpt-4o", "anthropic/claude-3-opus", "anthropic/claude-3-sonnet", "google/gemini-pro"]
+            model_combo['values'] = ["gpt-4o", "anthropic/claude-3.5-sonnet", "deepseek/deepseek-r1", "google/gemini-flash-1.5", "meta-llama/llama-3.3-70b-instruct"]
         else:
             model_combo['values'] = []
 
@@ -1024,7 +1024,7 @@ def create_gui() -> tk.Tk:
         update_model_presets(p)
 
         if p == "ollama":
-            model_var.set("llama2")
+            model_var.set("llama3.2")
         else:
             # Default to the first preset if available, else keep current or specific default
             if model_combo['values']:
@@ -1154,7 +1154,7 @@ if __name__ == "__main__":
     if args.model:
         Config.model_name = args.model
     elif Config.provider == 'ollama':
-        Config.model_name = 'llama2'
+        Config.model_name = 'llama3.2'
 
     if args.extensions:
         extension_list = [ext.strip() for ext in args.extensions.split(',') if ext.strip()]
