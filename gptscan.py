@@ -461,6 +461,36 @@ def list_files(path: str) -> List[Path]:
     return [p for p in path.rglob('*') if p.is_file()]
 
 
+def collect_files(targets: Union[str, List[str]]) -> List[Path]:
+    """Collect files from a single path or a list of paths (files or directories).
+
+    Parameters
+    ----------
+    targets : Union[str, List[str]]
+        A single directory path or a list of file/directory paths.
+
+    Returns
+    -------
+    List[Path]
+        A deduplicated list of files to scan.
+    """
+    if isinstance(targets, str):
+        targets = [targets]
+
+    results: List[Path] = []
+    for t in targets:
+        p = Path(t)
+        if p.is_file():
+            results.append(p)
+        elif p.is_dir():
+            results.extend(list_files(str(p)))
+
+    # Remove duplicates while preserving order? Or just set.
+    # Sets destroy order, but duplicates are bad.
+    # Use dict keys to preserve insertion order in Python 3.7+
+    return list(dict.fromkeys(results))
+
+
 def parse_percent(val: str, default: float = -1.0) -> float:
     """Convert a percentage string to a float, returning ``default`` on error."""
     if not isinstance(val, str):
@@ -615,7 +645,7 @@ def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -
 
 
 def scan_files(
-    scan_path: str,
+    scan_targets: Union[str, List[str]],
     deep_scan: bool,
     show_all: bool,
     use_gpt: bool,
@@ -627,8 +657,8 @@ def scan_files(
 
     Parameters
     ----------
-    scan_path : str
-        Directory path to search for files.
+    scan_targets : Union[str, List[str]]
+        Directory path or list of file/directory paths to search.
     deep_scan : bool
         Whether to scan overlapping 1024-byte windows beyond the first block.
     show_all : bool
@@ -658,7 +688,7 @@ def scan_files(
         prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
         return float(prediction), bytes(padded_data)
 
-    file_list = list_files(scan_path)
+    file_list = collect_files(scan_targets)
     total_progress = len(file_list)
     progress_count = 0
     yield ('progress', (progress_count, total_progress, "Scanning..."))
@@ -865,13 +895,13 @@ def run_scan(
         enqueue_ui_update(finish_scan_state)
 
 
-def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool, rate_limit: int) -> None:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int) -> None:
     """Run scans and stream results to stdout as CSV rows.
 
     Parameters
     ----------
-    path : str
-        Directory to scan.
+    targets : Union[str, List[str]]
+        Directory or list of files to scan.
     deep : bool
         Whether to evaluate all 1024-byte windows.
     show_all : bool
@@ -888,7 +918,7 @@ def run_cli(path: str, deep: bool, show_all: bool, use_gpt: bool, rate_limit: in
     final_progress: Optional[Tuple[int, int]] = None
 
     for event_type, data in scan_files(
-        path,
+        targets,
         deep,
         show_all,
         use_gpt,
@@ -1145,6 +1175,11 @@ if __name__ == "__main__":
         type=str,
         help='Custom web address for the API.'
     )
+    parser.add_argument(
+        'files',
+        nargs='*',
+        help='Specific files to scan.'
+    )
     args = parser.parse_args()
 
     Config.provider = args.provider
@@ -1161,9 +1196,16 @@ if __name__ == "__main__":
         Config.set_extensions(extension_list, missing=False)
 
     if args.cli:
-        if not args.path:
-            parser.error('--path is required in CLI mode')
-        run_cli(args.path, args.deep, args.show_all, args.use_gpt, args.rate_limit)
+        scan_targets = []
+        if args.path:
+            scan_targets.append(args.path)
+        if args.files:
+            scan_targets.extend(args.files)
+
+        if not scan_targets:
+            parser.error('--path or file arguments are required in CLI mode')
+
+        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit)
     else:
         app_root = create_gui()
         app_root.mainloop()
