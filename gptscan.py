@@ -155,24 +155,6 @@ def get_openai_client() -> Any:
     return _openai_client
 
 
-class _SyncCompletionsAdapter:
-    def __init__(self, client: Any):
-        self._client = client
-
-    async def create(self, *args: Any, **kwargs: Any) -> Any:
-        return await asyncio.to_thread(self._client.chat.completions.create, *args, **kwargs)
-
-
-class _SyncChatAdapter:
-    def __init__(self, client: Any):
-        self.completions = _SyncCompletionsAdapter(client)
-
-
-class _SyncToAsyncOpenAIAdapter:
-    def __init__(self, client: Any):
-        self.chat = _SyncChatAdapter(client)
-
-
 def get_async_openai_client() -> Any:
     """Lazily instantiate and reuse the asynchronous OpenAI client."""
 
@@ -182,14 +164,8 @@ def get_async_openai_client() -> Any:
         api_key, base_url = _get_provider_config()
 
         if api_key:
-            try:
-                from openai import AsyncOpenAI
-
-                _async_openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
-            except ImportError:
-                client = get_openai_client()
-                if client is not None:
-                    _async_openai_client = _SyncToAsyncOpenAIAdapter(client)
+            from openai import AsyncOpenAI
+            _async_openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
     return _async_openai_client
 
 
