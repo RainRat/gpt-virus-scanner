@@ -10,7 +10,7 @@ class _MockCompletions:
         self.responses = iter(responses)
         self.calls = 0
 
-    def create(self, model, messages):
+    async def create(self, model, messages):
         self.calls += 1
         return next(self.responses)
 
@@ -23,16 +23,15 @@ class _MockResponse:
 def test_handle_gpt_response_returns_cached_result(monkeypatch):
     gptscan.Config.gpt_cache = {}
     gptscan.Config.apikey = "dummy"
-    gptscan._openai_client = None
     gptscan._async_openai_client = None
     responses = [_MockResponse('{"administrator": "Admin", "end-user": "User", "threat-level": 50}')]
     mock_completions = _MockCompletions(responses)
 
-    class MockOpenAI:
+    class MockAsyncOpenAI:
         def __init__(self, api_key, **kwargs):
             self.chat = SimpleNamespace(completions=mock_completions)
 
-    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=MockOpenAI))
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(AsyncOpenAI=MockAsyncOpenAI))
 
     limiter = gptscan.AsyncRateLimiter(60)
     semaphore = asyncio.Semaphore(5)
@@ -51,16 +50,15 @@ def test_handle_gpt_response_returns_cached_result(monkeypatch):
 def test_handle_gpt_response_retries_after_invalid_json(monkeypatch):
     gptscan.Config.gpt_cache = {}
     gptscan.Config.apikey = "dummy"
-    gptscan._openai_client = None
     gptscan._async_openai_client = None
     invalid_response = _MockResponse('{"administrator": "Admin"}')
     valid_response = _MockResponse('{"administrator": "Admin", "end-user": "User", "threat-level": 70}')
     mock_completions = _MockCompletions([invalid_response, valid_response])
 
-    class MockOpenAI:
+    class MockAsyncOpenAI:
         def __init__(self, api_key, **kwargs):
             self.chat = SimpleNamespace(completions=mock_completions)
-    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=MockOpenAI))
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(AsyncOpenAI=MockAsyncOpenAI))
     monkeypatch.setattr(gptscan.Config, "MAX_RETRIES", 3)
 
     limiter = gptscan.AsyncRateLimiter(60)
@@ -115,7 +113,7 @@ def test_scan_files_does_not_call_gpt_when_disabled(monkeypatch, tmp_path):
     gptscan.Config.set_extensions([".txt"], missing=False)
 
     # Execute the scan and consume the generator
-    scan_results = list(gptscan.scan_files(scan_path=str(tmp_path), deep_scan=False, show_all=True, use_gpt=True))
+    scan_results = list(gptscan.scan_files(scan_targets=str(tmp_path), deep_scan=False, show_all=True, use_gpt=True))
 
     # Verify that async_handle_gpt_response was not called
     assert not gpt_response_called, "async_handle_gpt_response should not be called when GPT is disabled"

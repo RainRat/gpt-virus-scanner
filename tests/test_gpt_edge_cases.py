@@ -61,7 +61,6 @@ async def test_async_handle_gpt_response_retries_on_rate_limit(monkeypatch):
     # Setup - use monkeypatch for globals to avoid pollution
     monkeypatch.setattr(gptscan.Config, "gpt_cache", {})
     monkeypatch.setattr(gptscan.Config, "apikey", "test_key")
-    monkeypatch.setattr(gptscan, "_openai_client", None)
     monkeypatch.setattr(gptscan, "_async_openai_client", None)
 
     valid_json = '{"administrator": "A", "end-user": "U", "threat-level": 10}'

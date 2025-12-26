@@ -103,7 +103,6 @@ current_cancel_event: Optional[threading.Event] = None
 _model_cache: Optional[Any] = None
 _tf_module: Optional[Any] = None
 _model_lock = threading.Lock()
-_openai_client: Optional[Any] = None
 _async_openai_client: Optional[Any] = None
 
 
@@ -140,19 +139,6 @@ def _get_provider_config() -> Tuple[Optional[str], Optional[str]]:
             base_url = "http://localhost:11434/v1"
 
     return api_key, base_url
-
-
-def get_openai_client() -> Any:
-    """Lazily instantiate and reuse the OpenAI client."""
-
-    global _openai_client
-
-    if _openai_client is None:
-        api_key, base_url = _get_provider_config()
-        if api_key:
-            from openai import OpenAI
-            _openai_client = OpenAI(api_key=api_key, base_url=base_url)
-    return _openai_client
 
 
 def get_async_openai_client() -> Any:
@@ -1030,8 +1016,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         Config.provider = p
 
         # Reset clients so they are recreated with new settings
-        global _openai_client, _async_openai_client
-        _openai_client = None
+        global _async_openai_client
         _async_openai_client = None
 
         update_model_presets(p)
