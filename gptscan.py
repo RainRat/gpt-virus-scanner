@@ -857,8 +857,8 @@ def run_scan(
         enqueue_ui_update(finish_scan_state)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int) -> None:
-    """Run scans and stream results to stdout as CSV rows.
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv') -> None:
+    """Run scans and stream results to stdout.
 
     Parameters
     ----------
@@ -872,9 +872,14 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         Whether to request GPT analysis for confident detections.
     rate_limit : int
         Maximum allowed GPT requests per minute.
+    output_format : str
+        Format of the output ('csv' or 'json'). Defaults to 'csv'.
     """
-    writer = csv.writer(sys.stdout)
-    writer.writerow(("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"))
+    keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]
+
+    if output_format == 'csv':
+        writer = csv.writer(sys.stdout)
+        writer.writerow(keys)
 
     cancel_event = threading.Event()
     final_progress: Optional[Tuple[int, int]] = None
@@ -889,7 +894,11 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
     ):
         if event_type == 'result':
-            writer.writerow(data)
+            if output_format == 'json':
+                record = dict(zip(keys, data))
+                print(json.dumps(record))
+            else:
+                writer.writerow(data)
         elif event_type == 'progress':
             current, total, status = data
             final_progress = (current, total)
@@ -1116,6 +1125,7 @@ if __name__ == "__main__":
     parser.add_argument('--deep', action='store_true', help='Scan the entire file (slower but more thorough).')
     parser.add_argument('--show-all', action='store_true', help='List every file scanned, even safe ones.')
     parser.add_argument('--use-gpt', action='store_true', help='Send suspicious files to ChatGPT for a detailed report.')
+    parser.add_argument('--json', action='store_true', help='Output results in JSON Lines format.')
     parser.add_argument(
         '--extensions',
         type=str,
@@ -1178,7 +1188,8 @@ if __name__ == "__main__":
         if not scan_targets:
             parser.error('Positional target, --path, or file arguments are required in CLI mode')
 
-        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit)
+        output_format = 'json' if args.json else 'csv'
+        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format)
     else:
         app_root = create_gui(initial_path=scan_target)
         app_root.mainloop()
