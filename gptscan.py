@@ -62,10 +62,10 @@ class Config:
     api_base: Optional[str] = None
 
     apikey_missing_message = (
-        "OpenAI key file not found. GPT functionality may be limited..."
+        "API key file not found. AI analysis may be limited..."
     )
     task_missing_message = (
-        "Task description file not found. No GPT data will be included in report..."
+        "Task description file not found. No AI analysis will be included in the report..."
     )
     extensions_missing_message = (
         "Extensions list not found! Using default extensions: .py, .js, .bat, .ps1"
@@ -1119,45 +1119,45 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="GPT Virus Scanner")
-    parser.add_argument('target', nargs='?', help='The folder you want to scan for viruses.')
+    parser.add_argument('target', nargs='?', help='The file or folder you want to scan.')
     parser.add_argument('--cli', action='store_true', help='Run the scanner without a window (command-line only).')
-    parser.add_argument('--path', type=str, help='The folder you want to scan for viruses.')
-    parser.add_argument('--deep', action='store_true', help='Scan the entire file (slower but more thorough).')
-    parser.add_argument('--show-all', action='store_true', help='List every file scanned, even safe ones.')
-    parser.add_argument('--use-gpt', action='store_true', help='Send suspicious files to ChatGPT for a detailed report.')
-    parser.add_argument('--json', action='store_true', help='Output results in JSON Lines format.')
+    parser.add_argument('--path', type=str, help='The file or folder you want to scan.')
+    parser.add_argument('--deep', action='store_true', help='Check the whole file, not just the start and end (slower).')
+    parser.add_argument('--show-all', action='store_true', help='Show all files in the results, even safe ones.')
+    parser.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI for analysis.')
+    parser.add_argument('--json', action='store_true', help='Print results in JSON format instead of CSV.')
     parser.add_argument(
         '--extensions',
         type=str,
-        help='Scan these file types instead of the defaults (e.g., .py,.js).'
+        help='Only scan these file types (e.g., .py, .js).'
     )
     parser.add_argument(
         '--rate-limit',
         type=int,
         default=Config.RATE_LIMIT_PER_MINUTE,
-        help='Max number of analysis requests per minute (default: 60).'
+        help='Maximum AI requests per minute (default: 60).'
     )
     parser.add_argument(
         '--provider',
         type=str,
         default='openai',
         choices=['openai', 'openrouter', 'ollama'],
-        help='Choose which AI service to use (default: openai).'
+        help='Choose the AI service (default: openai).'
     )
     parser.add_argument(
         '--model',
         type=str,
-        help='Specific AI model name (e.g., gpt-4).'
+        help='The specific AI model to use (e.g., gpt-4o, llama3.2).'
     )
     parser.add_argument(
         '--api-base',
         type=str,
-        help='Custom web address for the API.'
+        help='Custom URL for the API server.'
     )
     parser.add_argument(
         'files',
         nargs='*',
-        help='Specific files to scan.'
+        help='Additional files to scan.'
     )
     args = parser.parse_args()
 
@@ -1186,7 +1186,7 @@ if __name__ == "__main__":
             scan_targets.extend(args.files)
 
         if not scan_targets:
-            parser.error('Positional target, --path, or file arguments are required in CLI mode')
+            parser.error('You must provide a file or folder to scan.')
 
         output_format = 'json' if args.json else 'csv'
         run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format)
