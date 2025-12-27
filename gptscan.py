@@ -614,6 +614,7 @@ def scan_files(
     cancel_event: Optional[threading.Event] = None,
     rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
     max_concurrent_requests: int = Config.MAX_CONCURRENT_REQUESTS,
+    dry_run: bool = False,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for malicious content and optionally request GPT analysis.
 
@@ -631,6 +632,8 @@ def scan_files(
         Maximum number of GPT requests permitted per minute.
     max_concurrent_requests : int
         Maximum number of GPT requests executed concurrently.
+    dry_run : bool
+        Whether to simulate the scan without performing actual analysis.
 
     Yields
     ------
@@ -641,8 +644,10 @@ def scan_files(
     """
     global _tf_module
     cancel_event = cancel_event or threading.Event()
-    modelscript = get_model()
-    tf_module = _tf_module
+
+    if not dry_run:
+        modelscript = get_model()
+        tf_module = _tf_module
 
     def predict_window(window_bytes: bytes) -> Tuple[float, bytes]:
         padded_data = pad_window(window_bytes)
@@ -662,6 +667,22 @@ def scan_files(
             break
         extension = file_path.suffix.lower()
         if extension in Config.extensions_set:
+            if dry_run:
+                yield (
+                    'result',
+                    (
+                        str(file_path),
+                        'Dry Run',
+                        '',
+                        '',
+                        '',
+                        'File matches extension filters',
+                    )
+                )
+                progress_count = index + 1
+                yield ('progress', (progress_count, total_progress, None))
+                continue
+
             print(file_path)
             try:
                 file_size = file_path.stat().st_size
@@ -812,6 +833,7 @@ def run_scan(
     use_gpt: bool,
     cancel_event: threading.Event,
     rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
+    dry_run: bool = False,
 ) -> None:
     """Consume scan events and forward them to the UI thread.
 
@@ -838,6 +860,7 @@ def run_scan(
             cancel_event,
             rate_limit=rate_limit,
             max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+            dry_run=dry_run,
         ):
             if cancel_event.is_set():
                 break
@@ -857,7 +880,15 @@ def run_scan(
         enqueue_ui_update(finish_scan_state)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv') -> None:
+def run_cli(
+    targets: Union[str, List[str]],
+    deep: bool,
+    show_all: bool,
+    use_gpt: bool,
+    rate_limit: int,
+    output_format: str = 'csv',
+    dry_run: bool = False
+) -> None:
     """Run scans and stream results to stdout.
 
     Parameters
@@ -874,6 +905,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         Maximum allowed GPT requests per minute.
     output_format : str
         Format of the output ('csv' or 'json'). Defaults to 'csv'.
+    dry_run : bool
+        Whether to simulate the scan without performing actual analysis.
     """
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]
 
@@ -892,6 +925,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         cancel_event,
         rate_limit=rate_limit,
         max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+        dry_run=dry_run,
     ):
         if event_type == 'result':
             if output_format == 'json':
@@ -1125,6 +1159,7 @@ if __name__ == "__main__":
     parser.add_argument('--deep', action='store_true', help='Scan the entire file (slower but more thorough).')
     parser.add_argument('--show-all', action='store_true', help='List every file scanned, even safe ones.')
     parser.add_argument('--use-gpt', action='store_true', help='Send suspicious files to ChatGPT for a detailed report.')
+    parser.add_argument('--dry-run', action='store_true', help='Simulate the scan to verify file targeting without running analysis.')
     parser.add_argument('--json', action='store_true', help='Output results in JSON Lines format.')
     parser.add_argument(
         '--extensions',
@@ -1189,7 +1224,15 @@ if __name__ == "__main__":
             parser.error('Positional target, --path, or file arguments are required in CLI mode')
 
         output_format = 'json' if args.json else 'csv'
-        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format)
+        run_cli(
+            scan_targets,
+            args.deep,
+            args.show_all,
+            args.use_gpt,
+            args.rate_limit,
+            output_format=output_format,
+            dry_run=args.dry_run
+        )
     else:
         app_root = create_gui(initial_path=scan_target)
         app_root.mainloop()
