@@ -111,7 +111,7 @@ def test_scan_files_metadata_error(monkeypatch, tmp_path, mock_scan_dependencies
 
     # Execute scan
     results = list(gptscan.scan_files(
-        scan_path=str(tmp_path),
+        scan_targets=str(tmp_path),
         deep_scan=False,
         show_all=True,
         use_gpt=False
