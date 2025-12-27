@@ -1183,13 +1183,15 @@ if __name__ == "__main__":
 
     if args.cli:
         scan_targets = []
+        if args.target:
+            scan_targets.append(args.target)
         if args.path:
             scan_targets.append(args.path)
         if args.files:
             scan_targets.extend(args.files)
 
         if not scan_targets:
-            parser.error('--path or file arguments are required in CLI mode')
+            parser.error('Positional target, --path, or file arguments are required in CLI mode')
 
         run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit)
     else:
