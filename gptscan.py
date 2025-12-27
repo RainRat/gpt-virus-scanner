@@ -122,34 +122,24 @@ def get_model() -> Any:
     return _model_cache
 
 
-def _get_provider_config() -> Tuple[Optional[str], Optional[str]]:
-    """Determine the API key and base URL based on the current configuration."""
-    api_key = Config.apikey
-    if Config.provider == "ollama" and not api_key:
-        api_key = "ollama"
-
-    if not api_key:
-        return None, None
-
-    base_url = Config.api_base
-    if not base_url:
-        if Config.provider == "openrouter":
-            base_url = "https://openrouter.ai/api/v1"
-        elif Config.provider == "ollama":
-            base_url = "http://localhost:11434/v1"
-
-    return api_key, base_url
-
-
 def get_async_openai_client() -> Any:
     """Lazily instantiate and reuse the asynchronous OpenAI client."""
 
     global _async_openai_client
 
     if _async_openai_client is None:
-        api_key, base_url = _get_provider_config()
+        api_key = Config.apikey
+        if Config.provider == "ollama" and not api_key:
+            api_key = "ollama"
 
         if api_key:
+            base_url = Config.api_base
+            if not base_url:
+                if Config.provider == "openrouter":
+                    base_url = "https://openrouter.ai/api/v1"
+                elif Config.provider == "ollama":
+                    base_url = "http://localhost:11434/v1"
+
             from openai import AsyncOpenAI
             _async_openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
     return _async_openai_client
