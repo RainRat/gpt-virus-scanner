@@ -168,21 +168,6 @@ def test_extract_data_from_gpt_response_invalid_structure():
         gptscan.extract_data_from_gpt_response(object())
 
 
-def test_list_files_returns_files_only(tmp_path):
-    nested = tmp_path / "nested"
-    nested.mkdir()
-    (tmp_path / "root.txt").write_text("root")
-    (nested / "child.txt").write_text("child")
-    (nested / "subdir").mkdir()
-
-    files = gptscan.list_files(tmp_path)
-
-    assert set(Path(f) for f in files) == {
-        tmp_path / "root.txt",
-        nested / "child.txt",
-    }
-
-
 def test_sort_column_orders_treeview():
     tree = _FakeTree(
         {
@@ -319,7 +304,7 @@ def test_scan_files_uses_cached_model(monkeypatch, tmp_path):
 
     monkeypatch.setattr(gptscan, "_tf_module", fake_tf, raising=False)
     monkeypatch.setattr(gptscan, "_model_cache", None, raising=False)
-    monkeypatch.setattr(gptscan, "list_files", lambda _path: [sample_file])
+    monkeypatch.setattr(gptscan, "collect_files", lambda _targets: [sample_file])
     gptscan.Config.set_extensions([".txt"], missing=False)
 
     list(gptscan.scan_files(str(tmp_path), deep_scan=False, show_all=True, use_gpt=False, cancel_event=None))
@@ -333,7 +318,7 @@ def test_scan_files_handles_permission_error(monkeypatch, tmp_path):
     blocked_file.write_text("content")
 
     gptscan.Config.set_extensions([".txt"], missing=False)
-    monkeypatch.setattr(gptscan, "list_files", lambda _path: [blocked_file])
+    monkeypatch.setattr(gptscan, "collect_files", lambda _targets: [blocked_file])
 
     # Mock TensorFlow model dependencies
     monkeypatch.setattr(gptscan, "get_model", lambda: SimpleNamespace(predict=lambda *a, **k: [[0.0]]))
