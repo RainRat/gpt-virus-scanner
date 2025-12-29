@@ -959,6 +959,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     if initial_path:
         textbox.insert(0, initial_path)
     textbox.grid(row=0, column=1, sticky="ew", padx=5)
+    textbox.bind('<Return>', lambda event: button_click())
+    textbox.focus_set()
     select_dir_btn = tk.Button(input_frame, text="Select Directory", command=browse_button_click)
     select_dir_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
 
