@@ -51,8 +51,8 @@ def test_scan_files_deep_scan_coverage(monkeypatch, tmp_path, mock_scan_dependen
     # Using a set since the code checks: if extension in Config.extensions_set
     monkeypatch.setattr(gptscan.Config, "extensions_set", {".bin"})
 
-    # Mock list_files to return only our test file
-    monkeypatch.setattr(gptscan, "list_files", lambda p: [test_file])
+    # Mock collect_files to return only our test file
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [test_file])
 
     # Execute scan with deep_scan=True
     # Convert generator to list to ensure execution
@@ -73,7 +73,7 @@ def test_scan_files_handles_permission_error(monkeypatch, tmp_path, mock_scan_de
     test_file.write_bytes(b"secret")
 
     monkeypatch.setattr(gptscan.Config, "extensions_set", {".bin"})
-    monkeypatch.setattr(gptscan, "list_files", lambda p: [test_file])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [test_file])
 
     # Mock open to raise PermissionError
     def mock_open(*args, **kwargs):
@@ -106,8 +106,8 @@ def test_scan_files_metadata_error(monkeypatch, tmp_path, mock_scan_dependencies
     # Mock Config to include our file extension
     monkeypatch.setattr(gptscan.Config, "extensions_set", {".bin"})
 
-    # Mock list_files to return our mock path
-    monkeypatch.setattr(gptscan, "list_files", lambda p: [mock_path])
+    # Mock collect_files to return our mock path
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [mock_path])
 
     # Execute scan
     results = list(gptscan.scan_files(

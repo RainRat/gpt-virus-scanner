@@ -391,23 +391,6 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
             tree.item(iid, values=new_vals)
 
 
-def list_files(path: str) -> List[Path]:
-    """Recursively collect files under a directory path.
-
-    Parameters
-    ----------
-    path : str
-        Root directory to traverse.
-
-    Returns
-    -------
-    List[Path]
-        All files found under ``path``.
-    """
-    path = Path(path)
-    return [p for p in path.rglob('*') if p.is_file()]
-
-
 def collect_files(targets: Union[str, List[str]]) -> List[Path]:
     """Collect files from a single path or a list of paths (files or directories).
 
@@ -430,7 +413,7 @@ def collect_files(targets: Union[str, List[str]]) -> List[Path]:
         if p.is_file():
             results.append(p)
         elif p.is_dir():
-            results.extend(list_files(str(p)))
+            results.extend([f for f in p.rglob('*') if f.is_file()])
 
     # Remove duplicates while preserving order? Or just set.
     # Sets destroy order, but duplicates are bad.

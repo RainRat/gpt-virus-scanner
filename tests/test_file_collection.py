@@ -19,6 +19,20 @@ def test_collect_files_single_directory_recursive(tmp_path):
     results = gptscan.collect_files(str(tmp_path))
     assert set(results) == {f1, f2}
 
+def test_collect_files_ignores_directories(tmp_path):
+    """Ensure that only files are returned, and directories are ignored."""
+    d = tmp_path / "subdir"
+    d.mkdir()
+    f = d / "file.txt"
+    f.touch()
+    empty_d = d / "empty_dir"
+    empty_d.mkdir()
+
+    results = gptscan.collect_files(str(tmp_path))
+    assert set(results) == {f}
+    assert empty_d not in results
+    assert d not in results
+
 def test_collect_files_mixed_input(tmp_path):
     f1 = tmp_path / "f1.txt"
     f1.touch()
