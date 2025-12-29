@@ -75,15 +75,18 @@ You can run scans from the terminal. This is useful for automated tasks.
 
 **Example:**
 ```bash
-python gptscan.py --cli --path "./my_scripts" --use-gpt
+python gptscan.py ./my_scripts --cli --use-gpt --json
 ```
 
 **Options:**
 *   `--cli`: Runs in command-line mode (required).
-*   `--path <folder>`: The folder to scan (required).
+*   `[target]`: The file or folder to scan (positional argument).
+*   `--path <folder>`: Alternative way to specify the folder to scan.
 *   `--deep`: Scans the entire file instead of just the start and end (slower).
 *   `--show-all`: Lists all files, even safe ones.
 *   `--use-gpt`: Sends suspicious code to the LLM for analysis.
+*   `--json`: Outputs results in JSON format (default is CSV).
+*   `--dry-run`: Lists files that would be scanned without running the AI model.
 *   `--extensions "py,js,bat"`: Scans these file types instead of the defaults.
 *   `--rate-limit <number>`: Sets the maximum requests per minute (default: 60).
 *   `--provider <name>`: Choose 'openai', 'openrouter', or 'ollama' (default: openai).
@@ -98,7 +101,7 @@ We welcome improvements!
 *   **Code:** Pull requests are welcome. Please run the tests before submitting:
 
     ```bash
-    pip install pytest
+    pip install pytest pytest-asyncio pytest-mock
     python -m pytest
     ```
 
