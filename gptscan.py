@@ -503,7 +503,7 @@ def button_click() -> None:
         messagebox.showerror("Scan Error", "Please select a directory to scan.")
         return
 
-    if not os.path.exists('scripts.h5'):
+    if not dry_var.get() and not os.path.exists('scripts.h5'):
         messagebox.showerror("Scan Error", "Model file scripts.h5 not found.")
         return
 
@@ -516,6 +516,8 @@ def button_click() -> None:
         all_var.get(),
         gpt_var.get(),
         current_cancel_event,
+        Config.RATE_LIMIT_PER_MINUTE,
+        dry_var.get(),
     )
     scan_thread = threading.Thread(target=run_scan, args=scan_args, daemon=True)
     scan_thread.start()
@@ -582,6 +584,7 @@ def scan_files(
     cancel_event: Optional[threading.Event] = None,
     rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
     max_concurrent_requests: int = Config.MAX_CONCURRENT_REQUESTS,
+    dry_run: bool = False,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for malicious content and optionally request GPT analysis.
 
@@ -599,6 +602,8 @@ def scan_files(
         Maximum number of GPT requests permitted per minute.
     max_concurrent_requests : int
         Maximum number of GPT requests executed concurrently.
+    dry_run : bool
+        Whether to list files that would be scanned without running the model or API.
 
     Yields
     ------
@@ -609,14 +614,16 @@ def scan_files(
     """
     global _tf_module
     cancel_event = cancel_event or threading.Event()
-    modelscript = get_model()
-    tf_module = _tf_module
 
-    def predict_window(window_bytes: bytes) -> Tuple[float, bytes]:
-        padded_data = pad_window(window_bytes)
-        tf_data = tf_module.expand_dims(tf_module.constant(padded_data), axis=0)
-        prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
-        return float(prediction), bytes(padded_data)
+    if not dry_run:
+        modelscript = get_model()
+        tf_module = _tf_module
+
+        def predict_window(window_bytes: bytes) -> Tuple[float, bytes]:
+            padded_data = pad_window(window_bytes)
+            tf_data = tf_module.expand_dims(tf_module.constant(padded_data), axis=0)
+            prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
+            return float(prediction), bytes(padded_data)
 
     file_list = collect_files(scan_targets)
     total_progress = len(file_list)
@@ -630,6 +637,22 @@ def scan_files(
             break
         extension = file_path.suffix.lower()
         if extension in Config.extensions_set:
+            if dry_run:
+                yield (
+                    'result',
+                    (
+                        str(file_path),
+                        'Dry Run',
+                        '',
+                        '',
+                        '',
+                        '(File would be scanned)',
+                    )
+                )
+                progress_count = index + 1
+                yield ('progress', (progress_count, total_progress, None))
+                continue
+
             print(file_path)
             try:
                 file_size = file_path.stat().st_size
@@ -780,6 +803,7 @@ def run_scan(
     use_gpt: bool,
     cancel_event: threading.Event,
     rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
+    dry_run: bool = False,
 ) -> None:
     """Consume scan events and forward them to the UI thread.
 
@@ -795,6 +819,8 @@ def run_scan(
         Whether to enrich suspicious files with GPT output.
     rate_limit : int
         Maximum allowed GPT requests per minute.
+    dry_run : bool
+        Whether to simulate the scan.
     """
     last_total: Optional[int] = None
     try:
@@ -806,6 +832,7 @@ def run_scan(
             cancel_event,
             rate_limit=rate_limit,
             max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+            dry_run=dry_run,
         ):
             if cancel_event.is_set():
                 break
@@ -825,7 +852,7 @@ def run_scan(
         enqueue_ui_update(finish_scan_state)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv') -> None:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False) -> None:
     """Run scans and stream results to stdout.
 
     Parameters
@@ -842,6 +869,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         Maximum allowed GPT requests per minute.
     output_format : str
         Format of the output ('csv' or 'json'). Defaults to 'csv'.
+    dry_run : bool
+        Whether to simulate the scan.
     """
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]
 
@@ -860,6 +889,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         cancel_event,
         rate_limit=rate_limit,
         max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+        dry_run=dry_run,
     ):
         if event_type == 'result':
             if output_format == 'json':
@@ -917,7 +947,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, tree, scan_button, cancel_button
+    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, tree, scan_button, cancel_button
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -957,6 +987,10 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     gpt_var = tk.BooleanVar()
     gpt_checkbox = tk.Checkbutton(options_frame, text="Use AI Analysis", variable=gpt_var)
     gpt_checkbox.pack(side=tk.LEFT, padx=10)
+
+    dry_var = tk.BooleanVar()
+    dry_checkbox = tk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
+    dry_checkbox.pack(side=tk.LEFT, padx=10)
 
     if not Config.GPT_ENABLED:
         gpt_var.set(False)
@@ -1096,6 +1130,7 @@ if __name__ == "__main__":
     parser.add_argument('--show-all', action='store_true', help='Show results for all files, including safe ones.')
     parser.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI for detailed analysis.')
     parser.add_argument('--json', action='store_true', help='Print results in JSON format instead of CSV.')
+    parser.add_argument('--dry-run', action='store_true', help='List files to be scanned without running the model.')
     parser.add_argument(
         '--extensions',
         type=str,
@@ -1159,7 +1194,7 @@ if __name__ == "__main__":
             parser.error('You must provide a file or folder to scan.')
 
         output_format = 'json' if args.json else 'csv'
-        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format)
+        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format, dry_run=args.dry_run)
     else:
         app_root = create_gui(initial_path=scan_target)
         app_root.mainloop()
