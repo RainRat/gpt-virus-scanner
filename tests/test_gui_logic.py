@@ -112,6 +112,10 @@ def test_button_click_missing_model(monkeypatch):
     mock_msgbox = MagicMock()
     monkeypatch.setattr(gptscan, 'messagebox', mock_msgbox)
 
+    mock_dry = MagicMock()
+    mock_dry.get.return_value = False
+    monkeypatch.setattr(gptscan, 'dry_var', mock_dry, raising=False)
+
     # Mock os.path.exists to fail for scripts.h5
     monkeypatch.setattr(gptscan.os.path, 'exists', lambda p: False)
 
@@ -143,6 +147,10 @@ def test_button_click_starts_scan(monkeypatch):
     mock_gpt = MagicMock()
     mock_gpt.get.return_value = True
     monkeypatch.setattr(gptscan, 'gpt_var', mock_gpt, raising=False)
+
+    mock_dry = MagicMock()
+    mock_dry.get.return_value = False
+    monkeypatch.setattr(gptscan, 'dry_var', mock_dry, raising=False)
 
     # Mock os.path.exists
     monkeypatch.setattr(gptscan.os.path, 'exists', lambda p: True)
