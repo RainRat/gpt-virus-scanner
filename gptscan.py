@@ -19,20 +19,15 @@ import tkinter.ttk as ttk
 
 
 def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]:
-    """Read content from a file in either single-line or multi-line mode.
+    """Reads a file and returns its content.
 
-    Parameters
-    ----------
-    filename : str
-        Path to the file to read.
-    mode : str, optional
-        Reading mode; ``"single_line"`` returns the first line, while
-        ``"multi_line"`` returns all lines as a list. Defaults to ``"single_line"``.
+    Args:
+        filename: The path to the file.
+        mode: 'single_line' (default) returns the first line.
+              'multi_line' returns all lines as a list.
 
-    Returns
-    -------
-    Union[str, List[str]]
-        The requested file content, or an empty string if the file is missing.
+    Returns:
+        The file content, or an empty result if the file is missing.
     """
     try:
         with open(filename, 'r') as file:
@@ -62,13 +57,13 @@ class Config:
     api_base: Optional[str] = None
 
     apikey_missing_message = (
-        "API key file not found. AI analysis may be limited..."
+        "API key not found. You can still scan locally, but AI analysis won't be available."
     )
     task_missing_message = (
-        "Task description file not found. No AI analysis will be included in the report..."
+        "Task file missing. AI analysis will be skipped."
     )
     extensions_missing_message = (
-        "Extensions list not found! Using default extensions: .py, .js, .bat, .ps1"
+        "Extensions file missing. Using defaults: .py, .js, .bat, .ps1"
     )
 
     @classmethod
@@ -1112,29 +1107,29 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="GPT Virus Scanner")
     parser.add_argument('target', nargs='?', help='The file or folder you want to scan.')
-    parser.add_argument('--cli', action='store_true', help='Run the scanner without a window (command-line only).')
-    parser.add_argument('--path', type=str, help='The file or folder you want to scan.')
-    parser.add_argument('--deep', action='store_true', help='Check the whole file, not just the start and end (slower).')
-    parser.add_argument('--show-all', action='store_true', help='Show all files in the results, even safe ones.')
-    parser.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI for analysis.')
+    parser.add_argument('--cli', action='store_true', help='Run without the graphical window.')
+    parser.add_argument('--path', type=str, help='The folder to scan.')
+    parser.add_argument('--deep', action='store_true', help='Scan the entire file (slower but more thorough).')
+    parser.add_argument('--show-all', action='store_true', help='Show results for all files, including safe ones.')
+    parser.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI for detailed analysis.')
     parser.add_argument('--json', action='store_true', help='Print results in JSON format instead of CSV.')
     parser.add_argument(
         '--extensions',
         type=str,
-        help='Only scan these file types (e.g., .py, .js).'
+        help='Only scan specific file types (e.g., .py, .js).'
     )
     parser.add_argument(
         '--rate-limit',
         type=int,
         default=Config.RATE_LIMIT_PER_MINUTE,
-        help='Maximum AI requests per minute (default: 60).'
+        help='Max AI requests per minute (default: 60).'
     )
     parser.add_argument(
         '--provider',
         type=str,
         default='openai',
         choices=['openai', 'openrouter', 'ollama'],
-        help='Choose the AI service (default: openai).'
+        help='Choose the AI provider (default: openai).'
     )
     parser.add_argument(
         '--model',
