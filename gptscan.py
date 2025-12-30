@@ -56,6 +56,8 @@ class Config:
     model_name: str = "gpt-4o"
     api_base: Optional[str] = None
 
+    DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1']
+
     apikey_missing_message = (
         "API key not found. You can still scan locally, but AI analysis won't be available."
     )
@@ -63,7 +65,7 @@ class Config:
         "Task file missing. AI analysis will be skipped."
     )
     extensions_missing_message = (
-        "Extensions file missing. Using defaults: .py, .js, .bat, .ps1"
+        f"Extensions file missing. Using defaults: {', '.join(DEFAULT_EXTENSIONS)}"
     )
 
     @classmethod
@@ -85,7 +87,7 @@ class Config:
 
         loaded_extensions = load_file('extensions.txt', mode='multi_line')
         if not loaded_extensions:
-            cls.set_extensions(['.py', '.js', '.bat', '.ps1'], missing=True)
+            cls.set_extensions(cls.DEFAULT_EXTENSIONS, missing=True)
             print(cls.extensions_missing_message)
         else:
             cls.set_extensions(loaded_extensions)
