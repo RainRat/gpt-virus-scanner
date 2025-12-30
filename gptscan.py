@@ -985,22 +985,32 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     all_checkbox.pack(side=tk.LEFT, padx=10)
 
     gpt_var = tk.BooleanVar()
-    gpt_checkbox = tk.Checkbutton(options_frame, text="Use AI Analysis", variable=gpt_var)
-    gpt_checkbox.pack(side=tk.LEFT, padx=10)
 
     dry_var = tk.BooleanVar()
     dry_checkbox = tk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
     dry_checkbox.pack(side=tk.LEFT, padx=10)
+
+    # --- Provider Frame ---
+    provider_frame = tk.LabelFrame(root, text="AI Analysis")
+    provider_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
+
+    def toggle_ai_controls():
+        enabled = gpt_var.get()
+        if enabled:
+            provider_combo.config(state="readonly")
+            model_combo.config(state="normal")
+        else:
+            provider_combo.config(state="disabled")
+            model_combo.config(state="disabled")
+
+    gpt_checkbox = tk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
+    gpt_checkbox.pack(side=tk.LEFT, padx=10)
 
     if not Config.GPT_ENABLED:
         gpt_var.set(False)
         gpt_checkbox.config(state="disabled")
         messagebox.showwarning("GPT Disabled",
                                        "task.txt not found. GPT functionality is disabled.")
-
-    # --- Provider Frame ---
-    provider_frame = tk.LabelFrame(root, text="Provider Settings")
-    provider_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
 
     tk.Label(provider_frame, text="Provider:").pack(side=tk.LEFT, padx=5, pady=5)
     provider_var = tk.StringVar(value=Config.provider)
@@ -1011,6 +1021,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     model_var = tk.StringVar(value=Config.model_name)
     model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
     model_combo.pack(side=tk.LEFT, padx=5, pady=5)
+
+    toggle_ai_controls()
 
     def update_model_presets(provider: str):
         if provider == "openai":
