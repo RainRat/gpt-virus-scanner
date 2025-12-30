@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import fnmatch
 import json
 import os
 import queue
@@ -391,13 +392,15 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
             tree.item(iid, values=new_vals)
 
 
-def collect_files(targets: Union[str, List[str]]) -> List[Path]:
+def collect_files(targets: Union[str, List[str]], exclude_patterns: Optional[List[str]] = None) -> List[Path]:
     """Collect files from a single path or a list of paths (files or directories).
 
     Parameters
     ----------
     targets : Union[str, List[str]]
         A single directory path or a list of file/directory paths.
+    exclude_patterns : Optional[List[str]]
+        List of patterns to exclude (e.g. ['node_modules', '*.git', 'dist']).
 
     Returns
     -------
@@ -407,13 +410,33 @@ def collect_files(targets: Union[str, List[str]]) -> List[Path]:
     if isinstance(targets, str):
         targets = [targets]
 
+    excludes = exclude_patterns or []
     results: List[Path] = []
+
+    def is_excluded(name: str) -> bool:
+        for pattern in excludes:
+            if fnmatch.fnmatch(name, pattern):
+                return True
+        return False
+
     for t in targets:
         p = Path(t)
         if p.is_file():
-            results.append(p)
+            if not is_excluded(p.name):
+                results.append(p)
         elif p.is_dir():
-            results.extend([f for f in p.rglob('*') if f.is_file()])
+            for root, dirs, files in os.walk(p):
+                # Prune excluded directories
+                i = 0
+                while i < len(dirs):
+                    if is_excluded(dirs[i]):
+                        del dirs[i]
+                    else:
+                        i += 1
+
+                for f_name in files:
+                    if not is_excluded(f_name):
+                        results.append(Path(root) / f_name)
 
     # Remove duplicates while preserving order? Or just set.
     # Sets destroy order, but duplicates are bad.
@@ -576,6 +599,7 @@ def scan_files(
     rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
     max_concurrent_requests: int = Config.MAX_CONCURRENT_REQUESTS,
     dry_run: bool = False,
+    exclude_patterns: Optional[List[str]] = None,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for malicious content and optionally request GPT analysis.
 
@@ -595,6 +619,8 @@ def scan_files(
         Maximum number of GPT requests executed concurrently.
     dry_run : bool
         Whether to list files that would be scanned without running the model or API.
+    exclude_patterns : Optional[List[str]]
+        Patterns for files/directories to exclude from the scan.
 
     Yields
     ------
@@ -617,7 +643,7 @@ def scan_files(
             prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
             return float(prediction), bytes(padded_data)
 
-    file_list = collect_files(scan_targets)
+    file_list = collect_files(scan_targets, exclude_patterns=exclude_patterns)
     total_progress = len(file_list)
     progress_count = 0
     yield ('progress', (progress_count, total_progress, "Scanning..."))
@@ -920,7 +946,7 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False) -> None:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None) -> None:
     """Run scans and stream results to stdout.
 
     Parameters
@@ -939,6 +965,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         Format of the output ('csv', 'json', or 'sarif'). Defaults to 'csv'.
     dry_run : bool
         Whether to simulate the scan.
+    exclude_patterns : Optional[List[str]]
+        Patterns for files/directories to exclude from the scan.
     """
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]
 
@@ -960,6 +988,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         rate_limit=rate_limit,
         max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
         dry_run=dry_run,
+        exclude_patterns=exclude_patterns,
     ):
         if event_type == 'result':
             record = dict(zip(keys, data))
@@ -1253,6 +1282,11 @@ if __name__ == "__main__":
         nargs='*',
         help='Additional files to scan.'
     )
+    parser.add_argument(
+        '--exclude',
+        nargs='+',
+        help='Patterns to exclude (e.g. node_modules .git *.log)'
+    )
     args = parser.parse_args()
 
     Config.provider = args.provider
@@ -1287,7 +1321,7 @@ if __name__ == "__main__":
             output_format = 'json'
         if args.sarif:
             output_format = 'sarif'
-        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format, dry_run=args.dry_run)
+        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format, dry_run=args.dry_run, exclude_patterns=args.exclude)
     else:
         app_root = create_gui(initial_path=scan_target)
         app_root.mainloop()
