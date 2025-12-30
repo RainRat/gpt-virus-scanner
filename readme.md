@@ -4,7 +4,7 @@
 
 This is a proof-of-concept security tool that checks your script files for malicious code. It works in two stages:
 1.  **Local Scan:** A built-in AI model checks your files quickly.
-2.  **Cloud Analysis:** If a file looks suspicious, it sends a snippet to OpenAI (ChatGPT) for a detailed report.
+2.  **Cloud Analysis:** If a file looks suspicious, it sends a snippet to an AI provider (like OpenAI) for a detailed report.
 
 **Note:** This is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, Batch) but not compiled executables or archives.
 
@@ -21,7 +21,8 @@ This is a proof-of-concept security tool that checks your script files for malic
 ## Installation
 
 1.  **Get the code:**
-    Clone this repository or download the files. You need `gptscan.py`, `scripts.h5`, and `task.txt` in the same folder.
+    Clone this repository or download the files. You need `gptscan.py` and `scripts.h5` in the same folder.
+    *   To enable AI analysis, you also need a `task.txt` file containing the system prompt for the AI.
 
 2.  **Install Python** from [python.org](https://www.python.org/).
 
@@ -47,7 +48,7 @@ This is a proof-of-concept security tool that checks your script files for malic
     *   **OpenRouter:** Get a key from [OpenRouter](https://openrouter.ai/).
     *   **Ollama:** No API key needed! Just ensure Ollama is running locally (default: `http://localhost:11434`).
 
-    *Privacy Note:* Files are sent to the provider only if you enable the "Use ChatGPT" option. Check your provider's data policy.
+    *Privacy Note:* Files are sent to the provider only if you enable the "Use AI Analysis" option. Check your provider's data policy.
 
 ## How to Use
 
@@ -62,7 +63,7 @@ python gptscan.py
 *   **Select Directory:** Choose the folder you want to scan.
 *   **Deep Scan:** Check this to scan the entire file (slower). By default, it only checks the beginning and end of files.
 *   **Show all files:** Check this to see every file scanned, not just the suspicious ones.
-*   **Use ChatGPT:** Check this to get a detailed report for suspicious files.
+*   **Use AI Analysis:** Check this to get a detailed report for suspicious files.
 *   **Provider Settings:** Choose between OpenAI, OpenRouter, or Ollama, and specify the model.
 
 You can sort the results by clicking on the column headers.
@@ -86,11 +87,12 @@ python gptscan.py ./my_scripts --cli --use-gpt --json
 *   `--show-all`: Lists all files, even safe ones.
 *   `--use-gpt`: Sends suspicious code to the LLM for analysis.
 *   `--json`: Outputs results in JSON format (default is CSV).
+*   `--sarif`: Outputs results in SARIF format (standard for security tools).
 *   `--dry-run`: Lists files that would be scanned without running the AI model.
 *   `--extensions "py,js,bat"`: Scans these file types instead of the defaults.
 *   `--rate-limit <number>`: Sets the maximum requests per minute (default: 60).
 *   `--provider <name>`: Choose 'openai', 'openrouter', or 'ollama' (default: openai).
-*   `--model <name>`: Specify the model name (e.g., 'gpt-4', 'llama2').
+*   `--model <name>`: Specify the model name (e.g., 'gpt-4o', 'llama3.2').
 *   `--api-base <url>`: Set a custom API URL.
 
 ## Contributing
