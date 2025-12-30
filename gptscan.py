@@ -844,6 +844,82 @@ def run_scan(
         enqueue_ui_update(finish_scan_state)
 
 
+def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Generate a SARIF log from the scan results.
+
+    Parameters
+    ----------
+    results : List[Dict[str, Any]]
+        List of result dictionaries.
+
+    Returns
+    -------
+    Dict[str, Any]
+        The SARIF log object.
+    """
+    sarif_results = []
+    for r in results:
+        # Convert confidence strings to levels
+        level = "note"
+        try:
+            conf_str = r.get("gpt_conf", "") or r.get("own_conf", "")
+            conf = float(conf_str.strip('%'))
+            if conf > 80:
+                level = "error"
+            elif conf > 50:
+                level = "warning"
+        except ValueError:
+            pass
+
+        message_text = r.get("admin_desc") or r.get("end-user_desc") or "Suspicious content detected"
+
+        sarif_results.append({
+            "ruleId": "GPTScan.MaliciousContent",
+            "level": level,
+            "message": {
+                "text": message_text
+            },
+            "locations": [
+                {
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": r.get("path", "").replace("\\", "/")
+                        }
+                    }
+                }
+            ],
+            "properties": {
+                "own_conf": r.get("own_conf"),
+                "gpt_conf": r.get("gpt_conf"),
+                "snippet": r.get("snippet")
+            }
+        })
+
+    return {
+        "version": "2.1.0",
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "name": "GPT Virus Scanner",
+                        "rules": [
+                            {
+                                "id": "GPTScan.MaliciousContent",
+                                "shortDescription": {
+                                    "text": "Potential malicious content detected."
+                                },
+                                "helpUri": "https://github.com/user/gpt-virus-scanner"
+                            }
+                        ]
+                    }
+                },
+                "results": sarif_results
+            }
+        ]
+    }
+
+
 def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False) -> None:
     """Run scans and stream results to stdout.
 
@@ -860,7 +936,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     rate_limit : int
         Maximum allowed GPT requests per minute.
     output_format : str
-        Format of the output ('csv' or 'json'). Defaults to 'csv'.
+        Format of the output ('csv', 'json', or 'sarif'). Defaults to 'csv'.
     dry_run : bool
         Whether to simulate the scan.
     """
@@ -873,6 +949,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     cancel_event = threading.Event()
     final_progress: Optional[Tuple[int, int]] = None
 
+    sarif_buffer = []
+
     for event_type, data in scan_files(
         targets,
         deep,
@@ -884,9 +962,11 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         dry_run=dry_run,
     ):
         if event_type == 'result':
+            record = dict(zip(keys, data))
             if output_format == 'json':
-                record = dict(zip(keys, data))
                 print(json.dumps(record))
+            elif output_format == 'sarif':
+                sarif_buffer.append(record)
             else:
                 writer.writerow(data)
         elif event_type == 'progress':
@@ -898,6 +978,10 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     if final_progress is not None:
         print(file=sys.stderr)
+
+    if output_format == 'sarif':
+        sarif_log = generate_sarif(sarif_buffer)
+        print(json.dumps(sarif_log, indent=2))
 
 
 def export_results() -> None:
@@ -1134,6 +1218,7 @@ if __name__ == "__main__":
     parser.add_argument('--show-all', action='store_true', help='Show results for all files, including safe ones.')
     parser.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI for detailed analysis.')
     parser.add_argument('--json', action='store_true', help='Print results in JSON format instead of CSV.')
+    parser.add_argument('--sarif', action='store_true', help='Print results in SARIF format (standard for security tools).')
     parser.add_argument('--dry-run', action='store_true', help='List files to be scanned without running the model.')
     parser.add_argument(
         '--extensions',
@@ -1197,7 +1282,11 @@ if __name__ == "__main__":
         if not scan_targets:
             parser.error('You must provide a file or folder to scan.')
 
-        output_format = 'json' if args.json else 'csv'
+        output_format = 'csv'
+        if args.json:
+            output_format = 'json'
+        if args.sarif:
+            output_format = 'sarif'
         run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format, dry_run=args.dry_run)
     else:
         app_root = create_gui(initial_path=scan_target)
