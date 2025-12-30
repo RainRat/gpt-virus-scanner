@@ -1,31 +1,6 @@
 import io
 import pytest
-from gptscan import pad_window, iter_windows, Config
-
-def test_pad_window_adds_padding():
-    data = b"hello"
-    # Testing with small maxlen for easier assertion
-    maxlen = 10
-    result = pad_window(data, maxlen=maxlen)
-
-    assert len(result) == maxlen
-    assert result[:5] == list(b"hello")
-    assert result[5:] == [13] * 5
-
-def test_pad_window_exact_length():
-    data = b"hello"
-    maxlen = 5
-    result = pad_window(data, maxlen=maxlen)
-    assert len(result) == 5
-    assert result == list(b"hello")
-
-def test_pad_window_default_maxlen():
-    data = b"a"
-    # Should use Config.MAXLEN (1024)
-    result = pad_window(data)
-    assert len(result) == Config.MAXLEN
-    assert result[0] == ord('a')
-    assert result[1] == 13
+from gptscan import iter_windows, Config
 
 def test_iter_windows_empty_file():
     f = io.BytesIO(b"")

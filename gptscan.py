@@ -530,15 +530,6 @@ def cancel_scan() -> None:
         current_cancel_event.set()
 
 
-def pad_window(data: bytes, maxlen: Optional[int] = None) -> List[int]:
-    """Pad the data with ASCII 13 to meet the maxlen requirement."""
-    if maxlen is None:
-        maxlen = Config.MAXLEN
-    padded = list(data)
-    padded.extend([13] * (maxlen - len(padded)))
-    return padded
-
-
 def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
     """Yield file chunks for scanning."""
     if maxlen is None:
@@ -620,7 +611,8 @@ def scan_files(
         tf_module = _tf_module
 
         def predict_window(window_bytes: bytes) -> Tuple[float, bytes]:
-            padded_data = pad_window(window_bytes)
+            padded_data = list(window_bytes)
+            padded_data.extend([13] * (Config.MAXLEN - len(padded_data)))
             tf_data = tf_module.expand_dims(tf_module.constant(padded_data), axis=0)
             prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
             return float(prediction), bytes(padded_data)
