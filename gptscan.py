@@ -525,13 +525,6 @@ def button_click() -> None:
     scan_thread.start()
 
 
-def cancel_scan() -> None:
-    """Signal the active scan to stop."""
-
-    if current_cancel_event:
-        current_cancel_event.set()
-
-
 def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
     """Yield file chunks for scanning."""
     if maxlen is None:
@@ -1154,7 +1147,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     scan_button = tk.Button(action_frame, text="Scan now", command=button_click)
     scan_button.pack(side=tk.LEFT, padx=5)
-    cancel_button = tk.Button(action_frame, text="Cancel", command=cancel_scan, state="disabled")
+    cancel_button = tk.Button(action_frame, text="Cancel", command=lambda: current_cancel_event.set() if current_cancel_event else None, state="disabled")
     cancel_button.pack(side=tk.LEFT, padx=5)
     export_button = tk.Button(action_frame, text="Export CSV", command=export_results)
     export_button.pack(side=tk.RIGHT, padx=5)
