@@ -1212,47 +1212,54 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="GPT Virus Scanner")
     parser.add_argument('target', nargs='?', help='The file or folder you want to scan.')
-    parser.add_argument('--cli', action='store_true', help='Run without the graphical window.')
-    parser.add_argument('--path', type=str, help='The folder to scan.')
-    parser.add_argument('--deep', action='store_true', help='Scan the entire file (slower but more thorough).')
-    parser.add_argument('--show-all', action='store_true', help='Show results for all files, including safe ones.')
-    parser.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI for detailed analysis.')
-    parser.add_argument('--json', action='store_true', help='Print results in JSON format instead of CSV.')
-    parser.add_argument('--sarif', action='store_true', help='Print results in SARIF format (standard for security tools).')
-    parser.add_argument('--dry-run', action='store_true', help='List files to be scanned without running the model.')
     parser.add_argument(
+        'files',
+        nargs='*',
+        help='Additional files to scan.'
+    )
+
+    scan_group = parser.add_argument_group("Scan Configuration")
+    scan_group.add_argument('--path', type=str, help='The folder to scan.')
+    scan_group.add_argument('--deep', action='store_true', help='Scan the entire file (slower but more thorough).')
+    scan_group.add_argument('--dry-run', action='store_true', help='List files to be scanned without running the model.')
+    scan_group.add_argument(
         '--extensions',
         type=str,
         help='Only scan specific file types (e.g., .py, .js).'
     )
-    parser.add_argument(
-        '--rate-limit',
-        type=int,
-        default=Config.RATE_LIMIT_PER_MINUTE,
-        help='Max AI requests per minute (default: 60).'
-    )
-    parser.add_argument(
+
+    ai_group = parser.add_argument_group("AI Analysis")
+    ai_group.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI for detailed analysis.')
+    ai_group.add_argument(
         '--provider',
         type=str,
         default='openai',
         choices=['openai', 'openrouter', 'ollama'],
         help='Choose the AI provider (default: openai).'
     )
-    parser.add_argument(
+    ai_group.add_argument(
         '--model',
         type=str,
         help='The specific AI model to use (e.g., gpt-4o, llama3.2).'
     )
-    parser.add_argument(
+    ai_group.add_argument(
         '--api-base',
         type=str,
         help='Custom URL for the API server.'
     )
-    parser.add_argument(
-        'files',
-        nargs='*',
-        help='Additional files to scan.'
+    ai_group.add_argument(
+        '--rate-limit',
+        type=int,
+        default=Config.RATE_LIMIT_PER_MINUTE,
+        help='Max AI requests per minute (default: 60).'
     )
+
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument('--cli', action='store_true', help='Run without the graphical window.')
+    output_group.add_argument('--show-all', action='store_true', help='Show results for all files, including safe ones.')
+    output_group.add_argument('--json', action='store_true', help='Print results in JSON format instead of CSV.')
+    output_group.add_argument('--sarif', action='store_true', help='Print results in SARIF format (standard for security tools).')
+
     args = parser.parse_args()
 
     Config.provider = args.provider
