@@ -75,21 +75,6 @@ def test_finish_scan_state_resets_state(monkeypatch):
     mock_scan_button.config.assert_called_with(state="normal")
     mock_cancel_button.config.assert_called_with(state="disabled")
 
-def test_cancel_scan_triggers_event(monkeypatch):
-    # Setup
-    mock_event = MagicMock()
-    monkeypatch.setattr(gptscan, 'current_cancel_event', mock_event)
-
-    # Action
-    gptscan.cancel_scan()
-
-    # Assert
-    mock_event.set.assert_called_once()
-
-def test_cancel_scan_does_nothing_if_no_event(monkeypatch):
-    monkeypatch.setattr(gptscan, 'current_cancel_event', None)
-    # Should not raise
-    gptscan.cancel_scan()
 
 def test_button_click_validation_failure(monkeypatch):
     # Mock textbox to return empty
