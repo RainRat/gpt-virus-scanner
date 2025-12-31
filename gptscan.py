@@ -1036,40 +1036,40 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.rowconfigure(6, weight=1)  # The row containing the Treeview
 
     # --- Input Frame ---
-    input_frame = tk.Frame(root)
+    input_frame = ttk.Frame(root)
     input_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
     input_frame.columnconfigure(1, weight=1)
 
-    tk.Label(input_frame, text="Path to scan:").grid(row=0, column=0, sticky="w", padx=(0, 5))
-    textbox = tk.Entry(input_frame)
+    ttk.Label(input_frame, text="Path to scan:").grid(row=0, column=0, sticky="w", padx=(0, 5))
+    textbox = ttk.Entry(input_frame)
     if initial_path:
         textbox.insert(0, initial_path)
     textbox.grid(row=0, column=1, sticky="ew", padx=5)
     textbox.bind('<Return>', lambda event: button_click())
     textbox.focus_set()
-    select_dir_btn = tk.Button(input_frame, text="Select Directory", command=browse_button_click)
+    select_dir_btn = ttk.Button(input_frame, text="Select Directory", command=browse_button_click)
     select_dir_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
 
     # --- Options Frame ---
-    options_frame = tk.Frame(root)
+    options_frame = ttk.Frame(root)
     options_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
     deep_var = tk.BooleanVar()
-    deep_checkbox = tk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
+    deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
     deep_checkbox.pack(side=tk.LEFT, padx=10)
 
     all_var = tk.BooleanVar()
-    all_checkbox = tk.Checkbutton(options_frame, text="Show all files", variable=all_var)
+    all_checkbox = ttk.Checkbutton(options_frame, text="Show all files", variable=all_var)
     all_checkbox.pack(side=tk.LEFT, padx=10)
 
     gpt_var = tk.BooleanVar()
 
     dry_var = tk.BooleanVar()
-    dry_checkbox = tk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
+    dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
     dry_checkbox.pack(side=tk.LEFT, padx=10)
 
     # --- Provider Frame ---
-    provider_frame = tk.LabelFrame(root, text="AI Analysis")
+    provider_frame = ttk.LabelFrame(root, text="AI Analysis")
     provider_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
 
     def toggle_ai_controls():
@@ -1081,7 +1081,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
             provider_combo.config(state="disabled")
             model_combo.config(state="disabled")
 
-    gpt_checkbox = tk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
+    gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
     gpt_checkbox.pack(side=tk.LEFT, padx=10)
 
     if not Config.GPT_ENABLED:
@@ -1090,12 +1090,12 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         messagebox.showwarning("GPT Disabled",
                                        "task.txt not found. GPT functionality is disabled.")
 
-    tk.Label(provider_frame, text="Provider:").pack(side=tk.LEFT, padx=5, pady=5)
+    ttk.Label(provider_frame, text="Provider:").pack(side=tk.LEFT, padx=5, pady=5)
     provider_var = tk.StringVar(value=Config.provider)
     provider_combo = ttk.Combobox(provider_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
     provider_combo.pack(side=tk.LEFT, padx=5, pady=5)
 
-    tk.Label(provider_frame, text="Model:").pack(side=tk.LEFT, padx=5, pady=5)
+    ttk.Label(provider_frame, text="Model:").pack(side=tk.LEFT, padx=5, pady=5)
     model_var = tk.StringVar(value=Config.model_name)
     model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
     model_combo.pack(side=tk.LEFT, padx=5, pady=5)
@@ -1149,28 +1149,28 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         )
 
     # --- Action Frame ---
-    action_frame = tk.Frame(root)
+    action_frame = ttk.Frame(root)
     action_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
 
-    scan_button = tk.Button(action_frame, text="Scan now", command=button_click)
+    scan_button = ttk.Button(action_frame, text="Scan now", command=button_click)
     scan_button.pack(side=tk.LEFT, padx=5)
-    cancel_button = tk.Button(action_frame, text="Cancel", command=cancel_scan, state="disabled")
+    cancel_button = ttk.Button(action_frame, text="Cancel", command=cancel_scan, state="disabled")
     cancel_button.pack(side=tk.LEFT, padx=5)
-    export_button = tk.Button(action_frame, text="Export CSV", command=export_results)
+    export_button = ttk.Button(action_frame, text="Export CSV", command=export_results)
     export_button.pack(side=tk.RIGHT, padx=5)
 
     # --- Progress Bar ---
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, mode='determinate')
     progress_bar.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
 
-    status_label = tk.Label(root, text="Ready", anchor="w")
+    status_label = ttk.Label(root, text="Ready", anchor="w")
     status_label.grid(row=5, column=0, sticky="ew", padx=10, pady=(0, 5))
 
     # --- Treeview ---
     style = ttk.Style(root)
     style.configure('Scanner.Treeview', rowheight=50)
 
-    tree_frame = tk.Frame(root)
+    tree_frame = ttk.Frame(root)
     tree_frame.grid(row=6, column=0, sticky="nsew", padx=10, pady=5)
     tree_frame.columnconfigure(0, weight=1)
     tree_frame.rowconfigure(0, weight=1)
