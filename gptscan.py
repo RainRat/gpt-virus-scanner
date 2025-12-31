@@ -578,6 +578,7 @@ def scan_files(
     rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
     max_concurrent_requests: int = Config.MAX_CONCURRENT_REQUESTS,
     dry_run: bool = False,
+    exclude_patterns: Optional[List[str]] = None,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for malicious content and optionally request GPT analysis.
 
@@ -597,6 +598,8 @@ def scan_files(
         Maximum number of GPT requests executed concurrently.
     dry_run : bool
         Whether to list files that would be scanned without running the model or API.
+    exclude_patterns : List[str], optional
+        List of glob patterns to exclude from the scan.
 
     Yields
     ------
@@ -620,6 +623,13 @@ def scan_files(
             return float(prediction), bytes(padded_data)
 
     file_list = collect_files(scan_targets)
+
+    if exclude_patterns:
+        file_list = [
+            f for f in file_list
+            if not any(f.match(p) for p in exclude_patterns)
+        ]
+
     total_progress = len(file_list)
     progress_count = 0
     yield ('progress', (progress_count, total_progress, "Scanning..."))
@@ -922,7 +932,7 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False) -> None:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None) -> None:
     """Run scans and stream results to stdout.
 
     Parameters
@@ -941,6 +951,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         Format of the output ('csv', 'json', or 'sarif'). Defaults to 'csv'.
     dry_run : bool
         Whether to simulate the scan.
+    exclude_patterns : List[str], optional
+        List of glob patterns to exclude from the scan.
     """
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]
 
@@ -962,6 +974,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         rate_limit=rate_limit,
         max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
         dry_run=dry_run,
+        exclude_patterns=exclude_patterns,
     ):
         if event_type == 'result':
             record = dict(zip(keys, data))
@@ -1229,6 +1242,11 @@ if __name__ == "__main__":
         type=str,
         help='Only scan specific file types (e.g., .py, .js).'
     )
+    scan_group.add_argument(
+        '--exclude',
+        nargs='*',
+        help='Patterns to exclude from scan (e.g., node_modules/*, *.test.py).'
+    )
 
     ai_group = parser.add_argument_group("AI Analysis")
     ai_group.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI for detailed analysis.')
@@ -1296,7 +1314,7 @@ if __name__ == "__main__":
             output_format = 'json'
         if args.sarif:
             output_format = 'sarif'
-        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format, dry_run=args.dry_run)
+        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format, dry_run=args.dry_run, exclude_patterns=args.exclude)
     else:
         app_root = create_gui(initial_path=scan_target)
         app_root.mainloop()
