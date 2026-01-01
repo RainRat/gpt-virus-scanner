@@ -11,7 +11,7 @@ This is a proof-of-concept security tool that checks your script files for malic
 ## Requirements
 
 *   **Python 3.8** or newer.
-*   **TensorFlow** (for the local AI model).
+*   **TensorFlow** (must be < 2.16 to load the local model).
 *   **LLM Provider** (Optional, for detailed analysis):
     *   **OpenAI** (requires API key)
     *   **OpenRouter** (requires API key)
@@ -76,12 +76,12 @@ You can run scans from the terminal. This is useful for automated tasks.
 
 **Example:**
 ```bash
-python gptscan.py ./my_scripts --cli --use-gpt --json
+python gptscan.py ./my_scripts --cli --use-gpt --json --exclude "tests/*"
 ```
 
 **Options:**
 *   `--cli`: Runs in command-line mode (required).
-*   `[target]`: The file or folder to scan (positional argument).
+*   `[target] [files...]`: The file(s) or folder(s) to scan (positional arguments).
 *   `--path <folder>`: Alternative way to specify the folder to scan.
 *   `--deep`: Scans the entire file instead of just the start and end (slower).
 *   `--show-all`: Lists all files, even safe ones.
@@ -89,7 +89,8 @@ python gptscan.py ./my_scripts --cli --use-gpt --json
 *   `--json`: Outputs results in JSON format (default is CSV).
 *   `--sarif`: Outputs results in SARIF format (standard for security tools).
 *   `--dry-run`: Lists files that would be scanned without running the AI model.
-*   `--extensions "py,js,bat"`: Scans these file types instead of the defaults.
+*   `--extensions "py,js,bat"`: Scans these file types instead of the defaults (comma-separated).
+*   `--exclude [patterns...]`: Skips files matching these patterns (e.g., `node_modules/*`, `*.test.py`).
 *   `--rate-limit <number>`: Sets the maximum requests per minute (default: 60).
 *   `--provider <name>`: Choose 'openai', 'openrouter', or 'ollama' (default: openai).
 *   `--model <name>`: Specify the model name (e.g., 'gpt-4o', 'llama3.2').
