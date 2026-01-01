@@ -1222,7 +1222,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     return root
 
 
-if __name__ == "__main__":
+def main():
     import argparse
     parser = argparse.ArgumentParser(description="GPT Virus Scanner")
     parser.add_argument('target', nargs='?', help='The file or folder to check.')
@@ -1245,6 +1245,11 @@ if __name__ == "__main__":
         '--exclude',
         nargs='*',
         help='Patterns to exclude from scan (e.g., node_modules/*, *.test.py).'
+    )
+    scan_group.add_argument(
+        '--file-list',
+        type=argparse.FileType('r'),
+        help='Read list of files to scan from a file (use "-" for stdin).'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
@@ -1305,6 +1310,12 @@ if __name__ == "__main__":
         if args.files:
             scan_targets.extend(args.files)
 
+        if args.file_list:
+            for line in args.file_list:
+                line = line.strip()
+                if line:
+                    scan_targets.append(line)
+
         if not scan_targets:
             parser.error('You must provide a file or folder to scan.')
 
@@ -1317,3 +1328,6 @@ if __name__ == "__main__":
     else:
         app_root = create_gui(initial_path=scan_target)
         app_root.mainloop()
+
+if __name__ == "__main__":
+    main()
