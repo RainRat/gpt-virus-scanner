@@ -1054,8 +1054,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     ttk.Label(input_frame, text="Path to scan:").grid(row=0, column=0, sticky="w", padx=(0, 5))
     textbox = ttk.Entry(input_frame)
-    if initial_path:
-        textbox.insert(0, initial_path)
+    path_to_use = initial_path if initial_path else os.getcwd()
+    textbox.insert(0, path_to_use)
+    textbox.select_range(0, tk.END)
     textbox.grid(row=0, column=1, sticky="ew", padx=5)
     textbox.bind('<Return>', lambda event: button_click())
     textbox.focus_set()
