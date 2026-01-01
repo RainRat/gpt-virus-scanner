@@ -40,6 +40,7 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
 
 
 class Config:
+    """Global configuration settings for the scanner."""
     MAXLEN = 1024
     EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
     MAX_RETRIES = 3
@@ -417,9 +418,7 @@ def collect_files(targets: Union[str, List[str]]) -> List[Path]:
         elif p.is_dir():
             results.extend([f for f in p.rglob('*') if f.is_file()])
 
-    # Remove duplicates while preserving order? Or just set.
-    # Sets destroy order, but duplicates are bad.
-    # Use dict keys to preserve insertion order in Python 3.7+
+    # Use dict keys to remove duplicates while preserving insertion order.
     return list(dict.fromkeys(results))
 
 
@@ -1213,25 +1212,25 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="GPT Virus Scanner")
-    parser.add_argument('target', nargs='?', help='The file or folder you want to scan.')
+    parser.add_argument('target', nargs='?', help='The file or folder to check.')
     parser.add_argument(
         'files',
         nargs='*',
-        help='Additional files to scan.'
+        help='Additional files to check.'
     )
 
     scan_group = parser.add_argument_group("Scan Configuration")
     scan_group.add_argument('--path', type=str, help='The folder to scan.')
-    scan_group.add_argument('--deep', action='store_true', help='Scan the entire file (slower but more thorough).')
-    scan_group.add_argument('--dry-run', action='store_true', help='List files to be scanned without running the model.')
+    scan_group.add_argument('--deep', action='store_true', help='Check the whole file, not just the start and end (slower).')
+    scan_group.add_argument('--dry-run', action='store_true', help='List the files that would be checked, without actually scanning them.')
     scan_group.add_argument(
         '--extensions',
         type=str,
-        help='Only scan specific file types (e.g., .py, .js).'
+        help='Only check files ending with these extensions (e.g., .py, .js).'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
-    ai_group.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI for detailed analysis.')
+    ai_group.add_argument('--use-gpt', action='store_true', help='Ask the AI to explain suspicious code.')
     ai_group.add_argument(
         '--provider',
         type=str,
@@ -1258,9 +1257,9 @@ if __name__ == "__main__":
 
     output_group = parser.add_argument_group("Output Options")
     output_group.add_argument('--cli', action='store_true', help='Run without the graphical window.')
-    output_group.add_argument('--show-all', action='store_true', help='Show results for all files, including safe ones.')
+    output_group.add_argument('--show-all', action='store_true', help='List every file, even if it looks safe.')
     output_group.add_argument('--json', action='store_true', help='Print results in JSON format instead of CSV.')
-    output_group.add_argument('--sarif', action='store_true', help='Print results in SARIF format (standard for security tools).')
+    output_group.add_argument('--sarif', action='store_true', help='Output results in SARIF format (used by other security tools).')
 
     args = parser.parse_args()
 
