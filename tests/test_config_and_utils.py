@@ -10,13 +10,11 @@ def test_config_set_extensions():
     extensions = [".py", ".js", ".BAT"]
     Config.set_extensions(extensions, missing=False)
 
-    assert Config.extensions == extensions
     assert Config.extensions_set == {".py", ".js", ".bat"}
     assert Config.extensions_missing is False
 
 def test_config_set_extensions_empty():
     Config.set_extensions([], missing=True)
-    assert Config.extensions == []
     assert Config.extensions_set == set()
     assert Config.extensions_missing is True
 

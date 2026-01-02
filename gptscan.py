@@ -50,7 +50,6 @@ class Config:
     apikey: str = load_file('apikey.txt')
     taskdesc: str = load_file('task.txt')
     GPT_ENABLED: bool = False
-    extensions: Union[List[str], str] = []
     extensions_set: set[str] = set()
     extensions_missing: bool = False
     provider: str = "openai"
@@ -72,7 +71,6 @@ class Config:
     @classmethod
     def set_extensions(cls, extensions_list: List[str], missing: bool = False) -> None:
         cls.extensions_missing = missing
-        cls.extensions = extensions_list
         cls.extensions_set = {ext.strip().lower() for ext in extensions_list if ext.strip()}
 
     @classmethod
