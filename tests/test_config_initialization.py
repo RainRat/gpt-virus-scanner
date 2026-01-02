@@ -8,18 +8,20 @@ def reset_config():
     # Save original state
     original_apikey = Config.apikey
     original_taskdesc = Config.taskdesc
-    original_extensions = Config.extensions
+    original_extensions_set = Config.extensions_set.copy()
     original_gpt_enabled = Config.GPT_ENABLED
     original_ext_missing = Config.extensions_missing
+    original_ignore_patterns = Config.ignore_patterns.copy()
 
     yield
 
     # Restore original state
     Config.apikey = original_apikey
     Config.taskdesc = original_taskdesc
-    Config.extensions = original_extensions
+    Config.extensions_set = original_extensions_set
     Config.GPT_ENABLED = original_gpt_enabled
     Config.extensions_missing = original_ext_missing
+    Config.ignore_patterns = original_ignore_patterns
 
 def test_initialize_missing_api_key(capsys):
     """Test initialization when API key is missing."""
@@ -58,7 +60,7 @@ def test_initialize_missing_extensions_file(capsys):
 
     captured = capsys.readouterr()
     assert Config.extensions_missing_message in captured.out
-    assert Config.extensions == Config.DEFAULT_EXTENSIONS
+    assert Config.extensions_set == set(Config.DEFAULT_EXTENSIONS)
     assert Config.extensions_missing is True
 
 def test_initialize_all_present(capsys):
@@ -67,7 +69,7 @@ def test_initialize_all_present(capsys):
     Config.taskdesc = "task"
     custom_exts = [".java", ".cpp"]
 
-    with patch('gptscan.load_file', return_value=custom_exts):
+    with patch('gptscan.load_file', side_effect=lambda f, mode='single_line': custom_exts if 'extensions' in f else []):
         Config.initialize()
 
     captured = capsys.readouterr()
@@ -76,5 +78,5 @@ def test_initialize_all_present(capsys):
     assert Config.extensions_missing_message not in captured.out
 
     assert Config.GPT_ENABLED is True
-    assert Config.extensions == custom_exts
+    assert Config.extensions_set == set(custom_exts)
     assert Config.extensions_missing is False
