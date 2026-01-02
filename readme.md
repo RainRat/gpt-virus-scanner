@@ -10,97 +10,78 @@ This is a proof-of-concept security tool that checks your script files for malic
 
 ## Requirements
 
-*   **Python 3.8** or newer.
-*   **TensorFlow** (must be < 2.16 to load the local model).
-*   **LLM Provider** (Optional, for detailed analysis):
-    *   **OpenAI** (requires API key)
-    *   **OpenRouter** (requires API key)
-    *   **Ollama** (requires local installation)
-*   **Tkinter** (for the graphical interface).
+*   **Python 3.8+**
+*   **TensorFlow < 2.16** (Required for the local model).
+*   **Tkinter** (Required for the visual interface).
+*   **(Optional) AI Provider:** OpenAI, OpenRouter, or Ollama for detailed analysis.
 
 ## Installation
 
-1.  **Get the code:**
-    Clone this repository or download the files. You need `gptscan.py` and `scripts.h5` in the same folder.
-    *   To enable AI analysis, you also need a `task.txt` file containing the system prompt for the AI.
+1.  **Download the files:**
+    Keep `gptscan.py` and `scripts.h5` in the same folder.
 
 2.  **Install Python** from [python.org](https://www.python.org/).
 
-3.  **Install the required libraries:**
-    Run this command in your terminal. We specify an older TensorFlow version to match our AI model.
-
+3.  **Install dependencies:**
+    Run this in your terminal:
     ```bash
     pip install "tensorflow<2.16" openai
     ```
+    *Linux users:* You may also need Tkinter: `sudo apt-get install python3-tk`
 
-    *Linux users:* You might also need to install Tkinter:
-    ```bash
-    sudo apt-get install python3-tk
-    ```
+4.  **Set up AI (Optional):**
+    To use AI analysis, ensure these files are in the script folder:
+    *   `task.txt`: Contains instructions for the AI (included in download).
+    *   `apikey.txt`: Create this file and paste your API key inside (required for OpenAI/OpenRouter).
 
-4.  **Set up your Provider (Optional):**
-
-    If you want to use cloud analysis (OpenAI or OpenRouter), you need an API key:
-    *   Create a file named `apikey.txt` in the same folder as `gptscan.py`.
-    *   Paste your API key into that file (and nothing else).
-
-    *   **OpenAI:** Get a key from [OpenAI](https://platform.openai.com/).
-    *   **OpenRouter:** Get a key from [OpenRouter](https://openrouter.ai/).
-    *   **Ollama:** No API key needed! Just ensure Ollama is running locally (default: `http://localhost:11434`).
-
-    *Privacy Note:* Files are sent to the provider only if you enable the "Use AI Analysis" option. Check your provider's data policy.
+    *Privacy Note:* Files are sent to the provider only if you enable "Use AI Analysis". Check your provider's data policy.
 
 ## How to Use
 
 ### Graphical Interface (GUI)
 
-Just run the script to open the window:
+Run the script to start the app:
 
 ```bash
 python gptscan.py
 ```
 
 *   **Select Directory:** Choose the folder you want to scan.
-*   **Deep Scan:** Check this to scan the entire file (slower). By default, it only checks the beginning and end of files.
-*   **Show all files:** Check this to see every file scanned, not just the suspicious ones.
-*   **Use AI Analysis:** Check this to get a detailed report for suspicious files.
-*   **Provider Settings:** Choose between OpenAI, OpenRouter, or Ollama, and specify the model.
+*   **Deep Scan:** Scans the whole file (slower). Standard scan only checks the start and end.
+*   **Show all files:** Lists every file scanned, not just the suspicious ones.
+*   **Use AI Analysis:** Get a detailed report for suspicious files using your AI provider.
+*   **Provider Settings:** Select your AI provider (OpenAI, OpenRouter, or Ollama) and model.
 
-You can sort the results by clicking on the column headers.
+You can click column headers to sort the results.
 
 ![Scan Results](gpt-virus-scan.png)
 
 ### Command Line (CLI)
 
-You can run scans from the terminal. This is useful for automated tasks.
+You can run scans from the terminal. This is useful for automation.
 
 **Example:**
 ```bash
 python gptscan.py ./my_scripts --cli --use-gpt --json --exclude "tests/*"
 ```
 
-**Options:**
-*   `--cli`: Runs in command-line mode (required).
-*   `[target] [files...]`: The file(s) or folder(s) to scan (positional arguments).
-*   `--path <folder>`: Alternative way to specify the folder to scan.
-*   `--deep`: Scans the entire file instead of just the start and end (slower).
-*   `--show-all`: Lists all files, even safe ones.
-*   `--use-gpt`: Sends suspicious code to the LLM for analysis.
-*   `--json`: Outputs results in JSON format (default is CSV).
-*   `--sarif`: Outputs results in SARIF format (standard for security tools).
-*   `--dry-run`: Lists files that would be scanned without running the AI model.
-*   `--extensions "py,js,bat"`: Scans these file types instead of the defaults (comma-separated).
-*   `--exclude [patterns...]`: Skips files matching these patterns (e.g., `node_modules/*`, `*.test.py`).
-*   `--rate-limit <number>`: Sets the maximum requests per minute (default: 60).
-*   `--provider <name>`: Choose 'openai', 'openrouter', or 'ollama' (default: openai).
-*   `--model <name>`: Specify the model name (e.g., 'gpt-4o', 'llama3.2').
-*   `--api-base <url>`: Set a custom API URL.
+**Common Options:**
+*   `--cli`: Run in command-line mode (required).
+*   `--path <folder>`: The folder to scan.
+*   `--deep`: Scan the entire file (slower).
+*   `--use-gpt`: Send suspicious code to the AI for analysis.
+*   `--json`: Output results as JSON (default is CSV).
+*   `--sarif`: Output results in SARIF format.
+*   `--dry-run`: List files that would be scanned without running the model.
+*   `--exclude`: Skip files matching these patterns (e.g., `node_modules/*`).
+
+Run `python gptscan.py --help` for a full list of options.
 
 ## Contributing
 
 We welcome improvements!
 
-*   **False Positives/Negatives:** The local AI looks at files in small chunks (1024 bytes) and isn't perfect. If you find a file it misidentifies, please send us an example so we can retrain the model.
+*   **False Positives/Negatives:** The local AI scans in small chunks. If it makes a mistake, please send us the file example so we can improve the model.
 *   **Code:** Pull requests are welcome. Please run the tests before submitting:
 
     ```bash

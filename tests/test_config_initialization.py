@@ -8,7 +8,7 @@ def reset_config():
     # Save original state
     original_apikey = Config.apikey
     original_taskdesc = Config.taskdesc
-    original_extensions = Config.extensions
+    original_extensions_set = Config.extensions_set.copy()
     original_gpt_enabled = Config.GPT_ENABLED
     original_ext_missing = Config.extensions_missing
 
@@ -17,7 +17,7 @@ def reset_config():
     # Restore original state
     Config.apikey = original_apikey
     Config.taskdesc = original_taskdesc
-    Config.extensions = original_extensions
+    Config.extensions_set = original_extensions_set
     Config.GPT_ENABLED = original_gpt_enabled
     Config.extensions_missing = original_ext_missing
 
@@ -58,7 +58,9 @@ def test_initialize_missing_extensions_file(capsys):
 
     captured = capsys.readouterr()
     assert Config.extensions_missing_message in captured.out
-    assert Config.extensions == Config.DEFAULT_EXTENSIONS
+    # Verify extensions_set contains default extensions
+    expected_set = {ext.strip().lower() for ext in Config.DEFAULT_EXTENSIONS}
+    assert Config.extensions_set == expected_set
     assert Config.extensions_missing is True
 
 def test_initialize_all_present(capsys):
@@ -76,5 +78,7 @@ def test_initialize_all_present(capsys):
     assert Config.extensions_missing_message not in captured.out
 
     assert Config.GPT_ENABLED is True
-    assert Config.extensions == custom_exts
+    # Verify extensions_set contains custom extensions
+    expected_set = {ext.strip().lower() for ext in custom_exts}
+    assert Config.extensions_set == expected_set
     assert Config.extensions_missing is False
