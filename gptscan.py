@@ -210,6 +210,26 @@ def process_ui_queue() -> None:
     root.after(50, process_ui_queue)
 
 
+def bind_hover_message(widget: tk.Widget, message: str) -> None:
+    """Bind mouse enter/leave events to update the status label."""
+    # Store the previous message to restore it later
+    previous_message: List[str] = ["Ready"]
+
+    def on_enter(event):
+        if current_cancel_event is None:
+            # Save current text, defaulting to Ready if empty
+            current_text = status_label.cget("text")
+            previous_message[0] = current_text if current_text else "Ready"
+            update_status(message)
+
+    def on_leave(event):
+        if current_cancel_event is None:
+            update_status(previous_message[0])
+
+    widget.bind("<Enter>", on_enter)
+    widget.bind("<Leave>", on_leave)
+
+
 def browse_button_click() -> None:
     """Handle the directory selection dialog and populate the textbox.
 
@@ -1060,6 +1080,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     textbox.focus_set()
     select_dir_btn = ttk.Button(input_frame, text="Select Directory", command=browse_button_click)
     select_dir_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
+    bind_hover_message(select_dir_btn, "Browse for a directory to scan.")
 
     # --- Options Frame ---
     options_frame = ttk.Frame(root)
@@ -1068,16 +1089,19 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     deep_var = tk.BooleanVar()
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
     deep_checkbox.pack(side=tk.LEFT, padx=10)
+    bind_hover_message(deep_checkbox, "Scan the entire file content (slower). Default scans only start/end.")
 
     all_var = tk.BooleanVar()
     all_checkbox = ttk.Checkbutton(options_frame, text="Show all files", variable=all_var)
     all_checkbox.pack(side=tk.LEFT, padx=10)
+    bind_hover_message(all_checkbox, "Display all scanned files, including safe ones.")
 
     gpt_var = tk.BooleanVar()
 
     dry_var = tk.BooleanVar()
     dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
     dry_checkbox.pack(side=tk.LEFT, padx=10)
+    bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
     # --- Provider Frame ---
     provider_frame = ttk.LabelFrame(root, text="AI Analysis")
@@ -1094,6 +1118,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
     gpt_checkbox.pack(side=tk.LEFT, padx=10)
+    bind_hover_message(gpt_checkbox, "Send suspicious code to AI for explanation.")
 
     if not Config.GPT_ENABLED:
         gpt_var.set(False)
@@ -1165,10 +1190,15 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     scan_button = ttk.Button(action_frame, text="Scan now", command=button_click)
     scan_button.pack(side=tk.LEFT, padx=5)
+    bind_hover_message(scan_button, "Start the scan.")
+
     cancel_button = ttk.Button(action_frame, text="Cancel", command=cancel_scan, state="disabled")
     cancel_button.pack(side=tk.LEFT, padx=5)
+    bind_hover_message(cancel_button, "Stop the current scan.")
+
     export_button = ttk.Button(action_frame, text="Export CSV", command=export_results)
     export_button.pack(side=tk.RIGHT, padx=5)
+    bind_hover_message(export_button, "Save results to a CSV file.")
 
     # --- Progress Bar ---
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, mode='determinate')
