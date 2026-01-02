@@ -1022,6 +1022,29 @@ def export_results() -> None:
         messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
 
 
+def get_model_presets(provider: str) -> List[str]:
+    """Return the list of model presets for a given provider.
+
+    Parameters
+    ----------
+    provider : str
+        The AI provider name (e.g., 'openai', 'ollama', 'openrouter').
+
+    Returns
+    -------
+    List[str]
+        A list of model names supported by the provider.
+    """
+    if provider == "openai":
+        return ["gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini", "gpt-4-turbo", "gpt-3.5-turbo"]
+    elif provider == "ollama":
+        return ["llama3.2", "llama3.1", "deepseek-r1", "phi4", "mistral", "gemma2"]
+    elif provider == "openrouter":
+        return ["gpt-4o", "anthropic/claude-3.5-sonnet", "deepseek/deepseek-r1", "google/gemini-flash-1.5", "meta-llama/llama-3.3-70b-instruct"]
+    else:
+        return []
+
+
 def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     """Construct and return the main Tkinter GUI for the scanner.
 
@@ -1114,14 +1137,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     toggle_ai_controls()
 
     def update_model_presets(provider: str):
-        if provider == "openai":
-            model_combo['values'] = ["gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini", "gpt-4-turbo", "gpt-3.5-turbo"]
-        elif provider == "ollama":
-            model_combo['values'] = ["llama3.2", "llama3.1", "deepseek-r1", "phi4", "mistral", "gemma2"]
-        elif provider == "openrouter":
-            model_combo['values'] = ["gpt-4o", "anthropic/claude-3.5-sonnet", "deepseek/deepseek-r1", "google/gemini-flash-1.5", "meta-llama/llama-3.3-70b-instruct"]
-        else:
-            model_combo['values'] = []
+        model_combo['values'] = get_model_presets(provider)
 
     update_model_presets(Config.provider)
 
