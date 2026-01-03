@@ -108,6 +108,7 @@ _model_cache: Optional[Any] = None
 _tf_module: Optional[Any] = None
 _model_lock = threading.Lock()
 _async_openai_client: Optional[Any] = None
+default_font_measure: Optional[Callable[[str], int]] = None
 
 
 def get_model() -> Any:
@@ -412,11 +413,12 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
     """Wrap long cell values so they fit within the visible column width."""
 
     if (event is None) or (tree.identify_region(event.x, event.y) == "separator"):
+        measure = default_font_measure or tkinter.font.Font(font='TkDefaultFont').measure
         col_widths = [tree.column(cid)['width'] for cid in tree['columns']]
 
         for iid in tree.get_children():
             values = tree.item(iid)['values']
-            new_vals = [adjust_newlines(v, w) for v, w in zip(values, col_widths)]
+            new_vals = [adjust_newlines(v, w, measure=measure) for v, w in zip(values, col_widths)]
             tree.item(iid, values=new_vals)
 
 
@@ -490,9 +492,9 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
 
 def insert_tree_row(values: Tuple[Any, ...]) -> None:
     """Insert a row into the treeview with wrapped text."""
-
+    measure = default_font_measure or tkinter.font.Font(font='TkDefaultFont').measure
     col_widths = [tree.column(cid)['width'] for cid in tree['columns']]
-    wrapped_values = [adjust_newlines(v, w) for v, w in zip(values, col_widths)]
+    wrapped_values = [adjust_newlines(v, w, measure=measure) for v, w in zip(values, col_widths)]
     tree.insert("", tk.END, values=wrapped_values)
 
 
@@ -1086,11 +1088,12 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, tree, scan_button, cancel_button
+    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, tree, scan_button, cancel_button, default_font_measure
 
     root = tk.Tk()
     root.geometry("1000x600")
     root.title("GPT Virus Scanner")
+    default_font_measure = tkinter.font.Font(font='TkDefaultFont').measure
 
     # Configure grid weights to ensure resizing behaves correctly
     root.columnconfigure(0, weight=1)
