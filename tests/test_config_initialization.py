@@ -80,3 +80,34 @@ def test_initialize_all_present(capsys):
     assert Config.GPT_ENABLED is True
     assert Config.extensions_set == set(custom_exts)
     assert Config.extensions_missing is False
+
+def test_initialize_loads_ignore_patterns():
+    """Test that .gptscanignore is loaded and parsed correctly (ignoring comments/empty lines)."""
+    # Setup mock content for .gptscanignore
+    ignore_content = [
+        "  node_modules/  ", # Needs stripping
+        "",                  # Empty line
+        "# This is a comment",
+        "  # Indented comment",
+        "*.tmp"
+    ]
+
+    # Mock load_file to return our content
+    def mock_loader(filename, mode='single_line'):
+        if filename == '.gptscanignore' and mode == 'multi_line':
+            return ignore_content
+        # Return defaults for others to avoid noise
+        if filename == 'extensions.txt':
+            return [".py"]
+        return []
+
+    with patch('gptscan.load_file', side_effect=mock_loader):
+        Config.initialize()
+
+    # Verify
+    assert "node_modules/" in Config.ignore_patterns
+    assert "*.tmp" in Config.ignore_patterns
+    assert len(Config.ignore_patterns) == 2
+    # Ensure comments/empty lines are gone
+    assert not any(p.startswith("#") for p in Config.ignore_patterns)
+    assert "" not in Config.ignore_patterns
