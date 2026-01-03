@@ -3,6 +3,7 @@ import csv
 import json
 import os
 import queue
+import subprocess
 import sys
 import threading
 import time
@@ -418,6 +419,37 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
             values = tree.item(iid)['values']
             new_vals = [adjust_newlines(v, w) for v, w in zip(values, col_widths)]
             tree.item(iid, values=new_vals)
+
+
+def get_git_changed_files(path: str = ".") -> List[str]:
+    """Get a list of changed files (staged, unstaged, untracked) from git."""
+    files = set()
+    try:
+        # Changed (staged and unstaged) relative to HEAD
+        output = subprocess.check_output(
+            ["git", "diff", "--name-only", "HEAD"],
+            cwd=path,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+        files.update(line.strip() for line in output.splitlines() if line.strip())
+
+        # Untracked
+        output = subprocess.check_output(
+            ["git", "ls-files", "--others", "--exclude-standard"],
+            cwd=path,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+        files.update(line.strip() for line in output.splitlines() if line.strip())
+
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # Git not found or not a repo, or error running git
+        # We assume the caller handles logic (e.g. "No git changes detected") based on empty result,
+        # or warns if it was explicitly requested but failed.
+        pass
+
+    return [f for f in files if os.path.exists(os.path.join(path, f))]
 
 
 def collect_files(targets: Union[str, List[str]]) -> List[Path]:
@@ -1304,6 +1336,11 @@ def main():
         type=argparse.FileType('r'),
         help='Read list of files to scan from a file (use "-" for stdin).'
     )
+    scan_group.add_argument(
+        '--git-changes',
+        action='store_true',
+        help='Scan only files that have changed (staged, unstaged, or untracked) in the current git repository.'
+    )
 
     ai_group = parser.add_argument_group("AI Analysis")
     ai_group.add_argument('--use-gpt', action='store_true', help='Ask the AI to explain suspicious code.')
@@ -1368,6 +1405,12 @@ def main():
                 line = line.strip()
                 if line:
                     scan_targets.append(line)
+
+        if args.git_changes:
+            git_files = get_git_changed_files()
+            if not git_files:
+                print("No git changes detected or not a git repository.", file=sys.stderr)
+            scan_targets.extend(git_files)
 
         if not scan_targets:
             parser.error('You must provide a file or folder to scan.')
