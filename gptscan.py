@@ -60,7 +60,7 @@ class Config:
     DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1']
 
     apikey_missing_message = (
-        "API key not found. You can still scan locally, but AI analysis won't be available."
+        "Note: No API key found. Cloud analysis (OpenAI/OpenRouter) requires one, but local AI (Ollama) works without it."
     )
     task_missing_message = (
         "Task file missing. AI analysis will be skipped."
