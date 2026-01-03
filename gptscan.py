@@ -55,6 +55,7 @@ class Config:
     provider: str = "openai"
     model_name: str = "gpt-4o"
     api_base: Optional[str] = None
+    ignore_patterns: List[str] = []
 
     DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1']
 
@@ -90,6 +91,13 @@ class Config:
             print(cls.extensions_missing_message)
         else:
             cls.set_extensions(loaded_extensions)
+
+        loaded_ignores = load_file('.gptscanignore', mode='multi_line')
+        if loaded_ignores:
+            cls.ignore_patterns = [
+                line.strip() for line in loaded_ignores
+                if line.strip() and not line.strip().startswith('#')
+            ]
 
 
 Config.initialize()
@@ -537,6 +545,7 @@ def button_click() -> None:
         current_cancel_event,
         Config.RATE_LIMIT_PER_MINUTE,
         dry_var.get(),
+        Config.ignore_patterns,
     )
     scan_thread = threading.Thread(target=run_scan, args=scan_args, daemon=True)
     scan_thread.start()
@@ -825,6 +834,7 @@ def run_scan(
     cancel_event: threading.Event,
     rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
     dry_run: bool = False,
+    exclude_patterns: Optional[List[str]] = None,
 ) -> None:
     """Consume scan events and forward them to the UI thread.
 
@@ -854,6 +864,7 @@ def run_scan(
             rate_limit=rate_limit,
             max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
             dry_run=dry_run,
+            exclude_patterns=exclude_patterns,
         ):
             if cancel_event.is_set():
                 break
@@ -1270,7 +1281,7 @@ def main():
     scan_group.add_argument(
         '--exclude',
         nargs='*',
-        help='Patterns to exclude from scan (e.g., node_modules/*, *.test.py).'
+        help='Patterns to exclude from scan (e.g., node_modules/*, *.test.py). Files listed in .gptscanignore are also excluded.'
     )
     scan_group.add_argument(
         '--file-list',
@@ -1350,7 +1361,9 @@ def main():
             output_format = 'json'
         if args.sarif:
             output_format = 'sarif'
-        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format, dry_run=args.dry_run, exclude_patterns=args.exclude)
+
+        final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or [])))
+        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format, dry_run=args.dry_run, exclude_patterns=final_excludes)
     else:
         app_root = create_gui(initial_path=scan_target)
         app_root.mainloop()
