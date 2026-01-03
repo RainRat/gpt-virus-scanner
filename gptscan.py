@@ -1114,24 +1114,24 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(select_dir_btn, "Browse for a directory to scan.")
 
     # --- Options Frame ---
-    options_frame = ttk.Frame(root)
+    options_frame = ttk.LabelFrame(root, text="Scan Options")
     options_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
     deep_var = tk.BooleanVar()
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
-    deep_checkbox.pack(side=tk.LEFT, padx=10)
+    deep_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
     bind_hover_message(deep_checkbox, "Scan the entire file content (slower). Default scans only start/end.")
 
     all_var = tk.BooleanVar()
     all_checkbox = ttk.Checkbutton(options_frame, text="Show all files", variable=all_var)
-    all_checkbox.pack(side=tk.LEFT, padx=10)
+    all_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
     bind_hover_message(all_checkbox, "Display all scanned files, including safe ones.")
 
     gpt_var = tk.BooleanVar()
 
     dry_var = tk.BooleanVar()
     dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
-    dry_checkbox.pack(side=tk.LEFT, padx=10)
+    dry_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
     # --- Provider Frame ---
