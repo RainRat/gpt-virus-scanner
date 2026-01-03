@@ -890,15 +890,12 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     for r in results:
         # Convert confidence strings to levels
         level = "note"
-        try:
-            conf_str = r.get("gpt_conf", "") or r.get("own_conf", "")
-            conf = float(conf_str.strip('%'))
-            if conf > 80:
-                level = "error"
-            elif conf > 50:
-                level = "warning"
-        except ValueError:
-            pass
+        conf_str = r.get("gpt_conf", "") or r.get("own_conf", "")
+        conf = parse_percent(conf_str)
+        if conf > 80:
+            level = "error"
+        elif conf > 50:
+            level = "warning"
 
         message_text = r.get("admin_desc") or r.get("end-user_desc") or "Suspicious content detected"
 
