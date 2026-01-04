@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import html
 import json
 import os
 import queue
@@ -991,6 +992,91 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def generate_html(results: List[Dict[str, Any]]) -> str:
+    """Generate an HTML report from the scan results.
+
+    Parameters
+    ----------
+    results : List[Dict[str, Any]]
+        List of result dictionaries.
+
+    Returns
+    -------
+    str
+        The HTML report as a string.
+    """
+    rows = []
+    for r in results:
+        path = r.get("path", "")
+        own_conf = r.get("own_conf", "")
+        gpt_conf = r.get("gpt_conf", "")
+        admin = r.get("admin_desc", "")
+        user = r.get("end-user_desc", "")
+        snippet = r.get("snippet", "")
+
+        conf_val = parse_percent(gpt_conf) if gpt_conf else parse_percent(own_conf)
+
+        row_class = ""
+        if conf_val > 80:
+            row_class = "high-risk"
+        elif conf_val > 50:
+            row_class = "medium-risk"
+
+        rows.append(f"""
+        <tr class="{row_class}">
+            <td>{html.escape(path)}</td>
+            <td>{html.escape(gpt_conf or own_conf)}</td>
+            <td>
+                <strong>Admin:</strong> {html.escape(admin)}<br>
+                <strong>User:</strong> {html.escape(user)}
+            </td>
+            <td><pre><code>{html.escape(snippet)}</code></pre></td>
+        </tr>
+        """)
+
+    table_rows = "\n".join(rows)
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPT Scan Report</title>
+    <style>
+        body {{ font-family: sans-serif; margin: 20px; color: #333; }}
+        table {{ border-collapse: collapse; width: 100%; border: 1px solid #ddd; }}
+        th, td {{ text-align: left; padding: 12px; border-bottom: 1px solid #ddd; vertical-align: top; }}
+        th {{ background-color: #f2f2f2; }}
+        tr:hover {{ background-color: #f9f9f9; }}
+        .high-risk {{ background-color: #ffebee; }}
+        .medium-risk {{ background-color: #fff3e0; }}
+        pre {{ background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; margin: 0; white-space: pre-wrap; word-wrap: break-word; }}
+        h1 {{ color: #2c3e50; }}
+        .summary {{ margin-bottom: 20px; }}
+    </style>
+</head>
+<body>
+    <h1>GPT Scan Results</h1>
+    <div class="summary">
+        <p><strong>Total Results:</strong> {len(results)}</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 20%">Path</th>
+                <th style="width: 10%">Confidence</th>
+                <th style="width: 30%">Analysis</th>
+                <th style="width: 40%">Snippet</th>
+            </tr>
+        </thead>
+        <tbody>
+            {table_rows}
+        </tbody>
+    </table>
+</body>
+</html>"""
+
+
 def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None) -> None:
     """Run scans and stream results to stdout.
 
@@ -1007,7 +1093,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     rate_limit : int
         Maximum allowed GPT requests per minute.
     output_format : str
-        Format of the output ('csv', 'json', or 'sarif'). Defaults to 'csv'.
+        Format of the output ('csv', 'json', 'sarif', or 'html'). Defaults to 'csv'.
     dry_run : bool
         Whether to simulate the scan.
     exclude_patterns : List[str], optional
@@ -1022,7 +1108,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     cancel_event = threading.Event()
     final_progress: Optional[Tuple[int, int]] = None
 
-    sarif_buffer = []
+    result_buffer = []
 
     for event_type, data in scan_files(
         targets,
@@ -1039,8 +1125,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             record = dict(zip(keys, data))
             if output_format == 'json':
                 print(json.dumps(record))
-            elif output_format == 'sarif':
-                sarif_buffer.append(record)
+            elif output_format in ('sarif', 'html'):
+                result_buffer.append(record)
             else:
                 writer.writerow(data)
         elif event_type == 'progress':
@@ -1054,8 +1140,10 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         print(file=sys.stderr)
 
     if output_format == 'sarif':
-        sarif_log = generate_sarif(sarif_buffer)
+        sarif_log = generate_sarif(result_buffer)
         print(json.dumps(sarif_log, indent=2))
+    elif output_format == 'html':
+        print(generate_html(result_buffer))
 
 
 def export_results() -> None:
@@ -1376,6 +1464,7 @@ def main():
     output_group.add_argument('--show-all', action='store_true', help='List every file, even if it looks safe.')
     output_group.add_argument('--json', action='store_true', help='Print results in JSON format instead of CSV.')
     output_group.add_argument('--sarif', action='store_true', help='Output results in SARIF format (used by other security tools).')
+    output_group.add_argument('--html', action='store_true', help='Output results as a standalone HTML report.')
 
     args = parser.parse_args()
 
@@ -1421,8 +1510,10 @@ def main():
         output_format = 'csv'
         if args.json:
             output_format = 'json'
-        if args.sarif:
+        elif args.sarif:
             output_format = 'sarif'
+        elif args.html:
+            output_format = 'html'
 
         final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or [])))
         run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format, dry_run=args.dry_run, exclude_patterns=final_excludes)
