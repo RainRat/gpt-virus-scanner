@@ -713,87 +713,82 @@ def scan_files(
                         '(File would be scanned)',
                     )
                 )
-                progress_count = index + 1
-                yield ('progress', (progress_count, total_progress, None))
-                continue
-
-            print(file_path)
-            try:
-                file_size = file_path.stat().st_size
-            except OSError as err:
-                yield (
-                    'result',
-                    (
-                        str(file_path),
-                        'Error',
-                        '',
-                        '',
-                        '',
-                        f"Error reading file metadata: {err}",
-                    )
-                )
-                progress_count = index + 1
-                yield ('progress', (progress_count, total_progress, None))
-                continue
-
-
-            resultchecks: List[float] = []
-            maxconf = 0.0
-            max_window_bytes = b""
-            error_message: Optional[str] = None
-
-            try:
-                with open(file_path, 'rb') as f:
-                    for offset, window in iter_windows(f, file_size, deep_scan):
-                        if cancel_event.is_set():
-                            break
-                        print("Scanning at:", offset if offset > 0 else 0)
-                        result, padded_bytes = predict_window(window)
-                        resultchecks.append(result)
-                        if result > maxconf:
-                            maxconf = result
-                            max_window_bytes = padded_bytes
-            except OSError as err:
-                error_message = f"Error reading file: {err}"
-
-            best_result = max(resultchecks, default=0)
-            if error_message is not None:
-                yield (
-                    'result',
-                    (
-                        str(file_path),
-                        'Error',
-                        '',
-                        '',
-                        '',
-                        error_message,
-                    )
-                )
-            elif resultchecks:
-                percent = f"{maxconf:.0%}"
-                snippet = ''.join(map(chr, max_window_bytes)).strip()
-                cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
-                if best_result > .5 and use_gpt and Config.GPT_ENABLED:
-                    gpt_requests.append(
-                        {
-                            "path": str(file_path),
-                            "percent": percent,
-                            "snippet": snippet,
-                            "cleaned_snippet": cleaned_snippet,
-                        }
-                    )
-                elif best_result > .5 or show_all:
+            else:
+                print(file_path)
+                try:
+                    file_size = file_path.stat().st_size
+                except OSError as err:
                     yield (
                         'result',
                         (
                             str(file_path),
-                            percent,
+                            'Error',
                             '',
                             '',
                             '',
-                            cleaned_snippet,
+                            f"Error reading file metadata: {err}",
                         )
                     )
+                    file_size = None
+
+                if file_size is not None:
+                    resultchecks: List[float] = []
+                    maxconf = 0.0
+                    max_window_bytes = b""
+                    error_message: Optional[str] = None
+
+                    try:
+                        with open(file_path, 'rb') as f:
+                            for offset, window in iter_windows(f, file_size, deep_scan):
+                                if cancel_event.is_set():
+                                    break
+                                print("Scanning at:", offset if offset > 0 else 0)
+                                result, padded_bytes = predict_window(window)
+                                resultchecks.append(result)
+                                if result > maxconf:
+                                    maxconf = result
+                                    max_window_bytes = padded_bytes
+                    except OSError as err:
+                        error_message = f"Error reading file: {err}"
+
+                    best_result = max(resultchecks, default=0)
+                    if error_message is not None:
+                        yield (
+                            'result',
+                            (
+                                str(file_path),
+                                'Error',
+                                '',
+                                '',
+                                '',
+                                error_message,
+                            )
+                        )
+                    elif resultchecks:
+                        percent = f"{maxconf:.0%}"
+                        snippet = ''.join(map(chr, max_window_bytes)).strip()
+                        cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+                        if best_result > .5 and use_gpt and Config.GPT_ENABLED:
+                            gpt_requests.append(
+                                {
+                                    "path": str(file_path),
+                                    "percent": percent,
+                                    "snippet": snippet,
+                                    "cleaned_snippet": cleaned_snippet,
+                                }
+                            )
+                        elif best_result > .5 or show_all:
+                            yield (
+                                'result',
+                                (
+                                    str(file_path),
+                                    percent,
+                                    '',
+                                    '',
+                                    '',
+                                    cleaned_snippet,
+                                )
+                            )
         progress_count = index + 1
         yield ('progress', (progress_count, total_progress, None))
 
