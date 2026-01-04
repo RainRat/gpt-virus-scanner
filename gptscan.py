@@ -1148,9 +1148,13 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     select_dir_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
     bind_hover_message(select_dir_btn, "Browse for a directory to scan.")
 
+    # --- Settings Container ---
+    settings_frame = ttk.Frame(root)
+    settings_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+
     # --- Options Frame ---
-    options_frame = ttk.LabelFrame(root, text="Scan Options")
-    options_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+    options_frame = ttk.LabelFrame(settings_frame, text="Scan Options")
+    options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
 
     deep_var = tk.BooleanVar()
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
@@ -1170,8 +1174,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
     # --- Provider Frame ---
-    provider_frame = ttk.LabelFrame(root, text="AI Analysis")
-    provider_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
+    provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis")
+    provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
     def toggle_ai_controls():
         enabled = gpt_var.get()
@@ -1245,7 +1249,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # --- Action Frame ---
     action_frame = ttk.Frame(root)
-    action_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+    action_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
 
     scan_button = ttk.Button(action_frame, text="Scan now", command=button_click)
     scan_button.pack(side=tk.LEFT, padx=5)
@@ -1261,17 +1265,17 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # --- Progress Bar ---
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, mode='determinate')
-    progress_bar.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
+    progress_bar.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
 
     status_label = ttk.Label(root, text="Ready", anchor="w")
-    status_label.grid(row=5, column=0, sticky="ew", padx=10, pady=(0, 5))
+    status_label.grid(row=4, column=0, sticky="ew", padx=10, pady=(0, 5))
 
     # --- Treeview ---
     style = ttk.Style(root)
     style.configure('Scanner.Treeview', rowheight=50)
 
     tree_frame = ttk.Frame(root)
-    tree_frame.grid(row=6, column=0, sticky="nsew", padx=10, pady=5)
+    tree_frame.grid(row=5, column=0, sticky="nsew", padx=10, pady=5)
     tree_frame.columnconfigure(0, weight=1)
     tree_frame.rowconfigure(0, weight=1)
 
