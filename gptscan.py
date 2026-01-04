@@ -1313,69 +1313,69 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="GPT Virus Scanner")
-    parser.add_argument('target', nargs='?', help='The file or folder to check.')
+    parser.add_argument('target', nargs='?', help='The file or folder to scan.')
     parser.add_argument(
         'files',
         nargs='*',
-        help='Additional files to check.'
+        help='Additional files or folders to scan.'
     )
 
     scan_group = parser.add_argument_group("Scan Configuration")
-    scan_group.add_argument('--path', type=str, help='The folder to scan.')
-    scan_group.add_argument('--deep', action='store_true', help='Check the whole file, not just the start and end (slower).')
-    scan_group.add_argument('--dry-run', action='store_true', help='List the files that would be checked, without actually scanning them.')
+    scan_group.add_argument('--path', type=str, help='Alternative way to specify the folder to scan.')
+    scan_group.add_argument('--deep', action='store_true', help='Scan the entire file content instead of just the first and last parts. This is slower but more thorough.')
+    scan_group.add_argument('--dry-run', action='store_true', help='Simulate the scan to see which files would be checked, without running the AI models.')
     scan_group.add_argument(
         '--extensions',
         type=str,
-        help='Only check files ending with these extensions (e.g., .py, .js).'
+        help='Only scan files with these specific extensions (e.g., .py, .js).'
     )
     scan_group.add_argument(
         '--exclude',
         nargs='*',
-        help='Patterns to exclude from scan (e.g., node_modules/*, *.test.py). Files listed in .gptscanignore are also excluded.'
+        help='Skip files that match these patterns (e.g., node_modules/*, *.test.py). Files in .gptscanignore are also skipped.'
     )
     scan_group.add_argument(
         '--file-list',
         type=argparse.FileType('r'),
-        help='Read list of files to scan from a file (use "-" for stdin).'
+        help='Read a list of files to scan from a text file (use "-" to read from standard input).'
     )
     scan_group.add_argument(
         '--git-changes',
         action='store_true',
-        help='Scan only files that have changed (staged, unstaged, or untracked) in the current git repository.'
+        help='Only scan files that have been modified in the current git repository.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
-    ai_group.add_argument('--use-gpt', action='store_true', help='Ask the AI to explain suspicious code.')
+    ai_group.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI provider for a detailed explanation.')
     ai_group.add_argument(
         '--provider',
         type=str,
         default='openai',
         choices=['openai', 'openrouter', 'ollama'],
-        help='Choose the AI provider (default: openai).'
+        help='Select the AI provider to use for analysis (default: openai).'
     )
     ai_group.add_argument(
         '--model',
         type=str,
-        help='The specific AI model to use (e.g., gpt-4o, llama3.2).'
+        help='Specify the exact AI model to use (e.g., gpt-4o, llama3.2).'
     )
     ai_group.add_argument(
         '--api-base',
         type=str,
-        help='Custom URL for the API server.'
+        help='Use a custom URL for the API server (useful for proxies or local servers).'
     )
     ai_group.add_argument(
         '--rate-limit',
         type=int,
         default=Config.RATE_LIMIT_PER_MINUTE,
-        help='Max AI requests per minute (default: 60).'
+        help='Limit the number of AI requests per minute to avoid errors (default: 60).'
     )
 
     output_group = parser.add_argument_group("Output Options")
-    output_group.add_argument('--cli', action='store_true', help='Run without the graphical window.')
-    output_group.add_argument('--show-all', action='store_true', help='List every file, even if it looks safe.')
-    output_group.add_argument('--json', action='store_true', help='Print results in JSON format instead of CSV.')
-    output_group.add_argument('--sarif', action='store_true', help='Output results in SARIF format (used by other security tools).')
+    output_group.add_argument('--cli', action='store_true', help='Run the scanner in the terminal (command-line mode) instead of opening a window.')
+    output_group.add_argument('--show-all', action='store_true', help='Show results for every file scanned, including those that appear safe.')
+    output_group.add_argument('--json', action='store_true', help='Output the results as JSON data instead of the default CSV format.')
+    output_group.add_argument('--sarif', action='store_true', help='Output the results in SARIF format (standard for security tools).')
 
     args = parser.parse_args()
 
