@@ -6,7 +6,10 @@ import gptscan
 
 def test_export_results_cancels(monkeypatch):
     """Verify that cancelling the file dialog aborts the export process."""
-    monkeypatch.setattr(tkinter.filedialog, 'asksaveasfilename', lambda **k: '')
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', MagicMock(return_value=''))
+
+    mock_tree = MagicMock()
+    monkeypatch.setattr(gptscan, 'tree', mock_tree, raising=False)
 
     mock_open = MagicMock()
     monkeypatch.setattr(gptscan, 'open', mock_open, raising=False)
@@ -18,7 +21,7 @@ def test_export_results_cancels(monkeypatch):
 def test_export_results_success(monkeypatch, tmp_path):
     """Verify that data from the treeview is correctly written to a CSV file."""
     file_path = tmp_path / "export.csv"
-    monkeypatch.setattr(tkinter.filedialog, 'asksaveasfilename', lambda **k: str(file_path))
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', MagicMock(return_value=str(file_path)))
 
     mock_tree = MagicMock()
     mock_tree.__getitem__.return_value = ("Col1", "Col2")
@@ -43,7 +46,7 @@ def test_export_results_success(monkeypatch, tmp_path):
 
 def test_export_results_handles_error(monkeypatch):
     """Verify that file I/O errors are caught and displayed to the user."""
-    monkeypatch.setattr(tkinter.filedialog, 'asksaveasfilename', lambda **k: "out.csv")
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', MagicMock(return_value="out.csv"))
 
     def fail_open(*args, **kwargs):
         raise OSError("Disk full")

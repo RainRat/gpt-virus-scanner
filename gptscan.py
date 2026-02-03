@@ -106,6 +106,14 @@ Config.initialize()
 
 ui_queue = queue.Queue()
 current_cancel_event: Optional[threading.Event] = None
+tree: Optional[ttk.Treeview] = None
+scan_button: Optional[ttk.Button] = None
+cancel_button: Optional[ttk.Button] = None
+status_label: Optional[ttk.Label] = None
+progress_bar: Optional[ttk.Progressbar] = None
+textbox: Optional[ttk.Entry] = None
+root: Optional[tk.Tk] = None
+
 _model_cache: Optional[Any] = None
 _tf_module: Optional[Any] = None
 _model_lock = threading.Lock()
@@ -160,8 +168,10 @@ def update_status(message: str) -> None:
     message : str
         The message to display in the status label.
     """
-    status_label.config(text=message)
-    root.update_idletasks()
+    if status_label:
+        status_label.config(text=message)
+    if root:
+        root.update_idletasks()
 
 
 def update_progress(value: int) -> None:
@@ -172,8 +182,10 @@ def update_progress(value: int) -> None:
     value : int
         Current progress count to display.
     """
-    progress_bar['value'] = value
-    root.update_idletasks()
+    if progress_bar:
+        progress_bar['value'] = value
+    if root:
+        root.update_idletasks()
 
 
 def configure_progress(max_value: int) -> None:
@@ -184,9 +196,11 @@ def configure_progress(max_value: int) -> None:
     max_value : int
         Total number of steps expected for the scan.
     """
-    progress_bar["maximum"] = max_value
-    progress_bar["value"] = 0
-    root.update_idletasks()
+    if progress_bar:
+        progress_bar["maximum"] = max_value
+        progress_bar["value"] = 0
+    if root:
+        root.update_idletasks()
 
 
 def enqueue_ui_update(func: Callable, *args: Any, **kwargs: Any) -> None:
@@ -534,17 +548,39 @@ def insert_tree_row(values: Tuple[Any, ...]) -> None:
 def set_scanning_state(is_scanning: bool) -> None:
     """Enable or disable controls based on scanning state."""
 
-    scan_button.config(state="disabled" if is_scanning else "normal")
-    cancel_button.config(state="normal" if is_scanning else "disabled")
+    if scan_button:
+        scan_button.config(state="disabled" if is_scanning else "normal")
+    if cancel_button:
+        cancel_button.config(state="normal" if is_scanning else "disabled")
 
 
-def finish_scan_state() -> None:
-    """Reset scanning controls when a scan finishes or is cancelled."""
+def finish_scan_state(found_count: Optional[int] = None, total_files: int = 0) -> None:
+    """Reset scanning controls when a scan finishes or is cancelled.
+
+    Parameters
+    ----------
+    found_count : int, optional
+        Number of suspicious files found during the scan.
+    total_files : int, optional
+        Total number of files scanned.
+    """
 
     global current_cancel_event
+    is_cancelled = current_cancel_event.is_set() if current_cancel_event else False
     current_cancel_event = None
     set_scanning_state(False)
-    update_status("Ready")
+
+    if is_cancelled:
+        update_status("Scan cancelled.")
+    elif found_count is not None:
+        if found_count == 0:
+            update_status(f"Scan complete. No suspicious files found out of {total_files} scanned.")
+        elif found_count == 1:
+            update_status(f"Scan complete. Found 1 suspicious file out of {total_files} scanned.")
+        else:
+            update_status(f"Scan complete. Found {found_count} suspicious files out of {total_files} scanned.")
+    else:
+        update_status("Ready")
 
 
 def button_click() -> None:
@@ -568,6 +604,11 @@ def button_click() -> None:
     if not dry_var.get() and not os.path.exists('scripts.h5'):
         messagebox.showerror("Scan Error", "Model file scripts.h5 not found.")
         return
+
+    # Clear previous results
+    if tree:
+        for item in tree.get_children():
+            tree.delete(item)
 
     current_cancel_event = threading.Event()
     set_scanning_state(True)
@@ -884,6 +925,8 @@ def run_scan(
         Whether to simulate the scan.
     """
     last_total: Optional[int] = None
+    found_count = 0
+    total_files = 0
     try:
         for event_type, data in scan_files(
             scan_path,
@@ -900,6 +943,7 @@ def run_scan(
                 break
             if event_type == 'progress':
                 current, total, status = data
+                total_files = total
 
                 if total != last_total:
                     enqueue_ui_update(configure_progress, total)
@@ -909,9 +953,10 @@ def run_scan(
                     print(status)
                     enqueue_ui_update(update_status, status)
             elif event_type == 'result':
+                found_count += 1
                 enqueue_ui_update(insert_tree_row, data)
     finally:
-        enqueue_ui_update(finish_scan_state)
+        enqueue_ui_update(finish_scan_state, found_count, total_files)
 
 
 def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -1212,7 +1257,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # Configure grid weights to ensure resizing behaves correctly
     root.columnconfigure(0, weight=1)
-    root.rowconfigure(6, weight=1)  # The row containing the Treeview
+    root.rowconfigure(5, weight=1)  # The row containing the Treeview
 
     # --- Input Frame ---
     input_frame = ttk.Frame(root)
@@ -1225,6 +1270,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     textbox.insert(0, path_to_use)
     textbox.select_range(0, tk.END)
     textbox.grid(row=0, column=1, sticky="ew", padx=5)
+    bind_hover_message(textbox, "Enter the directory path to scan.")
     textbox.bind('<Return>', lambda event: button_click())
     textbox.focus_set()
     select_dir_btn = ttk.Button(input_frame, text="Select Directory", command=browse_button_click)
@@ -1241,19 +1287,19 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     deep_var = tk.BooleanVar()
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
-    deep_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
+    deep_checkbox.pack(side=tk.TOP, anchor="w", padx=10, pady=2)
     bind_hover_message(deep_checkbox, "Scan the entire file content (slower). Default scans only start/end.")
 
     all_var = tk.BooleanVar()
     all_checkbox = ttk.Checkbutton(options_frame, text="Show all files", variable=all_var)
-    all_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
+    all_checkbox.pack(side=tk.TOP, anchor="w", padx=10, pady=2)
     bind_hover_message(all_checkbox, "Display all scanned files, including safe ones.")
 
     gpt_var = tk.BooleanVar()
 
     dry_var = tk.BooleanVar()
     dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
-    dry_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
+    dry_checkbox.pack(side=tk.TOP, anchor="w", padx=10, pady=2)
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
     # --- Provider Frame ---
@@ -1270,7 +1316,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
             model_combo.config(state="disabled")
 
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
-    gpt_checkbox.pack(side=tk.LEFT, padx=10)
+    gpt_checkbox.pack(side=tk.TOP, anchor="w", padx=10, pady=2)
     bind_hover_message(gpt_checkbox, "Send suspicious code to AI for explanation.")
 
     if not Config.GPT_ENABLED:
@@ -1279,15 +1325,20 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         messagebox.showwarning("GPT Disabled",
                                        "task.txt not found. GPT functionality is disabled.")
 
-    ttk.Label(provider_frame, text="Provider:").pack(side=tk.LEFT, padx=5, pady=5)
-    provider_var = tk.StringVar(value=Config.provider)
-    provider_combo = ttk.Combobox(provider_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
-    provider_combo.pack(side=tk.LEFT, padx=5, pady=5)
+    ai_controls_frame = ttk.Frame(provider_frame)
+    ai_controls_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
 
-    ttk.Label(provider_frame, text="Model:").pack(side=tk.LEFT, padx=5, pady=5)
+    ttk.Label(ai_controls_frame, text="Provider:").pack(side=tk.LEFT, padx=(0, 5))
+    provider_var = tk.StringVar(value=Config.provider)
+    provider_combo = ttk.Combobox(ai_controls_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
+    provider_combo.pack(side=tk.LEFT, padx=5)
+    bind_hover_message(provider_combo, "Select the AI provider for cloud analysis.")
+
+    ttk.Label(ai_controls_frame, text="Model:").pack(side=tk.LEFT, padx=(10, 5))
     model_var = tk.StringVar(value=Config.model_name)
-    model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
-    model_combo.pack(side=tk.LEFT, padx=5, pady=5)
+    model_combo = ttk.Combobox(ai_controls_frame, textvariable=model_var, width=20)
+    model_combo.pack(side=tk.LEFT, padx=5)
+    bind_hover_message(model_combo, "Specify the exact AI model to use.")
 
     toggle_ai_controls()
 
