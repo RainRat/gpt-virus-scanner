@@ -19,6 +19,19 @@ import tkinter.font
 from tkinter import messagebox
 import tkinter.ttk as ttk
 
+# Global GUI variables for thread-safe updates and testing
+root: Optional[tk.Tk] = None
+textbox: Optional[ttk.Entry] = None
+progress_bar: Optional[ttk.Progressbar] = None
+status_label: Optional[ttk.Label] = None
+deep_var: Optional[tk.BooleanVar] = None
+all_var: Optional[tk.BooleanVar] = None
+gpt_var: Optional[tk.BooleanVar] = None
+dry_var: Optional[tk.BooleanVar] = None
+tree: Optional[ttk.Treeview] = None
+scan_button: Optional[ttk.Button] = None
+cancel_button: Optional[ttk.Button] = None
+
 
 def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]:
     """Reads a file and returns its content.
@@ -524,11 +537,24 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
 
 
 def insert_tree_row(values: Tuple[Any, ...]) -> None:
-    """Insert a row into the treeview with wrapped text."""
+    """Insert a row into the treeview with wrapped text and highlighting."""
     measure = default_font_measure or tkinter.font.Font(font='TkDefaultFont').measure
     col_widths = [tree.column(cid)['width'] for cid in tree['columns']]
     wrapped_values = [adjust_newlines(v, w, measure=measure) for v, w in zip(values, col_widths)]
-    tree.insert("", tk.END, values=wrapped_values)
+
+    # Determine risk level based on confidence scores
+    # data format: (path, own_conf, admin, user, gpt_conf, snippet)
+    gpt_conf = parse_percent(values[4])
+    own_conf = parse_percent(values[1])
+    conf = gpt_conf if gpt_conf >= 0 else own_conf
+
+    tag = ''
+    if conf > 80:
+        tag = 'high-risk'
+    elif conf > 50:
+        tag = 'medium-risk'
+
+    tree.insert("", tk.END, values=wrapped_values, tags=(tag,) if tag else ())
 
 
 def set_scanning_state(is_scanning: bool) -> None:
@@ -538,13 +564,26 @@ def set_scanning_state(is_scanning: bool) -> None:
     cancel_button.config(state="normal" if is_scanning else "disabled")
 
 
-def finish_scan_state() -> None:
-    """Reset scanning controls when a scan finishes or is cancelled."""
+def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Optional[int] = None) -> None:
+    """Reset scanning controls when a scan finishes or is cancelled.
+
+    Parameters
+    ----------
+    total_scanned : int, optional
+        Total number of files scanned.
+    threats_found : int, optional
+        Total number of suspicious files detected.
+    """
 
     global current_cancel_event
     current_cancel_event = None
     set_scanning_state(False)
-    update_status("Ready")
+
+    if total_scanned is not None and threats_found is not None:
+        threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
+        update_status(f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found.")
+    else:
+        update_status("Ready")
 
 
 def button_click() -> None:
@@ -559,6 +598,10 @@ def button_click() -> None:
 
     if current_cancel_event is not None:
         return
+
+    # Clear previous results
+    if tree:
+        tree.delete(*tree.get_children())
 
     scan_path = textbox.get()
     if not scan_path:
@@ -883,7 +926,9 @@ def run_scan(
     dry_run : bool
         Whether to simulate the scan.
     """
-    last_total: Optional[int] = None
+    last_total: Optional[int] = 0
+    threats_found = 0
+
     try:
         for event_type, data in scan_files(
             scan_path,
@@ -909,9 +954,17 @@ def run_scan(
                     print(status)
                     enqueue_ui_update(update_status, status)
             elif event_type == 'result':
+                # data format: (path, own_conf, admin, user, gpt_conf, snippet)
+                gpt_conf = parse_percent(data[4])
+                own_conf = parse_percent(data[1])
+                conf = gpt_conf if gpt_conf >= 0 else own_conf
+
+                if conf > 50:
+                    threats_found += 1
+
                 enqueue_ui_update(insert_tree_row, data)
     finally:
-        enqueue_ui_update(finish_scan_state)
+        enqueue_ui_update(finish_scan_state, last_total, threats_found)
 
 
 def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -1102,6 +1155,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     cancel_event = threading.Event()
     final_progress: Optional[Tuple[int, int]] = None
+    threats_found = 0
 
     result_buffer = []
 
@@ -1117,6 +1171,13 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         exclude_patterns=exclude_patterns,
     ):
         if event_type == 'result':
+            # data format: (path, own_conf, admin, user, gpt_conf, snippet)
+            gpt_conf = parse_percent(data[4])
+            own_conf = parse_percent(data[1])
+            conf = gpt_conf if gpt_conf >= 0 else own_conf
+            if conf > 50:
+                threats_found += 1
+
             record = dict(zip(keys, data))
             if output_format == 'json':
                 print(json.dumps(record))
@@ -1133,6 +1194,9 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     if final_progress is not None:
         print(file=sys.stderr)
+        total_scanned = final_progress[1]
+        threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
+        print(f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found.", file=sys.stderr)
 
     if output_format == 'sarif':
         sarif_log = generate_sarif(result_buffer)
@@ -1142,29 +1206,110 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
 
 def export_results() -> None:
-    """Save the current Treeview contents to a CSV chosen by the user.
+    """Save the current Treeview contents to a file chosen by the user.
+
+    Supports CSV, HTML, JSON, and SARIF formats.
 
     Returns
     -------
     None
-        Writes the Treeview rows to the selected CSV path or shows an error.
+        Writes the Treeview rows to the selected path or shows an error.
     """
+    if not tree:
+        return
+
     file_path = tkinter.filedialog.asksaveasfilename(
         defaultextension=".csv",
-        filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+        filetypes=[
+            ("CSV files", "*.csv"),
+            ("HTML files", "*.html"),
+            ("JSON files", "*.json"),
+            ("SARIF files", "*.sarif"),
+            ("All files", "*.*")
+        ],
         title="Export Scan Results",
     )
     if not file_path:
         return
 
+    # Collect data from Treeview and unwrap newlines added for display
+    columns = tree["columns"]
+    results = []
+    for item_id in tree.get_children():
+        values = list(tree.item(item_id)["values"])
+        # Simple unwrapping: replace single newlines that were likely added by adjust_newlines
+        # This isn't perfect but better than nothing for a quick export.
+        # Actually, for serious export, we'd want the raw data.
+        # But here we just use what's in the table.
+        cleaned_values = [str(v).replace('\n', ' ') if i != 5 else v for i, v in enumerate(values)]
+        results.append(dict(zip(columns, values))) # Use original values for JSON/HTML/SARIF as they handle newlines better
+
+    ext = os.path.splitext(file_path)[1].lower()
+
     try:
-        with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow(tree["columns"])
-            for item_id in tree.get_children():
-                writer.writerow(tree.item(item_id)["values"])
-    except OSError as err:
+        if ext == '.json':
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(results, f, indent=2)
+        elif ext == '.html':
+            # Need to map keys for generate_html
+            mapped_results = []
+            for r in results:
+                mapped_results.append({
+                    "path": r["path"],
+                    "own_conf": r["own_conf"],
+                    "admin_desc": r["admin_desc"],
+                    "end-user_desc": r["end-user_desc"],
+                    "gpt_conf": r["gpt_conf"],
+                    "snippet": r["snippet"]
+                })
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(generate_html(mapped_results))
+        elif ext == '.sarif':
+            sarif_log = generate_sarif(results)
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(sarif_log, f, indent=2)
+        else: # Default to CSV
+            with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
+                writer = csv.writer(csv_file)
+                writer.writerow(columns)
+                for item_id in tree.get_children():
+                    # For CSV, we definitely want to unwrap or it looks messy in Excel
+                    vals = [str(v).replace('\n', ' ') for v in tree.item(item_id)["values"]]
+                    writer.writerow(vals)
+
+        messagebox.showinfo("Export Successful", f"Results saved to {os.path.basename(file_path)}")
+
+    except Exception as err:
         messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
+
+
+def open_file(event: Optional[tk.Event] = None) -> None:
+    """Open the selected file in the system's default application."""
+    if not tree:
+        return
+    selection = tree.selection()
+    if not selection:
+        return
+
+    # Get the file path from the first column of the selected row
+    item_id = selection[0]
+    values = tree.item(item_id, "values")
+    if not values:
+        return
+
+    file_path = str(values[0]).replace('\n', '') # Remove wrapping
+    if os.path.exists(file_path):
+        try:
+            if sys.platform == "win32":
+                os.startfile(file_path)
+            elif sys.platform == "darwin":
+                subprocess.run(["open", file_path])
+            else:
+                subprocess.run(["xdg-open", file_path])
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open file: {e}")
+    else:
+        messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
 
 
 def get_model_presets(provider: str) -> List[str]:
@@ -1357,12 +1502,16 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     style = ttk.Style(root)
     style.configure('Scanner.Treeview', rowheight=50)
 
+    # Configure tags for row highlighting
+    # Note: 'alt' theme or similar might be needed for background colors to show in some environments
     tree_frame = ttk.Frame(root)
     tree_frame.grid(row=5, column=0, sticky="nsew", padx=10, pady=5)
     tree_frame.columnconfigure(0, weight=1)
     tree_frame.rowconfigure(0, weight=1)
 
     tree = ttk.Treeview(tree_frame, style='Scanner.Treeview')
+    tree.tag_configure('high-risk', background='#ffcccc')
+    tree.tag_configure('medium-risk', background='#fff0cc')
     tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
     tree.column("#0", width=0, stretch=tk.NO)
     tree.column("path", width=150, stretch=tk.YES, anchor="w")
@@ -1390,6 +1539,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     tree.configure(yscrollcommand=scrollbar.set)
     tree.bind('<ButtonRelease-1>', partial(motion_handler, tree))
+    tree.bind('<Double-1>', open_file)
     tree.grid(row=0, column=0, sticky="nsew")
 
     motion_handler(tree, None)   # Perform initial wrapping

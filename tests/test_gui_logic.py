@@ -10,7 +10,7 @@ def test_browse_button_click_cancels_does_not_clear_textbox(monkeypatch):
     monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
 
     # Mock askdirectory to return empty string (cancellation)
-    monkeypatch.setattr(tkinter.filedialog, 'askdirectory', lambda: '')
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'askdirectory', lambda: '')
 
     # Call function
     gptscan.browse_button_click()
@@ -25,7 +25,7 @@ def test_browse_button_click_selects_folder_updates_textbox(monkeypatch):
     monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
 
     # Mock askdirectory to return a path
-    monkeypatch.setattr(tkinter.filedialog, 'askdirectory', lambda: '/path/to/folder')
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'askdirectory', lambda: '/path/to/folder')
 
     # Call function
     gptscan.browse_button_click()
