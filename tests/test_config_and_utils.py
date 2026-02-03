@@ -42,6 +42,26 @@ def test_load_file_missing_multi_line():
     result = load_file("non_existent.txt", mode='multi_line')
     assert result == []
 
+def test_load_file_permission_error_single_line(tmp_path):
+    f = tmp_path / "protected.txt"
+    f.write_text("secret")
+    f.chmod(0o000)
+    try:
+        result = load_file(str(f), mode='single_line')
+        assert result == ""
+    finally:
+        f.chmod(0o644)
+
+def test_load_file_permission_error_multi_line(tmp_path):
+    f = tmp_path / "protected.txt"
+    f.write_text("line1\nline2")
+    f.chmod(0o000)
+    try:
+        result = load_file(str(f), mode='multi_line')
+        assert result == []
+    finally:
+        f.chmod(0o644)
+
 # --- parse_percent Tests ---
 
 @pytest.mark.parametrize("input_val, expected", [
