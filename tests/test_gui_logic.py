@@ -10,7 +10,7 @@ def test_browse_button_click_cancels_does_not_clear_textbox(monkeypatch):
     monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
 
     # Mock askdirectory to return empty string (cancellation)
-    monkeypatch.setattr(tkinter.filedialog, 'askdirectory', lambda: '')
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'askdirectory', MagicMock(return_value=''))
 
     # Call function
     gptscan.browse_button_click()
@@ -25,7 +25,7 @@ def test_browse_button_click_selects_folder_updates_textbox(monkeypatch):
     monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
 
     # Mock askdirectory to return a path
-    monkeypatch.setattr(tkinter.filedialog, 'askdirectory', lambda: '/path/to/folder')
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'askdirectory', MagicMock(return_value='/path/to/folder'))
 
     # Call function
     gptscan.browse_button_click()
@@ -55,6 +55,7 @@ def test_set_scanning_state_updates_buttons(monkeypatch):
 def test_finish_scan_state_resets_state(monkeypatch):
     # Setup
     mock_event = MagicMock()
+    mock_event.is_set.return_value = False
     monkeypatch.setattr(gptscan, 'current_cancel_event', mock_event)
     mock_scan_button = MagicMock()
     mock_cancel_button = MagicMock()
@@ -70,6 +71,7 @@ def test_finish_scan_state_resets_state(monkeypatch):
     gptscan.finish_scan_state()
 
     # Assert
+    # Without arguments, it should default to Ready if not cancelled
     mock_status_label.config.assert_called_with(text="Ready")
     assert gptscan.current_cancel_event is None
     mock_scan_button.config.assert_called_with(state="normal")
@@ -166,10 +168,16 @@ def test_button_click_starts_scan(monkeypatch):
     monkeypatch.setattr(gptscan, 'status_label', mock_status_label, raising=False)
     monkeypatch.setattr(gptscan, 'root', MagicMock(), raising=False)
 
+    # Mock tree
+    mock_tree = MagicMock()
+    mock_tree.get_children.return_value = []
+    monkeypatch.setattr(gptscan, 'tree', mock_tree, raising=False)
+
     # Action
     gptscan.button_click()
 
     # Assert
+    mock_tree.get_children.assert_called_once()
     mock_status_label.config.assert_called_with(text="Starting scan...")
     assert gptscan.current_cancel_event is not None
     mock_scan_button.config.assert_called_with(state="disabled")
