@@ -92,9 +92,9 @@ class Config:
     @classmethod
     def initialize(cls) -> None:
         if not cls.apikey:
-            print(cls.apikey_missing_message)
+            print(cls.apikey_missing_message, file=sys.stderr)
         if not cls.taskdesc:
-            print(cls.task_missing_message)
+            print(cls.task_missing_message, file=sys.stderr)
 
         # Enable GPT if task description is present.
         # Specific provider requirements (like API key) are checked at runtime.
@@ -103,7 +103,7 @@ class Config:
         loaded_extensions = load_file('extensions.txt', mode='multi_line')
         if not loaded_extensions:
             cls.set_extensions(cls.DEFAULT_EXTENSIONS, missing=True)
-            print(cls.extensions_missing_message)
+            print(cls.extensions_missing_message, file=sys.stderr)
         else:
             cls.set_extensions(loaded_extensions)
 
@@ -383,13 +383,13 @@ async def async_handle_gpt_response(
                 retries += 1
                 await asyncio.sleep(backoff)
                 continue
-            print(f"An unexpected error occurred: {err}")
+            print(f"An unexpected error occurred: {err}", file=sys.stderr)
             break
 
         if isinstance(extracted_data, dict):
             json_data = extracted_data
         else:
-            print(extracted_data)
+            print(extracted_data, file=sys.stderr)
             messages.append({"role": "assistant", "content": response.choices[0].message.content})
             messages.append({"role": "user", "content": f"I encountered an issue: {extracted_data}. Could you correct your response?"})
             retries += 1
@@ -398,7 +398,7 @@ async def async_handle_gpt_response(
         Config.gpt_cache[cache_key] = json_data
         return json_data
 
-    print("Failed to obtain a valid response from GPT after multiple retries.")
+    print("Failed to obtain a valid response from GPT after multiple retries.", file=sys.stderr)
     return None
 
 
@@ -758,7 +758,7 @@ def scan_files(
                     )
                 )
             else:
-                print(file_path)
+                print(file_path, file=sys.stderr)
                 try:
                     file_size = file_path.stat().st_size
                 except OSError as err:
@@ -786,7 +786,7 @@ def scan_files(
                             for offset, window in iter_windows(f, file_size, deep_scan):
                                 if cancel_event.is_set():
                                     break
-                                print("Scanning at:", offset if offset > 0 else 0)
+                                print("Scanning at:", offset if offset > 0 else 0, file=sys.stderr)
                                 result, padded_bytes = predict_window(window)
                                 resultchecks.append(result)
                                 if result > maxconf:
@@ -951,7 +951,7 @@ def run_scan(
                     last_total = total
                 enqueue_ui_update(update_progress, current)
                 if status:
-                    print(status)
+                    print(status, file=sys.stderr)
                     enqueue_ui_update(update_status, status)
             elif event_type == 'result':
                 # data format: (path, own_conf, admin, user, gpt_conf, snippet)
