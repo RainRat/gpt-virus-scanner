@@ -1386,19 +1386,19 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     deep_var = tk.BooleanVar()
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
-    deep_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
+    deep_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(deep_checkbox, "Scan the entire file content (slower). Default scans only start/end.")
 
     all_var = tk.BooleanVar()
     all_checkbox = ttk.Checkbutton(options_frame, text="Show all files", variable=all_var)
-    all_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
+    all_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(all_checkbox, "Display all scanned files, including safe ones.")
 
     gpt_var = tk.BooleanVar()
 
     dry_var = tk.BooleanVar()
     dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
-    dry_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
+    dry_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
     # --- Provider Frame ---
@@ -1415,7 +1415,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
             model_combo.config(state="disabled")
 
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
-    gpt_checkbox.pack(side=tk.LEFT, padx=10)
+    gpt_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(gpt_checkbox, "Send suspicious code to AI for explanation.")
 
     if not Config.GPT_ENABLED:
@@ -1424,15 +1424,19 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         messagebox.showwarning("GPT Disabled",
                                        "task.txt not found. GPT functionality is disabled.")
 
-    ttk.Label(provider_frame, text="Provider:").pack(side=tk.LEFT, padx=5, pady=5)
+    provider_row = ttk.Frame(provider_frame)
+    provider_row.pack(side=tk.TOP, anchor='w', fill=tk.X, padx=10, pady=2)
+    ttk.Label(provider_row, text="Provider:").pack(side=tk.LEFT)
     provider_var = tk.StringVar(value=Config.provider)
-    provider_combo = ttk.Combobox(provider_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
-    provider_combo.pack(side=tk.LEFT, padx=5, pady=5)
+    provider_combo = ttk.Combobox(provider_row, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
+    provider_combo.pack(side=tk.LEFT, padx=5)
 
-    ttk.Label(provider_frame, text="Model:").pack(side=tk.LEFT, padx=5, pady=5)
+    model_row = ttk.Frame(provider_frame)
+    model_row.pack(side=tk.TOP, anchor='w', fill=tk.X, padx=10, pady=2)
+    ttk.Label(model_row, text="Model:").pack(side=tk.LEFT)
     model_var = tk.StringVar(value=Config.model_name)
-    model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
-    model_combo.pack(side=tk.LEFT, padx=5, pady=5)
+    model_combo = ttk.Combobox(model_row, textvariable=model_var, width=20)
+    model_combo.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
 
     toggle_ai_controls()
 
@@ -1487,9 +1491,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     cancel_button.pack(side=tk.LEFT, padx=5)
     bind_hover_message(cancel_button, "Stop the current scan.")
 
-    export_button = ttk.Button(action_frame, text="Export CSV", command=export_results)
+    export_button = ttk.Button(action_frame, text="Export Results...", command=export_results)
     export_button.pack(side=tk.RIGHT, padx=5)
-    bind_hover_message(export_button, "Save results to a CSV file.")
+    bind_hover_message(export_button, "Save results to CSV, HTML, JSON, or SARIF.")
 
     # --- Progress Bar ---
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, mode='determinate')
