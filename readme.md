@@ -10,7 +10,7 @@ This security tool scans script files for malicious code using AI. It works in t
 
 ## Requirements
 
-*   **Python 3.9** or newer.
+*   **Python 3.9 to 3.11** (recommended for TensorFlow compatibility).
 *   **TensorFlow** (version 2.15 or older).
 *   **AI Provider** (Optional, for detailed analysis):
     *   **OpenAI** (requires API key)
@@ -49,6 +49,15 @@ This security tool scans script files for malicious code using AI. It works in t
 
     *Privacy Note:* Files are sent to the provider only if you enable the "Use AI Analysis" option. Check your provider's data policy.
 
+## Configuration
+
+You can customize the scanner using these optional files in the same folder as `gptscan.py`:
+
+*   **`apikey.txt`**: Your API key for OpenAI or OpenRouter.
+*   **`extensions.txt`**: A list of file extensions to scan (one per line, e.g., `.py`). If missing, the tool uses defaults like `.py`, `.js`, and `.bat`.
+*   **`.gptscanignore`**: Patterns of files or folders to skip (like a `.gitignore` file).
+*   **`task.txt`**: The instructions given to the AI for its analysis.
+
 ## How to Use
 
 ### Graphical Interface (GUI)
@@ -82,15 +91,17 @@ python gptscan.py ./my_scripts --cli --use-gpt --json --exclude "tests/*"
 *   `--cli`: Run in command-line mode (required).
 *   `[target] [files...]`: The folder(s) or file(s) to scan.
 *   `--path <folder>`: Specify the folder to scan.
-*   `--deep`: Scan the entire file instead of just the start and end (slower).
+*   `--deep`: Scan the entire file instead of just the start and end (slower but more thorough).
 *   `--show-all`: List all files, even safe ones.
 *   `--use-gpt`: Send suspicious code to the AI provider for analysis.
-*   `--json`: Output results in JSON format.
+*   `--json`: Output results in JSON Lines (NDJSON) format.
 *   `--sarif`: Output results in SARIF format (standard for security tools).
 *   `--html`: Output results as a standalone HTML report.
 *   `--dry-run`: List files that would be scanned without running any analysis.
 *   `--extensions "py,js,bat"`: Scan specific file types (comma-separated).
-*   `--exclude [patterns...]`: Skip files matching these patterns (e.g., `node_modules/*`).
+*   `--exclude [patterns...]`: Skip files matching these patterns (e.g., `node_modules/*`). Files in `.gptscanignore` are also skipped.
+*   `--file-list <path>`: Read a list of files to scan from a text file.
+*   `--git-changes`: Only scan files that have changed in the current git repository.
 *   `--rate-limit <number>`: Set the maximum requests per minute (default: 60).
 *   `--provider <name>`: Choose 'openai', 'openrouter', or 'ollama'.
 *   `--model <name>`: Specify the model name (e.g., 'gpt-4o', 'llama3.2').
