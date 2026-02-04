@@ -13,6 +13,12 @@ def test_config_set_extensions():
     assert Config.extensions_set == {".py", ".js", ".bat"}
     assert Config.extensions_missing is False
 
+def test_config_set_extensions_missing_dots():
+    extensions = ["py", "JS", ".bat", "  txt  "]
+    Config.set_extensions(extensions, missing=False)
+
+    assert Config.extensions_set == {".py", ".js", ".bat", ".txt"}
+
 def test_config_set_extensions_empty():
     Config.set_extensions([], missing=True)
     assert Config.extensions_set == set()
