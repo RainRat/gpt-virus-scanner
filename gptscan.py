@@ -37,7 +37,7 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
                 return file.readline().strip()
             elif mode == 'multi_line':
                 return file.read().splitlines()
-    except FileNotFoundError:
+    except (FileNotFoundError, PermissionError):
         return [] if mode == 'multi_line' else ''
 
 
