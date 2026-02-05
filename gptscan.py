@@ -969,9 +969,7 @@ def run_scan(
                     enqueue_ui_update(update_status, status)
             elif event_type == 'result':
                 # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-                gpt_conf = parse_percent(data[4])
-                own_conf = parse_percent(data[1])
-                conf = gpt_conf if gpt_conf >= 0 else own_conf
+                conf = get_effective_confidence(data[4], data[1])
 
                 if conf > 50:
                     threats_found += 1
@@ -1185,9 +1183,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     ):
         if event_type == 'result':
             # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-            gpt_conf = parse_percent(data[4])
-            own_conf = parse_percent(data[1])
-            conf = gpt_conf if gpt_conf >= 0 else own_conf
+            conf = get_effective_confidence(data[4], data[1])
             if conf > 50:
                 threats_found += 1
 
