@@ -87,7 +87,11 @@ class Config:
     @classmethod
     def set_extensions(cls, extensions_list: List[str], missing: bool = False) -> None:
         cls.extensions_missing = missing
-        cls.extensions_set = {ext.strip().lower() for ext in extensions_list if ext.strip()}
+        cls.extensions_set = set()
+        for ext in extensions_list:
+            clean_ext = ext.strip().lower()
+            if clean_ext:
+                cls.extensions_set.add(clean_ext if clean_ext.startswith('.') else f".{clean_ext}")
 
     @classmethod
     def initialize(cls) -> None:
