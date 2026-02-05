@@ -1,7 +1,7 @@
 import tkinter.font
 import pytest
 from unittest.mock import MagicMock
-from gptscan import Config, load_file, parse_percent, adjust_newlines, sort_column
+from gptscan import Config, load_file, parse_percent, adjust_newlines, sort_column, get_effective_confidence
 
 
 # --- Config Tests ---
@@ -149,3 +149,16 @@ def test_sort_column_text(monkeypatch):
     # Order: alpha, bravo -> i2, i1
     tv.move.assert_any_call("i2", "", 0)
     tv.move.assert_any_call("i1", "", 1)
+
+# --- get_effective_confidence Tests ---
+
+@pytest.mark.parametrize("gpt_conf, own_conf, expected", [
+    ("90%", "10%", 90.0),    # GPT takes priority
+    ("", "80%", 80.0),       # GPT empty, fallback to local
+    ("Error", "70%", 70.0),  # GPT error, fallback to local
+    ("50%", "", 50.0),       # Local empty, GPT used
+    ("", "", -1.0),          # Both empty
+    ("Invalid", "N/A", -1.0) # Both invalid
+])
+def test_get_effective_confidence(gpt_conf, own_conf, expected):
+    assert get_effective_confidence(gpt_conf, own_conf) == expected

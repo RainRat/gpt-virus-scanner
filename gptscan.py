@@ -515,6 +515,18 @@ def parse_percent(val: str, default: float = -1.0) -> float:
         return default
 
 
+def get_effective_confidence(gpt_conf_str: str, own_conf_str: str) -> float:
+    """Determine the prioritized confidence score as a float.
+
+    If GPT analysis succeeded and returned a valid percentage, it takes
+    priority. Otherwise, the local AI confidence score is used.
+    """
+    gpt_conf = parse_percent(gpt_conf_str)
+    if gpt_conf >= 0:
+        return gpt_conf
+    return parse_percent(own_conf_str)
+
+
 def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
     """Sort a Treeview column, toggling sort order on subsequent clicks.
 
@@ -548,9 +560,7 @@ def insert_tree_row(values: Tuple[Any, ...]) -> None:
 
     # Determine risk level based on confidence scores
     # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-    gpt_conf = parse_percent(values[4])
-    own_conf = parse_percent(values[1])
-    conf = gpt_conf if gpt_conf >= 0 else own_conf
+    conf = get_effective_confidence(values[4], values[1])
 
     tag = ''
     if conf > 80:
@@ -988,8 +998,7 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     for r in results:
         # Convert confidence strings to levels
         level = "note"
-        conf_str = r.get("gpt_conf", "") or r.get("own_conf", "")
-        conf = parse_percent(conf_str)
+        conf = get_effective_confidence(r.get("gpt_conf", ""), r.get("own_conf", ""))
         if conf > 80:
             level = "error"
         elif conf > 50:
@@ -1066,7 +1075,7 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
         user = r.get("end-user_desc", "")
         snippet = r.get("snippet", "")
 
-        conf_val = parse_percent(gpt_conf) if gpt_conf else parse_percent(own_conf)
+        conf_val = get_effective_confidence(gpt_conf, own_conf)
 
         row_class = ""
         if conf_val > 80:
