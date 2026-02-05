@@ -33,7 +33,7 @@ def test_initialize_missing_api_key(capsys):
         Config.initialize()
 
     captured = capsys.readouterr()
-    assert Config.apikey_missing_message in captured.out
+    assert Config.apikey_missing_message in captured.err
     # GPT should still be enabled if task is present (since local LLMs don't need API key)
     assert Config.GPT_ENABLED is True
 
@@ -46,7 +46,7 @@ def test_initialize_missing_task_file(capsys):
         Config.initialize()
 
     captured = capsys.readouterr()
-    assert Config.task_missing_message in captured.out
+    assert Config.task_missing_message in captured.err
     assert Config.GPT_ENABLED is False
 
 def test_initialize_missing_extensions_file(capsys):
@@ -59,7 +59,7 @@ def test_initialize_missing_extensions_file(capsys):
         Config.initialize()
 
     captured = capsys.readouterr()
-    assert Config.extensions_missing_message in captured.out
+    assert Config.extensions_missing_message in captured.err
     assert Config.extensions_set == set(Config.DEFAULT_EXTENSIONS)
     assert Config.extensions_missing is True
 
@@ -73,9 +73,9 @@ def test_initialize_all_present(capsys):
         Config.initialize()
 
     captured = capsys.readouterr()
-    assert Config.apikey_missing_message not in captured.out
-    assert Config.task_missing_message not in captured.out
-    assert Config.extensions_missing_message not in captured.out
+    assert Config.apikey_missing_message not in captured.err
+    assert Config.task_missing_message not in captured.err
+    assert Config.extensions_missing_message not in captured.err
 
     assert Config.GPT_ENABLED is True
     assert Config.extensions_set == set(custom_exts)
