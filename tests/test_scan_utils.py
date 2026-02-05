@@ -63,3 +63,14 @@ def test_iter_windows_deep_with_overlap():
     assert windows[1] == (10, content[10:20])
     assert windows[2] == (20, content[20:25])
     assert windows[3] == (15, content[15:25])
+
+def test_iter_windows_truncated_file():
+    # File size actually 20, but we tell it 25.
+    content = b"a" * 20
+    f = io.BytesIO(content)
+    # This should trigger the break inside the deep_scan while loop
+    windows = list(iter_windows(f, 25, deep_scan=True, maxlen=10))
+    # Expected: 0->10, 10->20, 20->empty(break), plus the overlap at the end
+    assert len(windows) == 3
+    assert windows[0][0] == 0
+    assert windows[1][0] == 10

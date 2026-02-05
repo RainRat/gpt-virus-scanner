@@ -10,7 +10,7 @@ This security tool scans script files for malicious code using AI. It works in t
 
 ## Requirements
 
-*   **Python 3.9 to 3.11** (recommended for TensorFlow compatibility).
+*   **Python 3.9 to 3.11** is required. Newer versions of Python (like 3.12) are not compatible with the AI model used in this tool.
 *   **TensorFlow** (version 2.15 or older).
 *   **AI Provider** (Optional, for detailed analysis):
     *   **OpenAI** (requires API key)
@@ -26,7 +26,7 @@ This security tool scans script files for malicious code using AI. It works in t
 2.  **Install Python:** Download it from [python.org](https://www.python.org/).
 
 3.  **Install required libraries:**
-    Run this command in your terminal:
+    Run the following command to install the required libraries:
 
     ```bash
     pip install "tensorflow<2.16" openai
@@ -41,7 +41,7 @@ This security tool scans script files for malicious code using AI. It works in t
 
     If you want to use cloud analysis (OpenAI or OpenRouter), you need an API key:
     *   Create a file named `apikey.txt` in the same folder as `gptscan.py`.
-    *   Paste your API key into that file.
+    *   Paste your API key into that file. It should contain only the key as a single line of text.
 
     *   **OpenAI:** Get a key from [OpenAI](https://platform.openai.com/).
     *   **OpenRouter:** Get a key from [OpenRouter](https://openrouter.ai/).
@@ -69,7 +69,7 @@ python gptscan.py
 ```
 
 *   **Select Directory:** Choose the folder you want to scan.
-*   **Deep Scan:** Scan the entire file (slower). By default, the tool only checks the beginning and end of files.
+*   **Deep Scan:** Scan the entire file (slower). By default, the tool only checks the start and end of files.
 *   **Show all files:** List every file scanned, including those that look safe.
 *   **Use AI Analysis:** Get a detailed report for suspicious files.
 *   **AI Analysis Settings:** Choose your provider (OpenAI, OpenRouter, or Ollama) and the model you want to use.

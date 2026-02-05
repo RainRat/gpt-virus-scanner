@@ -1,7 +1,7 @@
 import tkinter.font
 import pytest
 from unittest.mock import MagicMock
-from gptscan import Config, load_file, parse_percent, adjust_newlines, sort_column, get_effective_confidence
+from gptscan import Config, load_file, parse_percent, get_effective_confidence, adjust_newlines, sort_column
 
 
 # --- Config Tests ---
@@ -78,13 +78,28 @@ def test_load_file_permission_error_multi_line(tmp_path):
     ("invalid", -1.0),
     ("", -1.0),
     (None, -1.0),
-    ("50", -1.0) # Missing %
+    ("50", -1.0), # Missing %
+    ("abc%", -1.0) # Invalid float
 ])
 def test_parse_percent(input_val, expected):
     assert parse_percent(input_val, default=-1.0) == expected
 
 def test_parse_percent_custom_default():
     assert parse_percent("invalid", default=0.0) == 0.0
+
+# --- get_effective_confidence Tests ---
+
+@pytest.mark.parametrize("own, gpt, expected", [
+    ("50%", "80%", 80.0),    # GPT prioritized
+    ("50%", "", 50.0),      # Fallback to local
+    ("50%", "invalid", 50.0), # Fallback to local on GPT error
+    ("50%", "0%", 0.0),     # GPT prioritized even if 0
+    ("", "80%", 80.0),      # GPT prioritized even if local missing
+    ("", "", -1.0),         # Both missing
+    ("invalid", "invalid", -1.0), # Both invalid
+])
+def test_get_effective_confidence(own, gpt, expected):
+    assert get_effective_confidence(own, gpt) == expected
 
 # --- adjust_newlines Tests ---
 
@@ -149,16 +164,3 @@ def test_sort_column_text(monkeypatch):
     # Order: alpha, bravo -> i2, i1
     tv.move.assert_any_call("i2", "", 0)
     tv.move.assert_any_call("i1", "", 1)
-
-# --- get_effective_confidence Tests ---
-
-@pytest.mark.parametrize("gpt_conf, own_conf, expected", [
-    ("90%", "10%", 90.0),    # GPT takes priority
-    ("", "80%", 80.0),       # GPT empty, fallback to local
-    ("Error", "70%", 70.0),  # GPT error, fallback to local
-    ("50%", "", 50.0),       # Local empty, GPT used
-    ("", "", -1.0),          # Both empty
-    ("Invalid", "N/A", -1.0) # Both invalid
-])
-def test_get_effective_confidence(gpt_conf, own_conf, expected):
-    assert get_effective_confidence(gpt_conf, own_conf) == expected

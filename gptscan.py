@@ -28,6 +28,7 @@ deep_var: Optional[tk.BooleanVar] = None
 all_var: Optional[tk.BooleanVar] = None
 gpt_var: Optional[tk.BooleanVar] = None
 dry_var: Optional[tk.BooleanVar] = None
+git_var: Optional[tk.BooleanVar] = None
 tree: Optional[ttk.Treeview] = None
 scan_button: Optional[ttk.Button] = None
 cancel_button: Optional[ttk.Button] = None
@@ -469,7 +470,7 @@ def get_git_changed_files(path: str = ".") -> List[str]:
         # or warns if it was explicitly requested but failed.
         pass
 
-    return [f for f in files if os.path.exists(os.path.join(path, f))]
+    return [os.path.join(path, f) for f in files if os.path.exists(os.path.join(path, f))]
 
 
 def collect_files(targets: Union[str, List[str]]) -> List[Path]:
@@ -515,15 +516,11 @@ def parse_percent(val: str, default: float = -1.0) -> float:
         return default
 
 
-def get_effective_confidence(gpt_conf_str: str, own_conf_str: str) -> float:
-    """Determine the prioritized confidence score as a float.
-
-    If GPT analysis succeeded and returned a valid percentage, it takes
-    priority. Otherwise, the local AI confidence score is used.
-    """
-    gpt_conf = parse_percent(gpt_conf_str)
-    if gpt_conf >= 0:
-        return gpt_conf
+def get_effective_confidence(own_conf_str: Any, gpt_conf_str: Any) -> float:
+    """Calculate the effective confidence score, prioritizing GPT over local AI."""
+    gpt_val = parse_percent(gpt_conf_str)
+    if gpt_val >= 0:
+        return gpt_val
     return parse_percent(own_conf_str)
 
 
@@ -560,7 +557,7 @@ def insert_tree_row(values: Tuple[Any, ...]) -> None:
 
     # Determine risk level based on confidence scores
     # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-    conf = get_effective_confidence(values[4], values[1])
+    conf = get_effective_confidence(values[1], values[4])
 
     tag = ''
     if conf > 80:
@@ -622,6 +619,14 @@ def button_click() -> None:
         messagebox.showerror("Scan Error", "Please select a directory to scan.")
         return
 
+    scan_targets: Union[str, List[str]] = scan_path
+    if git_var.get():
+        git_files = get_git_changed_files(scan_path)
+        if not git_files:
+            messagebox.showinfo("Git Scan", "No git changes detected in the selected directory.")
+            return
+        scan_targets = git_files
+
     if not dry_var.get() and not os.path.exists('scripts.h5'):
         messagebox.showerror("Scan Error", "Model file scripts.h5 not found.")
         return
@@ -630,7 +635,7 @@ def button_click() -> None:
     set_scanning_state(True)
     update_status("Starting scan...")
     scan_args = (
-        scan_path,
+        scan_targets,
         deep_var.get(),
         all_var.get(),
         gpt_var.get(),
@@ -914,7 +919,7 @@ def scan_files(
 
 
 def run_scan(
-    scan_path: str,
+    scan_targets: Union[str, List[str]],
     deep_scan: bool,
     show_all: bool,
     use_gpt: bool,
@@ -927,8 +932,8 @@ def run_scan(
 
     Parameters
     ----------
-    scan_path : str
-        Directory to scan.
+    scan_targets : Union[str, List[str]]
+        Directory path or list of files to scan.
     deep_scan : bool
         Whether to evaluate all 1024-byte windows.
     show_all : bool
@@ -945,7 +950,7 @@ def run_scan(
 
     try:
         for event_type, data in scan_files(
-            scan_path,
+            scan_targets,
             deep_scan,
             show_all,
             use_gpt,
@@ -969,7 +974,7 @@ def run_scan(
                     enqueue_ui_update(update_status, status)
             elif event_type == 'result':
                 # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-                conf = get_effective_confidence(data[4], data[1])
+                conf = get_effective_confidence(data[1], data[4])
 
                 if conf > 50:
                     threats_found += 1
@@ -996,7 +1001,7 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     for r in results:
         # Convert confidence strings to levels
         level = "note"
-        conf = get_effective_confidence(r.get("gpt_conf", ""), r.get("own_conf", ""))
+        conf = get_effective_confidence(r.get("own_conf", ""), r.get("gpt_conf", ""))
         if conf > 80:
             level = "error"
         elif conf > 50:
@@ -1073,7 +1078,7 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
         user = r.get("end-user_desc", "")
         snippet = r.get("snippet", "")
 
-        conf_val = get_effective_confidence(gpt_conf, own_conf)
+        conf_val = get_effective_confidence(own_conf, gpt_conf)
 
         row_class = ""
         if conf_val > 80:
@@ -1183,7 +1188,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     ):
         if event_type == 'result':
             # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-            conf = get_effective_confidence(data[4], data[1])
+            conf = get_effective_confidence(data[1], data[4])
             if conf > 50:
                 threats_found += 1
 
@@ -1448,7 +1453,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, tree, scan_button, cancel_button, default_font_measure
+    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, tree, scan_button, cancel_button, default_font_measure
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -1457,7 +1462,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # Configure grid weights to ensure resizing behaves correctly
     root.columnconfigure(0, weight=1)
-    root.rowconfigure(6, weight=1)  # The row containing the Treeview
+    root.rowconfigure(5, weight=1)  # The row containing the Treeview
 
     # --- Input Frame ---
     input_frame = ttk.Frame(root)
@@ -1472,7 +1477,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     textbox.grid(row=0, column=1, sticky="ew", padx=5)
     textbox.bind('<Return>', lambda event: button_click())
     textbox.focus_set()
-    select_dir_btn = ttk.Button(input_frame, text="Select Directory", command=browse_button_click)
+    select_dir_btn = ttk.Button(input_frame, text="Select Directory...", command=browse_button_click)
     select_dir_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
     bind_hover_message(select_dir_btn, "Browse for a directory to scan.")
 
@@ -1486,20 +1491,25 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     deep_var = tk.BooleanVar()
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
-    deep_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
+    deep_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(deep_checkbox, "Scan the entire file content (slower). Default scans only start/end.")
 
     all_var = tk.BooleanVar()
     all_checkbox = ttk.Checkbutton(options_frame, text="Show all files", variable=all_var)
-    all_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
+    all_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(all_checkbox, "Display all scanned files, including safe ones.")
 
     gpt_var = tk.BooleanVar()
 
     dry_var = tk.BooleanVar()
     dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
-    dry_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
+    dry_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
+
+    git_var = tk.BooleanVar()
+    git_checkbox = ttk.Checkbutton(options_frame, text="Git changes only", variable=git_var)
+    git_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
+    bind_hover_message(git_checkbox, "Only scan files that have been modified or are untracked in Git.")
 
     # --- Provider Frame ---
     provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis")
@@ -1515,7 +1525,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
             model_combo.config(state="disabled")
 
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
-    gpt_checkbox.pack(side=tk.LEFT, padx=10)
+    gpt_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(gpt_checkbox, "Send suspicious code to AI for explanation.")
 
     if not Config.GPT_ENABLED:
@@ -1524,15 +1534,19 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         messagebox.showwarning("GPT Disabled",
                                        "task.txt not found. GPT functionality is disabled.")
 
-    ttk.Label(provider_frame, text="Provider:").pack(side=tk.LEFT, padx=5, pady=5)
+    provider_row = ttk.Frame(provider_frame)
+    provider_row.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
+    ttk.Label(provider_row, text="Provider:", width=10).pack(side=tk.LEFT)
     provider_var = tk.StringVar(value=Config.provider)
-    provider_combo = ttk.Combobox(provider_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
-    provider_combo.pack(side=tk.LEFT, padx=5, pady=5)
+    provider_combo = ttk.Combobox(provider_row, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
+    provider_combo.pack(side=tk.LEFT, padx=5)
 
-    ttk.Label(provider_frame, text="Model:").pack(side=tk.LEFT, padx=5, pady=5)
+    model_row = ttk.Frame(provider_frame)
+    model_row.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
+    ttk.Label(model_row, text="Model:", width=10).pack(side=tk.LEFT)
     model_var = tk.StringVar(value=Config.model_name)
-    model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
-    model_combo.pack(side=tk.LEFT, padx=5, pady=5)
+    model_combo = ttk.Combobox(model_row, textvariable=model_var, width=20)
+    model_combo.pack(side=tk.LEFT, padx=5)
 
     toggle_ai_controls()
 
