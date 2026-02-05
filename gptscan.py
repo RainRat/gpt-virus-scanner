@@ -28,6 +28,7 @@ deep_var: Optional[tk.BooleanVar] = None
 all_var: Optional[tk.BooleanVar] = None
 gpt_var: Optional[tk.BooleanVar] = None
 dry_var: Optional[tk.BooleanVar] = None
+git_var: Optional[tk.BooleanVar] = None
 tree: Optional[ttk.Treeview] = None
 scan_button: Optional[ttk.Button] = None
 cancel_button: Optional[ttk.Button] = None
@@ -469,7 +470,7 @@ def get_git_changed_files(path: str = ".") -> List[str]:
         # or warns if it was explicitly requested but failed.
         pass
 
-    return [f for f in files if os.path.exists(os.path.join(path, f))]
+    return [os.path.join(path, f) for f in files if os.path.exists(os.path.join(path, f))]
 
 
 def collect_files(targets: Union[str, List[str]]) -> List[Path]:
@@ -612,6 +613,14 @@ def button_click() -> None:
         messagebox.showerror("Scan Error", "Please select a directory to scan.")
         return
 
+    scan_targets: Union[str, List[str]] = scan_path
+    if git_var.get():
+        git_files = get_git_changed_files(scan_path)
+        if not git_files:
+            messagebox.showinfo("Git Scan", "No git changes detected in the selected directory.")
+            return
+        scan_targets = git_files
+
     if not dry_var.get() and not os.path.exists('scripts.h5'):
         messagebox.showerror("Scan Error", "Model file scripts.h5 not found.")
         return
@@ -620,7 +629,7 @@ def button_click() -> None:
     set_scanning_state(True)
     update_status("Starting scan...")
     scan_args = (
-        scan_path,
+        scan_targets,
         deep_var.get(),
         all_var.get(),
         gpt_var.get(),
@@ -904,7 +913,7 @@ def scan_files(
 
 
 def run_scan(
-    scan_path: str,
+    scan_targets: Union[str, List[str]],
     deep_scan: bool,
     show_all: bool,
     use_gpt: bool,
@@ -917,8 +926,8 @@ def run_scan(
 
     Parameters
     ----------
-    scan_path : str
-        Directory to scan.
+    scan_targets : Union[str, List[str]]
+        Directory path or list of files to scan.
     deep_scan : bool
         Whether to evaluate all 1024-byte windows.
     show_all : bool
@@ -935,7 +944,7 @@ def run_scan(
 
     try:
         for event_type, data in scan_files(
-            scan_path,
+            scan_targets,
             deep_scan,
             show_all,
             use_gpt,
@@ -1443,7 +1452,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, tree, scan_button, cancel_button, default_font_measure
+    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, tree, scan_button, cancel_button, default_font_measure
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -1495,6 +1504,11 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
     dry_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
+
+    git_var = tk.BooleanVar()
+    git_checkbox = ttk.Checkbutton(options_frame, text="Git changes only", variable=git_var)
+    git_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
+    bind_hover_message(git_checkbox, "Only scan files that have been modified or are untracked in Git.")
 
     # --- Provider Frame ---
     provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis")
