@@ -45,7 +45,7 @@ def test_changes_detected():
 
         # Result should be unique list of all 3 files
         assert len(files) == 3
-        assert set(files) == {"staged.py", "unstaged.py", "untracked.py"}
+        assert set(files) == {os.path.join(".", "staged.py"), os.path.join(".", "unstaged.py"), os.path.join(".", "untracked.py")}
         assert mock_check_output.call_count == 2
 
 def test_file_does_not_exist():
@@ -65,16 +65,20 @@ def test_file_does_not_exist():
 
         files = get_git_changed_files()
 
-        assert files == ["existing.py"]
-        assert "deleted.py" not in files
+        assert files == [os.path.join(".", "existing.py")]
+        assert os.path.join(".", "deleted.py") not in files
 
 def test_path_argument_passed():
     """Test that the path argument is correctly passed to git command cwd."""
-    with patch("subprocess.check_output") as mock_check_output:
-        mock_check_output.side_effect = ["", ""]
+    with patch("subprocess.check_output") as mock_check_output, \
+         patch("os.path.exists") as mock_exists:
+        mock_check_output.side_effect = ["changed.py", ""]
+        mock_exists.return_value = True
 
         target_dir = "/some/path"
-        get_git_changed_files(target_dir)
+        files = get_git_changed_files(target_dir)
+
+        assert files == [os.path.join(target_dir, "changed.py")]
 
         # Verify cwd was set correctly in both calls
         args1, kwargs1 = mock_check_output.call_args_list[0]
