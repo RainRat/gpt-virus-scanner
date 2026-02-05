@@ -516,6 +516,14 @@ def parse_percent(val: str, default: float = -1.0) -> float:
         return default
 
 
+def get_effective_confidence(own_conf_str: Any, gpt_conf_str: Any) -> float:
+    """Calculate the effective confidence score, prioritizing GPT over local AI."""
+    gpt_val = parse_percent(gpt_conf_str)
+    if gpt_val >= 0:
+        return gpt_val
+    return parse_percent(own_conf_str)
+
+
 def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
     """Sort a Treeview column, toggling sort order on subsequent clicks.
 
@@ -549,9 +557,7 @@ def insert_tree_row(values: Tuple[Any, ...]) -> None:
 
     # Determine risk level based on confidence scores
     # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-    gpt_conf = parse_percent(values[4])
-    own_conf = parse_percent(values[1])
-    conf = gpt_conf if gpt_conf >= 0 else own_conf
+    conf = get_effective_confidence(values[1], values[4])
 
     tag = ''
     if conf > 80:
@@ -968,9 +974,7 @@ def run_scan(
                     enqueue_ui_update(update_status, status)
             elif event_type == 'result':
                 # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-                gpt_conf = parse_percent(data[4])
-                own_conf = parse_percent(data[1])
-                conf = gpt_conf if gpt_conf >= 0 else own_conf
+                conf = get_effective_confidence(data[1], data[4])
 
                 if conf > 50:
                     threats_found += 1
@@ -997,8 +1001,7 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     for r in results:
         # Convert confidence strings to levels
         level = "note"
-        conf_str = r.get("gpt_conf", "") or r.get("own_conf", "")
-        conf = parse_percent(conf_str)
+        conf = get_effective_confidence(r.get("own_conf", ""), r.get("gpt_conf", ""))
         if conf > 80:
             level = "error"
         elif conf > 50:
@@ -1075,7 +1078,7 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
         user = r.get("end-user_desc", "")
         snippet = r.get("snippet", "")
 
-        conf_val = parse_percent(gpt_conf) if gpt_conf else parse_percent(own_conf)
+        conf_val = get_effective_confidence(own_conf, gpt_conf)
 
         row_class = ""
         if conf_val > 80:
@@ -1185,9 +1188,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     ):
         if event_type == 'result':
             # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-            gpt_conf = parse_percent(data[4])
-            own_conf = parse_percent(data[1])
-            conf = gpt_conf if gpt_conf >= 0 else own_conf
+            conf = get_effective_confidence(data[1], data[4])
             if conf > 50:
                 threats_found += 1
 
