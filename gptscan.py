@@ -1205,6 +1205,97 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         print(generate_html(result_buffer))
 
 
+def import_results() -> None:
+    """Load results from a JSON or CSV file into the Treeview.
+
+    Supports standard JSON lists, NDJSON (newline-delimited JSON), and CSV files.
+
+    Returns
+    -------
+    None
+        Clears the Treeview and populates it with imported data, or shows an error.
+    """
+    if not tree:
+        return
+
+    file_path = tkinter.filedialog.askopenfilename(
+        filetypes=[
+            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv"),
+            ("JSON files", "*.json;*.jsonl;*.ndjson"),
+            ("CSV files", "*.csv"),
+            ("All files", "*.*")
+        ],
+        title="Import Scan Results",
+    )
+    if not file_path:
+        return
+
+    try:
+        data_to_import = []
+        ext = os.path.splitext(file_path)[1].lower()
+
+        if ext in ('.json', '.jsonl', '.ndjson'):
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if not content:
+                    raise ValueError("File is empty.")
+
+                if content.startswith('['):
+                    # Standard JSON list
+                    data_to_import = json.loads(content)
+                else:
+                    # NDJSON (newline-delimited JSON)
+                    data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
+        elif ext == '.csv':
+            with open(file_path, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                data_to_import = list(reader)
+        else:
+            messagebox.showerror("Import Error", f"Unsupported file extension: {ext}")
+            return
+
+        if not data_to_import:
+            messagebox.showwarning("Import Warning", "No data found in the selected file.")
+            return
+
+        # Clear existing results
+        tree.delete(*tree.get_children())
+
+        columns = tree["columns"]
+        count = 0
+        for item in data_to_import:
+            # item is a dict from JSON or csv.DictReader
+            # Map item keys back to the expected column order
+            values = []
+            for col in columns:
+                # Try exact match first
+                val = item.get(col)
+                if val is None:
+                    # Try to map some known alternatives or header names
+                    if col == "path":
+                        val = item.get("File Path")
+                    elif col == "own_conf":
+                        val = item.get("Local Conf.")
+                    elif col == "admin_desc":
+                        val = item.get("Admin Notes")
+                    elif col == "end-user_desc":
+                        val = item.get("User Notes")
+                    elif col == "gpt_conf":
+                        val = item.get("AI Conf.")
+                    elif col == "snippet":
+                        val = item.get("Snippet")
+
+                values.append(val if val is not None else "")
+
+            insert_tree_row(tuple(values))
+            count += 1
+
+        update_status(f"Imported {count} results from {os.path.basename(file_path)}")
+
+    except Exception as err:
+        messagebox.showerror("Import Failed", f"Could not load results:\n{err}")
+
+
 def export_results() -> None:
     """Save the current Treeview contents to a file chosen by the user.
 
@@ -1487,9 +1578,13 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     cancel_button.pack(side=tk.LEFT, padx=5)
     bind_hover_message(cancel_button, "Stop the current scan.")
 
-    export_button = ttk.Button(action_frame, text="Export CSV", command=export_results)
+    export_button = ttk.Button(action_frame, text="Export Results...", command=export_results)
     export_button.pack(side=tk.RIGHT, padx=5)
-    bind_hover_message(export_button, "Save results to a CSV file.")
+    bind_hover_message(export_button, "Save results to CSV, HTML, JSON, or SARIF.")
+
+    import_button = ttk.Button(action_frame, text="Import Results...", command=import_results)
+    import_button.pack(side=tk.RIGHT, padx=5)
+    bind_hover_message(import_button, "Load results from a JSON or CSV file.")
 
     # --- Progress Bar ---
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, mode='determinate')

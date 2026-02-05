@@ -64,6 +64,7 @@ python gptscan.py
 *   **Show all files:** List every file scanned, including those that look safe.
 *   **Use AI Analysis:** Get a detailed report for suspicious files.
 *   **AI Analysis Settings:** Choose your provider (OpenAI, OpenRouter, or Ollama) and the model you want to use.
+*   **Import/Export Results:** Save your scan results to CSV, JSON, HTML, or SARIF files, and load them back later for review.
 
 You can sort the results by clicking the column headers.
 
