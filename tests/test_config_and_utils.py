@@ -78,7 +78,8 @@ def test_load_file_permission_error_multi_line(tmp_path):
     ("invalid", -1.0),
     ("", -1.0),
     (None, -1.0),
-    ("50", -1.0) # Missing %
+    ("50", -1.0), # Missing %
+    ("abc%", -1.0) # Invalid float
 ])
 def test_parse_percent(input_val, expected):
     assert parse_percent(input_val, default=-1.0) == expected
