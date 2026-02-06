@@ -76,7 +76,7 @@ class Config:
     DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1']
 
     apikey_missing_message = (
-        "Note: No API key found. Cloud analysis (OpenAI/OpenRouter) requires one, but local AI (Ollama) works without it."
+        "Note: No API key found. AI Analysis (OpenAI/OpenRouter) requires one, but local AI (Ollama) works without it."
     )
     task_missing_message = (
         "Task file missing. AI analysis will be skipped."
