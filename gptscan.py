@@ -1477,6 +1477,14 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     textbox.grid(row=0, column=1, sticky="ew", padx=5)
     textbox.bind('<Return>', lambda event: button_click())
     textbox.focus_set()
+
+    def on_root_return(event):
+        # Trigger scan if focus is not on results tree or textbox (which has its own binding)
+        focused = root.focus_get()
+        if str(focused) not in (str(tree), str(textbox)):
+            button_click()
+
+    root.bind('<Return>', on_root_return)
     select_dir_btn = ttk.Button(input_frame, text="Select Directory...", command=browse_button_click)
     select_dir_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
     bind_hover_message(select_dir_btn, "Browse for a directory to scan.")
@@ -1489,6 +1497,13 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     options_frame = ttk.LabelFrame(settings_frame, text="Scan Options")
     options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
 
+    gpt_var = tk.BooleanVar()
+
+    git_var = tk.BooleanVar()
+    git_checkbox = ttk.Checkbutton(options_frame, text="Git changes only", variable=git_var)
+    git_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
+    bind_hover_message(git_checkbox, "Only scan files that have been modified or are untracked in Git.")
+
     deep_var = tk.BooleanVar()
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
     deep_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
@@ -1499,17 +1514,10 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     all_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(all_checkbox, "Display all scanned files, including safe ones.")
 
-    gpt_var = tk.BooleanVar()
-
     dry_var = tk.BooleanVar()
     dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
     dry_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
-
-    git_var = tk.BooleanVar()
-    git_checkbox = ttk.Checkbutton(options_frame, text="Git changes only", variable=git_var)
-    git_checkbox.pack(side=tk.LEFT, padx=10, pady=5)
-    bind_hover_message(git_checkbox, "Only scan files that have been modified or are untracked in Git.")
 
     # --- Provider Frame ---
     provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis")
@@ -1593,7 +1601,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     action_frame = ttk.Frame(root)
     action_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
 
-    scan_button = ttk.Button(action_frame, text="Scan now", command=button_click)
+    scan_button = ttk.Button(action_frame, text="Scan now", command=button_click, default='active')
     scan_button.pack(side=tk.LEFT, padx=5)
     bind_hover_message(scan_button, "Start the scan.")
 
@@ -1658,6 +1666,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.configure(yscrollcommand=scrollbar.set)
     tree.bind('<ButtonRelease-1>', partial(motion_handler, tree))
     tree.bind('<Double-1>', open_file)
+    tree.bind('<Return>', open_file)
     tree.grid(row=0, column=0, sticky="nsew")
 
     motion_handler(tree, None)   # Perform initial wrapping
