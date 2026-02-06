@@ -1342,11 +1342,6 @@ def export_results() -> None:
     results = []
     for item_id in tree.get_children():
         values = list(tree.item(item_id)["values"])
-        # Simple unwrapping: replace single newlines that were likely added by adjust_newlines
-        # This isn't perfect but better than nothing for a quick export.
-        # Actually, for serious export, we'd want the raw data.
-        # But here we just use what's in the table.
-        cleaned_values = [str(v).replace('\n', ' ') if i != 5 else v for i, v in enumerate(values)]
         results.append(dict(zip(columns, values))) # Use original values for JSON/HTML/SARIF as they handle newlines better
 
     ext = os.path.splitext(file_path)[1].lower()
