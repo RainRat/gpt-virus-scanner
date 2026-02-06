@@ -516,6 +516,15 @@ def parse_percent(val: str, default: float = -1.0) -> float:
         return default
 
 
+def format_bytes(num: float) -> str:
+    """Format a number of bytes into a human-readable string (e.g., KiB, MiB)."""
+    for unit in ['B', 'KiB', 'MiB', 'GiB', 'TiB']:
+        if abs(num) < 1024.0:
+            return f"{num:3.1f} {unit}"
+        num /= 1024.0
+    return f"{num:.1f} PiB"
+
+
 def get_effective_confidence(own_conf_str: Any, gpt_conf_str: Any) -> float:
     """Calculate the effective confidence score, prioritizing GPT over local AI."""
     gpt_val = parse_percent(gpt_conf_str)
@@ -575,7 +584,7 @@ def set_scanning_state(is_scanning: bool) -> None:
     cancel_button.config(state="normal" if is_scanning else "disabled")
 
 
-def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Optional[int] = None) -> None:
+def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Optional[int] = None, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None) -> None:
     """Reset scanning controls when a scan finishes or is cancelled.
 
     Parameters
@@ -584,6 +593,10 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
         Total number of files scanned.
     threats_found : int, optional
         Total number of suspicious files detected.
+    total_bytes : int, optional
+        Total bytes scanned.
+    elapsed_time : float, optional
+        Time taken for the scan in seconds.
     """
 
     global current_cancel_event
@@ -592,7 +605,17 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
 
     if total_scanned is not None and threats_found is not None:
         threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
-        update_status(f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found.")
+        summary = f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found."
+
+        if elapsed_time and elapsed_time > 0:
+            files_per_sec = total_scanned / elapsed_time
+            summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} files/s"
+            if total_bytes:
+                bytes_per_sec = total_bytes / elapsed_time
+                summary += f", {format_bytes(bytes_per_sec)}/s"
+            summary += ")."
+
+        update_status(summary)
     else:
         update_status("Ready")
 
@@ -726,10 +749,11 @@ def scan_files(
 
     Yields
     ------
-    Generator[Tuple[str, Tuple[Any, ...]], None, None]
+    Generator[Tuple[str, Any], None, None]
         Tuples indicating events:
         - ('progress', (current: int, total: int, status: Optional[str]))
         - ('result', (path: str, own_conf: str, admin: str, user: str, gpt: str, snippet: str))
+        - ('summary', (total_files: int, total_bytes: int, elapsed_time: float))
     """
     global _tf_module
     cancel_event = cancel_event or threading.Event()
@@ -755,6 +779,8 @@ def scan_files(
 
     total_progress = len(file_list)
     progress_count = 0
+    total_bytes_scanned = 0
+    start_time = time.perf_counter()
     yield ('progress', (progress_count, total_progress, "Scanning..."))
 
     gpt_requests: List[Dict[str, Any]] = []
@@ -795,6 +821,7 @@ def scan_files(
                     file_size = None
 
                 if file_size is not None:
+                    total_bytes_scanned += file_size
                     resultchecks: List[float] = []
                     maxconf = 0.0
                     max_window_bytes = b""
@@ -917,6 +944,9 @@ def scan_files(
             progress_count += 1
             yield ('progress', (progress_count, total_progress, None))
 
+    end_time = time.perf_counter()
+    yield ('summary', (len(file_list), total_bytes_scanned, end_time - start_time))
+
 
 def run_scan(
     scan_targets: Union[str, List[str]],
@@ -947,6 +977,7 @@ def run_scan(
     """
     last_total: Optional[int] = 0
     threats_found = 0
+    metrics: Dict[str, Any] = {}
 
     try:
         for event_type, data in scan_files(
@@ -980,8 +1011,18 @@ def run_scan(
                     threats_found += 1
 
                 enqueue_ui_update(insert_tree_row, data)
+            elif event_type == 'summary':
+                total_files, total_bytes, elapsed_time = data
+                metrics['total_bytes'] = total_bytes
+                metrics['elapsed_time'] = elapsed_time
     finally:
-        enqueue_ui_update(finish_scan_state, last_total, threats_found)
+        enqueue_ui_update(
+            finish_scan_state,
+            last_total,
+            threats_found,
+            metrics.get('total_bytes'),
+            metrics.get('elapsed_time')
+        )
 
 
 def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -1172,6 +1213,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     cancel_event = threading.Event()
     final_progress: Optional[Tuple[int, int]] = None
     threats_found = 0
+    metrics: Dict[str, Any] = {}
 
     result_buffer = []
 
@@ -1205,12 +1247,28 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             print(f"Scanning: {current}/{total} files\r", end='', file=sys.stderr)
             if status:
                 print(f"{status}\r", end='', file=sys.stderr)
+        elif event_type == 'summary':
+            total_files, total_bytes, elapsed_time = data
+            metrics['total_bytes'] = total_bytes
+            metrics['elapsed_time'] = elapsed_time
 
     if final_progress is not None:
         print(file=sys.stderr)
         total_scanned = final_progress[1]
         threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
-        print(f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found.", file=sys.stderr)
+        summary = f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found."
+
+        elapsed_time = metrics.get('elapsed_time')
+        if elapsed_time and elapsed_time > 0:
+            files_per_sec = total_scanned / elapsed_time
+            summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} files/s"
+            total_bytes = metrics.get('total_bytes')
+            if total_bytes:
+                bytes_per_sec = total_bytes / elapsed_time
+                summary += f", {format_bytes(bytes_per_sec)}/s"
+            summary += ")."
+
+        print(summary, file=sys.stderr)
 
     if output_format == 'sarif':
         sarif_log = generate_sarif(result_buffer)
