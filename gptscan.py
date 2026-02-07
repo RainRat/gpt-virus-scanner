@@ -1470,6 +1470,51 @@ def open_file(event: Optional[tk.Event] = None) -> None:
         messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
 
 
+def copy_path() -> None:
+    """Copy the file path of the selected result to the clipboard."""
+    if not tree:
+        return
+    selection = tree.selection()
+    if not selection:
+        return
+
+    values = tree.item(selection[0], "values")
+    if values:
+        # RemoveWrapping added for display
+        path = str(values[0]).replace('\n', '')
+        root.clipboard_clear()
+        root.clipboard_append(path)
+
+
+def copy_snippet() -> None:
+    """Copy the code snippet of the selected result to the clipboard."""
+    if not tree:
+        return
+    selection = tree.selection()
+    if not selection:
+        return
+
+    values = tree.item(selection[0], "values")
+    if values and len(values) > 5:
+        snippet = str(values[5])
+        root.clipboard_clear()
+        root.clipboard_append(snippet)
+
+
+def show_context_menu(event: tk.Event, menu: tk.Menu) -> None:
+    """Identify the row under the cursor and display the context menu."""
+    if not tree:
+        return
+
+    # Check if the right-click occurred over a cell
+    region = tree.identify_region(event.x, event.y)
+    if region == "cell":
+        item = tree.identify_row(event.y)
+        if item:
+            tree.selection_set(item)
+            menu.post(event.x_root, event.y_root)
+
+
 def get_model_presets(provider: str) -> List[str]:
     """Return the list of model presets for a given provider.
 
@@ -1720,6 +1765,22 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<ButtonRelease-1>', partial(motion_handler, tree))
     tree.bind('<Double-1>', open_file)
     tree.bind('<Return>', open_file)
+
+    # --- Context Menu ---
+    context_menu = tk.Menu(root, tearoff=0)
+    context_menu.add_command(label="Open File", command=open_file)
+    context_menu.add_separator()
+    context_menu.add_command(label="Copy File Path", command=copy_path)
+    context_menu.add_command(label="Copy Snippet", command=copy_snippet)
+
+    # Bind context menu to right-click (platform-specific) and Menu key
+    show_menu_func = partial(show_context_menu, menu=context_menu)
+    if sys.platform == "darwin":
+        tree.bind("<Button-2>", show_menu_func)
+    else:
+        tree.bind("<Button-3>", show_menu_func)
+    tree.bind("<Menu>", show_menu_func)
+
     tree.grid(row=0, column=0, sticky="nsew")
 
     motion_handler(tree, None)   # Perform initial wrapping
