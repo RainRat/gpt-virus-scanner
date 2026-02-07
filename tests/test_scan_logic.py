@@ -88,7 +88,8 @@ def test_scan_files_handles_permission_error(monkeypatch, tmp_path, mock_scan_de
     # results[0] is progress (0, 1, None)
     # results[1] is result
     # results[2] is progress (1, 1, None)
-    assert len(results) == 3
+    # results[3] is summary
+    assert len(results) == 4
     res_type, res_data = results[1]
     assert res_type == 'result'
     assert res_data[1] == 'Error'
@@ -118,8 +119,8 @@ def test_scan_files_metadata_error(monkeypatch, tmp_path, mock_scan_dependencies
     ))
 
     # Verify we get an Error result
-    # Sequence: Progress(start), Result(Error), Progress(update)
-    assert len(results) == 3
+    # Sequence: Progress(start), Result(Error), Progress(update), Summary
+    assert len(results) == 4
 
     # Check result item
     event_type, event_data = results[1]
