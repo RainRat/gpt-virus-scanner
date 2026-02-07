@@ -39,7 +39,7 @@ This security tool scans script files for malicious code using AI. It works in t
 
 4.  **Set up your Provider (Optional):**
 
-    If you want to use cloud analysis (OpenAI or OpenRouter), you need an API key:
+    If you want to use AI Analysis (OpenAI or OpenRouter), you need an API key:
     *   Create a file named `apikey.txt` in the same folder as `gptscan.py`.
     *   Paste your API key into that file. It should contain only the key as a single line of text.
 
@@ -54,7 +54,7 @@ This security tool scans script files for malicious code using AI. It works in t
 You can customize the scanner using these optional files in the same folder as `gptscan.py`:
 
 *   **`apikey.txt`**: Your API key for OpenAI or OpenRouter.
-*   **`extensions.txt`**: A list of file extensions to scan (one per line, e.g., `.py`). If missing, the tool uses defaults like `.py`, `.js`, and `.bat`.
+*   **`extensions.txt`**: A list of file extensions to scan (one per line, e.g., `.py`). If missing, the tool uses defaults like `.py`, `.js`, `.bat`, and `.ps1`.
 *   **`.gptscanignore`**: Patterns of files or folders to skip (like a `.gitignore` file).
 *   **`task.txt`**: The instructions given to the AI for its analysis.
 
@@ -95,7 +95,7 @@ python gptscan.py ./my_scripts --cli --use-gpt --json --exclude "tests/*"
 *   `--deep`: Scan the entire file instead of just the start and end (slower but more thorough).
 *   `--show-all`: List all files, even safe ones.
 *   `--use-gpt`: Send suspicious code to the AI provider for analysis.
-*   `--json`: Output results in JSON Lines (NDJSON) format.
+*   `--json`: Output results in JSON Lines (NDJSON) format (one JSON object per line).
 *   `--sarif`: Output results in SARIF format (standard for security tools).
 *   `--html`: Output results as a standalone HTML report.
 *   `--dry-run`: List files that would be scanned without running any analysis.
@@ -107,6 +107,12 @@ python gptscan.py ./my_scripts --cli --use-gpt --json --exclude "tests/*"
 *   `--provider <name>`: Choose 'openai', 'openrouter', or 'ollama'.
 *   `--model <name>`: Specify the model name (e.g., 'gpt-4o', 'llama3.2').
 *   `--api-base <url>`: Use a custom API URL.
+
+## Troubleshooting
+
+*   **Tkinter not found (Linux):** If you see an error about `tkinter` being missing, install it using your package manager (e.g., `sudo apt-get install python3-tk`).
+*   **Model file missing:** Ensure `scripts.h5` is in the same folder as `gptscan.py`. This file is required for the local scan.
+*   **API key missing:** If you see a note about a missing API key, you can still use the local scan and Ollama. To use OpenAI or OpenRouter, create an `apikey.txt` file with your key.
 
 ## Contributing
 
