@@ -10,8 +10,8 @@ This project is a hybrid security tool that combines a local TensorFlow/Keras de
     * Files are read in chunks.
     * A pre-trained Keras model (`scripts.h5`) analyzes 1024-byte windows.
     * It produces a confidence score (`own_conf`).
-4.  **Stage 2 (Cloud Analysis):**
-    * If the local confidence is high (> 50%) and the "Use ChatGPT" checkbox is checked, the suspicious snippet is sent to the OpenAI API.
+4.  **Stage 2 (AI Analysis):**
+    * If the local confidence is high (> 50%) and the "Use AI Analysis" checkbox is checked, the suspicious snippet is sent to the AI provider.
     * The API uses the prompt in `task.txt` to return a JSON assessment (Administrator description, End-user description, Threat Level).
 
 ## Environment Setup

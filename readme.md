@@ -4,7 +4,7 @@
 
 This security tool scans script files for malicious code using AI. It works in two stages:
 1.  **Local Scan:** A built-in AI model checks your files quickly.
-2.  **Cloud Analysis:** If a file looks suspicious, it sends a snippet to an AI provider (like OpenAI) for a detailed report.
+2.  **AI Analysis:** If a file looks suspicious, it sends a snippet to an AI provider (like OpenAI) for a detailed report.
 
 **Note:** This is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and Batch files) but not compiled programs or archives.
 
@@ -122,8 +122,8 @@ We welcome your help!
 *   **Submitting code:** Pull requests are welcome. Please run tests before submitting:
 
     ```bash
-    pip install pytest pytest-asyncio pytest-mock
-    python -m pytest
+    pip install pytest pytest-asyncio pytest-mock pytest-cov
+    python -m pytest --cov
     ```
 
 ## Credits
