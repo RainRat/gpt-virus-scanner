@@ -584,6 +584,38 @@ def set_scanning_state(is_scanning: bool) -> None:
     cancel_button.config(state="normal" if is_scanning else "disabled")
 
 
+def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None) -> str:
+    """Generate a human-readable summary of the scan results.
+
+    Parameters
+    ----------
+    total_scanned : int
+        Total number of files scanned.
+    threats_found : int
+        Total number of suspicious files detected.
+    total_bytes : int, optional
+        Total bytes scanned.
+    elapsed_time : float, optional
+        Time taken for the scan in seconds.
+
+    Returns
+    -------
+    str
+        A formatted summary string.
+    """
+    threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
+    summary = f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found."
+
+    if elapsed_time and elapsed_time > 0:
+        files_per_sec = total_scanned / elapsed_time
+        summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} files/s"
+        if total_bytes:
+            bytes_per_sec = total_bytes / elapsed_time
+            summary += f", {format_bytes(bytes_per_sec)}/s"
+        summary += ")."
+    return summary
+
+
 def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Optional[int] = None, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None) -> None:
     """Reset scanning controls when a scan finishes or is cancelled.
 
@@ -604,17 +636,7 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
     set_scanning_state(False)
 
     if total_scanned is not None and threats_found is not None:
-        threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
-        summary = f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found."
-
-        if elapsed_time and elapsed_time > 0:
-            files_per_sec = total_scanned / elapsed_time
-            summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} files/s"
-            if total_bytes:
-                bytes_per_sec = total_bytes / elapsed_time
-                summary += f", {format_bytes(bytes_per_sec)}/s"
-            summary += ")."
-
+        summary = format_scan_summary(total_scanned, threats_found, total_bytes, elapsed_time)
         update_status(summary)
     else:
         update_status("Ready")
@@ -1254,20 +1276,12 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     if final_progress is not None:
         print(file=sys.stderr)
-        total_scanned = final_progress[1]
-        threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
-        summary = f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found."
-
-        elapsed_time = metrics.get('elapsed_time')
-        if elapsed_time and elapsed_time > 0:
-            files_per_sec = total_scanned / elapsed_time
-            summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} files/s"
-            total_bytes = metrics.get('total_bytes')
-            if total_bytes:
-                bytes_per_sec = total_bytes / elapsed_time
-                summary += f", {format_bytes(bytes_per_sec)}/s"
-            summary += ")."
-
+        summary = format_scan_summary(
+            final_progress[1],
+            threats_found,
+            metrics.get('total_bytes'),
+            metrics.get('elapsed_time')
+        )
         print(summary, file=sys.stderr)
 
     if output_format == 'sarif':
