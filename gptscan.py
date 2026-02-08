@@ -526,6 +526,21 @@ def format_bytes(num: float) -> str:
     return f"{num:.1f} PiB"
 
 
+def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None) -> str:
+    """Format a human-readable summary of the scan results."""
+    threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
+    summary = f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found."
+
+    if elapsed_time and elapsed_time > 0:
+        files_per_sec = total_scanned / elapsed_time
+        summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} files/s"
+        if total_bytes:
+            bytes_per_sec = total_bytes / elapsed_time
+            summary += f", {format_bytes(bytes_per_sec)}/s"
+        summary += ")."
+    return summary
+
+
 def get_effective_confidence(own_conf_str: Any, gpt_conf_str: Any) -> float:
     """Calculate the effective confidence score, prioritizing GPT over local AI."""
     gpt_val = parse_percent(gpt_conf_str)
@@ -605,17 +620,7 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
     set_scanning_state(False)
 
     if total_scanned is not None and threats_found is not None:
-        threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
-        summary = f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found."
-
-        if elapsed_time and elapsed_time > 0:
-            files_per_sec = total_scanned / elapsed_time
-            summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} files/s"
-            if total_bytes:
-                bytes_per_sec = total_bytes / elapsed_time
-                summary += f", {format_bytes(bytes_per_sec)}/s"
-            summary += ")."
-
+        summary = format_scan_summary(total_scanned, threats_found, total_bytes, elapsed_time)
         update_status(summary)
     else:
         update_status("Ready")
@@ -1256,19 +1261,12 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     if final_progress is not None:
         print(file=sys.stderr)
         total_scanned = final_progress[1]
-        threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
-        summary = f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found."
-
-        elapsed_time = metrics.get('elapsed_time')
-        if elapsed_time and elapsed_time > 0:
-            files_per_sec = total_scanned / elapsed_time
-            summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} files/s"
-            total_bytes = metrics.get('total_bytes')
-            if total_bytes:
-                bytes_per_sec = total_bytes / elapsed_time
-                summary += f", {format_bytes(bytes_per_sec)}/s"
-            summary += ")."
-
+        summary = format_scan_summary(
+            total_scanned,
+            threats_found,
+            metrics.get('total_bytes'),
+            metrics.get('elapsed_time')
+        )
         print(summary, file=sys.stderr)
 
     if output_format == 'sarif':
