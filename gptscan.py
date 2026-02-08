@@ -1817,71 +1817,73 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="GPT Virus Scanner")
-    parser.add_argument('target', nargs='?', help='The file or folder to scan.')
+    parser = argparse.ArgumentParser(
+        description="A security tool that scans scripts for malicious code using a local AI model and optional cloud-based AI Analysis."
+    )
+    parser.add_argument('target', nargs='?', help='The primary file or folder to scan.')
     parser.add_argument(
         'files',
         nargs='*',
-        help='Additional files or folders to scan.'
+        help='Extra files or folders to include in the scan.'
     )
 
     scan_group = parser.add_argument_group("Scan Configuration")
-    scan_group.add_argument('--path', type=str, help='Alternative way to specify the folder to scan.')
-    scan_group.add_argument('--deep', action='store_true', help='Scan the entire file content instead of just the first and last parts. This is slower but more thorough.')
-    scan_group.add_argument('--dry-run', action='store_true', help='Simulate the scan to see which files would be checked, without running the AI models.')
+    scan_group.add_argument('--path', type=str, help='Specify an additional path to scan (can be a file or folder).')
+    scan_group.add_argument('--deep', action='store_true', help='Check the entire file instead of just the start and end. This is more thorough but slower.')
+    scan_group.add_argument('--dry-run', action='store_true', help='List the files that would be scanned without actually analyzing them.')
     scan_group.add_argument(
         '--extensions',
         type=str,
-        help='Only scan files with these specific extensions (e.g., .py, .js).'
+        help="Only scan files with these extensions (e.g., '.py,.js'). If not set, the tool uses default script extensions."
     )
     scan_group.add_argument(
         '--exclude',
         nargs='*',
-        help='Skip files that match these patterns (e.g., node_modules/*, *.test.py). Files in .gptscanignore are also skipped.'
+        help="Exclude files matching these patterns (e.g., 'node_modules/*'). Patterns in .gptscanignore are also used."
     )
     scan_group.add_argument(
         '--file-list',
         type=argparse.FileType('r'),
-        help='Read a list of files to scan from a text file (use "-" to read from standard input).'
+        help="Load a list of files to scan from a text file. Use '-' to read from the terminal's standard input."
     )
     scan_group.add_argument(
         '--git-changes',
         action='store_true',
-        help='Only scan files that have been modified or are untracked in the current git repository.'
+        help='Scan only the files that have changed or are untracked in your Git repository.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
-    ai_group.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI provider for a detailed explanation.')
+    ai_group.add_argument('--use-gpt', action='store_true', help='Enable AI Analysis to get a detailed explanation and risk assessment for suspicious files.')
     ai_group.add_argument(
         '--provider',
         type=str,
         default='openai',
         choices=['openai', 'openrouter', 'ollama'],
-        help='Select the AI provider to use for analysis (default: openai).'
+        help='Choose the AI service provider (OpenAI, OpenRouter, or Ollama).'
     )
     ai_group.add_argument(
         '--model',
         type=str,
-        help='Specify the exact AI model to use (e.g., gpt-4o, llama3.2).'
+        help="Specify the AI model to use (for example, 'gpt-4o' or 'llama3.2')."
     )
     ai_group.add_argument(
         '--api-base',
         type=str,
-        help='Use a custom URL for the API server (useful for proxies or local servers).'
+        help='Use a custom API endpoint URL for the AI provider.'
     )
     ai_group.add_argument(
         '--rate-limit',
         type=int,
         default=Config.RATE_LIMIT_PER_MINUTE,
-        help='Limit the number of AI requests per minute to avoid errors (default: 60).'
+        help='The maximum number of AI Analysis requests allowed per minute (default: 60).'
     )
 
     output_group = parser.add_argument_group("Output Options")
-    output_group.add_argument('--cli', action='store_true', help='Run without the graphical window.')
-    output_group.add_argument('--show-all', action='store_true', help='List every file, even if it looks safe.')
-    output_group.add_argument('--json', action='store_true', help='Output results in JSON Lines (NDJSON) format instead of CSV.')
-    output_group.add_argument('--sarif', action='store_true', help='Output results in SARIF format (standard for security tools).')
-    output_group.add_argument('--html', action='store_true', help='Output results as a standalone HTML report.')
+    output_group.add_argument('--cli', action='store_true', help='Run the scanner in the terminal without opening the graphical window.')
+    output_group.add_argument('--show-all', action='store_true', help='Show all scanned files in the output, including those marked as safe.')
+    output_group.add_argument('--json', action='store_true', help='Format the output as JSON Lines (NDJSON), where each line is a separate JSON object.')
+    output_group.add_argument('--sarif', action='store_true', help='Format the output as a SARIF report, a standard for security tool results.')
+    output_group.add_argument('--html', action='store_true', help='Generate a standalone HTML file containing the scan results.')
 
     args = parser.parse_args()
 
