@@ -32,6 +32,7 @@ git_var: Optional[tk.BooleanVar] = None
 tree: Optional[ttk.Treeview] = None
 scan_button: Optional[ttk.Button] = None
 cancel_button: Optional[ttk.Button] = None
+context_menu: Optional[tk.Menu] = None
 
 
 def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]:
@@ -1470,6 +1471,81 @@ def open_file(event: Optional[tk.Event] = None) -> None:
         messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
 
 
+def copy_path() -> None:
+    """Copy the selected file's path to the clipboard."""
+    if not tree:
+        return
+    selection = tree.selection()
+    if not selection:
+        return
+    item_id = selection[0]
+    values = tree.item(item_id, "values")
+    if not values:
+        return
+    file_path = str(values[0]).replace('\n', '') # Remove display wrapping
+    tree.clipboard_clear()
+    tree.clipboard_append(file_path)
+
+
+def copy_snippet() -> None:
+    """Copy the selected row's code snippet to the clipboard."""
+    if not tree:
+        return
+    selection = tree.selection()
+    if not selection:
+        return
+    item_id = selection[0]
+    values = tree.item(item_id, "values")
+    if not values:
+        return
+    # Snippet is the last column
+    snippet = str(values[-1])
+    tree.clipboard_clear()
+    tree.clipboard_append(snippet)
+
+
+def show_in_folder() -> None:
+    """Reveal the selected file in the system file manager."""
+    if not tree:
+        return
+    selection = tree.selection()
+    if not selection:
+        return
+    item_id = selection[0]
+    values = tree.item(item_id, "values")
+    if not values:
+        return
+    file_path = str(values[0]).replace('\n', '')
+    if os.path.exists(file_path):
+        try:
+            if sys.platform == "win32":
+                subprocess.run(['explorer', '/select,', os.path.normpath(file_path)])
+            elif sys.platform == "darwin":
+                subprocess.run(["open", "-R", file_path])
+            else:
+                # On Linux, just open the directory
+                subprocess.run(["xdg-open", os.path.dirname(os.path.abspath(file_path))])
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not reveal file: {e}")
+    else:
+        messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
+
+
+def show_context_menu(event: tk.Event) -> None:
+    """Display the context menu at the location of the event."""
+    if not tree or not context_menu:
+        return
+
+    # Select the item under the mouse if the event has coordinates
+    if hasattr(event, 'x') and hasattr(event, 'y'):
+        iid = tree.identify_row(event.y)
+        if iid:
+            tree.selection_set(iid)
+
+    if tree.selection():
+        context_menu.post(event.x_root, event.y_root)
+
+
 def get_model_presets(provider: str) -> List[str]:
     """Return the list of model presets for a given provider.
 
@@ -1721,6 +1797,20 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<Double-1>', open_file)
     tree.bind('<Return>', open_file)
     tree.grid(row=0, column=0, sticky="nsew")
+
+    # --- Context Menu ---
+    global context_menu
+    context_menu = tk.Menu(root, tearoff=0)
+    context_menu.add_command(label="Open File", command=open_file)
+    context_menu.add_command(label="Show in Folder", command=show_in_folder)
+    context_menu.add_separator()
+    context_menu.add_command(label="Copy File Path", command=copy_path)
+    context_menu.add_command(label="Copy Snippet", command=copy_snippet)
+
+    # Bind context menu to right-click and menu key
+    tree.bind('<Button-3>', show_context_menu) # Windows/Linux
+    tree.bind('<Button-2>', show_context_menu) # macOS
+    tree.bind('<Menu>', show_context_menu)
 
     motion_handler(tree, None)   # Perform initial wrapping
     set_scanning_state(False)
