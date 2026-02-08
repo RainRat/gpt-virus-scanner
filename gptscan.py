@@ -1668,8 +1668,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     if not Config.GPT_ENABLED:
         gpt_var.set(False)
         gpt_checkbox.config(state="disabled")
-        messagebox.showwarning("GPT Disabled",
-                                       "task.txt not found. GPT functionality is disabled.")
+        messagebox.showwarning("AI Analysis Disabled",
+                                       "task.txt not found. AI Analysis is disabled.")
 
     provider_row = ttk.Frame(provider_frame)
     provider_row.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
@@ -1849,7 +1849,7 @@ def main():
     scan_group.add_argument(
         '--git-changes',
         action='store_true',
-        help='Only scan files that have been modified in the current git repository.'
+        help='Only scan files that have been modified or are untracked in the current git repository.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
@@ -1881,8 +1881,8 @@ def main():
     output_group = parser.add_argument_group("Output Options")
     output_group.add_argument('--cli', action='store_true', help='Run without the graphical window.')
     output_group.add_argument('--show-all', action='store_true', help='List every file, even if it looks safe.')
-    output_group.add_argument('--json', action='store_true', help='Print results in JSON format instead of CSV.')
-    output_group.add_argument('--sarif', action='store_true', help='Output results in SARIF format (used by other security tools).')
+    output_group.add_argument('--json', action='store_true', help='Output results in JSON Lines (NDJSON) format instead of CSV.')
+    output_group.add_argument('--sarif', action='store_true', help='Output results in SARIF format (standard for security tools).')
     output_group.add_argument('--html', action='store_true', help='Output results as a standalone HTML report.')
 
     args = parser.parse_args()
