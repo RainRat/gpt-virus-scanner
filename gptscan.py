@@ -787,13 +787,17 @@ def scan_files(
     progress_count = 0
     total_bytes_scanned = 0
     start_time = time.perf_counter()
-    yield ('progress', (progress_count, total_progress, "Scanning..."))
+    yield ('progress', (progress_count, total_progress, "Collecting files..."))
 
     gpt_requests: List[Dict[str, Any]] = []
 
     for index, file_path in enumerate(file_list):
         if cancel_event.is_set():
             break
+
+        progress_count = index + 1
+        yield ('progress', (progress_count, total_progress, f"Scanning: {file_path.name}"))
+
         extension = file_path.suffix.lower()
         if extension in Config.extensions_set:
             if dry_run:
@@ -885,8 +889,6 @@ def scan_files(
                                     cleaned_snippet,
                                 )
                             )
-        progress_count = index + 1
-        yield ('progress', (progress_count, total_progress, None))
 
     if cancel_event.is_set():
         return
@@ -927,6 +929,10 @@ def scan_files(
         for request, json_data in results:
             if cancel_event.is_set():
                 break
+
+            progress_count += 1
+            yield ('progress', (progress_count, total_progress, f"AI Analysis: {os.path.basename(request['path'])}"))
+
             if json_data is None:
                 admin_desc = 'JSON Parse Error'
                 enduser_desc = 'JSON Parse Error'
@@ -947,8 +953,6 @@ def scan_files(
                     request["cleaned_snippet"],
                 )
             )
-            progress_count += 1
-            yield ('progress', (progress_count, total_progress, None))
 
     end_time = time.perf_counter()
     yield ('summary', (len(file_list), total_bytes_scanned, end_time - start_time))
@@ -984,6 +988,7 @@ def run_scan(
     last_total: Optional[int] = 0
     threats_found = 0
     metrics: Dict[str, Any] = {}
+    current_scanned = 0
 
     try:
         for event_type, data in scan_files(
@@ -997,18 +1002,18 @@ def run_scan(
             dry_run=dry_run,
             exclude_patterns=exclude_patterns,
         ):
-            if cancel_event.is_set():
-                break
             if event_type == 'progress':
                 current, total, status = data
+                current_scanned = current
 
                 if total != last_total:
                     enqueue_ui_update(configure_progress, total)
                     last_total = total
                 enqueue_ui_update(update_progress, current)
-                if status:
-                    print(status, file=sys.stderr)
-                    enqueue_ui_update(update_status, status)
+
+                status_text = f"{status} ({current}/{total})" if status else f"Scanning: {current}/{total}"
+                print(status_text, file=sys.stderr)
+                enqueue_ui_update(update_status, status_text)
             elif event_type == 'result':
                 # data format: (path, own_conf, admin, user, gpt_conf, snippet)
                 conf = get_effective_confidence(data[1], data[4])
@@ -1024,7 +1029,7 @@ def run_scan(
     finally:
         enqueue_ui_update(
             finish_scan_state,
-            last_total,
+            current_scanned,
             threats_found,
             metrics.get('total_bytes'),
             metrics.get('elapsed_time')
@@ -1612,6 +1617,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
             button_click()
 
     root.bind('<Return>', on_root_return)
+    root.bind('<Escape>', lambda event: cancel_scan())
     select_dir_btn = ttk.Button(input_frame, text="Select Directory...", command=browse_button_click)
     select_dir_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
     bind_hover_message(select_dir_btn, "Browse for a directory to scan.")
