@@ -1054,7 +1054,8 @@ def run_scan(
                 if conf > 50:
                     threats_found += 1
 
-                enqueue_ui_update(insert_tree_row, data)
+                if not cancel_event.is_set():
+                    enqueue_ui_update(insert_tree_row, data)
             elif event_type == 'summary':
                 total_files, total_bytes, elapsed_time = data
                 metrics['total_bytes'] = total_bytes
