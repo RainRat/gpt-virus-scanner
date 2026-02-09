@@ -600,6 +600,28 @@ def insert_tree_row(values: Tuple[Any, ...]) -> None:
     tree.insert("", tk.END, values=wrapped_values, tags=(tag,) if tag else ())
 
 
+def update_tree_columns() -> None:
+    """Show or hide AI-specific columns based on settings and data."""
+    if not tree:
+        return
+
+    show_ai = gpt_var.get() if gpt_var else False
+
+    # Check if any row in the tree has AI data (gpt_conf is at index 4)
+    has_ai_data = False
+    for item_id in tree.get_children():
+        values = tree.item(item_id, 'values')
+        # values[4] is gpt_conf. Check if it's not empty
+        if values and len(values) > 4 and values[4] and values[4] != "":
+            has_ai_data = True
+            break
+
+    if show_ai or has_ai_data:
+        tree["displaycolumns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
+    else:
+        tree["displaycolumns"] = ("path", "own_conf", "snippet")
+
+
 def set_scanning_state(is_scanning: bool) -> None:
     """Enable or disable controls based on scanning state."""
 
@@ -631,6 +653,8 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
         update_status(summary)
     else:
         update_status("Ready")
+
+    update_tree_columns()
 
 
 def button_click() -> None:
@@ -1387,6 +1411,7 @@ def import_results() -> None:
             count += 1
 
         update_status(f"Imported {count} results from {os.path.basename(file_path)}")
+        update_tree_columns()
 
     except Exception as err:
         messagebox.showerror("Import Failed", f"Could not load results:\n{err}")
@@ -1684,6 +1709,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         else:
             provider_combo.config(state="disabled")
             model_combo.config(state="disabled")
+        update_tree_columns()
 
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
     gpt_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
@@ -1837,6 +1863,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<Menu>', show_context_menu)
 
     motion_handler(tree, None)   # Perform initial wrapping
+    update_tree_columns()        # Adjust columns based on initial AI settings
     set_scanning_state(False)
     return root
 
