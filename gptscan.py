@@ -863,8 +863,7 @@ def scan_files(
 
                 if file_size is not None:
                     total_bytes_scanned += file_size
-                    resultchecks: List[float] = []
-                    maxconf = 0.0
+                    maxconf = -1.0
                     max_window_bytes = b""
                     error_message: Optional[str] = None
 
@@ -875,14 +874,12 @@ def scan_files(
                                     break
                                 print("Scanning at:", offset if offset > 0 else 0, file=sys.stderr)
                                 result, padded_bytes = predict_window(window)
-                                resultchecks.append(result)
                                 if result > maxconf:
                                     maxconf = result
                                     max_window_bytes = padded_bytes
                     except OSError as err:
                         error_message = f"Error reading file: {err}"
 
-                    best_result = max(resultchecks, default=0)
                     if error_message is not None:
                         yield (
                             'result',
@@ -895,11 +892,11 @@ def scan_files(
                                 error_message,
                             )
                         )
-                    elif resultchecks:
+                    elif maxconf >= 0:
                         percent = f"{maxconf:.0%}"
                         snippet = ''.join(map(chr, max_window_bytes)).strip()
                         cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
-                        if best_result > .5 and use_gpt and Config.GPT_ENABLED:
+                        if maxconf > .5 and use_gpt and Config.GPT_ENABLED:
                             gpt_requests.append(
                                 {
                                     "path": str(file_path),
@@ -908,7 +905,7 @@ def scan_files(
                                     "cleaned_snippet": cleaned_snippet,
                                 }
                             )
-                        elif best_result > .5 or show_all:
+                        elif maxconf > .5 or show_all:
                             yield (
                                 'result',
                                 (
