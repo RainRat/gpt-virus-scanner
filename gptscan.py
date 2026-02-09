@@ -236,13 +236,15 @@ def process_ui_queue() -> None:
     None
         This function schedules itself to run again via ``root.after``.
     """
-    while not ui_queue.empty():
-        func, args, kwargs = ui_queue.get()
-        try:
-            func(*args, **kwargs)
-        finally:
-            ui_queue.task_done()
-    root.after(50, process_ui_queue)
+    try:
+        while not ui_queue.empty():
+            func, args, kwargs = ui_queue.get()
+            try:
+                func(*args, **kwargs)
+            finally:
+                ui_queue.task_done()
+    finally:
+        root.after(50, process_ui_queue)
 
 
 def bind_hover_message(widget: tk.Widget, message: str) -> None:
