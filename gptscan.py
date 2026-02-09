@@ -58,6 +58,7 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
 
 class Config:
     """Global configuration settings for the scanner."""
+    VERSION = "1.1.0"
     MAXLEN = 1024
     EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
     MAX_RETRIES = 3
@@ -97,6 +98,10 @@ class Config:
 
     @classmethod
     def initialize(cls) -> None:
+        if not cls.apikey:
+            # Fallback to environment variables if apikey.txt is missing or empty
+            cls.apikey = os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY") or ""
+
         if not cls.apikey:
             print(cls.apikey_missing_message, file=sys.stderr)
         if not cls.taskdesc:
@@ -1188,7 +1193,7 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
 </html>"""
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None) -> None:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None) -> int:
     """Run scans and stream results to stdout.
 
     Parameters
@@ -1209,6 +1214,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         Whether to simulate the scan.
     exclude_patterns : List[str], optional
         List of glob patterns to exclude from the scan.
+    fail_threshold : int, optional
+        Confidence threshold to trigger a failure count.
     """
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]
 
@@ -1237,7 +1244,16 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         if event_type == 'result':
             # data format: (path, own_conf, admin, user, gpt_conf, snippet)
             conf = get_effective_confidence(data[1], data[4])
-            if conf > 50:
+
+            # Determine if this finding counts as a threat based on the threshold
+            is_threat = False
+            if fail_threshold is not None:
+                if conf >= fail_threshold:
+                    is_threat = True
+            elif conf > 50:
+                is_threat = True
+
+            if is_threat:
                 threats_found += 1
 
             record = dict(zip(keys, data))
@@ -1274,6 +1290,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         print(json.dumps(sarif_log, indent=2))
     elif output_format == 'html':
         print(generate_html(result_buffer))
+
+    return threats_found
 
 
 def import_results() -> None:
@@ -1818,6 +1836,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="GPT Virus Scanner")
+    parser.add_argument('--version', action='version', version=f'%(prog)s {Config.VERSION}')
     parser.add_argument('target', nargs='?', help='The file or folder to scan.')
     parser.add_argument(
         'files',
@@ -1848,6 +1867,11 @@ def main():
         '--git-changes',
         action='store_true',
         help='Only scan files that have been modified or are untracked in the current git repository.'
+    )
+    scan_group.add_argument(
+        '--fail-threshold',
+        type=int,
+        help='Exit with non-zero code if any file meets or exceeds this confidence threshold (0-100).'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
@@ -1933,7 +1957,19 @@ def main():
             output_format = 'html'
 
         final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or [])))
-        run_cli(scan_targets, args.deep, args.show_all, args.use_gpt, args.rate_limit, output_format=output_format, dry_run=args.dry_run, exclude_patterns=final_excludes)
+        threats = run_cli(
+            scan_targets,
+            args.deep,
+            args.show_all,
+            args.use_gpt,
+            args.rate_limit,
+            output_format=output_format,
+            dry_run=args.dry_run,
+            exclude_patterns=final_excludes,
+            fail_threshold=args.fail_threshold
+        )
+        if args.fail_threshold is not None and threats > 0:
+            sys.exit(1)
     else:
         app_root = create_gui(initial_path=scan_target)
         app_root.mainloop()

@@ -42,6 +42,7 @@ This security tool scans script files for malicious code using AI. It works in t
     If you want to use AI Analysis (OpenAI or OpenRouter), you need an API key:
     *   Create a file named `apikey.txt` in the same folder as `gptscan.py`.
     *   Paste your API key into that file. It should contain only the key as a single line of text.
+    *   **Alternatively:** You can set the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable.
 
     *   **OpenAI:** Get a key from [OpenAI](https://platform.openai.com/).
     *   **OpenRouter:** Get a key from [OpenRouter](https://openrouter.ai/).
@@ -107,6 +108,8 @@ python gptscan.py ./my_scripts --cli --use-gpt --json --exclude "tests/*"
 *   `--provider <name>`: Choose 'openai', 'openrouter', or 'ollama'.
 *   `--model <name>`: Specify the model name (e.g., 'gpt-4o', 'llama3.2').
 *   `--api-base <url>`: Use a custom API URL.
+*   `--fail-threshold <number>`: Exit with a non-zero code if any file meets or exceeds this confidence threshold (0-100).
+*   `--version`: Show the tool's version and exit.
 
 ## Troubleshooting
 
