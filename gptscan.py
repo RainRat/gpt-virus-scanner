@@ -581,6 +581,26 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
     tv.heading(col, command=lambda: sort_column(tv, col, not reverse))
 
 
+def update_tree_columns() -> None:
+    """Adjust Treeview column visibility based on AI analysis state and data."""
+    if not tree:
+        return
+
+    show_ai = gpt_var.get() if gpt_var else False
+    if not show_ai:
+        # Check if any existing row has AI confidence data
+        for iid in tree.get_children():
+            # gpt_conf is a valid column identifier
+            if tree.set(iid, "gpt_conf"):
+                show_ai = True
+                break
+
+    if show_ai:
+        tree["displaycolumns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
+    else:
+        tree["displaycolumns"] = ("path", "own_conf", "snippet")
+
+
 def insert_tree_row(values: Tuple[Any, ...]) -> None:
     """Insert a row into the treeview with wrapped text and highlighting."""
     measure = default_font_measure or tkinter.font.Font(font='TkDefaultFont').measure
@@ -598,6 +618,7 @@ def insert_tree_row(values: Tuple[Any, ...]) -> None:
         tag = 'medium-risk'
 
     tree.insert("", tk.END, values=wrapped_values, tags=(tag,) if tag else ())
+    update_tree_columns()
 
 
 def set_scanning_state(is_scanning: bool) -> None:
@@ -649,6 +670,7 @@ def button_click() -> None:
     # Clear previous results
     if tree:
         tree.delete(*tree.get_children())
+        update_tree_columns()
 
     scan_path = textbox.get()
     if not scan_path:
@@ -1356,6 +1378,7 @@ def import_results() -> None:
 
         # Clear existing results
         tree.delete(*tree.get_children())
+        update_tree_columns()
 
         columns = tree["columns"]
         count = 0
@@ -1684,6 +1707,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         else:
             provider_combo.config(state="disabled")
             model_combo.config(state="disabled")
+        update_tree_columns()
 
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
     gpt_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
@@ -1837,6 +1861,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<Menu>', show_context_menu)
 
     motion_handler(tree, None)   # Perform initial wrapping
+    update_tree_columns()
     set_scanning_state(False)
     return root
 
