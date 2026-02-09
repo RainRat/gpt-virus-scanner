@@ -54,6 +54,6 @@ def test_dry_run_skips_model_and_yields_results(monkeypatch, tmp_path):
 
     # 3. Check progress
     progress_events = [e for e in events if e[0] == 'progress']
-    # Initial "Scanning..." + 2 updates
+    # Initial "Collecting files..." + 2 updates
     assert len(progress_events) >= 3
-    assert progress_events[0][1][2] == "Scanning..."
+    assert progress_events[0][1][2] == "Collecting files..."
