@@ -1046,6 +1046,8 @@ def run_scan(
                 print(status_text, file=sys.stderr)
                 enqueue_ui_update(update_status, status_text)
             elif event_type == 'result':
+                if cancel_event.is_set():
+                    continue
                 # data format: (path, own_conf, admin, user, gpt_conf, snippet)
                 conf = get_effective_confidence(data[1], data[4])
 
@@ -1870,7 +1872,14 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="GPT Virus Scanner")
+    parser = argparse.ArgumentParser(
+        description="GPT Virus Scanner: Scan your script files for malicious code using AI.",
+        epilog="Examples:\n"
+               "  python gptscan.py ./my_folder --cli --use-gpt\n"
+               "  python gptscan.py ./my_script.py --cli --json\n"
+               "  python gptscan.py --git-changes --cli --fail-threshold 80",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument('--version', action='version', version=f'%(prog)s {Config.VERSION}')
     parser.add_argument('target', nargs='?', help='The file or folder to scan.')
     parser.add_argument(
@@ -1880,37 +1889,37 @@ def main():
     )
 
     scan_group = parser.add_argument_group("Scan Configuration")
-    scan_group.add_argument('--path', type=str, help='Alternative way to specify the folder to scan.')
-    scan_group.add_argument('--deep', action='store_true', help='Scan the entire file content instead of just the first and last parts. This is slower but more thorough.')
-    scan_group.add_argument('--dry-run', action='store_true', help='Simulate the scan to see which files would be checked, without running the AI models.')
+    scan_group.add_argument('--path', type=str, help='An alternative way to specify the folder to scan.')
+    scan_group.add_argument('--deep', action='store_true', help='Scan the whole file. By default, the tool only checks the beginning and end to stay fast.')
+    scan_group.add_argument('--dry-run', action='store_true', help='List the files that would be scanned without actually analyzing them.')
     scan_group.add_argument(
         '--extensions',
         type=str,
-        help='Only scan files with these specific extensions (e.g., .py, .js).'
+        help='Only scan these file types (comma-separated, e.g., "py,js").'
     )
     scan_group.add_argument(
         '--exclude',
         nargs='*',
-        help='Skip files that match these patterns (e.g., node_modules/*, *.test.py). Files in .gptscanignore are also skipped.'
+        help='Skip files matching these patterns (e.g., "node_modules/*"). Patterns in .gptscanignore are also skipped.'
     )
     scan_group.add_argument(
         '--file-list',
         type=argparse.FileType('r'),
-        help='Read a list of files to scan from a text file (use "-" to read from standard input).'
+        help='Read a list of files to scan from a text file.'
     )
     scan_group.add_argument(
         '--git-changes',
         action='store_true',
-        help='Only scan files that have been modified or are untracked in the current git repository.'
+        help='Only scan files that have changed in your Git repository.'
     )
     scan_group.add_argument(
         '--fail-threshold',
         type=int,
-        help='Exit with non-zero code if any file meets or exceeds this confidence threshold (0-100).'
+        help='Return a failure status if a file\'s threat level is this high or higher (0-100).'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
-    ai_group.add_argument('--use-gpt', action='store_true', help='Send suspicious code to the AI provider for a detailed explanation.')
+    ai_group.add_argument('--use-gpt', action='store_true', help='Use AI Analysis to get a detailed report for suspicious files (requires an API key).')
     ai_group.add_argument(
         '--provider',
         type=str,
@@ -1936,11 +1945,11 @@ def main():
     )
 
     output_group = parser.add_argument_group("Output Options")
-    output_group.add_argument('--cli', action='store_true', help='Run without the graphical window.')
-    output_group.add_argument('--show-all', action='store_true', help='List every file, even if it looks safe.')
-    output_group.add_argument('--json', action='store_true', help='Output results in JSON Lines (NDJSON) format instead of CSV.')
-    output_group.add_argument('--sarif', action='store_true', help='Output results in SARIF format (standard for security tools).')
-    output_group.add_argument('--html', action='store_true', help='Output results as a standalone HTML report.')
+    output_group.add_argument('--cli', action='store_true', help='Run in the terminal instead of opening a window.')
+    output_group.add_argument('--show-all', action='store_true', help='Show all scanned files, not just suspicious ones.')
+    output_group.add_argument('--json', action='store_true', help='Save results as JSON (one object per line).')
+    output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format. This is a common format used by other security tools.')
+    output_group.add_argument('--html', action='store_true', help='Create a webpage report of the scan results.')
 
     args = parser.parse_args()
 
