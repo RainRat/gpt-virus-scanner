@@ -1547,7 +1547,7 @@ def copy_snippet() -> None:
     if not values:
         return
     # Snippet is the last column
-    snippet = str(values[-1])
+    snippet = str(values[-1]).replace('\n', '') # Remove display wrapping
     tree.clipboard_clear()
     tree.clipboard_append(snippet)
 

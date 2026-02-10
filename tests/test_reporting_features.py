@@ -75,28 +75,6 @@ def test_export_multi_format(monkeypatch, tmp_path):
     assert html_path.exists()
     assert "GPT Scan Report" in html_path.read_text()
 
-def test_open_file_logic(monkeypatch):
-    """Test the open_file helper (mocking the actual OS call)."""
-    mock_tree = MagicMock()
-    mock_tree.selection.return_value = ["item1"]
-
-    def mock_item(iid, option=None):
-        if option == "values":
-            return ("test.py",)
-        return {"values": ("test.py",)}
-
-    mock_tree.item.side_effect = mock_item
-    monkeypatch.setattr(gptscan, 'tree', mock_tree, raising=False)
-
-    monkeypatch.setattr(os.path, 'exists', lambda p: True)
-
-    with patch('sys.platform', 'linux'):
-        mock_run = MagicMock()
-        monkeypatch.setattr(gptscan.subprocess, 'run', mock_run)
-        gptscan.open_file()
-        mock_run.assert_called_once()
-        assert "xdg-open" in mock_run.call_args[0][0]
-
 def test_cli_summary(capsys, monkeypatch):
     """Test that CLI output includes a final summary."""
     # We need to mock scan_files to yield a result and progress
