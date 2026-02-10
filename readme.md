@@ -3,127 +3,139 @@
 ## What is this?
 
 This security tool scans script files for malicious code using AI. It works in two stages:
-1.  **Local Scan:** A built-in AI model checks your files quickly.
-2.  **AI Analysis:** If a file looks suspicious, it sends a snippet to an AI provider (like OpenAI) for a detailed report.
+1.  **Local Scan:** A fast, built-in model checks your files locally.
+2.  **AI Analysis:** If a file looks suspicious, it sends a short piece of code to an AI service (like OpenAI) for a detailed report.
 
-**Note:** This is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and Batch files) but not compiled programs or archives.
+**Note:** This is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and Batch files) but not compiled programs or compressed files (like .zip).
+
+## Quick Start
+
+### Graphical Interface (GUI)
+1. Run the scanner: `python gptscan.py`
+2. Select a folder to scan.
+3. Click **Scan now**.
+
+### Command Line (CLI)
+Scan a folder and get a JSON report:
+```bash
+python gptscan.py ./my_scripts --cli --json
+```
 
 ## Requirements
 
-*   **Python 3.9 to 3.11** is required. Newer versions of Python (like 3.12) are not compatible with the AI model used in this tool.
+*   **Python 3.9, 3.10, or 3.11** is required. Newer versions (like 3.12) are not compatible with the AI model used in this tool.
 *   **TensorFlow** (version 2.15 or older).
-*   **AI Provider** (Optional, for detailed analysis):
+*   **AI Service** (Optional, for detailed analysis):
     *   **OpenAI** (requires API key)
     *   **OpenRouter** (requires API key)
-    *   **Ollama** (requires local installation)
-*   **Tkinter** (for the graphical interface).
+    *   **Ollama** (requires local installation from [ollama.com](https://ollama.com/))
+*   **Tkinter** (required for the windowed interface).
 
 ## Installation
 
-1.  **Get the code:**
-    Clone this repository or download the files. Ensure `gptscan.py`, `scripts.h5`, and `task.txt` are in the same folder (these are included in the repository).
+1.  **Download the tool:**
+    Clone this repository or download the files. Ensure `gptscan.py`, `scripts.h5`, and `task.txt` are in the same folder.
 
-2.  **Install Python:** Download it from [python.org](https://www.python.org/).
+2.  **Install Python:** Download it from [python.org](https://www.python.org/). Remember to choose version 3.9, 3.10, or 3.11.
 
 3.  **Install required libraries:**
-    Run the following command to install the required libraries:
-
+    Open your terminal or command prompt and run:
     ```bash
     pip install "tensorflow<2.16" openai
     ```
-
     *Linux users:* You may also need to install Tkinter:
     ```bash
     sudo apt-get install python3-tk
     ```
 
-4.  **Set up your Provider (Optional):**
+4.  **Set up your AI Service (Optional):**
 
-    If you want to use AI Analysis (OpenAI or OpenRouter), you need an API key:
+    If you want to use **AI Analysis** (OpenAI or OpenRouter), you need an API key:
     *   Create a file named `apikey.txt` in the same folder as `gptscan.py`.
-    *   Paste your API key into that file. It should contain only the key as a single line of text.
-    *   **Alternatively:** You can set the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable.
+    *   Paste your API key into that file. It should be only one line of text.
+    *   **Alternatively:** Use the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable.
 
     *   **OpenAI:** Get a key from [OpenAI](https://platform.openai.com/).
     *   **OpenRouter:** Get a key from [OpenRouter](https://openrouter.ai/).
-    *   **Ollama:** No API key needed! Just ensure Ollama is running on your computer (default: `http://localhost:11434`).
+    *   **Ollama:** No API key needed! Just ensure [Ollama](https://ollama.com/) is running on your computer.
 
-    *Privacy Note:* Files are sent to the provider only if you enable the "Use AI Analysis" option. Check your provider's data policy.
+    *Privacy Note:* Your code is only sent to the AI service if you enable the "Use AI Analysis" option. Check your provider's data policy.
 
 ## Configuration
 
-You can customize the scanner using these optional files in the same folder as `gptscan.py`:
+You can customize the scanner using these optional files in the same folder:
 
 *   **`apikey.txt`**: Your API key for OpenAI or OpenRouter.
-*   **`extensions.txt`**: A list of file extensions to scan (one per line, e.g., `.py`). If missing, the tool uses defaults like `.py`, `.js`, `.bat`, and `.ps1`.
+*   **`extensions.txt`**: A list of file extensions to scan (e.g., `.py`, one per line). If missing, the tool defaults to `.py`, `.js`, `.bat`, and `.ps1`.
 *   **`.gptscanignore`**: Patterns of files or folders to skip (like a `.gitignore` file).
 *   **`task.txt`**: The instructions given to the AI for its analysis.
 
 ## How to Use
 
-### Graphical Interface (GUI)
+### Using the App Window
 
 Run the script to open the window:
-
 ```bash
 python gptscan.py
 ```
 
 *   **Select Directory:** Choose the folder you want to scan.
-*   **Deep Scan:** Scan the entire file (slower). By default, the tool only checks the start and end of files.
-*   **Show all files:** List every file scanned, including those that look safe.
+*   **Deep Scan:** Scan every part of the file. By default, the tool only checks the beginning and end (the first and last 1,024 bytes) to save time.
+*   **Show all files:** List every file scanned, even the safe ones.
 *   **Use AI Analysis:** Get a detailed report for suspicious files.
-*   **AI Analysis Settings:** Choose your provider (OpenAI, OpenRouter, or Ollama) and the model you want to use.
-*   **Import/Export Results:** Save your scan results to CSV, JSON, HTML, or SARIF files, and load them back later for review.
+*   **AI Analysis Settings:** Choose your service (OpenAI, OpenRouter, or Ollama) and the model you want to use.
+*   **Import/Export Results:** Save your results to CSV, JSON, HTML, or SARIF files, or load them back later.
 
 You can sort the results by clicking the column headers.
 
 ![Scan Results](gpt-virus-scan.png)
 
-### Command Line (CLI)
+### Using the Command Line (CLI)
 
-Run scans directly from the terminal for automated tasks.
+Run scans from your terminal for automated tasks. Use the `--cli` flag.
 
-**Example:**
+**Examples:**
 ```bash
-python gptscan.py ./my_scripts --cli --use-gpt --json --exclude "tests/*"
+# Basic scan with AI analysis
+python gptscan.py ./my_scripts --cli --use-gpt
+
+# Scan using Ollama (local AI)
+python gptscan.py ./my_scripts --cli --use-gpt --provider ollama --model llama3.2
+
+# Export results to a JSON file
+python gptscan.py ./my_scripts --cli --json --exclude "tests/*"
 ```
 
-**Options:**
-*   `--cli`: Run in command-line mode (required).
-*   `[target] [files...]`: The folder(s) or file(s) to scan.
-*   `--path <folder>`: Specify the folder to scan.
-*   `--deep`: Scan the entire file instead of just the start and end (slower but more thorough).
+**Common Options:**
+*   `--cli`: Run in command-line mode (required for terminal use).
+*   `[target]`: The folder or file to scan.
+*   `--deep`: Scan the entire file instead of just the beginning and end.
 *   `--show-all`: List all files, even safe ones.
-*   `--use-gpt`: Send suspicious code to the AI provider for analysis.
-*   `--json`: Output results in JSON Lines (NDJSON) format (one JSON object per line).
-*   `--sarif`: Output results in SARIF format (standard for security tools).
-*   `--html`: Output results as a standalone HTML report.
-*   `--dry-run`: List files that would be scanned without running any analysis.
-*   `--extensions "py,js,bat"`: Scan specific file types (comma-separated).
-*   `--exclude [patterns...]`: Skip files matching these patterns (e.g., `node_modules/*`). Files in `.gptscanignore` are also skipped.
-*   `--file-list <path>`: Read a list of files to scan from a text file.
-*   `--git-changes`: Only scan files that have changed in the current git repository.
-*   `--rate-limit <number>`: Set the maximum requests per minute (default: 60).
-*   `--provider <name>`: Choose 'openai', 'openrouter', or 'ollama'.
-*   `--model <name>`: Specify the model name (e.g., 'gpt-4o', 'llama3.2').
-*   `--api-base <url>`: Use a custom API URL.
-*   `--fail-threshold <number>`: Exit with a non-zero code if any file meets or exceeds this confidence threshold (0-100).
-*   `--version`: Show the tool's version and exit.
+*   `--use-gpt`: Enable AI Analysis for suspicious code.
+*   `--json`: Output results in JSON format (one object per line).
+*   `--sarif`: Save results in SARIF format (standard for security tools).
+*   `--html`: Create a standalone HTML report.
+*   `--dry-run`: List files that would be scanned without analyzing them.
+*   `--extensions "py,js,bat"`: Scan specific file types (separated by commas).
+*   `--exclude [patterns]`: Skip files matching these patterns (e.g., `node_modules/*`).
+*   `--git-changes`: Only scan files that have changed in your git repository.
+*   `--provider [name]`: Choose your AI service ('openai', 'openrouter', or 'ollama').
+*   `--model [name]`: Specify the exact AI model (e.g., 'gpt-4o', 'llama3.2').
+*   `--fail-threshold [0-100]`: Return a failure code if any file meets this threat level.
+*   `--version`: Show the tool's version.
 
 ## Troubleshooting
 
-*   **Tkinter not found (Linux):** If you see an error about `tkinter` being missing, install it using your package manager (e.g., `sudo apt-get install python3-tk`).
-*   **Model file missing:** Ensure `scripts.h5` is in the same folder as `gptscan.py`. This file is required for the local scan.
-*   **API key missing:** If you see a note about a missing API key, you can still use the local scan and Ollama. To use OpenAI or OpenRouter, create an `apikey.txt` file with your key.
+*   **Tkinter not found (Linux):** If you see a "ModuleNotFoundError: No module named 'tkinter'" error, install it using: `sudo apt-get install python3-tk`.
+*   **Model file missing:** Make sure `scripts.h5` is in the same folder as `gptscan.py`. This file is required for the local scan.
+*   **API key missing:** You can still use the local scan and Ollama without a key. For OpenAI or OpenRouter, add your key to `apikey.txt`.
 
 ## Contributing
 
 We welcome your help!
 
-*   **Reporting issues:** If the tool misidentifies a file, please let us know.
+*   **Reporting issues:** Let us know if the tool misses something or gives a false alarm.
 *   **Submitting code:** Pull requests are welcome. Please run tests before submitting:
-
     ```bash
     pip install pytest pytest-asyncio pytest-mock pytest-cov
     python -m pytest --cov
@@ -131,7 +143,7 @@ We welcome your help!
 
 ## Credits
 
-Thanks to the [Stack Overflow](https://stackoverflow.com/questions/51131812/wrap-text-inside-row-in-tkinter-treeview) community for GUI inspiration.
+Thanks to the Stack Overflow community for GUI inspiration.
 
 ## License
 
