@@ -1490,6 +1490,26 @@ def export_results() -> None:
         messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
 
 
+def clear_results() -> None:
+    """Clear all results from the Treeview and reset status."""
+    if tree:
+        tree.delete(*tree.get_children())
+    if progress_bar:
+        progress_bar["value"] = 0
+    if status_label:
+        status_label.config(text="Ready")
+    update_tree_columns()
+
+
+def show_about() -> None:
+    """Display the 'About' dialog."""
+    messagebox.showinfo(
+        "About",
+        f"GPT Virus Scanner v{Config.VERSION}\n\n"
+        "A security tool that scans script files for malicious code using AI."
+    )
+
+
 def open_file(event: Optional[tk.Event] = None) -> None:
     """Open the selected file in the system's default application."""
     if not tree:
@@ -1637,9 +1657,25 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.title("GPT Virus Scanner")
     default_font_measure = tkinter.font.Font(font='TkDefaultFont').measure
 
+    # --- Menu Bar ---
+    menubar = tk.Menu(root)
+    file_menu = tk.Menu(menubar, tearoff=0)
+    file_menu.add_command(label="Import Results...", command=import_results)
+    file_menu.add_command(label="Export Results...", command=export_results)
+    file_menu.add_command(label="Clear Results", command=clear_results)
+    file_menu.add_separator()
+    file_menu.add_command(label="Exit", command=root.destroy)
+    menubar.add_cascade(label="File", menu=file_menu)
+
+    help_menu = tk.Menu(menubar, tearoff=0)
+    help_menu.add_command(label="About", command=show_about)
+    menubar.add_cascade(label="Help", menu=help_menu)
+
+    root.config(menu=menubar)
+
     # Configure grid weights to ensure resizing behaves correctly
     root.columnconfigure(0, weight=1)
-    root.rowconfigure(5, weight=1)  # The row containing the Treeview
+    root.rowconfigure(4, weight=1)  # The row containing the Treeview
 
     # --- Input Frame ---
     input_frame = ttk.Frame(root)
@@ -1666,6 +1702,14 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     select_dir_btn = ttk.Button(input_frame, text="Select Directory...", command=browse_button_click)
     select_dir_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
     bind_hover_message(select_dir_btn, "Browse for a directory to scan.")
+
+    scan_button = ttk.Button(input_frame, text="Scan now", command=button_click, default='active')
+    scan_button.grid(row=0, column=3, padx=5)
+    bind_hover_message(scan_button, "Start the scan.")
+
+    cancel_button = ttk.Button(input_frame, text="Cancel", command=cancel_scan, state="disabled")
+    cancel_button.grid(row=0, column=4, padx=5)
+    bind_hover_message(cancel_button, "Stop the current scan.")
 
     # --- Settings Container ---
     settings_frame = ttk.Frame(root)
@@ -1776,32 +1820,13 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
             f"extensions.txt not found. Using default extensions: {default_exts}"
         )
 
-    # --- Action Frame ---
-    action_frame = ttk.Frame(root)
-    action_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
-
-    scan_button = ttk.Button(action_frame, text="Scan now", command=button_click, default='active')
-    scan_button.pack(side=tk.LEFT, padx=5)
-    bind_hover_message(scan_button, "Start the scan.")
-
-    cancel_button = ttk.Button(action_frame, text="Cancel", command=cancel_scan, state="disabled")
-    cancel_button.pack(side=tk.LEFT, padx=5)
-    bind_hover_message(cancel_button, "Stop the current scan.")
-
-    export_button = ttk.Button(action_frame, text="Export Results...", command=export_results)
-    export_button.pack(side=tk.RIGHT, padx=5)
-    bind_hover_message(export_button, "Save results to CSV, HTML, JSON, or SARIF.")
-
-    import_button = ttk.Button(action_frame, text="Import Results...", command=import_results)
-    import_button.pack(side=tk.RIGHT, padx=5)
-    bind_hover_message(import_button, "Load results from a JSON or CSV file.")
 
     # --- Progress Bar ---
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, mode='determinate')
-    progress_bar.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
+    progress_bar.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
 
     status_label = ttk.Label(root, text="Ready", anchor="w")
-    status_label.grid(row=4, column=0, sticky="ew", padx=10, pady=(0, 5))
+    status_label.grid(row=3, column=0, sticky="ew", padx=10, pady=(0, 5))
 
     # --- Treeview ---
     style = ttk.Style(root)
@@ -1810,7 +1835,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     # Configure tags for row highlighting
     # Note: 'alt' theme or similar might be needed for background colors to show in some environments
     tree_frame = ttk.Frame(root)
-    tree_frame.grid(row=5, column=0, sticky="nsew", padx=10, pady=5)
+    tree_frame.grid(row=4, column=0, sticky="nsew", padx=10, pady=5)
     tree_frame.columnconfigure(0, weight=1)
     tree_frame.rowconfigure(0, weight=1)
 
