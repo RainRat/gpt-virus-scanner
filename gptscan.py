@@ -437,6 +437,13 @@ def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Calla
     return '\n'.join(lines)
 
 
+def get_wrapped_values(tree: ttk.Treeview, values: Iterable[Any], measure: Optional[Callable[[str], int]] = None, col_widths: Optional[List[int]] = None) -> List[Any]:
+    """Wrap a list of values to fit the current Treeview column widths."""
+    measure = measure or (default_font_measure or tkinter.font.Font(font='TkDefaultFont').measure)
+    col_widths = col_widths or [tree.column(cid)['width'] for cid in tree['columns']]
+    return [adjust_newlines(v, w, measure=measure) for v, w in zip(values, col_widths)]
+
+
 def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
     """Wrap long cell values so they fit within the visible column width."""
 
@@ -446,7 +453,7 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
 
         for iid in tree.get_children():
             values = tree.item(iid)['values']
-            new_vals = [adjust_newlines(v, w, measure=measure) for v, w in zip(values, col_widths)]
+            new_vals = get_wrapped_values(tree, values, measure=measure, col_widths=col_widths)
             tree.item(iid, values=new_vals)
 
 
@@ -583,9 +590,7 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
 
 def insert_tree_row(values: Tuple[Any, ...]) -> None:
     """Insert a row into the treeview with wrapped text and highlighting."""
-    measure = default_font_measure or tkinter.font.Font(font='TkDefaultFont').measure
-    col_widths = [tree.column(cid)['width'] for cid in tree['columns']]
-    wrapped_values = [adjust_newlines(v, w, measure=measure) for v, w in zip(values, col_widths)]
+    wrapped_values = get_wrapped_values(tree, values)
 
     # Determine risk level based on confidence scores
     # data format: (path, own_conf, admin, user, gpt_conf, snippet)
