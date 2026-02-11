@@ -184,8 +184,10 @@ def update_status(message: str) -> None:
     message : str
         The message to display in the status label.
     """
-    status_label.config(text=message)
-    root.update_idletasks()
+    if status_label:
+        status_label.config(text=message)
+    if root:
+        root.update_idletasks()
 
 
 def update_progress(value: int) -> None:
@@ -676,8 +678,7 @@ def button_click() -> None:
         return
 
     # Clear previous results
-    if tree:
-        tree.delete(*tree.get_children())
+    clear_results()
 
     scan_path = textbox.get()
     if not scan_path:
@@ -1384,7 +1385,7 @@ def import_results() -> None:
             return
 
         # Clear existing results
-        tree.delete(*tree.get_children())
+        clear_results()
 
         columns = tree["columns"]
         count = 0
@@ -1420,6 +1421,17 @@ def import_results() -> None:
 
     except Exception as err:
         messagebox.showerror("Import Failed", f"Could not load results:\n{err}")
+
+
+def clear_results() -> None:
+    """Clear all results from the Treeview and reset progress/status."""
+    if tree:
+        items = tree.get_children()
+        if items:
+            tree.delete(*items)
+    if progress_bar:
+        progress_bar["value"] = 0
+    update_status("Ready")
 
 
 def export_results() -> None:
@@ -1642,6 +1654,22 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.title("GPT Virus Scanner")
     default_font_measure = tkinter.font.Font(font='TkDefaultFont').measure
 
+    # --- Menu Bar ---
+    menubar = tk.Menu(root)
+    file_menu = tk.Menu(menubar, tearoff=0)
+    file_menu.add_command(label="Import Results...", command=import_results)
+    file_menu.add_command(label="Export Results...", command=export_results)
+    file_menu.add_separator()
+    file_menu.add_command(label="Clear Results", command=clear_results)
+    file_menu.add_separator()
+    file_menu.add_command(label="Exit", command=root.quit)
+    menubar.add_cascade(label="File", menu=file_menu)
+
+    help_menu = tk.Menu(menubar, tearoff=0)
+    help_menu.add_command(label="About", command=lambda: messagebox.showinfo("About", f"GPT Virus Scanner v{Config.VERSION}\nA security tool for scanning scripts using AI."))
+    menubar.add_cascade(label="Help", menu=help_menu)
+    root.config(menu=menubar)
+
     # Configure grid weights to ensure resizing behaves correctly
     root.columnconfigure(0, weight=1)
     root.rowconfigure(5, weight=1)  # The row containing the Treeview
@@ -1800,6 +1828,10 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     import_button = ttk.Button(action_frame, text="Import Results...", command=import_results)
     import_button.pack(side=tk.RIGHT, padx=5)
     bind_hover_message(import_button, "Load results from a JSON or CSV file.")
+
+    clear_button = ttk.Button(action_frame, text="Clear Results", command=clear_results)
+    clear_button.pack(side=tk.RIGHT, padx=5)
+    bind_hover_message(clear_button, "Clear all results from the list.")
 
     # --- Progress Bar ---
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, mode='determinate')
