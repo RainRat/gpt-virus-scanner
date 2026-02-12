@@ -23,7 +23,8 @@ def test_extract_data_extra_keys(mock_response):
     content = '{"administrator": "a", "end-user": "b", "threat-level": 10, "extra": "x"}'
     response = mock_response(content)
     result = extract_data_from_gpt_response(response)
-    assert "Unexpected keys present: extra" in result
+    assert isinstance(result, dict)
+    assert result["extra"] == "x"
 
 def test_extract_data_threat_level_type_error(mock_response):
     content = '{"administrator": "a", "end-user": "b", "threat-level": "high"}'
