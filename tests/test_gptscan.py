@@ -114,7 +114,7 @@ def test_extract_data_from_gpt_response_invalid_threat_level():
     assert "not a valid integer" in error
 
 
-def test_extract_data_from_gpt_response_rejects_extra_keys():
+def test_extract_data_from_gpt_response_accepts_extra_keys():
     response = _MockResponse(
         json.dumps(
             {
@@ -126,9 +126,10 @@ def test_extract_data_from_gpt_response_rejects_extra_keys():
         )
     )
 
-    error = gptscan.extract_data_from_gpt_response(response)
+    result = gptscan.extract_data_from_gpt_response(response)
 
-    assert "Unexpected keys" in error
+    assert isinstance(result, dict)
+    assert result["extra"] == "field"
 
 
 def test_extract_data_from_gpt_response_rejects_non_object():

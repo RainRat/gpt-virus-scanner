@@ -324,8 +324,6 @@ def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
         Parsed JSON dictionary when valid; otherwise, a human-readable error
         message describing the parsing failure.
     """
-    expected_keys = set(Config.EXPECTED_KEYS)
-
     content = response.choices[0].message.content
 
     try:
@@ -339,10 +337,6 @@ def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
     missing_keys = [key for key in Config.EXPECTED_KEYS if key not in json_data]
     if missing_keys:
         return f"Missing keys: {', '.join(missing_keys)}"
-
-    extra_keys = set(json_data.keys()) - expected_keys
-    if extra_keys:
-        return f"Unexpected keys present: {', '.join(sorted(extra_keys))}"
 
     threat_level_value = json_data.get("threat-level")
     try:
