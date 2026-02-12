@@ -20,10 +20,14 @@ def mock_tree(monkeypatch):
     mock_tree._item_values = {}
     return mock_tree
 
+import json
+
 def test_copy_path(mock_tree):
     mock_tree.selection.return_value = ["item1"]
-    # Path is the first column. Imagine it was wrapped with a newline.
-    mock_tree._item_values["item1"] = ("some/path/to/\nfile.py", "90%", "Admin", "User", "80%", "print('hi')")
+    # Path is the first column. Wrapped for display.
+    # Hidden orig_json stores the raw values.
+    raw_values = ["some/path/to/file.py", "90%", "Admin", "User", "80%", "print('hi')"]
+    mock_tree._item_values["item1"] = ("some/path/to/\nfile.py", "90%", "Admin", "User", "80%", "print('hi')", json.dumps(raw_values))
 
     gptscan.copy_path()
 
@@ -32,14 +36,15 @@ def test_copy_path(mock_tree):
 
 def test_copy_snippet(mock_tree):
     mock_tree.selection.return_value = ["item1"]
-    # Snippet is the last column. Imagine it was wrapped.
-    mock_tree._item_values["item1"] = ("some/path", "90%", "Admin", "User", "80%", "print('wrapped\nsnippet')")
+    # Snippet is the last column. Wrapped for display.
+    raw_values = ["some/path", "90%", "Admin", "User", "80%", "print('wrapped\nsnippet')"]
+    mock_tree._item_values["item1"] = ("some/path", "90%", "Admin", "User", "80%", "print('wrapped\nsnippet')", json.dumps(raw_values))
 
     gptscan.copy_snippet()
 
     mock_tree.clipboard_clear.assert_called_once()
-    # Expecting it to remove the display-level newline (after fix)
-    mock_tree.clipboard_append.assert_called_with("print('wrappedsnippet')")
+    # Expecting it to preserve the newline from the original data
+    mock_tree.clipboard_append.assert_called_with("print('wrapped\nsnippet')")
 
 def test_show_in_folder_windows(mock_tree, monkeypatch):
     mock_tree.selection.return_value = ["item1"]
@@ -164,3 +169,17 @@ def test_show_context_menu_no_item_no_selection(mock_tree, monkeypatch):
 
     mock_tree.selection_set.assert_not_called()
     mock_menu.post.assert_not_called()
+
+def test_copy_as_markdown(mock_tree):
+    mock_tree.selection.return_value = ["item1"]
+    raw_values = ["test.py", "90%", "Admin", "User", "80%", "print('hi')"]
+    mock_tree._item_values["item1"] = ("test.py", "90%", "Admin", "User", "80%", "print('hi')", json.dumps(raw_values))
+    # Mock tree["columns"]
+    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "orig_json")
+
+    gptscan.copy_as_markdown()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    args, _ = mock_tree.clipboard_append.call_args
+    md = args[0]
+    assert "| test.py | 80% | **Admin:** Admin<br>**User:** User | `print('hi')` |" in md
