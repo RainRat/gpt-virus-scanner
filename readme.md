@@ -2,41 +2,40 @@
 
 ## What is this?
 
-This security tool scans script files for malicious code using AI. It works in two stages:
+The GPT Virus Scanner uses AI to find malicious code in script files. It works in two stages:
 1.  **Local Scan:** A fast, built-in model checks your files locally.
-2.  **AI Analysis:** If a file looks suspicious, it sends a short piece of code to an AI service (like OpenAI) for a detailed report.
+2.  **AI Analysis:** If a file looks suspicious, the tool sends a code snippet to an AI service (like OpenAI) for a detailed assessment.
 
-**Note:** This is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and Batch files) but not compiled programs or compressed files (like .zip).
+**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (such as Python, JavaScript, and Batch files) but does not analyze compiled programs or compressed files (like .zip).
 
 ## Quick Start
 
-### Graphical Interface (GUI)
-1. Run the scanner: `python gptscan.py`
-2. Select a folder to scan.
+### Use the Windowed App (GUI)
+1. Start the scanner: `python gptscan.py`
+2. Choose a folder to scan.
 3. Click **Scan now**.
 
-### Command Line (CLI)
-Scan a folder and get a JSON report:
+### Use the Terminal (CLI)
+Scan a folder and generate a JSON report:
 ```bash
 python gptscan.py ./my_scripts --cli --json
 ```
 
 ## Requirements
 
-*   **Python 3.9, 3.10, or 3.11** is required. Newer versions (like 3.12) are not compatible with the AI model used in this tool.
-*   **TensorFlow** (version 2.15 or older).
+*   **Python 3.9, 3.10, or 3.11** is required. Newer versions (like 3.12) are currently not compatible.
+*   **TensorFlow** (version 2.15 or older) for local scanning.
 *   **AI Service** (Optional, for detailed analysis):
-    *   **OpenAI** (requires API key)
-    *   **OpenRouter** (requires API key)
-    *   **Ollama** (requires local installation from [ollama.com](https://ollama.com/))
-*   **Tkinter** (required for the windowed interface).
+    *   **OpenAI** or **OpenRouter** (requires an API key).
+    *   **Ollama** (runs locally; no API key needed).
+*   **Tkinter** for the graphical interface.
 
 ## Installation
 
 1.  **Download the tool:**
     Clone this repository or download the files. Ensure `gptscan.py`, `scripts.h5`, and `task.txt` are in the same folder.
 
-2.  **Install Python:** Download it from [python.org](https://www.python.org/). Remember to choose version 3.9, 3.10, or 3.11.
+2.  **Install Python:** Download it from [python.org](https://www.python.org/). Choose version 3.9, 3.10, or 3.11.
 
 3.  **Install required libraries:**
     Open your terminal or command prompt and run:
@@ -52,12 +51,12 @@ python gptscan.py ./my_scripts --cli --json
 
     If you want to use **AI Analysis** (OpenAI or OpenRouter), you need an API key:
     *   Create a file named `apikey.txt` in the same folder as `gptscan.py`.
-    *   Paste your API key into that file. It should be only one line of text.
+    *   Paste your API key into that file. It should contain only the key on a single line.
     *   **Alternatively:** Use the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable.
 
     *   **OpenAI:** Get a key from [OpenAI](https://platform.openai.com/).
     *   **OpenRouter:** Get a key from [OpenRouter](https://openrouter.ai/).
-    *   **Ollama:** No API key needed! Just ensure [Ollama](https://ollama.com/) is running on your computer.
+    *   **Ollama:** Download [Ollama](https://ollama.com/) and ensure it is running. You must also download a model to use it (for example, run `ollama pull llama3.2` in your terminal).
 
     *Privacy Note:* Your code is only sent to the AI service if you enable the "Use AI Analysis" option. Check your provider's data policy.
 
