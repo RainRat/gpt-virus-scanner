@@ -1619,17 +1619,20 @@ def export_results() -> None:
         messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
 
 
-def open_file(event: Optional[tk.Event] = None) -> None:
-    """Open the selected file in the system's default application."""
+def _get_selected_row_values() -> Optional[List[Any]]:
+    """Retrieve values from the currently selected Treeview row."""
     if not tree:
-        return
+        return None
     selection = tree.selection()
     if not selection:
-        return
-
-    # Get the file path from the first column of the selected row
+        return None
     item_id = selection[0]
-    values = tree.item(item_id, "values")
+    return list(tree.item(item_id, "values"))
+
+
+def open_file(event: Optional[tk.Event] = None) -> None:
+    """Open the selected file in the system's default application."""
+    values = _get_selected_row_values()
     if not values:
         return
 
@@ -1650,13 +1653,7 @@ def open_file(event: Optional[tk.Event] = None) -> None:
 
 def copy_path() -> None:
     """Copy the selected file's path to the clipboard."""
-    if not tree:
-        return
-    selection = tree.selection()
-    if not selection:
-        return
-    item_id = selection[0]
-    values = tree.item(item_id, "values")
+    values = _get_selected_row_values()
     if not values:
         return
     file_path = str(values[0]).replace('\n', '') # Remove display wrapping
@@ -1666,13 +1663,7 @@ def copy_path() -> None:
 
 def copy_snippet() -> None:
     """Copy the selected row's code snippet to the clipboard."""
-    if not tree:
-        return
-    selection = tree.selection()
-    if not selection:
-        return
-    item_id = selection[0]
-    values = tree.item(item_id, "values")
+    values = _get_selected_row_values()
     if not values:
         return
     # Snippet is the last column
@@ -1683,13 +1674,7 @@ def copy_snippet() -> None:
 
 def show_in_folder() -> None:
     """Reveal the selected file in the system file manager."""
-    if not tree:
-        return
-    selection = tree.selection()
-    if not selection:
-        return
-    item_id = selection[0]
-    values = tree.item(item_id, "values")
+    values = _get_selected_row_values()
     if not values:
         return
     file_path = str(values[0]).replace('\n', '')
