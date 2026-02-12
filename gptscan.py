@@ -443,7 +443,12 @@ def get_wrapped_values(tree: ttk.Treeview, values: Iterable[Any], measure: Optio
     """Wrap a list of values to fit the current Treeview column widths."""
     measure = measure or (default_font_measure or tkinter.font.Font(font='TkDefaultFont').measure)
     col_widths = col_widths or [tree.column(cid)['width'] for cid in tree['columns']]
-    return [adjust_newlines(v, w, measure=measure) for v, w in zip(values, col_widths)]
+
+    # Only wrap the first 6 columns, leave the hidden orig_json column as is
+    wrapped = [adjust_newlines(v, w, measure=measure) for v, w in zip(list(values)[:6], col_widths[:6])]
+    if len(values) > 6:
+        wrapped.extend(list(values)[6:])
+    return wrapped
 
 
 def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
@@ -592,7 +597,13 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
 
 def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ...]]:
     """Prepare wrapped values and tags for a Treeview row."""
-    wrapped_values = get_wrapped_values(tree, values)
+    # Preserve original values in a hidden column as a JSON string
+    # only use the first 6 columns as the 7th is the hidden one itself if updating
+    orig_data = list(values[:6])
+    orig_json = json.dumps(orig_data)
+
+    wrapped_values = get_wrapped_values(tree, values[:6])
+    wrapped_values.append(orig_json)
 
     # Determine risk level based on confidence scores
     # data format: (path, own_conf, admin, user, gpt_conf, snippet)
@@ -1342,6 +1353,56 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
 </html>"""
 
 
+def generate_markdown(results: List[Dict[str, Any]]) -> str:
+    """Generate a Markdown report from the scan results.
+
+    Parameters
+    ----------
+    results : List[Dict[str, Any]]
+        List of result dictionaries.
+
+    Returns
+    -------
+    str
+        The Markdown report as a string.
+    """
+    if not results:
+        return "# GPT Scan Results\n\nNo suspicious files found."
+
+    lines = [
+        "# GPT Scan Results",
+        "",
+        f"**Total Results:** {len(results)}",
+        "",
+        "| Path | Confidence | Analysis | Snippet |",
+        "| :--- | :--- | :--- | :--- |"
+    ]
+
+    for r in results:
+        path = r.get("path", "").replace("|", "\\|")
+        own_conf = r.get("own_conf", "")
+        gpt_conf = r.get("gpt_conf", "")
+        admin = r.get("admin_desc", "")
+        user = r.get("end-user_desc", "")
+        snippet = r.get("snippet", "")
+
+        conf_str = gpt_conf or own_conf
+        analysis = ""
+        if admin:
+            analysis += f"**Admin:** {admin.replace('|', '\\|')}<br>"
+        if user:
+            analysis += f"**User:** {user.replace('|', '\\|')}"
+
+        # Clean up snippet for markdown table (one line, escaped)
+        clean_snippet = snippet.replace("\n", " ").replace("|", "\\|")
+        if len(clean_snippet) > 100:
+            clean_snippet = clean_snippet[:97] + "..."
+
+        lines.append(f"| {path} | {conf_str} | {analysis} | `{clean_snippet}` |")
+
+    return "\n".join(lines)
+
+
 def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None) -> int:
     """Run scans and stream results to stdout.
 
@@ -1408,7 +1469,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             record = dict(zip(keys, data))
             if output_format == 'json':
                 print(json.dumps(record))
-            elif output_format in ('sarif', 'html'):
+            elif output_format in ('sarif', 'html', 'markdown'):
                 result_buffer.append(record)
             else:
                 writer.writerow(data)
@@ -1439,6 +1500,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         print(json.dumps(sarif_log, indent=2))
     elif output_format == 'html':
         print(generate_html(result_buffer))
+    elif output_format == 'markdown':
+        print(generate_markdown(result_buffer))
 
     return threats_found
 
@@ -1563,6 +1626,7 @@ def export_results() -> None:
         defaultextension=".csv",
         filetypes=[
             ("CSV files", "*.csv"),
+            ("Markdown files", "*.md"),
             ("HTML files", "*.html"),
             ("JSON files", "*.json"),
             ("SARIF files", "*.sarif"),
@@ -1573,12 +1637,19 @@ def export_results() -> None:
     if not file_path:
         return
 
-    # Collect data from Treeview and unwrap newlines added for display
-    columns = tree["columns"]
+    # Collect data from Treeview using the hidden raw data column to preserve integrity
+    columns = tree["columns"][:6] # Only first 6 are data columns
     results = []
     for item_id in tree.get_children():
         values = list(tree.item(item_id)["values"])
-        results.append(dict(zip(columns, values))) # Use original values for JSON/HTML/SARIF as they handle newlines better
+        if len(values) > 6 and values[6]:
+            # Use preserved original values if available
+            orig_values = json.loads(values[6])
+            results.append(dict(zip(columns, orig_values)))
+        else:
+            # Fallback (and unwrap display newlines)
+            unwrapped = [str(v).replace('\n', ' ') for v in values[:6]]
+            results.append(dict(zip(columns, unwrapped)))
 
     ext = os.path.splitext(file_path)[1].lower()
 
@@ -1604,14 +1675,15 @@ def export_results() -> None:
             sarif_log = generate_sarif(results)
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(sarif_log, f, indent=2)
+        elif ext == '.md':
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(generate_markdown(results))
         else: # Default to CSV
             with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
                 writer = csv.writer(csv_file)
                 writer.writerow(columns)
-                for item_id in tree.get_children():
-                    # For CSV, we definitely want to unwrap or it looks messy in Excel
-                    vals = [str(v).replace('\n', ' ') for v in tree.item(item_id)["values"]]
-                    writer.writerow(vals)
+                for r in results:
+                    writer.writerow([r[col] for col in columns])
 
         messagebox.showinfo("Export Successful", f"Results saved to {os.path.basename(file_path)}")
 
@@ -1627,7 +1699,15 @@ def _get_selected_row_values() -> Optional[List[Any]]:
     if not selection:
         return None
     item_id = selection[0]
-    return list(tree.item(item_id, "values"))
+    values = list(tree.item(item_id, "values"))
+
+    # Try to return raw values from the hidden column if available
+    if len(values) > 6 and values[6]:
+        try:
+            return json.loads(values[6])
+        except json.JSONDecodeError:
+            pass
+    return values
 
 
 def open_file(event: Optional[tk.Event] = None) -> None:
@@ -1636,7 +1716,7 @@ def open_file(event: Optional[tk.Event] = None) -> None:
     if not values:
         return
 
-    file_path = str(values[0]).replace('\n', '') # Remove wrapping
+    file_path = str(values[0])
     if os.path.exists(file_path):
         try:
             if sys.platform == "win32":
@@ -1656,7 +1736,7 @@ def copy_path() -> None:
     values = _get_selected_row_values()
     if not values:
         return
-    file_path = str(values[0]).replace('\n', '') # Remove display wrapping
+    file_path = str(values[0])
     tree.clipboard_clear()
     tree.clipboard_append(file_path)
 
@@ -1666,10 +1746,35 @@ def copy_snippet() -> None:
     values = _get_selected_row_values()
     if not values:
         return
-    # Snippet is the last column
-    snippet = str(values[-1]).replace('\n', '') # Remove display wrapping
+    # Snippet is the last column in the 6-column data
+    snippet = str(values[5])
     tree.clipboard_clear()
     tree.clipboard_append(snippet)
+
+
+def copy_as_markdown() -> None:
+    """Copy the selected rows as a Markdown table to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    columns = tree["columns"][:6]
+    results = []
+    for item_id in selection:
+        values = list(tree.item(item_id, "values"))
+        if len(values) > 6 and values[6]:
+            orig_values = json.loads(values[6])
+            results.append(dict(zip(columns, orig_values)))
+        else:
+            unwrapped = [str(v).replace('\n', ' ') for v in values[:6]]
+            results.append(dict(zip(columns, unwrapped)))
+
+    md = generate_markdown(results)
+    tree.clipboard_clear()
+    tree.clipboard_append(md)
 
 
 def show_in_folder() -> None:
@@ -1677,7 +1782,7 @@ def show_in_folder() -> None:
     values = _get_selected_row_values()
     if not values:
         return
-    file_path = str(values[0]).replace('\n', '')
+    file_path = str(values[0])
     if os.path.exists(file_path):
         try:
             if sys.platform == "win32":
@@ -1932,7 +2037,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree = ttk.Treeview(tree_frame, style='Scanner.Treeview')
     tree.tag_configure('high-risk', background='#ffcccc')
     tree.tag_configure('medium-risk', background='#fff0cc')
-    tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
+    tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "orig_json")
     tree.column("#0", width=0, stretch=tk.NO)
     tree.column("path", width=150, stretch=tk.YES, anchor="w")
     tree.column("own_conf", width=80, stretch=tk.NO, anchor="e")
@@ -1940,6 +2045,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.column("end-user_desc", width=150, stretch=tk.YES, anchor="w")
     tree.column("gpt_conf", width=80, stretch=tk.NO, anchor="e")
     tree.column("snippet", width=150, stretch=tk.YES, anchor="w")
+    tree.column("orig_json", width=0, stretch=tk.NO) # Hidden column for raw data
     root.after(0, process_ui_queue)
 
     tree.heading("#0", text="")
@@ -1993,6 +2099,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu.add_separator()
     context_menu.add_command(label="Copy File Path", command=copy_path)
     context_menu.add_command(label="Copy Snippet", command=copy_snippet)
+    context_menu.add_command(label="Copy as Markdown", command=copy_as_markdown)
 
     # Bind context menu to right-click and menu key
     tree.bind('<Button-3>', show_context_menu) # Windows/Linux
@@ -2089,6 +2196,7 @@ def main():
     output_group.add_argument('--json', action='store_true', help='Output results in JSON format (one object per line).')
     output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format, a standard for security tools.')
     output_group.add_argument('--html', action='store_true', help='Create an HTML report of the results.')
+    output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report of the results.')
 
     args = parser.parse_args()
 
@@ -2138,6 +2246,8 @@ def main():
             output_format = 'sarif'
         elif args.html:
             output_format = 'html'
+        elif args.markdown:
+            output_format = 'markdown'
 
         final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or [])))
         threats = run_cli(
