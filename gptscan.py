@@ -418,32 +418,57 @@ async def async_handle_gpt_response(
 
 
 def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Callable[[str], int]] = None) -> Any:
-    """Wrap strings based on the available column width."""
+    """Wrap strings based on the available column width, preserving original newlines."""
     if not isinstance(val, str):
         return val
 
-    measure = measure or tkinter.font.Font(font='TkDefaultFont').measure
-    words = val.split()
-    lines: List[Union[str, List[str]]] = [[]]
-    for word in words:
-        line = lines[-1] + [word]
-        if not lines[-1] or measure(' '.join(line)) < (width - pad):
-            lines[-1].append(word)
-        else:
-            lines[-1] = ' '.join(lines[-1])
-            lines.append([word])
+    if measure is None:
+        try:
+            measure = tkinter.font.Font(font='TkDefaultFont').measure
+        except Exception:
+            measure = len
 
-    if isinstance(lines[-1], list):
-        lines[-1] = ' '.join(lines[-1])
+    all_wrapped_lines = []
+    # Split by existing newlines to preserve them
+    for line_in in val.splitlines():
+        words = line_in.split()
+        if not words:
+            all_wrapped_lines.append('')
+            continue
 
-    return '\n'.join(lines)
+        current_line_words = []
+        for word in words:
+            test_line = ' '.join(current_line_words + [word])
+            if not current_line_words or measure(test_line) < (width - pad):
+                current_line_words.append(word)
+            else:
+                all_wrapped_lines.append(' '.join(current_line_words))
+                current_line_words = [word]
+
+        if current_line_words:
+            all_wrapped_lines.append(' '.join(current_line_words))
+
+    # Join everything back together
+    return '\n'.join(all_wrapped_lines)
 
 
 def get_wrapped_values(tree: ttk.Treeview, values: Iterable[Any], measure: Optional[Callable[[str], int]] = None, col_widths: Optional[List[int]] = None) -> List[Any]:
     """Wrap a list of values to fit the current Treeview column widths."""
     measure = measure or (default_font_measure or tkinter.font.Font(font='TkDefaultFont').measure)
-    col_widths = col_widths or [tree.column(cid)['width'] for cid in tree['columns']]
-    return [adjust_newlines(v, w, measure=measure) for v, w in zip(values, col_widths)]
+
+    # We only want to wrap the first 6 columns which are the visible data columns
+    # Any extra columns (like orig_json) should remain un-wrapped
+    col_ids = tree['columns'][:6]
+    col_widths = col_widths or [tree.column(cid)['width'] for cid in col_ids]
+
+    vals_list = list(values)
+    wrapped = [adjust_newlines(v, w, measure=measure) for v, w in zip(vals_list, col_widths)]
+
+    # Preserve any extra columns (like hidden orig_json) without wrapping them
+    if len(vals_list) > len(wrapped):
+        wrapped.extend(vals_list[len(wrapped):])
+
+    return wrapped
 
 
 def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
@@ -592,7 +617,11 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
 
 def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ...]]:
     """Prepare wrapped values and tags for a Treeview row."""
-    wrapped_values = get_wrapped_values(tree, values)
+    # Append original values as a JSON string in a hidden column for data integrity
+    orig_json = json.dumps(values)
+    extended_values = values + (orig_json,)
+
+    wrapped_values = get_wrapped_values(tree, extended_values)
 
     # Determine risk level based on confidence scores
     # data format: (path, own_conf, admin, user, gpt_conf, snippet)
@@ -1573,12 +1602,25 @@ def export_results() -> None:
     if not file_path:
         return
 
-    # Collect data from Treeview and unwrap newlines added for display
+    # Collect data from Treeview, prioritizing original un-wrapped data
     columns = tree["columns"]
+    # The first 6 columns are the display data columns
+    data_columns = columns[:6]
     results = []
+
     for item_id in tree.get_children():
         values = list(tree.item(item_id)["values"])
-        results.append(dict(zip(columns, values))) # Use original values for JSON/HTML/SARIF as they handle newlines better
+        original_values = None
+
+        # Try to extract original un-wrapped values from the hidden orig_json column
+        if len(values) > 6:
+            try:
+                original_values = json.loads(values[6])
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        row_values = original_values if original_values else values[:6]
+        results.append(dict(zip(data_columns, row_values)))
 
     ext = os.path.splitext(file_path)[1].lower()
 
@@ -1607,10 +1649,11 @@ def export_results() -> None:
         else: # Default to CSV
             with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
                 writer = csv.writer(csv_file)
-                writer.writerow(columns)
-                for item_id in tree.get_children():
+                writer.writerow(data_columns)
+                for r in results:
                     # For CSV, we definitely want to unwrap or it looks messy in Excel
-                    vals = [str(v).replace('\n', ' ') for v in tree.item(item_id)["values"]]
+                    # But we use the original values to avoid display-only wrapping artifacts
+                    vals = [str(r[col]).replace('\n', ' ') for col in data_columns]
                     writer.writerow(vals)
 
         messagebox.showinfo("Export Successful", f"Results saved to {os.path.basename(file_path)}")
@@ -1620,14 +1663,25 @@ def export_results() -> None:
 
 
 def _get_selected_row_values() -> Optional[List[Any]]:
-    """Retrieve values from the currently selected Treeview row."""
+    """Retrieve values from the currently selected Treeview row, prioritizing original un-wrapped data."""
     if not tree:
         return None
     selection = tree.selection()
     if not selection:
         return None
     item_id = selection[0]
-    return list(tree.item(item_id, "values"))
+    values = list(tree.item(item_id, "values"))
+
+    # Try to extract original un-wrapped values from the hidden orig_json column (index 6)
+    if len(values) > 6:
+        try:
+            orig_data = json.loads(values[6])
+            if isinstance(orig_data, (list, tuple)):
+                return list(orig_data)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    return values
 
 
 def open_file(event: Optional[tk.Event] = None) -> None:
@@ -1636,7 +1690,7 @@ def open_file(event: Optional[tk.Event] = None) -> None:
     if not values:
         return
 
-    file_path = str(values[0]).replace('\n', '') # Remove wrapping
+    file_path = str(values[0])
     if os.path.exists(file_path):
         try:
             if sys.platform == "win32":
@@ -1656,7 +1710,7 @@ def copy_path() -> None:
     values = _get_selected_row_values()
     if not values:
         return
-    file_path = str(values[0]).replace('\n', '') # Remove display wrapping
+    file_path = str(values[0])
     tree.clipboard_clear()
     tree.clipboard_append(file_path)
 
@@ -1667,7 +1721,7 @@ def copy_snippet() -> None:
     if not values:
         return
     # Snippet is the last column
-    snippet = str(values[-1]).replace('\n', '') # Remove display wrapping
+    snippet = str(values[-1])
     tree.clipboard_clear()
     tree.clipboard_append(snippet)
 
@@ -1677,7 +1731,7 @@ def show_in_folder() -> None:
     values = _get_selected_row_values()
     if not values:
         return
-    file_path = str(values[0]).replace('\n', '')
+    file_path = str(values[0])
     if os.path.exists(file_path):
         try:
             if sys.platform == "win32":
@@ -1932,7 +1986,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree = ttk.Treeview(tree_frame, style='Scanner.Treeview')
     tree.tag_configure('high-risk', background='#ffcccc')
     tree.tag_configure('medium-risk', background='#fff0cc')
-    tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
+    tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "orig_json")
     tree.column("#0", width=0, stretch=tk.NO)
     tree.column("path", width=150, stretch=tk.YES, anchor="w")
     tree.column("own_conf", width=80, stretch=tk.NO, anchor="e")
@@ -1940,6 +1994,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.column("end-user_desc", width=150, stretch=tk.YES, anchor="w")
     tree.column("gpt_conf", width=80, stretch=tk.NO, anchor="e")
     tree.column("snippet", width=150, stretch=tk.YES, anchor="w")
+    tree.column("orig_json", width=0, stretch=tk.NO)
     root.after(0, process_ui_queue)
 
     tree.heading("#0", text="")

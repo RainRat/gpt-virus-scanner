@@ -1,3 +1,4 @@
+import json
 import pytest
 from unittest.mock import MagicMock, patch
 import gptscan
@@ -22,24 +23,32 @@ def mock_tree(monkeypatch):
 
 def test_copy_path(mock_tree):
     mock_tree.selection.return_value = ["item1"]
-    # Path is the first column. Imagine it was wrapped with a newline.
-    mock_tree._item_values["item1"] = ("some/path/to/\nfile.py", "90%", "Admin", "User", "80%", "print('hi')")
+    # Original data in the 7th column
+    orig_path = "some/path/to/file.py"
+    orig_values = (orig_path, "90%", "Admin", "User", "80%", "print('hi')")
+
+    # Values as stored in Treeview (wrapped display values + hidden JSON)
+    mock_tree._item_values["item1"] = ("some/path/to/\nfile.py", "90%", "Admin", "User", "80%", "print('hi')", json.dumps(orig_values))
 
     gptscan.copy_path()
 
     mock_tree.clipboard_clear.assert_called_once()
-    mock_tree.clipboard_append.assert_called_with("some/path/to/file.py")
+    mock_tree.clipboard_append.assert_called_with(orig_path)
 
 def test_copy_snippet(mock_tree):
     mock_tree.selection.return_value = ["item1"]
-    # Snippet is the last column. Imagine it was wrapped.
-    mock_tree._item_values["item1"] = ("some/path", "90%", "Admin", "User", "80%", "print('wrapped\nsnippet')")
+    # Original snippet with intentional newlines
+    orig_snippet = "print('wrapped\nsnippet')"
+    orig_values = ("some/path", "90%", "Admin", "User", "80%", orig_snippet)
+
+    # Values as stored in Treeview
+    mock_tree._item_values["item1"] = ("some/path", "90%", "Admin", "User", "80%", "wrapped\ndisplay\nsnippet", json.dumps(orig_values))
 
     gptscan.copy_snippet()
 
     mock_tree.clipboard_clear.assert_called_once()
-    # Expecting it to remove the display-level newline (after fix)
-    mock_tree.clipboard_append.assert_called_with("print('wrappedsnippet')")
+    # Now expecting the original snippet with newlines to be preserved
+    mock_tree.clipboard_append.assert_called_with(orig_snippet)
 
 def test_show_in_folder_windows(mock_tree, monkeypatch):
     mock_tree.selection.return_value = ["item1"]
