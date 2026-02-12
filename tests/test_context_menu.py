@@ -164,3 +164,11 @@ def test_show_context_menu_no_item_no_selection(mock_tree, monkeypatch):
 
     mock_tree.selection_set.assert_not_called()
     mock_menu.post.assert_not_called()
+
+def test_select_all_items(mock_tree):
+    mock_tree.get_children.return_value = ["item1", "item2", "item3"]
+
+    result = gptscan.select_all_items()
+
+    mock_tree.selection_set.assert_called_with(["item1", "item2", "item3"])
+    assert result == "break"

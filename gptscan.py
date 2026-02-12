@@ -1693,6 +1693,26 @@ def show_in_folder() -> None:
         messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
 
 
+def select_all_items(event: Optional[tk.Event] = None) -> str:
+    """Select all items in the Results Treeview.
+
+    Parameters
+    ----------
+    event : tk.Event, optional
+        The event that triggered this function (used for keyboard shortcuts).
+
+    Returns
+    -------
+    str
+        "break" to prevent default event propagation.
+    """
+    if tree:
+        items = tree.get_children()
+        if items:
+            tree.selection_set(items)
+    return "break"
+
+
 def show_context_menu(event: tk.Event) -> None:
     """Display the context menu at the location of the event."""
     if not tree or not context_menu:
@@ -1993,11 +2013,15 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu.add_separator()
     context_menu.add_command(label="Copy File Path", command=copy_path)
     context_menu.add_command(label="Copy Snippet", command=copy_snippet)
+    context_menu.add_separator()
+    context_menu.add_command(label="Select All", command=select_all_items)
 
     # Bind context menu to right-click and menu key
     tree.bind('<Button-3>', show_context_menu) # Windows/Linux
     tree.bind('<Button-2>', show_context_menu) # macOS
     tree.bind('<Menu>', show_context_menu)
+    tree.bind('<Control-a>', select_all_items)
+    tree.bind('<Command-a>', select_all_items)
 
     # Bind rescan keys
     tree.bind('<F5>', lambda event: rescan_selected())
