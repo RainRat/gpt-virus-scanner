@@ -590,8 +590,8 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
     tv.heading(col, command=lambda: sort_column(tv, col, not reverse))
 
 
-def insert_tree_row(values: Tuple[Any, ...]) -> None:
-    """Insert a row into the treeview with wrapped text and highlighting."""
+def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ...]]:
+    """Prepare wrapped values and tags for a Treeview row."""
     wrapped_values = get_wrapped_values(tree, values)
 
     # Determine risk level based on confidence scores
@@ -604,7 +604,20 @@ def insert_tree_row(values: Tuple[Any, ...]) -> None:
     elif conf > 50:
         tag = 'medium-risk'
 
-    tree.insert("", tk.END, values=wrapped_values, tags=(tag,) if tag else ())
+    return wrapped_values, (tag,) if tag else ()
+
+
+def insert_tree_row(values: Tuple[Any, ...]) -> None:
+    """Insert a row into the treeview with wrapped text and highlighting."""
+    wrapped_values, tags = _prepare_tree_row(values)
+    tree.insert("", tk.END, values=wrapped_values, tags=tags)
+
+
+def update_tree_row(item_id: str, values: Tuple[Any, ...]) -> None:
+    """Update an existing row in the treeview with new values."""
+    if tree and tree.exists(item_id):
+        wrapped_values, tags = _prepare_tree_row(values)
+        tree.item(item_id, values=wrapped_values, tags=tags)
 
 
 def update_tree_columns() -> None:
@@ -719,6 +732,48 @@ def cancel_scan() -> None:
 
     if current_cancel_event:
         current_cancel_event.set()
+
+
+def rescan_selected() -> None:
+    """Re-scan the currently selected items in the Treeview."""
+    global current_cancel_event
+
+    if not tree or current_cancel_event is not None:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    paths = []
+    item_map = {}
+    for item_id in selection:
+        values = tree.item(item_id, "values")
+        if values:
+            path = str(values[0]).replace('\n', '')
+            paths.append(path)
+            item_map[path] = item_id
+
+    if not paths:
+        return
+
+    current_cancel_event = threading.Event()
+    set_scanning_state(True)
+    update_status(f"Rescanning {len(paths)} selected file(s)...")
+
+    # Capture current settings to use in the background thread
+    settings = {
+        'deep': deep_var.get() if deep_var else False,
+        'gpt': gpt_var.get() if gpt_var else False,
+        'dry': dry_var.get() if dry_var else False,
+    }
+
+    scan_thread = threading.Thread(
+        target=run_rescan,
+        args=(paths, item_map, settings, current_cancel_event),
+        daemon=True
+    )
+    scan_thread.start()
 
 
 def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
@@ -1059,6 +1114,63 @@ def run_scan(
 
                 if not cancel_event.is_set():
                     enqueue_ui_update(insert_tree_row, data)
+            elif event_type == 'summary':
+                total_files, total_bytes, elapsed_time = data
+                metrics['total_bytes'] = total_bytes
+                metrics['elapsed_time'] = elapsed_time
+    finally:
+        enqueue_ui_update(
+            finish_scan_state,
+            current_scanned,
+            threats_found,
+            metrics.get('total_bytes'),
+            metrics.get('elapsed_time')
+        )
+
+
+def run_rescan(
+    paths: List[str],
+    item_map: Dict[str, str],
+    settings: Dict[str, Any],
+    cancel_event: threading.Event
+) -> None:
+    """Perform background scan for specific paths and update existing UI rows."""
+    threats_found = 0
+    metrics: Dict[str, Any] = {}
+    current_scanned = 0
+    last_total: Optional[int] = 0
+
+    try:
+        for event_type, data in scan_files(
+            paths,
+            settings['deep'],
+            show_all=True,  # Always show results for rescan to update rows
+            use_gpt=settings['gpt'],
+            cancel_event=cancel_event,
+            rate_limit=Config.RATE_LIMIT_PER_MINUTE,
+            max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+            dry_run=settings['dry'],
+            exclude_patterns=None,  # Already selected, don't re-exclude
+        ):
+            if event_type == 'progress':
+                current, total, status = data
+                current_scanned = current
+                if total != last_total:
+                    enqueue_ui_update(configure_progress, total)
+                    last_total = total
+                enqueue_ui_update(update_progress, current)
+                status_text = f"{status} ({current}/{total})" if status else f"Rescanning: {current}/{total}"
+                enqueue_ui_update(update_status, status_text)
+            elif event_type == 'result':
+                if cancel_event.is_set():
+                    continue
+                path = data[0]
+                item_id = item_map.get(path)
+                if item_id:
+                    conf = get_effective_confidence(data[1], data[4])
+                    if conf > 50:
+                        threats_found += 1
+                    enqueue_ui_update(update_tree_row, item_id, data)
             elif event_type == 'summary':
                 total_files, total_bytes, elapsed_time = data
                 metrics['total_bytes'] = total_bytes
@@ -1888,6 +2000,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     # --- Context Menu ---
     global context_menu
     context_menu = tk.Menu(root, tearoff=0)
+    context_menu.add_command(label="Rescan Selected", command=rescan_selected)
+    context_menu.add_separator()
     context_menu.add_command(label="Open File", command=open_file)
     context_menu.add_command(label="Show in Folder", command=show_in_folder)
     context_menu.add_separator()
@@ -1898,6 +2012,10 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<Button-3>', show_context_menu) # Windows/Linux
     tree.bind('<Button-2>', show_context_menu) # macOS
     tree.bind('<Menu>', show_context_menu)
+
+    # Bind rescan keys
+    tree.bind('<F5>', lambda event: rescan_selected())
+    tree.bind('r', lambda event: rescan_selected())
 
     motion_handler(tree, None)   # Perform initial wrapping
     update_tree_columns()        # Adjust columns based on initial AI settings
