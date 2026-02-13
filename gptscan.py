@@ -1801,10 +1801,20 @@ def show_context_menu(event: tk.Event) -> None:
     if hasattr(event, 'x') and hasattr(event, 'y'):
         iid = tree.identify_row(event.y)
         if iid:
-            tree.selection_set(iid)
+            # Only change selection if the clicked item is not already selected
+            # This allows context menu to work on multiple selected items
+            if iid not in tree.selection():
+                tree.selection_set(iid)
 
     if tree.selection():
         context_menu.post(event.x_root, event.y_root)
+
+
+def select_all_items(event: Optional[tk.Event] = None) -> str:
+    """Select all items currently in the results Treeview."""
+    if tree:
+        tree.selection_set(tree.get_children())
+    return "break"
 
 
 def get_model_presets(provider: str) -> List[str]:
@@ -2094,6 +2104,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu.add_command(label="Copy File Path", command=copy_path)
     context_menu.add_command(label="Copy Snippet", command=copy_snippet)
     context_menu.add_command(label="Copy as Markdown", command=copy_as_markdown)
+    context_menu.add_separator()
+    context_menu.add_command(label="Select All", command=select_all_items)
 
     # Bind context menu to right-click and menu key
     tree.bind('<Button-3>', show_context_menu) # Windows/Linux
@@ -2103,6 +2115,10 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     # Bind rescan keys
     tree.bind('<F5>', lambda event: rescan_selected())
     tree.bind('r', lambda event: rescan_selected())
+
+    # Bind select all keys
+    tree.bind('<Control-a>', select_all_items)
+    tree.bind('<Command-a>', select_all_items)
 
     motion_handler(tree, None)   # Perform initial wrapping
     update_tree_columns()        # Adjust columns based on initial AI settings

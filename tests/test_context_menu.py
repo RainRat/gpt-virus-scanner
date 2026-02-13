@@ -139,7 +139,7 @@ def test_open_file_not_found(mock_tree, monkeypatch):
     gptscan.open_file()
     mock_msgbox.showwarning.assert_called_with("File Not Found", "The file 'ghost.py' could not be located.")
 
-def test_show_context_menu(mock_tree, monkeypatch):
+def test_show_context_menu_already_selected(mock_tree, monkeypatch):
     mock_event = MagicMock()
     mock_event.y = 100
     mock_event.x_root = 200
@@ -147,6 +147,23 @@ def test_show_context_menu(mock_tree, monkeypatch):
 
     mock_tree.identify_row.return_value = "item1"
     mock_tree.selection.return_value = ["item1"]
+
+    mock_menu = MagicMock()
+    monkeypatch.setattr(gptscan, 'context_menu', mock_menu, raising=False)
+
+    gptscan.show_context_menu(mock_event)
+
+    mock_tree.selection_set.assert_not_called()
+    mock_menu.post.assert_called_with(200, 300)
+
+def test_show_context_menu_new_selection(mock_tree, monkeypatch):
+    mock_event = MagicMock()
+    mock_event.y = 100
+    mock_event.x_root = 200
+    mock_event.y_root = 300
+
+    mock_tree.identify_row.return_value = "item1"
+    mock_tree.selection.side_effect = [[], ["item1"]]
 
     mock_menu = MagicMock()
     monkeypatch.setattr(gptscan, 'context_menu', mock_menu, raising=False)
@@ -183,3 +200,10 @@ def test_copy_as_markdown(mock_tree):
     args, _ = mock_tree.clipboard_append.call_args
     md = args[0]
     assert "| test.py | 80% | **Admin:** Admin<br>**User:** User | `print('hi')` |" in md
+
+def test_select_all_items(mock_tree):
+    mock_tree.get_children.return_value = ("item1", "item2", "item3")
+
+    gptscan.select_all_items()
+
+    mock_tree.selection_set.assert_called_with(("item1", "item2", "item3"))
