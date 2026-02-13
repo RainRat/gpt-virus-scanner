@@ -13,7 +13,8 @@ def test_git_not_found_or_error():
 
         # Should return empty list and handle exception gracefully
         assert files == []
-        mock_check_output.assert_called_once()
+        # Both diff and ls-files are attempted
+        assert mock_check_output.call_count == 2
 
 def test_no_changes():
     """Test when git reports no changed files."""

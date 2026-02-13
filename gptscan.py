@@ -461,8 +461,9 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
 def get_git_changed_files(path: str = ".") -> List[str]:
     """Get a list of changed files (staged, unstaged, untracked) from git."""
     files = set()
+
+    # Changed (staged and unstaged) relative to HEAD
     try:
-        # Changed (staged and unstaged) relative to HEAD
         output = subprocess.check_output(
             ["git", "diff", "--name-only", "HEAD"],
             cwd=path,
@@ -470,8 +471,12 @@ def get_git_changed_files(path: str = ".") -> List[str]:
             universal_newlines=True
         )
         files.update(line.strip() for line in output.splitlines() if line.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # HEAD might not exist in a new repo, or git is missing
+        pass
 
-        # Untracked
+    # Untracked files
+    try:
         output = subprocess.check_output(
             ["git", "ls-files", "--others", "--exclude-standard"],
             cwd=path,
@@ -479,11 +484,8 @@ def get_git_changed_files(path: str = ".") -> List[str]:
             universal_newlines=True
         )
         files.update(line.strip() for line in output.splitlines() if line.strip())
-
     except (subprocess.CalledProcessError, FileNotFoundError):
-        # Git not found or not a repo, or error running git
-        # We assume the caller handles logic (e.g. "No git changes detected") based on empty result,
-        # or warns if it was explicitly requested but failed.
+        # Not a git repo or git is missing
         pass
 
     return [os.path.join(path, f) for f in files if os.path.exists(os.path.join(path, f))]
