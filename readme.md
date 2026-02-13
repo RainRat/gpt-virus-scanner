@@ -79,6 +79,7 @@ python gptscan.py
 ```
 
 *   **Select Directory:** Choose the folder you want to scan.
+*   **Filter results:** Quickly search through findings by filename, confidence level, or analysis notes.
 *   **Deep Scan:** Scan every part of the file. By default, the tool only checks the beginning and end (the first and last 1,024 bytes) to save time.
 *   **Show all files:** List every file scanned, even the safe ones.
 *   **Use AI Analysis:** Get a detailed report for suspicious files.
@@ -86,6 +87,11 @@ python gptscan.py
 *   **Import/Export Results:** Save your results to CSV, JSON, HTML, or SARIF files, or load them back later.
 
 You can sort the results by clicking the column headers.
+
+**Shortcuts:**
+*   **Ctrl+A / Cmd+A:** Select all results.
+*   **F5 / R:** Rescan selected files.
+*   **Double-click / Enter:** Open selected file.
 
 ![Scan Results](gpt-virus-scan.png)
 
