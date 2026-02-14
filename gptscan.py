@@ -29,10 +29,12 @@ all_var: Optional[tk.BooleanVar] = None
 gpt_var: Optional[tk.BooleanVar] = None
 dry_var: Optional[tk.BooleanVar] = None
 git_var: Optional[tk.BooleanVar] = None
+filter_var: Optional[tk.StringVar] = None
 tree: Optional[ttk.Treeview] = None
 scan_button: Optional[ttk.Button] = None
 cancel_button: Optional[ttk.Button] = None
 context_menu: Optional[tk.Menu] = None
+_all_results_cache: List[Tuple[Any, ...]] = []
 
 
 def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]:
@@ -589,6 +591,35 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
     tv.heading(col, command=lambda: sort_column(tv, col, not reverse))
 
 
+def _matches_filter(values: Tuple[Any, ...]) -> bool:
+    """Check if the given values match the current filter string."""
+    if not filter_var:
+        return True
+    query = filter_var.get().lower().strip()
+    if not query:
+        return True
+
+    for val in values:
+        if query in str(val).lower():
+            return True
+    return False
+
+
+def _apply_filter(*args: Any) -> None:
+    """Refresh the Treeview based on the current filter and cached results."""
+    if not tree:
+        return
+
+    items = tree.get_children()
+    if items:
+        tree.delete(*items)
+
+    for values in _all_results_cache:
+        if _matches_filter(values):
+            wrapped_values, tags = _prepare_tree_row(values)
+            tree.insert("", tk.END, values=wrapped_values, tags=tags)
+
+
 def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ...]]:
     """Prepare wrapped values and tags for a Treeview row."""
     # Preserve original values in a hidden column as a JSON string
@@ -614,15 +645,31 @@ def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ..
 
 def insert_tree_row(values: Tuple[Any, ...]) -> None:
     """Insert a row into the treeview with wrapped text and highlighting."""
-    wrapped_values, tags = _prepare_tree_row(values)
-    tree.insert("", tk.END, values=wrapped_values, tags=tags)
+    _all_results_cache.append(values)
+    if _matches_filter(values):
+        wrapped_values, tags = _prepare_tree_row(values)
+        tree.insert("", tk.END, values=wrapped_values, tags=tags)
 
 
 def update_tree_row(item_id: str, values: Tuple[Any, ...]) -> None:
     """Update an existing row in the treeview with new values."""
+    # Update cache
+    for i, old_vals in enumerate(_all_results_cache):
+        if old_vals[0] == values[0]:
+            _all_results_cache[i] = values
+            break
+
     if tree and tree.exists(item_id):
-        wrapped_values, tags = _prepare_tree_row(values)
-        tree.item(item_id, values=wrapped_values, tags=tags)
+        if _matches_filter(values):
+            wrapped_values, tags = _prepare_tree_row(values)
+            tree.item(item_id, values=wrapped_values, tags=tags)
+        else:
+            tree.delete(item_id)
+    elif tree and _matches_filter(values):
+        # If it didn't exist (hidden) but now matches, we should probably re-apply filter
+        # to show it in the right place, or just insert it.
+        # For simplicity, just refresh the whole view if it was missing but now matches.
+        _apply_filter()
 
 
 def update_tree_columns() -> None:
@@ -1594,6 +1641,8 @@ def import_results() -> None:
 
 def clear_results() -> None:
     """Clear all results from the Treeview and reset progress/status."""
+    global _all_results_cache
+    _all_results_cache = []
     if tree:
         items = tree.get_children()
         if items:
@@ -1800,11 +1849,19 @@ def show_context_menu(event: tk.Event) -> None:
     # Select the item under the mouse if the event has coordinates
     if hasattr(event, 'x') and hasattr(event, 'y'):
         iid = tree.identify_row(event.y)
-        if iid:
+        # Only change selection if the item clicked is NOT already part of a multi-selection
+        if iid and iid not in tree.selection():
             tree.selection_set(iid)
 
     if tree.selection():
         context_menu.post(event.x_root, event.y_root)
+
+
+def select_all_items(event: Optional[tk.Event] = None) -> str:
+    """Select all items currently visible in the Results Treeview."""
+    if tree:
+        tree.selection_set(tree.get_children())
+    return "break"
 
 
 def get_model_presets(provider: str) -> List[str]:
@@ -1843,7 +1900,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, tree, scan_button, cancel_button, default_font_measure
+    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, filter_var, tree, scan_button, cancel_button, default_font_measure
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -1868,7 +1925,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # Configure grid weights to ensure resizing behaves correctly
     root.columnconfigure(0, weight=1)
-    root.rowconfigure(3, weight=1)  # The row containing the Treeview (tree_frame)
+    root.rowconfigure(4, weight=1)  # The row containing the Treeview (tree_frame)
 
     # --- Input Frame ---
     input_frame = ttk.Frame(root)
@@ -2017,6 +2074,18 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, mode='determinate')
     progress_bar.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
 
+    # --- Filter Frame ---
+    filter_frame = ttk.Frame(root)
+    filter_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
+    filter_frame.columnconfigure(1, weight=1)
+
+    ttk.Label(filter_frame, text="Filter results:").grid(row=0, column=0, sticky="w", padx=(0, 5))
+    filter_var = tk.StringVar()
+    filter_entry = ttk.Entry(filter_frame, textvariable=filter_var)
+    filter_entry.grid(row=0, column=1, sticky="ew")
+    filter_entry.bind('<KeyRelease>', _apply_filter)
+    bind_hover_message(filter_entry, "Search results by any column (path, confidence, analysis, snippet).")
+
     # --- Treeview ---
     style = ttk.Style(root)
     style.configure('Scanner.Treeview', rowheight=50)
@@ -2024,7 +2093,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     # Configure tags for row highlighting
     # Note: 'alt' theme or similar might be needed for background colors to show in some environments
     tree_frame = ttk.Frame(root)
-    tree_frame.grid(row=3, column=0, sticky="nsew", padx=10, pady=5)
+    tree_frame.grid(row=4, column=0, sticky="nsew", padx=10, pady=5)
     tree_frame.columnconfigure(0, weight=1)
     tree_frame.rowconfigure(0, weight=1)
 
@@ -2065,7 +2134,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # --- Footer Frame ---
     footer_frame = ttk.Frame(root)
-    footer_frame.grid(row=4, column=0, sticky="ew", padx=10, pady=(0, 10))
+    footer_frame.grid(row=5, column=0, sticky="ew", padx=10, pady=(0, 10))
     footer_frame.columnconfigure(0, weight=1)
 
     status_label = ttk.Label(footer_frame, text="Ready", anchor="w")
@@ -2088,6 +2157,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu = tk.Menu(root, tearoff=0)
     context_menu.add_command(label="Rescan Selected", command=rescan_selected)
     context_menu.add_separator()
+    context_menu.add_command(label="Select All", command=select_all_items)
+    context_menu.add_separator()
     context_menu.add_command(label="Open File", command=open_file)
     context_menu.add_command(label="Show in Folder", command=show_in_folder)
     context_menu.add_separator()
@@ -2100,7 +2171,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<Button-2>', show_context_menu) # macOS
     tree.bind('<Menu>', show_context_menu)
 
-    # Bind rescan keys
+    # Bind selection and rescan keys
+    tree.bind('<Control-a>', select_all_items)
+    tree.bind('<Command-a>', select_all_items)
     tree.bind('<F5>', lambda event: rescan_selected())
     tree.bind('r', lambda event: rescan_selected())
 

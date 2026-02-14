@@ -153,7 +153,8 @@ def test_show_context_menu(mock_tree, monkeypatch):
 
     gptscan.show_context_menu(mock_event)
 
-    mock_tree.selection_set.assert_called_with("item1")
+    # Note: selection_set is NOT called if item1 is already in selection
+    mock_tree.selection_set.assert_not_called()
     mock_menu.post.assert_called_with(200, 300)
 
 def test_show_context_menu_no_item_no_selection(mock_tree, monkeypatch):
