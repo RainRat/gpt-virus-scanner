@@ -200,8 +200,9 @@ def update_progress(value: int) -> None:
     value : int
         Current progress count to display.
     """
-    progress_bar['value'] = value
-    root.update_idletasks()
+    if progress_bar and root:
+        progress_bar['value'] = value
+        root.update_idletasks()
 
 
 def configure_progress(max_value: int) -> None:
@@ -212,9 +213,10 @@ def configure_progress(max_value: int) -> None:
     max_value : int
         Total number of steps expected for the scan.
     """
-    progress_bar["maximum"] = max_value
-    progress_bar["value"] = 0
-    root.update_idletasks()
+    if progress_bar and root:
+        progress_bar["maximum"] = max_value
+        progress_bar["value"] = 0
+        root.update_idletasks()
 
 
 def enqueue_ui_update(func: Callable, *args: Any, **kwargs: Any) -> None:
@@ -648,7 +650,7 @@ def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ..
 def insert_tree_row(values: Tuple[Any, ...]) -> None:
     """Insert a row into the treeview with wrapped text and highlighting."""
     _all_results_cache.append(values)
-    if _matches_filter(values):
+    if tree and _matches_filter(values):
         wrapped_values, tags = _prepare_tree_row(values)
         tree.insert("", tk.END, values=wrapped_values, tags=tags)
 
@@ -699,8 +701,9 @@ def update_tree_columns() -> None:
 def set_scanning_state(is_scanning: bool) -> None:
     """Enable or disable controls based on scanning state."""
 
-    scan_button.config(state="disabled" if is_scanning else "normal")
-    cancel_button.config(state="normal" if is_scanning else "disabled")
+    if scan_button and cancel_button:
+        scan_button.config(state="disabled" if is_scanning else "normal")
+        cancel_button.config(state="normal" if is_scanning else "disabled")
 
 
 def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Optional[int] = None, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None) -> None:
