@@ -1,15 +1,15 @@
-# Neural Network Binary Classifier
+# Training the Local Scanner
 
-A refactored binary file classifier using genetic algorithm optimization for hyperparameter tuning.
+This tool trains the local "brain" (the file classifier) used by the GPT Virus Scanner. It learns to recognize the difference between safe and malicious files by studying many examples.
 
 ## Features
 
-- YAML-based configuration
-- Genetic algorithm for hyperparameter optimization
-- Command-line interface with flexible options
-- Support for binary file classification
-- Automatic model checkpointing
-- Custom padding logic for variable-length files
+- **Simple settings:** Uses easy-to-read YAML files for configuration.
+- **Smart optimization:** Automatically tries different settings to find the best way to detect threats.
+- **Easy to use:** Run everything from your terminal with simple commands.
+- **Broad support:** Analyzes many different types of files.
+- **Automatic saving:** Keeps your progress safe by saving the best models as it finds them.
+- **Flexible:** Handles files of any size automatically.
 
 ## Installation
 
@@ -125,45 +125,45 @@ python train.py --config config.yml \
 ## Output Files
 
 **Training mode produces:**
-- `{model_name}.h5` - Trained Keras model
-- `{model_name}_best_hp.yml` - Best hyperparameters found
+- `{model_name}.h5` - The trained "brain" (detection model).
+- `{model_name}_best_hp.yml` - The best settings found during training.
 
 **Prediction mode produces:**
-- Copies of high-confidence files to the output directory
-- Console output showing filename and confidence score
+- Copies of suspicious files (those with high threat scores) to your output folder.
+- Terminal output showing each filename and its threat score.
 
 ## How It Works
 
-### Training
+### Training Process
 
-1. Loads positive and negative examples from specified directories
-2. Applies custom padding logic:
-   - Files shorter than max_length are padded with pad_value (default: 13)
-   - Files longer than max_length are split: first half + last half
-3. Starts with initial hyperparameters from config
-4. Uses genetic algorithm to optimize:
-   - Mutates 2 random hyperparameters each iteration
-   - Keeps best model based on validation loss
-   - Saves improved models automatically
-5. Runs indefinitely until manually stopped (Ctrl+C)
+1. **Gathers Examples:** The script looks at your folders of "safe" and "malicious" files.
+2. **Prepares Data:** It converts the files into a standard format.
+   - If a file is too small, it adds extra data to reach the required size.
+   - If a file is too large, it takes parts from the beginning and the end.
+3. **Tests Settings:** It starts with the settings you provided.
+4. **Improves Automatically:** The script constantly tries new combinations of settings.
+   - It changes two random settings at a time to see if the results get better.
+   - If a new combination is more accurate, it becomes the new standard.
+   - It saves the best version of the model automatically.
+5. **Continuous Learning:** The process continues until you stop it manually (by pressing `Ctrl+C`).
 
-### Prediction
+### Prediction Process
 
-1. Loads trained model
-2. Processes files from input directory
-3. Predicts probability for each file
-4. Copies files exceeding threshold to output directory
+1. **Loads the Brain:** The script loads your trained model.
+2. **Scans New Files:** It looks at all files in your input folder.
+3. **Assigns Scores:** It calculates how likely each file is to be malicious.
+4. **Filters Results:** Any file that crosses your "threat" threshold is copied to the output folder for you to review.
 
-## Hyperparameter Optimization
+## Automatic Setting Optimization
 
-The genetic algorithm mutates these parameters:
+The script automatically tries different ways to build and train the model:
 
-- **Architecture**: Embedding size, RNN type (LSTM/GRU/Bidirectional), pooling strategy
-- **Regularization**: Dropout rates, spatial dropout
-- **Convolution**: Optional Conv1D layer with varying filters and kernel sizes
-- **Training**: Optimizer selection, kernel initializers
+- **Structure:** How the "brain" is organized and how much it can remember.
+- **Learning Style:** How it learns from its mistakes and how it processes information.
+- **Special Layers:** Optional parts that can help it see patterns in the data more clearly.
+- **Training Method:** The specific mathematical approaches used to improve the model's accuracy.
 
-Each parameter is normalized to [0, 1] and mapped to specific values. See `config.yml` for detailed mappings.
+The script uses numbers between 0 and 1 to represent these settings. You can find the full list of how these numbers are used in `config.yml`.
 
 ## Tips
 
