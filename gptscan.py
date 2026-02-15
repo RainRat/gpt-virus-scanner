@@ -520,7 +520,7 @@ def get_git_changed_files(path: str = ".") -> List[str]:
     # Changed (staged and unstaged) relative to HEAD
     try:
         output = subprocess.check_output(
-            ["git", "diff", "--name-only", "HEAD"],
+            ["git", "diff", "--name-only", "HEAD", "--relative"],
             cwd=path,
             stderr=subprocess.PIPE,
             universal_newlines=True
@@ -533,7 +533,7 @@ def get_git_changed_files(path: str = ".") -> List[str]:
     # Untracked files
     try:
         output = subprocess.check_output(
-            ["git", "ls-files", "--others", "--exclude-standard"],
+            ["git", "ls-files", "--others", "--exclude-standard", "--relative"],
             cwd=path,
             stderr=subprocess.PIPE,
             universal_newlines=True
