@@ -65,7 +65,7 @@ python gptscan.py ./my_scripts --cli --json
 You can customize the scanner using these optional files in the same folder:
 
 *   **`apikey.txt`**: Your API key for OpenAI or OpenRouter.
-*   **`extensions.txt`**: A list of file extensions to scan (e.g., `.py`, one per line). If missing, the tool defaults to `.py`, `.js`, `.bat`, and `.ps1`.
+*   **`extensions.txt`**: A list of file extensions to scan (e.g., `.py`, one per line). If missing, the tool defaults to `.py`, `.js`, `.bat`, and `.ps1`. **Note:** The tool also automatically detects and scans script files without extensions (or with unknown extensions) if they contain a valid "shebang" line (like `#!/usr/bin/python`).
 *   **`.gptscanignore`**: Patterns of files or folders to skip (like a `.gitignore` file).
 *   **`task.txt`**: The instructions given to the AI for its analysis.
 

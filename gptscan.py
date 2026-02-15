@@ -127,6 +127,43 @@ class Config:
                 if line.strip() and not line.strip().startswith('#')
             ]
 
+    @classmethod
+    def is_supported_file(cls, file_path: Path, is_explicit: bool = False) -> bool:
+        """Check if a file should be scanned based on extension, content or explicit request.
+
+        Args:
+            file_path: The path to the file to check.
+            is_explicit: Whether the file was specifically requested by the user.
+
+        Returns:
+            True if the file matches a known extension, has a script shebang,
+            or was explicitly requested.
+        """
+        if is_explicit:
+            return True
+
+        extension = file_path.suffix.lower()
+        if extension in cls.extensions_set:
+            return True
+
+        # Check shebang for files without recognized extension
+        try:
+            # Avoid checking very large files for shebangs if they aren't scripts
+            # but usually reading just the first line is safe.
+            with open(file_path, 'rb') as f:
+                header = f.read(2)
+                if header == b'#!':
+                    # It has a shebang! Read the rest of the first line.
+                    first_line = f.readline(126).decode('utf-8', errors='ignore').lower()
+                    # Common interpreters for supported or similar script types
+                    interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php']
+                    if any(interp in first_line for interp in interpreters):
+                        return True
+        except (OSError, UnicodeDecodeError):
+            pass
+
+        return False
+
 
 Config.initialize()
 
@@ -921,6 +958,13 @@ def scan_files(
             prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
             return float(prediction), bytes(padded_data)
 
+    # Identify which files were explicitly passed as targets
+    if isinstance(scan_targets, (str, Path)):
+        explicit_targets = {Path(scan_targets)}
+    else:
+        explicit_targets = {Path(t) for t in scan_targets}
+    explicit_files = {f for f in explicit_targets if f.is_file()}
+
     file_list = collect_files(scan_targets)
 
     if exclude_patterns:
@@ -944,8 +988,8 @@ def scan_files(
         progress_count = index + 1
         yield ('progress', (progress_count, total_progress, f"Scanning: {file_path.name}"))
 
-        extension = file_path.suffix.lower()
-        if extension in Config.extensions_set:
+        is_explicit = file_path in explicit_files
+        if Config.is_supported_file(file_path, is_explicit=is_explicit):
             if dry_run:
                 yield (
                     'result',
