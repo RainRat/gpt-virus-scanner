@@ -1715,6 +1715,34 @@ def clear_results() -> None:
     update_status("Ready")
 
 
+def _get_tree_results_as_dicts(item_ids: Iterable[str]) -> List[Dict[str, Any]]:
+    """Extract raw results from the given Treeview item IDs as a list of dictionaries."""
+    if not tree:
+        return []
+
+    columns = tree["columns"][:6]
+    results = []
+    for item_id in item_ids:
+        item_data = tree.item(item_id)
+        if not isinstance(item_data, dict):
+            continue
+        values = list(item_data.get("values", []))
+        if len(values) > 6 and values[6]:
+            try:
+                # Use preserved original values if available
+                orig_values = json.loads(values[6])
+                results.append(dict(zip(columns, orig_values)))
+            except json.JSONDecodeError:
+                # Fallback (and unwrap display newlines)
+                unwrapped = [str(v).replace('\n', ' ') for v in values[:6]]
+                results.append(dict(zip(columns, unwrapped)))
+        else:
+            # Fallback (and unwrap display newlines)
+            unwrapped = [str(v).replace('\n', ' ') for v in values[:6]]
+            results.append(dict(zip(columns, unwrapped)))
+    return results
+
+
 def export_results() -> None:
     """Save the current Treeview contents to a file chosen by the user.
 
@@ -1743,20 +1771,7 @@ def export_results() -> None:
     if not file_path:
         return
 
-    # Collect data from Treeview using the hidden raw data column to preserve integrity
-    columns = tree["columns"][:6] # Only first 6 are data columns
-    results = []
-    for item_id in tree.get_children():
-        values = list(tree.item(item_id)["values"])
-        if len(values) > 6 and values[6]:
-            # Use preserved original values if available
-            orig_values = json.loads(values[6])
-            results.append(dict(zip(columns, orig_values)))
-        else:
-            # Fallback (and unwrap display newlines)
-            unwrapped = [str(v).replace('\n', ' ') for v in values[:6]]
-            results.append(dict(zip(columns, unwrapped)))
-
+    results = _get_tree_results_as_dicts(tree.get_children())
     ext = os.path.splitext(file_path)[1].lower()
 
     try:
@@ -1764,19 +1779,8 @@ def export_results() -> None:
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(results, f, indent=2)
         elif ext == '.html':
-            # Need to map keys for generate_html
-            mapped_results = []
-            for r in results:
-                mapped_results.append({
-                    "path": r["path"],
-                    "own_conf": r["own_conf"],
-                    "admin_desc": r["admin_desc"],
-                    "end-user_desc": r["end-user_desc"],
-                    "gpt_conf": r["gpt_conf"],
-                    "snippet": r["snippet"]
-                })
             with open(file_path, "w", encoding="utf-8") as f:
-                f.write(generate_html(mapped_results))
+                f.write(generate_html(results))
         elif ext == '.sarif':
             sarif_log = generate_sarif(results)
             with open(file_path, "w", encoding="utf-8") as f:
@@ -1787,6 +1791,7 @@ def export_results() -> None:
         else: # Default to CSV
             with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
                 writer = csv.writer(csv_file)
+                columns = tree["columns"][:6]
                 writer.writerow(columns)
                 for r in results:
                     writer.writerow([r[col] for col in columns])
@@ -1867,16 +1872,7 @@ def copy_as_markdown() -> None:
     if not selection:
         return
 
-    columns = tree["columns"][:6]
-    results = []
-    for item_id in selection:
-        values = list(tree.item(item_id, "values"))
-        if len(values) > 6 and values[6]:
-            orig_values = json.loads(values[6])
-            results.append(dict(zip(columns, orig_values)))
-        else:
-            unwrapped = [str(v).replace('\n', ' ') for v in values[:6]]
-            results.append(dict(zip(columns, unwrapped)))
+    results = _get_tree_results_as_dicts(selection)
 
     md = generate_markdown(results)
     tree.clipboard_clear()
