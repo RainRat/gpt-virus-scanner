@@ -78,7 +78,7 @@ Run the script to open the window:
 python gptscan.py
 ```
 
-*   **Select Directory:** Choose the folder you want to scan.
+*   **Select File/Folder:** Choose the specific script or folder you want to scan.
 *   **Filter results:** Quickly search through findings by filename, confidence level, or analysis notes.
 *   **Deep Scan:** Scan every part of the file. By default, the tool only checks the beginning and end (the first and last 1,024 bytes) to save time.
 *   **Show all files:** List every file scanned, even the safe ones.

@@ -308,18 +308,32 @@ def bind_hover_message(widget: tk.Widget, message: str) -> None:
     widget.bind("<Leave>", on_leave)
 
 
-def browse_button_click() -> None:
-    """Handle the directory selection dialog and populate the textbox.
-
-    Returns
-    -------
-    None
-        The selected folder path is written into the GUI textbox.
-    """
+def browse_dir_click() -> None:
+    """Handle the directory selection dialog and populate the textbox."""
     folder_selected = tkinter.filedialog.askdirectory()
     if folder_selected:
         textbox.delete(0, tk.END)
         textbox.insert(0, folder_selected)
+        if scan_button:
+            scan_button.focus_set()
+
+
+def browse_file_click() -> None:
+    """Handle the file selection dialog and populate the textbox."""
+    ext_list = sorted(Config.extensions_set) if Config.extensions_set else Config.DEFAULT_EXTENSIONS
+    file_types = [
+        ("Script files", ";".join([f"*{e}" for e in ext_list])),
+        ("All files", "*.*")
+    ]
+    file_selected = tkinter.filedialog.askopenfilename(
+        title="Select File to Scan",
+        filetypes=file_types
+    )
+    if file_selected:
+        textbox.delete(0, tk.END)
+        textbox.insert(0, file_selected)
+        if scan_button:
+            scan_button.focus_set()
 
 
 class AsyncRateLimiter:
@@ -786,7 +800,7 @@ def button_click() -> None:
 
     scan_path = textbox.get()
     if not scan_path:
-        messagebox.showerror("Scan Error", "Please select a directory to scan.")
+        messagebox.showerror("Scan Error", "Please select a file or folder to scan.")
         return
 
     scan_targets: Union[str, List[str]] = scan_path
@@ -1995,16 +2009,20 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     root.bind('<Return>', on_root_return)
     root.bind('<Escape>', lambda event: cancel_scan())
-    select_dir_btn = ttk.Button(input_frame, text="Select Directory...", command=browse_button_click)
-    select_dir_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
-    bind_hover_message(select_dir_btn, "Browse for a directory to scan.")
+    select_file_btn = ttk.Button(input_frame, text="File...", command=browse_file_click)
+    select_file_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
+    bind_hover_message(select_file_btn, "Select a single script file to scan.")
+
+    select_dir_btn = ttk.Button(input_frame, text="Folder...", command=browse_dir_click)
+    select_dir_btn.grid(row=0, column=3, sticky="e", padx=(5, 0))
+    bind_hover_message(select_dir_btn, "Select a directory to scan.")
 
     scan_button = ttk.Button(input_frame, text="Scan now", command=button_click, default='active')
-    scan_button.grid(row=0, column=3, sticky="e", padx=(5, 0))
+    scan_button.grid(row=0, column=4, sticky="e", padx=(5, 0))
     bind_hover_message(scan_button, "Start the scan.")
 
     cancel_button = ttk.Button(input_frame, text="Cancel", command=cancel_scan, state="disabled")
-    cancel_button.grid(row=0, column=4, sticky="e", padx=(5, 0))
+    cancel_button.grid(row=0, column=5, sticky="e", padx=(5, 0))
     bind_hover_message(cancel_button, "Stop the current scan.")
 
     # --- Settings Container ---

@@ -4,36 +4,65 @@ import pytest
 import gptscan
 import tkinter.filedialog
 
-def test_browse_button_click_cancels_does_not_clear_textbox(monkeypatch):
+def test_browse_dir_click_cancels_does_not_clear_textbox(monkeypatch):
     # Setup mocks
     mock_textbox = MagicMock()
     monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
+    monkeypatch.setattr(gptscan, 'scan_button', MagicMock(), raising=False)
 
     # Mock askdirectory to return empty string (cancellation)
     monkeypatch.setattr(gptscan.tkinter.filedialog, 'askdirectory', lambda: '')
 
     # Call function
-    gptscan.browse_button_click()
+    gptscan.browse_dir_click()
 
     # Assert
     mock_textbox.delete.assert_not_called()
     mock_textbox.insert.assert_not_called()
 
-def test_browse_button_click_selects_folder_updates_textbox(monkeypatch):
+def test_browse_dir_click_selects_folder_updates_textbox(monkeypatch):
     # Setup mocks
     mock_textbox = MagicMock()
     monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
+    mock_scan_button = MagicMock()
+    monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
 
     # Mock askdirectory to return a path
     monkeypatch.setattr(gptscan.tkinter.filedialog, 'askdirectory', lambda: '/path/to/folder')
 
     # Call function
-    gptscan.browse_button_click()
+    gptscan.browse_dir_click()
 
     # Assert
     # We expect delete(0, END) and insert(0, path)
     mock_textbox.delete.assert_called_with(0, gptscan.tk.END)
     mock_textbox.insert.assert_called_with(0, '/path/to/folder')
+    mock_scan_button.focus_set.assert_called_once()
+
+def test_browse_file_click_cancels(monkeypatch):
+    mock_textbox = MagicMock()
+    monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
+    monkeypatch.setattr(gptscan, 'scan_button', MagicMock(), raising=False)
+
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'askopenfilename', lambda **kwargs: '')
+
+    gptscan.browse_file_click()
+
+    mock_textbox.delete.assert_not_called()
+
+def test_browse_file_click_selects_file(monkeypatch):
+    mock_textbox = MagicMock()
+    monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
+    mock_scan_button = MagicMock()
+    monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
+
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'askopenfilename', lambda **kwargs: '/path/to/file.py')
+
+    gptscan.browse_file_click()
+
+    mock_textbox.delete.assert_called_with(0, gptscan.tk.END)
+    mock_textbox.insert.assert_called_with(0, '/path/to/file.py')
+    mock_scan_button.focus_set.assert_called_once()
 
 def test_set_scanning_state_updates_buttons(monkeypatch):
     # Setup mocks
@@ -102,7 +131,7 @@ def test_button_click_validation_failure(monkeypatch):
 
     gptscan.button_click()
 
-    mock_msgbox.showerror.assert_called_with("Scan Error", "Please select a directory to scan.")
+    mock_msgbox.showerror.assert_called_with("Scan Error", "Please select a file or folder to scan.")
 
 def test_button_click_missing_model(monkeypatch):
     mock_textbox = MagicMock()
