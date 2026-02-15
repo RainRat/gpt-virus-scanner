@@ -89,4 +89,4 @@ def test_version_flag(monkeypatch, capsys):
 
     assert e.value.code == 0
     captured = capsys.readouterr()
-    assert "1.1.0" in captured.out or "1.1.0" in captured.err
+    assert gptscan.Config.VERSION in captured.out or gptscan.Config.VERSION in captured.err

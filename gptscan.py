@@ -60,7 +60,7 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
 
 class Config:
     """Global configuration settings for the scanner."""
-    VERSION = "1.1.0"
+    VERSION = "1.2.0"
     MAXLEN = 1024
     EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
     MAX_RETRIES = 3
@@ -882,6 +882,79 @@ def rescan_selected() -> None:
         daemon=True
     )
     scan_thread.start()
+
+
+def exclude_selected() -> None:
+    """Exclude selected files from future scans by adding them to .gptscanignore."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    # Ask for confirmation
+    if not messagebox.askyesno("Exclude from Scan",
+                                f"Are you sure you want to exclude {len(selection)} selected item(s) from future scans?\n"
+                                "This will add them to your .gptscanignore file."):
+        return
+
+    excluded_paths = []
+    for item_id in selection:
+        values = tree.item(item_id, "values")
+        if values:
+            # Use original path from hidden column or fallback
+            if len(values) > 6 and values[6]:
+                try:
+                    orig_values = json.loads(values[6])
+                    path = orig_values[0]
+                except (json.JSONDecodeError, IndexError):
+                    path = str(values[0]).replace('\n', '')
+            else:
+                path = str(values[0]).replace('\n', '')
+
+            excluded_paths.append(path)
+
+    if not excluded_paths:
+        return
+
+    try:
+        # Update .gptscanignore
+        ignore_file = Path('.gptscanignore')
+        with open(ignore_file, 'a', encoding='utf-8') as f:
+            # Add a newline if file is not empty and doesn't end with one
+            if ignore_file.exists() and ignore_file.stat().st_size > 0:
+                with open(ignore_file, 'r', encoding='utf-8') as fr:
+                    content = fr.read()
+                    if content and not content.endswith('\n'):
+                        f.write('\n')
+
+            for path in excluded_paths:
+                # Use relative path if possible for cleaner ignore patterns
+                try:
+                    rel_path = os.path.relpath(path, os.getcwd())
+                    # If it's outside CWD, it might return something like ../...
+                    # but match() handles it.
+                    f.write(f"{rel_path}\n")
+                    if rel_path not in Config.ignore_patterns:
+                        Config.ignore_patterns.append(rel_path)
+                except ValueError:
+                    # Fallback to absolute if relpath fails (e.g. different drives on Windows)
+                    f.write(f"{path}\n")
+                    if path not in Config.ignore_patterns:
+                        Config.ignore_patterns.append(path)
+
+        # Update cache and refresh view
+        global _all_results_cache
+        for path in excluded_paths:
+            # Remove from cache
+            _all_results_cache = [v for v in _all_results_cache if v[0] != path]
+
+        _apply_filter()
+        update_status(f"Excluded {len(excluded_paths)} file(s).")
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not update .gptscanignore: {e}")
 
 
 def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
@@ -2223,6 +2296,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     global context_menu
     context_menu = tk.Menu(root, tearoff=0)
     context_menu.add_command(label="Rescan Selected", command=rescan_selected)
+    context_menu.add_command(label="Exclude from future scans", command=exclude_selected)
     context_menu.add_separator()
     context_menu.add_command(label="Select All", command=select_all_items)
     context_menu.add_separator()
