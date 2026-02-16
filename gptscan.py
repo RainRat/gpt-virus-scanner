@@ -310,14 +310,19 @@ def bind_hover_message(widget: tk.Widget, message: str) -> None:
     widget.bind("<Leave>", on_leave)
 
 
+def _set_scan_target(path: str) -> None:
+    """Update the scan target textbox and set focus to the scan button."""
+    if path and textbox:
+        textbox.delete(0, tk.END)
+        textbox.insert(0, path)
+        if scan_button:
+            scan_button.focus_set()
+
+
 def browse_dir_click() -> None:
     """Handle the directory selection dialog and populate the textbox."""
     folder_selected = tkinter.filedialog.askdirectory()
-    if folder_selected:
-        textbox.delete(0, tk.END)
-        textbox.insert(0, folder_selected)
-        if scan_button:
-            scan_button.focus_set()
+    _set_scan_target(folder_selected)
 
 
 def browse_file_click() -> None:
@@ -331,11 +336,7 @@ def browse_file_click() -> None:
         title="Select File to Scan",
         filetypes=file_types
     )
-    if file_selected:
-        textbox.delete(0, tk.END)
-        textbox.insert(0, file_selected)
-        if scan_button:
-            scan_button.focus_set()
+    _set_scan_target(file_selected)
 
 
 class AsyncRateLimiter:
