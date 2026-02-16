@@ -2226,6 +2226,14 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     filter_entry.bind('<KeyRelease>', _apply_filter)
     bind_hover_message(filter_entry, "Search results by any column (path, confidence, analysis, snippet).")
 
+    def clear_filter():
+        filter_var.set("")
+        _apply_filter()
+
+    clear_filter_btn = ttk.Button(filter_frame, text="Clear", width=8, command=clear_filter)
+    clear_filter_btn.grid(row=0, column=2, padx=(5, 0))
+    bind_hover_message(clear_filter_btn, "Clear the filter and show all results.")
+
     # --- Treeview ---
     style = ttk.Style(root)
     style.configure('Scanner.Treeview', rowheight=50)
