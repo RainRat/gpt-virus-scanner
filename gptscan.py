@@ -35,6 +35,7 @@ scan_button: Optional[ttk.Button] = None
 cancel_button: Optional[ttk.Button] = None
 context_menu: Optional[tk.Menu] = None
 _all_results_cache: List[Tuple[Any, ...]] = []
+_last_scan_summary: str = ""
 
 
 def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]:
@@ -669,10 +670,22 @@ def _apply_filter(*args: Any) -> None:
     if items:
         tree.delete(*items)
 
+    match_count = 0
     for values in _all_results_cache:
         if _matches_filter(values):
+            match_count += 1
             wrapped_values, tags = _prepare_tree_row(values)
             tree.insert("", tk.END, values=wrapped_values, tags=tags)
+
+    # Update status label with filtered count if not currently scanning
+    if current_cancel_event is None:
+        query = filter_var.get().strip() if filter_var else ""
+        if query:
+            update_status(f"Showing {match_count} of {len(_all_results_cache)} results matching '{query}'")
+        elif _last_scan_summary:
+            update_status(_last_scan_summary)
+        else:
+            update_status("Ready")
 
 
 def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ...]]:
@@ -778,6 +791,8 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
 
     if total_scanned is not None and threats_found is not None:
         summary = format_scan_summary(total_scanned, threats_found, total_bytes, elapsed_time)
+        global _last_scan_summary
+        _last_scan_summary = summary
         update_status(summary)
     else:
         update_status("Ready")
@@ -1768,7 +1783,10 @@ def import_results() -> None:
             insert_tree_row(tuple(values))
             count += 1
 
-        update_status(f"Imported {count} results from {os.path.basename(file_path)}")
+        msg = f"Imported {count} results from {os.path.basename(file_path)}"
+        global _last_scan_summary
+        _last_scan_summary = msg
+        update_status(msg)
         update_tree_columns()
 
     except Exception as err:
@@ -1777,8 +1795,9 @@ def import_results() -> None:
 
 def clear_results() -> None:
     """Clear all results from the Treeview and reset progress/status."""
-    global _all_results_cache
+    global _all_results_cache, _last_scan_summary
     _all_results_cache = []
+    _last_scan_summary = ""
     if tree:
         items = tree.get_children()
         if items:
