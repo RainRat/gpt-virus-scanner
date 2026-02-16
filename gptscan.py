@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 from collections import deque
+import tkinter.scrolledtext as scrolledtext
 from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Deque, Dict, Generator, Iterable, List, Optional, Tuple, Union
@@ -60,7 +61,7 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
 
 class Config:
     """Global configuration settings for the scanner."""
-    VERSION = "1.2.0"
+    VERSION = "1.3.0"
     MAXLEN = 1024
     EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
     MAX_RETRIES = 3
@@ -1894,6 +1895,102 @@ def _get_selected_row_values() -> Optional[List[Any]]:
     return values
 
 
+def view_details(event: Optional[tk.Event] = None) -> None:
+    """Open a detailed view of the selected scan result."""
+    values = _get_selected_row_values()
+    if not values:
+        return
+
+    # values: (path, own_conf, admin, user, gpt_conf, snippet)
+    path = values[0]
+    own_conf = values[1]
+    admin = values[2]
+    user = values[3]
+    gpt_conf = values[4]
+    snippet = values[5]
+
+    details_win = tk.Toplevel(root)
+    details_win.title(f"Result Details - {os.path.basename(path)}")
+    details_win.geometry("700x600")
+    details_win.minsize(500, 400)
+
+    # Make it modal-ish but not blocking
+    details_win.transient(root)
+
+    main_frame = ttk.Frame(details_win, padding=10)
+    main_frame.pack(fill=tk.BOTH, expand=True)
+
+    # Header: Path and Confidence
+    header_frame = ttk.Frame(main_frame)
+    header_frame.pack(fill=tk.X, pady=(0, 10))
+
+    ttk.Label(header_frame, text="File Path:", font=('TkDefaultFont', 9, 'bold')).grid(row=0, column=0, sticky="w")
+    path_entry = ttk.Entry(header_frame)
+    path_entry.insert(0, path)
+    path_entry.config(state='readonly')
+    path_entry.grid(row=0, column=1, sticky="ew", padx=(5, 0))
+    header_frame.columnconfigure(1, weight=1)
+
+    conf_frame = ttk.Frame(header_frame)
+    conf_frame.grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
+
+    ttk.Label(conf_frame, text="Local Confidence:").grid(row=0, column=0, sticky="w")
+    ttk.Label(conf_frame, text=own_conf, font=('TkDefaultFont', 9, 'bold')).grid(row=0, column=1, sticky="w", padx=(5, 20))
+
+    if gpt_conf:
+        ttk.Label(conf_frame, text="AI Confidence:").grid(row=0, column=2, sticky="w")
+        ttk.Label(conf_frame, text=gpt_conf, font=('TkDefaultFont', 9, 'bold')).grid(row=0, column=3, sticky="w", padx=(5, 0))
+
+    # Analysis sections
+    if admin or user:
+        analysis_frame = ttk.LabelFrame(main_frame, text="AI Analysis", padding=5)
+        analysis_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+
+        if admin:
+            ttk.Label(analysis_frame, text="Administrator Notes:", font=('TkDefaultFont', 9, 'bold')).pack(anchor="w")
+            admin_text = scrolledtext.ScrolledText(analysis_frame, height=5, wrap=tk.WORD)
+            admin_text.insert(tk.END, admin)
+            admin_text.config(state='disabled')
+            admin_text.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
+
+        if user:
+            ttk.Label(analysis_frame, text="End-User Notes:", font=('TkDefaultFont', 9, 'bold')).pack(anchor="w")
+            user_text = scrolledtext.ScrolledText(analysis_frame, height=5, wrap=tk.WORD)
+            user_text.insert(tk.END, user)
+            user_text.config(state='disabled')
+            user_text.pack(fill=tk.BOTH, expand=True)
+
+    # Snippet section
+    snippet_frame = ttk.LabelFrame(main_frame, text="Code Snippet", padding=5)
+    snippet_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+
+    snippet_text = scrolledtext.ScrolledText(snippet_frame, height=8, font=('Courier', 10), wrap=tk.NONE)
+    snippet_text.insert(tk.END, snippet)
+    snippet_text.config(state='disabled')
+    snippet_text.pack(fill=tk.BOTH, expand=True)
+
+    # Footer buttons
+    btn_frame = ttk.Frame(main_frame)
+    btn_frame.pack(fill=tk.X, pady=(10, 0))
+
+    def copy_analysis():
+        text = f"Path: {path}\nLocal Conf: {own_conf}\n"
+        if gpt_conf:
+            text += f"AI Conf: {gpt_conf}\n"
+        if admin:
+            text += f"\nAdmin Notes:\n{admin}\n"
+        if user:
+            text += f"\nUser Notes:\n{user}\n"
+        text += f"\nSnippet:\n{snippet}"
+        root.clipboard_clear()
+        root.clipboard_append(text)
+        messagebox.showinfo("Copied", "Detailed analysis copied to clipboard.")
+
+    ttk.Button(btn_frame, text="Open File", command=open_file).pack(side=tk.LEFT, padx=5)
+    ttk.Button(btn_frame, text="Copy Analysis", command=copy_analysis).pack(side=tk.LEFT, padx=5)
+    ttk.Button(btn_frame, text="Close", command=details_win.destroy).pack(side=tk.RIGHT, padx=5)
+
+
 def open_file(event: Optional[tk.Event] = None) -> None:
     """Open the selected file in the system's default application."""
     values = _get_selected_row_values()
@@ -2284,21 +2381,27 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     status_label = ttk.Label(footer_frame, text="Ready", anchor="w")
     status_label.grid(row=0, column=0, sticky="ew")
 
+    view_button = ttk.Button(footer_frame, text="View Details...", command=view_details)
+    view_button.grid(row=0, column=1, padx=2)
+    bind_hover_message(view_button, "Show full analysis and code for the selected result.")
+
     import_button = ttk.Button(footer_frame, text="Import Results...", command=import_results)
-    import_button.grid(row=0, column=1, padx=2)
+    import_button.grid(row=0, column=2, padx=2)
     bind_hover_message(import_button, "Load results from a JSON or CSV file.")
 
     export_button = ttk.Button(footer_frame, text="Export Results...", command=export_results)
-    export_button.grid(row=0, column=2, padx=2)
+    export_button.grid(row=0, column=3, padx=2)
     bind_hover_message(export_button, "Save results to CSV, HTML, JSON, or SARIF.")
 
     clear_button = ttk.Button(footer_frame, text="Clear Results", command=clear_results)
-    clear_button.grid(row=0, column=3, padx=(2, 0))
+    clear_button.grid(row=0, column=4, padx=(2, 0))
     bind_hover_message(clear_button, "Clear all results from the list.")
 
     # --- Context Menu ---
     global context_menu
     context_menu = tk.Menu(root, tearoff=0)
+    context_menu.add_command(label="View Details...", command=view_details)
+    context_menu.add_separator()
     context_menu.add_command(label="Rescan Selected", command=rescan_selected)
     context_menu.add_command(label="Exclude from future scans", command=exclude_selected)
     context_menu.add_separator()
@@ -2319,6 +2422,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     # Bind selection and rescan keys
     tree.bind('<Control-a>', select_all_items)
     tree.bind('<Command-a>', select_all_items)
+    tree.bind('<space>', view_details)
     tree.bind('<F5>', lambda event: rescan_selected())
     tree.bind('r', lambda event: rescan_selected())
 
