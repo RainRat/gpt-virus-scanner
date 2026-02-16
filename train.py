@@ -36,7 +36,7 @@ class ModelConfig:
 
 @dataclass
 class Hyperparameters:
-    """Hyperparameters for neural network architecture."""
+    """Settings that control how the AI 'brain' is built and trained."""
     embedding_scale: float
     rnn_scale: float
     pooling_type: float

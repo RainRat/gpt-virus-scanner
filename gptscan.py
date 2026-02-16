@@ -80,13 +80,13 @@ class Config:
     DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1']
 
     apikey_missing_message = (
-        "Note: No API key found. AI Analysis (OpenAI/OpenRouter) requires one, but local AI (Ollama) works without it."
+        "No API key found. AI analysis with OpenAI or OpenRouter is disabled, but local scans and Ollama still work."
     )
     task_missing_message = (
-        "Task file missing. AI analysis will be skipped."
+        "The 'task.txt' file is missing. AI analysis will be skipped."
     )
     extensions_missing_message = (
-        f"Extensions file missing. Using defaults: {', '.join(DEFAULT_EXTENSIONS)}"
+        f"The 'extensions.txt' file is missing. Using default types: {', '.join(DEFAULT_EXTENSIONS)}"
     )
 
     @classmethod
@@ -2352,8 +2352,8 @@ def main():
 
     scan_group = parser.add_argument_group("Scan Options")
     scan_group.add_argument('--path', type=str, help='An alternative way to specify the scan target.')
-    scan_group.add_argument('--deep', action='store_true', help='Scan the entire file. By default, only the start and end are checked for speed.')
-    scan_group.add_argument('--dry-run', action='store_true', help='List files that would be scanned without actually analyzing them.')
+    scan_group.add_argument('--deep', action='store_true', help='Scan every part of the file. By default, it only checks the first and last 1,024 bytes.')
+    scan_group.add_argument('--dry-run', action='store_true', help='Show which files would be scanned without analyzing them.')
     scan_group.add_argument(
         '--extensions',
         type=str,
@@ -2377,7 +2377,7 @@ def main():
     scan_group.add_argument(
         '--fail-threshold',
         type=int,
-        help='Exit with an error code if any file meets this threat level or higher (0-100).'
+        help='Stop with an error if any file meets this threat level or higher (0-100).'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
