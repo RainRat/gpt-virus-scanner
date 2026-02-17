@@ -37,7 +37,7 @@ def test_run_scan_basic_flow(monkeypatch):
     assert calls[4][0][1] == 1
 
     assert calls[5][0][0] == gptscan.update_status
-    assert calls[5][0][1] == "Scanning: 1/1"
+    assert calls[5][0][1] == "Scanning: 1/1 (1 suspicious found)"
 
     assert calls[6][0][0] == gptscan.finish_scan_state
     assert calls[6][0][1] == 1
