@@ -158,7 +158,7 @@ class Config:
                     # It has a shebang! Read the rest of the first line.
                     first_line = f.readline(126).decode('utf-8', errors='ignore').lower()
                     # Common interpreters for supported or similar script types
-                    interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php']
+                    interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell']
                     if any(interp in first_line for interp in interpreters):
                         return True
         except (OSError, UnicodeDecodeError):
@@ -1583,9 +1583,11 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         conf_str = gpt_conf or own_conf
         analysis = ""
         if admin:
-            analysis += f"**Admin:** {admin.replace('|', '\\|')}<br>"
+            admin_esc = admin.replace('|', '\\|')
+            analysis += f"**Admin:** {admin_esc}<br>"
         if user:
-            analysis += f"**User:** {user.replace('|', '\\|')}"
+            user_esc = user.replace('|', '\\|')
+            analysis += f"**User:** {user_esc}"
 
         # Clean up snippet for markdown table (one line, escaped)
         clean_snippet = snippet.replace("\n", " ").replace("|", "\\|")

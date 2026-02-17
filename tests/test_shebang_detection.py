@@ -52,6 +52,15 @@ def test_is_supported_file_shebang(tmp_path):
         f7.write_bytes(b"#!/bin/bash\nls")
         assert Config.is_supported_file(f7) is True
 
+        # PowerShell shebangs
+        f8 = tmp_path / "pwsh_script"
+        f8.write_bytes(b"#!/usr/bin/pwsh\nGet-ChildItem")
+        assert Config.is_supported_file(f8) is True
+
+        f9 = tmp_path / "powershell_script"
+        f9.write_bytes(b"#!/usr/bin/env powershell\nls")
+        assert Config.is_supported_file(f9) is True
+
     finally:
         Config.extensions_set = original_exts
 
