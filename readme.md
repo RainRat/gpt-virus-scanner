@@ -60,12 +60,18 @@ python gptscan.py ./my_scripts --cli --json
 
     *Privacy Note:* Your code is only sent to the AI service if you enable the "Use AI Analysis" option. Check your provider's data policy.
 
+## Supported Files
+
+The scanner automatically finds scripts to analyze in two ways:
+*   **By extension:** It looks for `.py`, `.js`, `.bat`, and `.ps1` files by default.
+*   **By "shebang" line:** It detects script files even if they have no extension (or an unknown one) by checking the first line for a valid "shebang" (for example, `#!/usr/bin/python` or `#!/usr/bin/env node`).
+
 ## Configuration
 
 You can customize the scanner using these optional files in the same folder:
 
 *   **`apikey.txt`**: Your API key for OpenAI or OpenRouter.
-*   **`extensions.txt`**: A list of file extensions to scan (e.g., `.py`, one per line). If missing, the tool defaults to `.py`, `.js`, `.bat`, and `.ps1`. **Note:** The tool also automatically detects and scans script files without extensions (or with unknown extensions) if they contain a valid "shebang" line (like `#!/usr/bin/python`).
+*   **`extensions.txt`**: A list of file extensions to scan (e.g., `.py`, one per line).
 *   **`.gptscanignore`**: Patterns of files or folders to skip (like a `.gitignore` file).
 *   **`task.txt`**: The instructions given to the AI for its analysis.
 
@@ -92,6 +98,8 @@ You can sort the results by clicking the column headers.
 *   **Ctrl+A / Cmd+A:** Select all results.
 *   **F5 / R:** Rescan selected files.
 *   **Double-click / Enter:** Open selected file.
+*   **Space:** View detailed analysis and code for the selected result.
+*   **Esc:** Cancel the active scan.
 
 ![Scan Results](gpt-virus-scan.png)
 
