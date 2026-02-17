@@ -19,6 +19,57 @@ pip install tensorflow numpy pyyaml
 
 ## Configuration
 
+The trainer requires a `config.yml` file to run. This file contains settings for the model, training process, and AI hyperparameters.
+
+### Example `config.yml`
+
+Create a file named `config.yml` in your project folder and paste the following:
+
+```yaml
+# Settings for the local scanner trainer
+model:
+  name: "scripts"           # Name used for saved model files (e.g., scripts.h5)
+  max_length: 1024          # Number of bytes analyzed from each file
+  pad_value: 13             # Byte value used for padding small files
+  max_params: 1000000       # Maximum allowed parameters (brain size)
+
+training:
+  batch_size: 32            # Files processed in one batch
+  epochs: 100               # Number of training rounds
+  validation_split: 0.2     # Percentage of data used for testing accuracy
+  patience: 10              # Rounds to wait before stopping if no improvement
+  mode: "train"             # Default mode: 'train' or 'predict'
+
+prediction:
+  threshold: 0.5            # Threat score (0.0 to 1.0) required to flag a file
+
+weights:
+  positive_sample_weight: 1.0 # Importance of malicious examples during training
+  positive_class_weight: 1.0  # Weight applied to the malicious class
+
+# AI settings for the genetic algorithm.
+# These values (0.0 to 1.0) control how the brain is built.
+# The script will automatically mutate and improve these over time.
+hyperparameters:
+  embedding_scale: 0.5        # Size of the memory for byte patterns
+  rnn_scale: 0.5              # Memory capacity for long sequences
+  pooling_type: 0.5           # How patterns are summarized
+  dropout1: 0.2               # Prevents the brain from memorizing specific files
+  dense_scale: 0.5            # Complexity of the final decision layer
+  activation: 0.1             # Mathematical style of the neurons
+  dropout2: 0.2               # Additional prevention of over-memorization
+  spatial_dropout: 0.1        # Pattern-based memorization prevention
+  rnn_type: 0.1               # Type of memory layers used (LSTM or GRU)
+  use_conv: 0.6               # Whether to use "vision" layers for patterns
+  conv_filters_scale: 0.5     # Number of "vision" patterns to look for
+  conv_padding: 0.1           # How patterns at the edges are handled
+  kernel_init: 0.1            # Starting state of the brain's connections
+  rnn_dropout: 0.1            # Reliability of memory connections
+  rnn_recurrent_dropout: 0.1  # Reliability of internal memory feedback
+  conv_kernel_scale: 0.5      # Size of the patterns to look for
+  optimizer: 0.5              # How the brain learns from its mistakes
+```
+
 ## Directory Structure
 
 The script expects the following directory structure by default:
