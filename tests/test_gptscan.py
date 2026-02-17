@@ -259,7 +259,8 @@ def test_run_cli_reports_progress(monkeypatch, capsys):
     gptscan.run_cli("/tmp", deep=False, show_all=False, use_gpt=False, rate_limit=1)
 
     captured = capsys.readouterr()
-    assert "Scanning: 0/2 files\r" in captured.err
+    # The progress messages now have leading/trailing \r and are padded to 80 chars
+    assert "Scanning: 0/2 files" in captured.err
     assert "Scanning: 2/2 files" in captured.err
     assert "path,own_conf" not in captured.err
 

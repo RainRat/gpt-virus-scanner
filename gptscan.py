@@ -4,6 +4,7 @@ import html
 import json
 import os
 import queue
+import shutil
 import subprocess
 import sys
 import threading
@@ -1305,7 +1306,8 @@ def run_scan(
                     last_total = total
                 enqueue_ui_update(update_progress, current)
 
-                status_text = f"{status} ({current}/{total})" if status else f"Scanning: {current}/{total}"
+                threat_suffix = f" ({threats_found} suspicious found)" if threats_found > 0 else ""
+                status_text = f"{status} ({current}/{total}){threat_suffix}" if status else f"Scanning: {current}/{total}{threat_suffix}"
                 print(status_text, file=sys.stderr)
                 enqueue_ui_update(update_status, status_text)
             elif event_type == 'result':
@@ -1364,7 +1366,8 @@ def run_rescan(
                     enqueue_ui_update(configure_progress, total)
                     last_total = total
                 enqueue_ui_update(update_progress, current)
-                status_text = f"{status} ({current}/{total})" if status else f"Rescanning: {current}/{total}"
+                threat_suffix = f" ({threats_found} suspicious found)" if threats_found > 0 else ""
+                status_text = f"{status} ({current}/{total}){threat_suffix}" if status else f"Rescanning: {current}/{total}{threat_suffix}"
                 enqueue_ui_update(update_status, status_text)
             elif event_type == 'result':
                 if cancel_event.is_set():
@@ -1670,9 +1673,12 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         elif event_type == 'progress':
             current, total, status = data
             final_progress = (current, total)
-            print(f"Scanning: {current}/{total} files\r", end='', file=sys.stderr)
-            if status:
-                print(f"{status}\r", end='', file=sys.stderr)
+            cols = shutil.get_terminal_size((80, 20)).columns
+            threat_suffix = f" ({threats_found} suspicious found)" if threats_found > 0 else ""
+            msg = f"{status} ({current}/{total}){threat_suffix}" if status else f"Scanning: {current}/{total} files{threat_suffix}"
+            # Use \r to overwrite same line, and pad with spaces to clear any previous longer line
+            sys.stderr.write(f"\r{msg: <{cols-1}}\r")
+            sys.stderr.flush()
         elif event_type == 'summary':
             total_files, total_bytes, elapsed_time = data
             metrics['total_bytes'] = total_bytes
