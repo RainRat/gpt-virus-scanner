@@ -1715,8 +1715,9 @@ def import_results() -> None:
 
     file_path = tkinter.filedialog.askopenfilename(
         filetypes=[
-            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv"),
+            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif"),
             ("JSON files", "*.json;*.jsonl;*.ndjson"),
+            ("SARIF files", "*.sarif"),
             ("CSV files", "*.csv"),
             ("All files", "*.*")
         ],
@@ -1729,7 +1730,7 @@ def import_results() -> None:
         data_to_import = []
         ext = os.path.splitext(file_path)[1].lower()
 
-        if ext in ('.json', '.jsonl', '.ndjson'):
+        if ext in ('.json', '.jsonl', '.ndjson', '.sarif'):
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read().strip()
                 if not content:
@@ -1738,6 +1739,32 @@ def import_results() -> None:
                 if content.startswith('['):
                     # Standard JSON list
                     data_to_import = json.loads(content)
+                elif ext == '.sarif' or (content.startswith('{') and '"runs"' in content):
+                    # SARIF format
+                    sarif_data = json.loads(content)
+                    data_to_import = []
+                    for run in sarif_data.get("runs", []):
+                        for result in run.get("results", []):
+                            mapped = {
+                                "path": "",
+                                "own_conf": "",
+                                "admin_desc": result.get("message", {}).get("text", ""),
+                                "gpt_conf": "",
+                                "snippet": ""
+                            }
+                            # Extract path
+                            locations = result.get("locations", [])
+                            if locations:
+                                uri = locations[0].get("physicalLocation", {}).get("artifactLocation", {}).get("uri", "")
+                                mapped["path"] = uri.replace("/", os.sep)
+
+                            # Extract properties
+                            props = result.get("properties", {})
+                            mapped["own_conf"] = props.get("own_conf", "")
+                            mapped["gpt_conf"] = props.get("gpt_conf", "")
+                            mapped["snippet"] = props.get("snippet", "")
+
+                            data_to_import.append(mapped)
                 else:
                     # NDJSON (newline-delimited JSON)
                     data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
