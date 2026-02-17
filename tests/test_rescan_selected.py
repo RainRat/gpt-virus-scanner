@@ -27,8 +27,8 @@ def test_rescan_selected_logic():
     gptscan.tree.selection.return_value = ("item1",)
 
     def tree_item_side_effect(item_id, option=None):
-        # Using \n to simulate wrapping, but it should be correctly removed
-        vals = ("test.py\n", "50%", "", "", "", "snippet")
+        # Using \n between parts to simulate wrapping
+        vals = ("test\n.py", "50%", "", "", "", "snippet")
         if option == "values":
             return vals
         return {"values": vals}
@@ -55,8 +55,8 @@ def test_rescan_selected_logic():
         _, kwargs = mock_thread.call_args
         assert kwargs["target"] == gptscan.run_rescan
         thread_args = kwargs["args"]
-        assert thread_args[0] == ["test.py"]
-        assert thread_args[1] == {"test.py": "item1"}
+        assert thread_args[0] == ["test .py"]
+        assert thread_args[1] == {"test .py": "item1"}
         assert thread_args[2]["deep"] is True
 
 def test_run_rescan_updates_ui():

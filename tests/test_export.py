@@ -26,10 +26,11 @@ def test_export_results_success(monkeypatch, tmp_path):
     mock_tree.__getitem__.return_value = ("Col1", "Col2")
     mock_tree.get_children.return_value = ("item1", "item2")
 
-    def get_item(iid):
-        if iid == "item1":
-            return {"values": ("val1a", "val1b")}
-        return {"values": ("val2a", "val2b")}
+    def get_item(iid, option=None):
+        vals = ("val1a", "val1b") if iid == "item1" else ("val2a", "val2b")
+        if option == "values":
+            return vals
+        return {"values": vals}
     mock_tree.item.side_effect = get_item
 
     monkeypatch.setattr(gptscan, "tree", mock_tree, raising=False)

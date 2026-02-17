@@ -54,7 +54,14 @@ def test_export_multi_format(monkeypatch, tmp_path):
     cols = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
     mock_tree.__getitem__.return_value = cols
     mock_tree.get_children.return_value = ["item1"]
-    mock_tree.item.return_value = {"values": ("test.py", "90%", "Admin Notes", "User Notes", "0%", "print('hi')")}
+    mock_tree.exists.return_value = True
+
+    def get_item(iid, option=None):
+        vals = ("test.py", "90%", "Admin Notes", "User Notes", "0%", "print('hi')")
+        if option == "values":
+            return vals
+        return {"values": vals}
+    mock_tree.item.side_effect = get_item
     monkeypatch.setattr(gptscan, 'tree', mock_tree, raising=False)
     monkeypatch.setattr(gptscan.messagebox, 'showinfo', MagicMock())
 

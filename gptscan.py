@@ -874,9 +874,9 @@ def rescan_selected() -> None:
     paths = []
     item_map = {}
     for item_id in selection:
-        values = tree.item(item_id, "values")
+        values = _get_item_raw_values(item_id)
         if values:
-            path = str(values[0]).replace('\n', '')
+            path = values[0]
             paths.append(path)
             item_map[path] = item_id
 
@@ -919,18 +919,9 @@ def exclude_selected() -> None:
 
     excluded_paths = []
     for item_id in selection:
-        values = tree.item(item_id, "values")
+        values = _get_item_raw_values(item_id)
         if values:
-            # Use original path from hidden column or fallback
-            if len(values) > 6 and values[6]:
-                try:
-                    orig_values = json.loads(values[6])
-                    path = orig_values[0]
-                except (json.JSONDecodeError, IndexError):
-                    path = str(values[0]).replace('\n', '')
-            else:
-                path = str(values[0]).replace('\n', '')
-
+            path = values[0]
             excluded_paths.append(path)
 
     if not excluded_paths:
@@ -1852,23 +1843,9 @@ def _get_tree_results_as_dicts(item_ids: Iterable[str]) -> List[Dict[str, Any]]:
     columns = tree["columns"][:6]
     results = []
     for item_id in item_ids:
-        item_data = tree.item(item_id)
-        if not isinstance(item_data, dict):
-            continue
-        values = list(item_data.get("values", []))
-        if len(values) > 6 and values[6]:
-            try:
-                # Use preserved original values if available
-                orig_values = json.loads(values[6])
-                results.append(dict(zip(columns, orig_values)))
-            except json.JSONDecodeError:
-                # Fallback (and unwrap display newlines)
-                unwrapped = [str(v).replace('\n', ' ') for v in values[:6]]
-                results.append(dict(zip(columns, unwrapped)))
-        else:
-            # Fallback (and unwrap display newlines)
-            unwrapped = [str(v).replace('\n', ' ') for v in values[:6]]
-            results.append(dict(zip(columns, unwrapped)))
+        values = _get_item_raw_values(item_id)
+        if values:
+            results.append(dict(zip(columns, values)))
     return results
 
 
@@ -1931,23 +1908,30 @@ def export_results() -> None:
         messagebox.showerror("Export Failed", f"Could not save results:\n{err}")
 
 
+def _get_item_raw_values(item_id: str) -> Optional[List[Any]]:
+    """Retrieve raw values from a specific Treeview row, prioritizing the hidden cache."""
+    if not tree or not tree.exists(item_id):
+        return None
+    values = list(tree.item(item_id, "values"))
+
+    # Try to return raw values from the hidden column (index 6) if available
+    if len(values) > 6 and values[6]:
+        try:
+            return json.loads(values[6])
+        except (json.JSONDecodeError, TypeError):
+            pass
+    # Fallback: unwrap display newlines by replacing them with spaces
+    return [str(v).replace('\n', ' ') for v in values[:6]]
+
+
 def _get_selected_row_values() -> Optional[List[Any]]:
-    """Retrieve values from the currently selected Treeview row."""
+    """Retrieve raw values from the currently selected Treeview row."""
     if not tree:
         return None
     selection = tree.selection()
     if not selection:
         return None
-    item_id = selection[0]
-    values = list(tree.item(item_id, "values"))
-
-    # Try to return raw values from the hidden column if available
-    if len(values) > 6 and values[6]:
-        try:
-            return json.loads(values[6])
-        except json.JSONDecodeError:
-            pass
-    return values
+    return _get_item_raw_values(selection[0])
 
 
 def view_details(event: Optional[tk.Event] = None) -> None:
