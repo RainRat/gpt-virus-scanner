@@ -602,10 +602,16 @@ def format_bytes(num: float) -> str:
     return f"{num:.1f} PiB"
 
 
-def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None) -> str:
+def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, use_color: bool = False) -> str:
     """Format a human-readable summary of the scan results."""
     threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
-    summary = f"Scan complete: {total_scanned} files scanned, {threats_found} {threat_text} found."
+
+    threats_display = str(threats_found)
+    if use_color and threats_found > 0:
+        # Use Bold Red for threats in terminal
+        threats_display = f"\033[1;91m{threats_found}\033[0m"
+
+    summary = f"Scan complete: {total_scanned} files scanned, {threats_display} {threat_text} found."
 
     if elapsed_time and elapsed_time > 0:
         files_per_sec = total_scanned / elapsed_time
@@ -1626,6 +1632,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     cancel_event = threading.Event()
     final_progress: Optional[Tuple[int, int]] = None
     threats_found = 0
+    use_color = sys.stderr.isatty()
     metrics: Dict[str, Any] = {}
 
     result_buffer = []
@@ -1667,10 +1674,19 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             current, total, status = data
             final_progress = (current, total)
             cols = shutil.get_terminal_size((80, 20)).columns
-            threat_suffix = f" ({threats_found} suspicious found)" if threats_found > 0 else ""
+
+            threat_display = str(threats_found)
+            if use_color and threats_found > 0:
+                threat_display = f"\033[1;91m{threats_found}\033[0m"
+
+            threat_suffix = f" ({threat_display} suspicious found)" if threats_found > 0 else ""
             msg = f"{status} ({current}/{total}){threat_suffix}" if status else f"Scanning: {current}/{total} files{threat_suffix}"
-            # Use \r to overwrite same line, and pad with spaces to clear any previous longer line
-            sys.stderr.write(f"\r{msg: <{cols-1}}\r")
+
+            # Use \r to overwrite same line, and pad with spaces to clear any previous longer line.
+            # Adjust padding for zero-width ANSI color codes (total 11 chars).
+            ansi_len = 11 if use_color and threats_found > 0 else 0
+            padding = " " * max(0, cols - 1 - (len(msg) - ansi_len))
+            sys.stderr.write(f"\r{msg}{padding}\r")
             sys.stderr.flush()
         elif event_type == 'summary':
             total_files, total_bytes, elapsed_time = data
@@ -1684,7 +1700,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             total_scanned,
             threats_found,
             metrics.get('total_bytes'),
-            metrics.get('elapsed_time')
+            metrics.get('elapsed_time'),
+            use_color=use_color
         )
         print(summary, file=sys.stderr)
 
@@ -2481,7 +2498,7 @@ def main():
                "  python gptscan.py --git-changes --cli --fail-threshold 50",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument('--version', action='version', version=f'%(prog)s {Config.VERSION}')
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {Config.VERSION}')
     parser.add_argument('target', nargs='?', help='The folder or file to scan.')
     parser.add_argument(
         'files',
@@ -2490,8 +2507,8 @@ def main():
     )
 
     scan_group = parser.add_argument_group("Scan Options")
-    scan_group.add_argument('--path', type=str, help='An alternative way to specify the scan target.')
-    scan_group.add_argument('--deep', action='store_true', help='Scan every part of the file. By default, it only checks the first and last 1,024 bytes.')
+    scan_group.add_argument('-p', '--path', type=str, help='An alternative way to specify the scan target.')
+    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan every part of the file. By default, it only checks the first and last 1,024 bytes.')
     scan_group.add_argument('--dry-run', action='store_true', help='Show which files would be scanned without analyzing them.')
     scan_group.add_argument(
         '--extensions',
@@ -2499,7 +2516,7 @@ def main():
         help='Only scan these file types (comma-separated, e.g., "py,js").'
     )
     scan_group.add_argument(
-        '--exclude',
+        '-e', '--exclude',
         nargs='*',
         help='Skip files matching these patterns (e.g., "node_modules/*"). Patterns in .gptscanignore are also skipped.'
     )
@@ -2520,7 +2537,7 @@ def main():
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
-    ai_group.add_argument('--use-gpt', action='store_true', help='Enable AI Analysis for detailed reports (requires an API key).')
+    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Enable AI Analysis for detailed reports (requires an API key).')
     ai_group.add_argument(
         '--provider',
         type=str,
@@ -2547,8 +2564,8 @@ def main():
 
     output_group = parser.add_argument_group("Output")
     output_group.add_argument('--cli', action='store_true', help='Run in command-line mode instead of opening a window.')
-    output_group.add_argument('--show-all', action='store_true', help='Show all scanned files, including safe ones.')
-    output_group.add_argument('--json', action='store_true', help='Output results in JSON format (one object per line).')
+    output_group.add_argument('-a', '--show-all', action='store_true', help='Show all scanned files, including safe ones.')
+    output_group.add_argument('-j', '--json', action='store_true', help='Output results in JSON format (one object per line).')
     output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format, a standard for security tools.')
     output_group.add_argument('--html', action='store_true', help='Create an HTML report of the results.')
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report of the results.')
@@ -2592,7 +2609,8 @@ def main():
             scan_targets.extend(git_files)
 
         if not scan_targets:
-            parser.error('You must provide a file or folder to scan.')
+            # Default to current directory if no targets provided
+            scan_targets = ["."]
 
         output_format = 'csv'
         if args.json:
