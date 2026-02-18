@@ -89,17 +89,24 @@ class DataLoader:
     
     def load_file(self, file_path: Path) -> List[int]:
         """Load and preprocess a single file."""
-        with open(file_path, 'rb') as f:
-            data = list(f.read(self.max_length))
+        file_size = file_path.stat().st_size
         
-        # Apply padding logic
-        if len(data) < self.max_length:
-            num_to_add = self.max_length - len(data)
-            data.extend([self.pad_value] * num_to_add)
-        elif len(data) > self.max_length:
+        if file_size <= self.max_length:
+            with open(file_path, 'rb') as f:
+                data = list(f.read())
+            # Apply padding logic
+            if len(data) < self.max_length:
+                num_to_add = self.max_length - len(data)
+                data.extend([self.pad_value] * num_to_add)
+        else:
             # Take half from start and half from end
             half = self.max_length // 2
-            data = data[:half] + data[-half:]
+            other_half = self.max_length - half
+            with open(file_path, 'rb') as f:
+                first_half = f.read(half)
+                f.seek(-other_half, 2)
+                last_half = f.read(other_half)
+                data = list(first_half) + list(last_half)
         
         return data
     
