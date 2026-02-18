@@ -6,7 +6,7 @@ The GPT Virus Scanner uses AI to find malicious code in script files. It works i
 1.  **Local Scan:** A fast, built-in model checks your files locally.
 2.  **AI Analysis:** If a file looks suspicious, the tool sends a code snippet to an AI service (like OpenAI) for a detailed assessment.
 
-**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (such as Python, JavaScript, and Batch files) but does not analyze compiled programs or compressed files (like .zip).
+**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (such as Python, JavaScript, PowerShell, and Batch files) but does not analyze compiled programs or compressed files (like .zip).
 
 ## Quick Start
 
@@ -63,7 +63,7 @@ python gptscan.py ./my_scripts --cli --json
 ## Supported Files
 
 The scanner automatically finds scripts to analyze in two ways:
-*   **By extension:** It looks for `.py`, `.js`, `.bat`, and `.ps1` files by default.
+*   **By extension:** It looks for `.py`, `.js`, `.bat`, and `.ps1` files by default. The repository also includes an `extensions.txt` file that allows the scanner to recognize dozens of other script types (like `.sh`, `.rb`, and `.php`).
 *   **By "shebang" line:** It detects script files even if they have no extension (or an unknown one) by checking the first line for a valid "shebang" (for example, `#!/usr/bin/python` or `#!/usr/bin/env node`).
 
 ## Configuration
@@ -90,7 +90,7 @@ python gptscan.py
 *   **Show all files:** List every file scanned, even the safe ones.
 *   **Use AI Analysis:** Get a detailed report for suspicious files.
 *   **AI Analysis Settings:** Choose your service (OpenAI, OpenRouter, or Ollama) and the model you want to use.
-*   **Import/Export Results:** Save your results to CSV, JSON, HTML, SARIF, or Markdown files, or load them back later.
+*   **Import/Export Results:** Save your results to CSV, JSON, HTML, SARIF, or Markdown files. You can load CSV, JSON, and SARIF files back into the tool later. (Markdown is for export only).
 
 You can sort the results by clicking the column headers.
 
@@ -107,6 +107,8 @@ You can sort the results by clicking the column headers.
 
 Run scans from your terminal for automated tasks. Use the `--cli` flag.
 
+> **Tip:** When using the CLI, results are sent directly to your terminal. To save them to a file, use the `>` symbol (for example: `python gptscan.py ./my_scripts --cli --json > results.json`).
+
 **Examples:**
 ```bash
 # Basic scan with AI analysis
@@ -116,7 +118,7 @@ python gptscan.py ./my_scripts --cli --use-gpt
 python gptscan.py ./my_scripts --cli --use-gpt --provider ollama --model llama3.2
 
 # Export results to a JSON file
-python gptscan.py ./my_scripts --cli --json --exclude "tests/*"
+python gptscan.py ./my_scripts --cli --json --exclude "tests/*" > results.json
 ```
 
 **Common Options:**
