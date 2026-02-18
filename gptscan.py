@@ -2044,18 +2044,20 @@ def view_details(event: Optional[tk.Event] = None) -> None:
         root.clipboard_append(text)
         messagebox.showinfo("Copied", "Detailed analysis copied to clipboard.")
 
-    ttk.Button(btn_frame, text="Open File", command=open_file).pack(side=tk.LEFT, padx=5)
+    ttk.Button(btn_frame, text="Open File", command=lambda: open_file(path)).pack(side=tk.LEFT, padx=5)
     ttk.Button(btn_frame, text="Copy Analysis", command=copy_analysis).pack(side=tk.LEFT, padx=5)
     ttk.Button(btn_frame, text="Close", command=details_win.destroy).pack(side=tk.RIGHT, padx=5)
 
 
-def open_file(event: Optional[tk.Event] = None) -> None:
-    """Open the selected file in the system's default application."""
-    values = _get_selected_row_values()
-    if not values:
-        return
-
-    file_path = str(values[0])
+def open_file(event_or_path: Union[tk.Event, str, None] = None) -> None:
+    """Open the selected or specified file in the system's default application."""
+    if isinstance(event_or_path, str):
+        file_path = event_or_path
+    else:
+        values = _get_selected_row_values()
+        if not values:
+            return
+        file_path = str(values[0])
     if os.path.exists(file_path):
         try:
             if sys.platform == "win32":
