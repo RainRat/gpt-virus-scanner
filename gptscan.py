@@ -79,6 +79,7 @@ class Config:
     model_name: str = "gpt-4o"
     api_base: Optional[str] = None
     ignore_patterns: List[str] = []
+    THRESHOLD: int = 50
 
     DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1']
 
@@ -708,7 +709,7 @@ def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ..
     tag = ''
     if conf > 80:
         tag = 'high-risk'
-    elif conf > 50:
+    elif conf > Config.THRESHOLD:
         tag = 'medium-risk'
 
     return wrapped_values, (tag,) if tag else ()
@@ -1154,7 +1155,8 @@ def scan_files(
                         percent = f"{maxconf:.0%}"
                         snippet = ''.join(map(chr, max_window_bytes)).strip()
                         cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
-                        if maxconf > .5 and use_gpt and Config.GPT_ENABLED:
+                        threshold_val = Config.THRESHOLD / 100.0
+                        if maxconf > threshold_val and use_gpt and Config.GPT_ENABLED:
                             gpt_requests.append(
                                 {
                                     "path": str(file_path),
@@ -1163,7 +1165,7 @@ def scan_files(
                                     "cleaned_snippet": cleaned_snippet,
                                 }
                             )
-                        elif maxconf > .5 or show_all:
+                        elif maxconf > threshold_val or show_all:
                             yield (
                                 'result',
                                 (
@@ -1307,7 +1309,7 @@ def run_scan(
                 # data format: (path, own_conf, admin, user, gpt_conf, snippet)
                 conf = get_effective_confidence(data[1], data[4])
 
-                if conf > 50:
+                if conf > Config.THRESHOLD:
                     threats_found += 1
 
                 if not cancel_event.is_set():
@@ -1367,7 +1369,7 @@ def run_rescan(
                 item_id = item_map.get(path)
                 if item_id:
                     conf = get_effective_confidence(data[1], data[4])
-                    if conf > 50:
+                    if conf > Config.THRESHOLD:
                         threats_found += 1
                     enqueue_ui_update(update_tree_row, item_id, data)
             elif event_type == 'summary':
@@ -1404,7 +1406,7 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         conf = get_effective_confidence(r.get("own_conf", ""), r.get("gpt_conf", ""))
         if conf > 80:
             level = "error"
-        elif conf > 50:
+        elif conf > Config.THRESHOLD:
             level = "warning"
 
         message_text = r.get("admin_desc") or r.get("end-user_desc") or "Suspicious content detected"
@@ -1483,7 +1485,7 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
         row_class = ""
         if conf_val > 80:
             row_class = "high-risk"
-        elif conf_val > 50:
+        elif conf_val > Config.THRESHOLD:
             row_class = "medium-risk"
 
         rows.append(f"""
@@ -1650,7 +1652,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             if fail_threshold is not None:
                 if conf >= fail_threshold:
                     is_threat = True
-            elif conf > 50:
+            elif conf > Config.THRESHOLD:
                 is_threat = True
 
             if is_threat:
@@ -2263,6 +2265,24 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     dry_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
+    threshold_row = ttk.Frame(options_frame)
+    threshold_row.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
+    ttk.Label(threshold_row, text="Min. Threat Level (%):").pack(side=tk.LEFT)
+
+    def on_threshold_change():
+        try:
+            val = int(threshold_spin.get())
+            Config.THRESHOLD = max(0, min(100, val))
+        except ValueError:
+            pass
+
+    threshold_spin = tk.Spinbox(threshold_row, from_=0, to=100, width=5, command=on_threshold_change)
+    threshold_spin.delete(0, tk.END)
+    threshold_spin.insert(0, str(Config.THRESHOLD))
+    threshold_spin.pack(side=tk.LEFT, padx=5)
+    threshold_spin.bind('<KeyRelease>', lambda e: on_threshold_change())
+    bind_hover_message(threshold_spin, "Minimum threat level percentage to report a file as suspicious.")
+
     # --- Provider Frame ---
     provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis")
     provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
@@ -2518,6 +2538,12 @@ def main():
         type=int,
         help='Stop with an error if any file meets this threat level or higher (0-100).'
     )
+    scan_group.add_argument(
+        '--threshold', '-t',
+        type=int,
+        default=50,
+        help='The minimum threat level to report (0-100). Default is 50.'
+    )
 
     ai_group = parser.add_argument_group("AI Analysis")
     ai_group.add_argument('--use-gpt', action='store_true', help='Enable AI Analysis for detailed reports (requires an API key).')
@@ -2567,6 +2593,8 @@ def main():
     if args.extensions:
         extension_list = [ext.strip() for ext in args.extensions.split(',') if ext.strip()]
         Config.set_extensions(extension_list, missing=False)
+
+    Config.THRESHOLD = args.threshold
 
     scan_target = args.target or args.path
 
