@@ -124,17 +124,17 @@ python gptscan.py ./my_scripts --cli --json --exclude "tests/*" > results.json
 **Common Options:**
 *   `--cli`: Run in command-line mode (required for terminal use).
 *   `[target]`: The folder or file to scan.
-*   `--path [path]`: An alternative way to specify the scan target.
-*   `--deep`: Scan the entire file instead of just the beginning and end.
-*   `--show-all`: List all files, even safe ones.
-*   `--use-gpt`: Enable AI Analysis for suspicious code.
-*   `--json`: Output results in JSON format (one object per line).
+*   `-p, --path [path]`: An alternative way to specify the scan target.
+*   `-d, --deep`: Scan the entire file instead of just the beginning and end.
+*   `-a, --show-all`: List all files, even safe ones.
+*   `-g, --use-gpt`: Enable AI Analysis for suspicious code.
+*   `-j, --json`: Output results in JSON format (one object per line).
 *   `--sarif`: Save results in SARIF format (standard for security tools).
 *   `--html`: Create a standalone HTML report.
 *   `--md, --markdown`: Create a Markdown report of the results.
 *   `--dry-run`: List files that would be scanned without analyzing them.
 *   `--extensions "py,js,bat"`: Scan specific file types (separated by commas).
-*   `--exclude [patterns]`: Skip files matching these patterns (e.g., `node_modules/*`).
+*   `-e, --exclude [patterns]`: Skip files matching these patterns (e.g., `node_modules/*`).
 *   `--file-list [file]`: Read a list of files to scan from a text file.
 *   `--git-changes`: Only scan files that have changed in your git repository.
 *   `--provider [name]`: Choose your AI service ('openai', 'openrouter', or 'ollama').
@@ -142,7 +142,8 @@ python gptscan.py ./my_scripts --cli --json --exclude "tests/*" > results.json
 *   `--api-base [url]`: Set a custom URL for the AI service (useful for local servers).
 *   `--rate-limit [n]`: Limit AI requests per minute to avoid errors (default: 60).
 *   `--fail-threshold [0-100]`: Return a failure code if any file meets this threat level.
-*   `--version`: Show the tool's version.
+*   `-t, --threshold [0-100]`: The minimum threat level percentage to report (default: 50).
+*   `-v, --version`: Show the tool's version.
 
 ## Troubleshooting
 
