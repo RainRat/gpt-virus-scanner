@@ -1980,17 +1980,25 @@ def view_details(event: Optional[tk.Event] = None) -> None:
 
     # Header: Path and Confidence
     header_frame = ttk.Frame(main_frame)
-    header_frame.pack(fill=tk.X, pady=(0, 10))
+    header_frame.pack(fill=tk.X, pady=(0, 5))
 
     ttk.Label(header_frame, text="File Path:", font=('TkDefaultFont', 9, 'bold')).grid(row=0, column=0, sticky="w")
     path_entry = ttk.Entry(header_frame)
     path_entry.insert(0, path)
     path_entry.config(state='readonly')
-    path_entry.grid(row=0, column=1, sticky="ew", padx=(5, 0))
+    path_entry.grid(row=0, column=1, sticky="ew", padx=5)
     header_frame.columnconfigure(1, weight=1)
 
+    def copy_path_btn():
+        root.clipboard_clear()
+        root.clipboard_append(path)
+        messagebox.showinfo("Copied", "File path copied to clipboard.")
+
+    ttk.Button(header_frame, text="Copy Path", width=12, command=copy_path_btn).grid(row=0, column=2, padx=2)
+    ttk.Button(header_frame, text="Show in Folder", width=15, command=lambda: show_in_folder(path)).grid(row=0, column=3, padx=2)
+
     conf_frame = ttk.Frame(header_frame)
-    conf_frame.grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
+    conf_frame.grid(row=1, column=0, columnspan=4, sticky="w", pady=(5, 0))
 
     ttk.Label(conf_frame, text="Local Confidence:").grid(row=0, column=0, sticky="w")
     ttk.Label(conf_frame, text=own_conf, font=('TkDefaultFont', 9, 'bold')).grid(row=0, column=1, sticky="w", padx=(5, 20))
@@ -1998,6 +2006,8 @@ def view_details(event: Optional[tk.Event] = None) -> None:
     if gpt_conf:
         ttk.Label(conf_frame, text="AI Confidence:").grid(row=0, column=2, sticky="w")
         ttk.Label(conf_frame, text=gpt_conf, font=('TkDefaultFont', 9, 'bold')).grid(row=0, column=3, sticky="w", padx=(5, 0))
+
+    ttk.Separator(main_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
 
     # Analysis sections
     if admin or user:
@@ -2109,12 +2119,15 @@ def copy_as_markdown() -> None:
     tree.clipboard_append(md)
 
 
-def show_in_folder() -> None:
-    """Reveal the selected file in the system file manager."""
-    values = _get_selected_row_values()
-    if not values:
-        return
-    file_path = str(values[0])
+def show_in_folder(event_or_path: Union[tk.Event, str, None] = None) -> None:
+    """Reveal the selected or specified file in the system file manager."""
+    if isinstance(event_or_path, str):
+        file_path = event_or_path
+    else:
+        values = _get_selected_row_values()
+        if not values:
+            return
+        file_path = str(values[0])
     if os.path.exists(file_path):
         try:
             if sys.platform == "win32":
