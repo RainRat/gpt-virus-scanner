@@ -1435,6 +1435,8 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
             "properties": {
                 "own_conf": r.get("own_conf"),
                 "gpt_conf": r.get("gpt_conf"),
+                "admin_desc": r.get("admin_desc"),
+                "end-user_desc": r.get("end-user_desc"),
                 "snippet": r.get("snippet")
             }
         })
@@ -1763,24 +1765,22 @@ def import_results() -> None:
                     data_to_import = []
                     for run in sarif_data.get("runs", []):
                         for result in run.get("results", []):
+                            # Extract properties
+                            props = result.get("properties", {})
+
                             mapped = {
                                 "path": "",
-                                "own_conf": "",
-                                "admin_desc": result.get("message", {}).get("text", ""),
-                                "gpt_conf": "",
-                                "snippet": ""
+                                "own_conf": props.get("own_conf", ""),
+                                "admin_desc": props.get("admin_desc") or result.get("message", {}).get("text", ""),
+                                "end-user_desc": props.get("end-user_desc", ""),
+                                "gpt_conf": props.get("gpt_conf", ""),
+                                "snippet": props.get("snippet", "")
                             }
                             # Extract path
                             locations = result.get("locations", [])
                             if locations:
                                 uri = locations[0].get("physicalLocation", {}).get("artifactLocation", {}).get("uri", "")
                                 mapped["path"] = uri.replace("/", os.sep)
-
-                            # Extract properties
-                            props = result.get("properties", {})
-                            mapped["own_conf"] = props.get("own_conf", "")
-                            mapped["gpt_conf"] = props.get("gpt_conf", "")
-                            mapped["snippet"] = props.get("snippet", "")
 
                             data_to_import.append(mapped)
                 else:
