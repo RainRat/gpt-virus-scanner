@@ -128,7 +128,9 @@ python gptscan.py ./my_scripts --cli --json --exclude "tests/*" > results.json
 *   `--deep`: Scan the entire file instead of just the beginning and end.
 *   `--show-all`: List all files, even safe ones.
 *   `--use-gpt`: Enable AI Analysis for suspicious code.
+*   `--output [file], -o [file]`: Save scan results to a file. The format is inferred from the extension (.json, .csv, .html, .sarif, .md).
 *   `--json`: Output results in JSON format (one object per line).
+*   `--csv`: Output results in CSV format (default).
 *   `--sarif`: Save results in SARIF format (standard for security tools).
 *   `--html`: Create a standalone HTML report.
 *   `--md, --markdown`: Create a Markdown report of the results.
