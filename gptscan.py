@@ -1601,8 +1601,8 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None) -> int:
-    """Run scans and stream results to stdout.
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None) -> int:
+    """Run scans and stream results to stdout or a file.
 
     Parameters
     ----------
@@ -1617,18 +1617,22 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     rate_limit : int
         Maximum allowed GPT requests per minute.
     output_format : str
-        Format of the output ('csv', 'json', 'sarif', or 'html'). Defaults to 'csv'.
+        Format of the output ('csv', 'json', 'sarif', 'html', or 'markdown'). Defaults to 'csv'.
     dry_run : bool
         Whether to simulate the scan.
     exclude_patterns : List[str], optional
         List of glob patterns to exclude from the scan.
     fail_threshold : int, optional
         Confidence threshold to trigger a failure count.
+    output_file : str, optional
+        Path to a file where results should be saved.
     """
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]
 
+    out_stream = open(output_file, 'w', encoding='utf-8') if output_file else sys.stdout
+
     if output_format == 'csv':
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(out_stream)
         writer.writerow(keys)
 
     cancel_event = threading.Event()
@@ -1667,7 +1671,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
             record = dict(zip(keys, data))
             if output_format == 'json':
-                print(json.dumps(record))
+                print(json.dumps(record), file=out_stream)
             elif output_format in ('sarif', 'html', 'markdown'):
                 result_buffer.append(record)
             else:
@@ -1709,11 +1713,14 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     if output_format == 'sarif':
         sarif_log = generate_sarif(result_buffer)
-        print(json.dumps(sarif_log, indent=2))
+        print(json.dumps(sarif_log, indent=2), file=out_stream)
     elif output_format == 'html':
-        print(generate_html(result_buffer))
+        print(generate_html(result_buffer), file=out_stream)
     elif output_format == 'markdown':
-        print(generate_markdown(result_buffer))
+        print(generate_markdown(result_buffer), file=out_stream)
+
+    if output_file:
+        out_stream.close()
 
     return threats_found
 
@@ -2593,7 +2600,9 @@ def main():
     output_group = parser.add_argument_group("Output")
     output_group.add_argument('--cli', action='store_true', help='Run in command-line mode instead of opening a window.')
     output_group.add_argument('-a', '--show-all', action='store_true', help='Show all scanned files, including safe ones.')
+    output_group.add_argument('-o', '--output', type=str, help='Save the scan results to the specified file. The format is inferred from the extension if not specified.')
     output_group.add_argument('-j', '--json', action='store_true', help='Output results in JSON format (one object per line).')
+    output_group.add_argument('--csv', action='store_true', help='Output results in CSV format (default).')
     output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format, a standard for security tools.')
     output_group.add_argument('--html', action='store_true', help='Create an HTML report of the results.')
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report of the results.')
@@ -2645,12 +2654,27 @@ def main():
         output_format = 'csv'
         if args.json:
             output_format = 'json'
+        elif args.csv:
+            output_format = 'csv'
         elif args.sarif:
             output_format = 'sarif'
         elif args.html:
             output_format = 'html'
         elif args.markdown:
             output_format = 'markdown'
+        elif args.output:
+            # Infer format from extension
+            ext = Path(args.output).suffix.lower()
+            if ext in ('.json', '.ndjson'):
+                output_format = 'json'
+            elif ext == '.sarif':
+                output_format = 'sarif'
+            elif ext in ('.html', '.htm'):
+                output_format = 'html'
+            elif ext in ('.md', '.markdown'):
+                output_format = 'markdown'
+            elif ext == '.csv':
+                output_format = 'csv'
 
         final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or [])))
         threats = run_cli(
@@ -2662,7 +2686,8 @@ def main():
             output_format=output_format,
             dry_run=args.dry_run,
             exclude_patterns=final_excludes,
-            fail_threshold=args.fail_threshold
+            fail_threshold=args.fail_threshold,
+            output_file=args.output
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
