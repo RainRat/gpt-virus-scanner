@@ -36,6 +36,7 @@ tree: Optional[ttk.Treeview] = None
 scan_button: Optional[ttk.Button] = None
 cancel_button: Optional[ttk.Button] = None
 context_menu: Optional[tk.Menu] = None
+_details_win: Optional[tk.Toplevel] = None
 _all_results_cache: List[Tuple[Any, ...]] = []
 _last_scan_summary: str = ""
 
@@ -1960,9 +1961,23 @@ def _get_selected_row_values() -> Optional[List[Any]]:
     return _get_item_raw_values(selection[0])
 
 
-def view_details(event: Optional[tk.Event] = None) -> None:
+def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None) -> None:
     """Open a detailed view of the selected scan result."""
-    values = _get_selected_row_values()
+    global _details_win
+
+    if item_id is None:
+        if not tree:
+            return
+        selected = tree.selection()
+        if not selected:
+            return
+        item_id = selected[0]
+    else:
+        # Update selection to match navigation
+        tree.selection_set(item_id)
+        tree.see(item_id)
+
+    values = _get_item_raw_values(item_id)
     if not values:
         return
 
@@ -1974,12 +1989,19 @@ def view_details(event: Optional[tk.Event] = None) -> None:
     gpt_conf = values[4]
     snippet = values[5]
 
+    # Save previous position if window exists
+    geom = None
+    if _details_win and _details_win.winfo_exists():
+        geom = _details_win.geometry()
+        _details_win.destroy()
+
     details_win = tk.Toplevel(root)
+    _details_win = details_win
     details_win.title(f"Result Details - {os.path.basename(path)}")
-    details_win.geometry("700x600")
+    details_win.geometry(geom if geom else "700x600")
     details_win.minsize(500, 400)
 
-    # Make it modal-ish but not blocking
+    # Make it transient so it stays above main window
     details_win.transient(root)
 
     main_frame = ttk.Frame(details_win, padding=10)
@@ -2063,6 +2085,28 @@ def view_details(event: Optional[tk.Event] = None) -> None:
 
     ttk.Button(btn_frame, text="Open File", command=lambda: open_file(path)).pack(side=tk.LEFT, padx=5)
     ttk.Button(btn_frame, text="Copy Analysis", command=copy_analysis).pack(side=tk.LEFT, padx=5)
+
+    # Navigation Buttons
+    children = tree.get_children('')
+    try:
+        idx = children.index(item_id)
+        prev_id = children[idx - 1] if idx > 0 else None
+        next_id = children[idx + 1] if idx < len(children) - 1 else None
+    except ValueError:
+        prev_id = next_id = None
+
+    prev_btn = ttk.Button(btn_frame, text="< Previous", command=lambda: view_details(item_id=prev_id))
+    prev_btn.pack(side=tk.LEFT, padx=5)
+    if not prev_id:
+        prev_btn.config(state='disabled')
+    bind_hover_message(prev_btn, "View details for the previous result in the list.")
+
+    next_btn = ttk.Button(btn_frame, text="Next >", command=lambda: view_details(item_id=next_id))
+    next_btn.pack(side=tk.LEFT, padx=5)
+    if not next_id:
+        next_btn.config(state='disabled')
+    bind_hover_message(next_btn, "View details for the next result in the list.")
+
     ttk.Button(btn_frame, text="Close", command=details_win.destroy).pack(side=tk.RIGHT, padx=5)
 
 

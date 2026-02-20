@@ -19,6 +19,7 @@ def mock_tree(monkeypatch):
 
     mock_tree.item.side_effect = mock_item_func
     mock_tree._item_values = {}
+    mock_tree.get_children.return_value = []
     return mock_tree
 
 def test_view_details_open_window(mock_tree, monkeypatch):
@@ -38,6 +39,7 @@ def test_view_details_open_window(mock_tree, monkeypatch):
     # Patch the already imported module in gptscan
     monkeypatch.setattr(gptscan.scrolledtext, 'ScrolledText', mock_st_class)
 
+    mock_tree.get_children.return_value = ["item1"]
     gptscan.view_details()
 
     # Verify Toplevel was created with correct title
