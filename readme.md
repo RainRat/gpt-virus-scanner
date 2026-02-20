@@ -32,22 +32,14 @@ python gptscan.py ./my_scripts --cli --json
 
 ## Installation
 
-1.  **Download the tool:**
-    Clone this repository or download the files. Ensure `gptscan.py`, `scripts.h5`, and `task.txt` are in the same folder.
-
-2.  **Install Python:** Download it from [python.org](https://www.python.org/). Choose version 3.9, 3.10, or 3.11.
-
-3.  **Install required libraries:**
-    Open your terminal or command prompt and run:
+1.  **Download the tool:** Clone this repository or download the files. Ensure `gptscan.py` and `scripts.h5` are in the same folder.
+2.  **Install Python:** Download and install Python (version 3.9, 3.10, or 3.11) from [python.org](https://www.python.org/).
+3.  **Install libraries:** Open your terminal and run:
     ```bash
     pip install "tensorflow<2.16" openai
     ```
-    *Linux users:* You may also need to install Tkinter:
-    ```bash
-    sudo apt-get install python3-tk
-    ```
-
-4.  **Set up your AI Service (Optional):**
+    *Linux users:* You might also need to install Tkinter: `sudo apt-get install python3-tk`.
+4.  **Set up AI (Optional):** To use **AI Analysis**, ensure `task.txt` is in the same folder and set up an API key (see below).
 
     If you want to use **AI Analysis** (OpenAI or OpenRouter), you need an API key:
     *   Create a file named `apikey.txt` in the same folder as `gptscan.py`.
@@ -64,7 +56,7 @@ python gptscan.py ./my_scripts --cli --json
 
 The scanner automatically finds scripts to analyze in two ways:
 *   **By extension:** It looks for `.py`, `.js`, `.bat`, and `.ps1` files by default. The repository also includes an `extensions.txt` file that allows the scanner to recognize dozens of other script types (like `.sh`, `.rb`, and `.php`).
-*   **By "shebang" line:** It detects script files even if they have no extension (or an unknown one) by checking the first line for a valid "shebang" (for example, `#!/usr/bin/python` or `#!/usr/bin/env node`).
+*   **By "shebang" line:** It detects script files without extensions by checking the first line for a valid "shebang" (e.g., `#!/bin/bash`). It supports common interpreters like Python, Node.js, Bash, Sh, Zsh, PHP, Perl, Ruby, and PowerShell.
 
 ## Configuration
 
@@ -87,6 +79,7 @@ python gptscan.py
 *   **Select File/Folder:** Choose the specific script or folder you want to scan.
 *   **Filter results:** Quickly search through findings by filename, confidence level, or analysis notes.
 *   **Deep Scan:** Scan every part of the file. By default, the tool only checks the beginning and end (the first and last 1,024 bytes) to save time.
+*   **Minimum Threat Level:** Set the threshold (0-100%) for what the tool considers "suspicious."
 *   **Show all files:** List every file scanned, even the safe ones.
 *   **Use AI Analysis:** Get a detailed report for suspicious files.
 *   **AI Analysis Settings:** Choose your service (OpenAI, OpenRouter, or Ollama) and the model you want to use.
@@ -107,7 +100,7 @@ You can sort the results by clicking the column headers.
 
 Run scans from your terminal for automated tasks. Use the `--cli` flag.
 
-> **Tip:** When using the CLI, results are sent directly to your terminal. To save them to a file, use the `>` symbol (for example: `python gptscan.py ./my_scripts --cli --json > results.json`).
+> **Tip:** By default, CLI results appear in your terminal. To save them to a file, use the `--output` (or `-o`) flag or shell redirection (`>`). For example: `python gptscan.py ./my_scripts --cli -o results.json`.
 
 **Examples:**
 ```bash
@@ -150,6 +143,7 @@ python gptscan.py ./my_scripts --cli --json --exclude "tests/*" > results.json
 
 *   **Tkinter not found (Linux):** If you see a "ModuleNotFoundError: No module named 'tkinter'" error, install it using: `sudo apt-get install python3-tk`.
 *   **Model file missing:** Make sure `scripts.h5` is in the same folder as `gptscan.py`. This file is required for the local scan.
+*   **AI Analysis disabled:** Ensure `task.txt` exists in the same folder. This file contains the instructions for the AI.
 *   **API key missing:** You can still use the local scan and Ollama without a key. For OpenAI or OpenRouter, add your key to `apikey.txt`.
 
 ## Contributing
