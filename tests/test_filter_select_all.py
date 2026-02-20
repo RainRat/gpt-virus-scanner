@@ -25,6 +25,11 @@ def test_matches_filter_basic(monkeypatch):
     mock_filter_var.get.return_value = ""
     assert gptscan._matches_filter(values) is True
 
+    # Test case: ignore hidden 7th column (index 6)
+    mock_filter_var.get.return_value = "hidden_secret"
+    values_with_hidden = ("path.py", "10%", "Admin", "User", "0%", "snippet", '{"secret": "hidden_secret"}')
+    assert gptscan._matches_filter(values_with_hidden) is False
+
 def test_apply_filter_refreshes_tree(monkeypatch):
     """Test that _apply_filter clears and repopulates the tree."""
     mock_tree = MagicMock()

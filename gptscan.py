@@ -665,7 +665,7 @@ def _matches_filter(values: Tuple[Any, ...]) -> bool:
     if not query:
         return True
 
-    for val in values:
+    for val in values[:6]:
         if query in str(val).lower():
             return True
     return False
