@@ -10,6 +10,9 @@ def mock_tree(monkeypatch):
     mock_tree = MagicMock()
     monkeypatch.setattr(gptscan, 'tree', mock_tree, raising=False)
 
+    # Mock get_children for navigation logic
+    mock_tree.get_children.return_value = ["item1"]
+
     # Mock _get_selected_row_values dependencies
     def mock_item_func(item_id, option=None):
         vals = mock_tree._item_values.get(item_id, ())

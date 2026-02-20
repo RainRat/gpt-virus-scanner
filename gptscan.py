@@ -1960,24 +1960,25 @@ def _get_selected_row_values() -> Optional[List[Any]]:
     return _get_item_raw_values(selection[0])
 
 
-def view_details(event: Optional[tk.Event] = None) -> None:
+def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None) -> None:
     """Open a detailed view of the selected scan result."""
-    values = _get_selected_row_values()
+    if item_id is None:
+        selection = tree.selection()
+        if not selection:
+            return
+        item_id = selection[0]
+
+    values = _get_item_raw_values(item_id)
     if not values:
         return
 
     # values: (path, own_conf, admin, user, gpt_conf, snippet)
     path = values[0]
-    own_conf = values[1]
-    admin = values[2]
-    user = values[3]
-    gpt_conf = values[4]
-    snippet = values[5]
 
     details_win = tk.Toplevel(root)
     details_win.title(f"Result Details - {os.path.basename(path)}")
-    details_win.geometry("700x600")
-    details_win.minsize(500, 400)
+    details_win.geometry("700x650")
+    details_win.minsize(500, 450)
 
     # Make it modal-ish but not blocking
     details_win.transient(root)
@@ -1991,57 +1992,41 @@ def view_details(event: Optional[tk.Event] = None) -> None:
 
     ttk.Label(header_frame, text="File Path:", font=('TkDefaultFont', 9, 'bold')).grid(row=0, column=0, sticky="w")
     path_entry = ttk.Entry(header_frame)
-    path_entry.insert(0, path)
-    path_entry.config(state='readonly')
     path_entry.grid(row=0, column=1, sticky="ew", padx=5)
     header_frame.columnconfigure(1, weight=1)
 
     def copy_path_btn():
         root.clipboard_clear()
-        root.clipboard_append(path)
+        root.clipboard_append(path_entry.get())
         messagebox.showinfo("Copied", "File path copied to clipboard.")
 
     ttk.Button(header_frame, text="Copy Path", width=12, command=copy_path_btn).grid(row=0, column=2, padx=2)
-    ttk.Button(header_frame, text="Show in Folder", width=15, command=lambda: show_in_folder(path)).grid(row=0, column=3, padx=2)
+    ttk.Button(header_frame, text="Show in Folder", width=15, command=lambda: show_in_folder(path_entry.get())).grid(row=0, column=3, padx=2)
 
     conf_frame = ttk.Frame(header_frame)
     conf_frame.grid(row=1, column=0, columnspan=4, sticky="w", pady=(5, 0))
 
     ttk.Label(conf_frame, text="Local Confidence:").grid(row=0, column=0, sticky="w")
-    ttk.Label(conf_frame, text=own_conf, font=('TkDefaultFont', 9, 'bold')).grid(row=0, column=1, sticky="w", padx=(5, 20))
+    own_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
+    own_conf_label.grid(row=0, column=1, sticky="w", padx=(5, 20))
 
-    if gpt_conf:
-        ttk.Label(conf_frame, text="AI Confidence:").grid(row=0, column=2, sticky="w")
-        ttk.Label(conf_frame, text=gpt_conf, font=('TkDefaultFont', 9, 'bold')).grid(row=0, column=3, sticky="w", padx=(5, 0))
+    ai_conf_prefix = ttk.Label(conf_frame, text="AI Confidence:")
+    gpt_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
 
     ttk.Separator(main_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
 
     # Analysis sections
-    if admin or user:
-        analysis_frame = ttk.LabelFrame(main_frame, text="AI Analysis", padding=5)
-        analysis_frame.pack(fill=tk.BOTH, expand=True, pady=5)
-
-        if admin:
-            ttk.Label(analysis_frame, text="Administrator Notes:", font=('TkDefaultFont', 9, 'bold')).pack(anchor="w")
-            admin_text = scrolledtext.ScrolledText(analysis_frame, height=5, wrap=tk.WORD)
-            admin_text.insert(tk.END, admin)
-            admin_text.config(state='disabled')
-            admin_text.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
-
-        if user:
-            ttk.Label(analysis_frame, text="End-User Notes:", font=('TkDefaultFont', 9, 'bold')).pack(anchor="w")
-            user_text = scrolledtext.ScrolledText(analysis_frame, height=5, wrap=tk.WORD)
-            user_text.insert(tk.END, user)
-            user_text.config(state='disabled')
-            user_text.pack(fill=tk.BOTH, expand=True)
+    analysis_frame = ttk.LabelFrame(main_frame, text="AI Analysis", padding=5)
+    admin_label = ttk.Label(analysis_frame, text="Administrator Notes:", font=('TkDefaultFont', 9, 'bold'))
+    admin_text = scrolledtext.ScrolledText(analysis_frame, height=5, wrap=tk.WORD)
+    user_label = ttk.Label(analysis_frame, text="End-User Notes:", font=('TkDefaultFont', 9, 'bold'))
+    user_text = scrolledtext.ScrolledText(analysis_frame, height=5, wrap=tk.WORD)
 
     # Snippet section
     snippet_frame = ttk.LabelFrame(main_frame, text="Code Snippet", padding=5)
     snippet_frame.pack(fill=tk.BOTH, expand=True, pady=5)
 
     snippet_text = scrolledtext.ScrolledText(snippet_frame, height=8, font=('Courier', 10), wrap=tk.NONE)
-    snippet_text.insert(tk.END, snippet)
-    snippet_text.config(state='disabled')
     snippet_text.pack(fill=tk.BOTH, expand=True)
 
     # Footer buttons
@@ -2049,21 +2034,122 @@ def view_details(event: Optional[tk.Event] = None) -> None:
     btn_frame.pack(fill=tk.X, pady=(10, 0))
 
     def copy_analysis():
+        path = path_entry.get()
+        own_conf = own_conf_label.cget("text")
+        gpt_conf = gpt_conf_label.cget("text")
         text = f"Path: {path}\nLocal Conf: {own_conf}\n"
         if gpt_conf:
             text += f"AI Conf: {gpt_conf}\n"
-        if admin:
-            text += f"\nAdmin Notes:\n{admin}\n"
-        if user:
-            text += f"\nUser Notes:\n{user}\n"
-        text += f"\nSnippet:\n{snippet}"
+        if analysis_frame.winfo_viewable():
+            if admin_label.winfo_viewable():
+                text += f"\nAdmin Notes:\n{admin_text.get('1.0', tk.END).strip()}\n"
+            if user_label.winfo_viewable():
+                text += f"\nUser Notes:\n{user_text.get('1.0', tk.END).strip()}\n"
+        text += f"\nSnippet:\n{snippet_text.get('1.0', tk.END).strip()}"
         root.clipboard_clear()
         root.clipboard_append(text)
         messagebox.showinfo("Copied", "Detailed analysis copied to clipboard.")
 
-    ttk.Button(btn_frame, text="Open File", command=lambda: open_file(path)).pack(side=tk.LEFT, padx=5)
+    ttk.Button(btn_frame, text="Open File", command=lambda: open_file(path_entry.get())).pack(side=tk.LEFT, padx=5)
     ttk.Button(btn_frame, text="Copy Analysis", command=copy_analysis).pack(side=tk.LEFT, padx=5)
     ttk.Button(btn_frame, text="Close", command=details_win.destroy).pack(side=tk.RIGHT, padx=5)
+
+    # Navigation buttons
+    nav_frame = ttk.Frame(main_frame)
+    nav_frame.pack(fill=tk.X, pady=(10, 0))
+    current_item_id = item_id
+
+    def refresh_content(new_id):
+        nonlocal current_item_id
+        current_item_id = new_id
+        vals = _get_item_raw_values(new_id)
+        if not vals: return
+        path, own_conf, admin, user, gpt_conf, snippet = vals[:6]
+
+        details_win.title(f"Result Details - {os.path.basename(path)}")
+        path_entry.config(state='normal')
+        path_entry.delete(0, tk.END)
+        path_entry.insert(0, path)
+        path_entry.config(state='readonly')
+        own_conf_label.config(text=own_conf)
+
+        if gpt_conf:
+            ai_conf_prefix.grid(row=0, column=2, sticky="w")
+            gpt_conf_label.grid(row=0, column=3, sticky="w", padx=(5, 0))
+            gpt_conf_label.config(text=gpt_conf)
+        else:
+            ai_conf_prefix.grid_forget()
+            gpt_conf_label.grid_forget()
+            gpt_conf_label.config(text="")
+
+        if admin or user:
+            analysis_frame.pack(fill=tk.BOTH, expand=True, pady=5, before=snippet_frame)
+            if admin:
+                admin_label.pack(anchor="w")
+                admin_text.config(state='normal')
+                admin_text.delete('1.0', tk.END)
+                admin_text.insert(tk.END, admin)
+                admin_text.config(state='disabled')
+                admin_text.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
+            else:
+                admin_label.pack_forget()
+                admin_text.pack_forget()
+            if user:
+                user_label.pack(anchor="w")
+                user_text.config(state='normal')
+                user_text.delete('1.0', tk.END)
+                user_text.insert(tk.END, user)
+                user_text.config(state='disabled')
+                user_text.pack(fill=tk.BOTH, expand=True)
+            else:
+                user_label.pack_forget()
+                user_text.pack_forget()
+        else:
+            analysis_frame.pack_forget()
+
+        snippet_text.config(state='normal')
+        snippet_text.delete('1.0', tk.END)
+        snippet_text.insert(tk.END, snippet)
+        snippet_text.config(state='disabled')
+
+        all_visible = tree.get_children()
+        try:
+            idx = all_visible.index(new_id)
+            prev_btn.config(state='normal' if idx > 0 else 'disabled')
+            next_btn.config(state='normal' if idx < len(all_visible) - 1 else 'disabled')
+        except ValueError:
+            prev_btn.config(state='disabled')
+            next_btn.config(state='disabled')
+
+    def on_prev():
+        all_visible = tree.get_children()
+        try:
+            idx = all_visible.index(current_item_id)
+            if idx > 0:
+                new_id = all_visible[idx - 1]
+                tree.selection_set(new_id)
+                tree.see(new_id)
+                refresh_content(new_id)
+        except ValueError: pass
+
+    def on_next():
+        all_visible = tree.get_children()
+        try:
+            idx = all_visible.index(current_item_id)
+            if idx < len(all_visible) - 1:
+                new_id = all_visible[idx + 1]
+                tree.selection_set(new_id)
+                tree.see(new_id)
+                refresh_content(new_id)
+        except ValueError: pass
+
+    prev_btn = ttk.Button(nav_frame, text="< Previous", command=on_prev)
+    prev_btn.pack(side=tk.LEFT, padx=5)
+    next_btn = ttk.Button(nav_frame, text="Next >", command=on_next)
+    next_btn.pack(side=tk.LEFT, padx=5)
+    details_win.bind('<Left>', lambda e: on_prev())
+    details_win.bind('<Right>', lambda e: on_next())
+    refresh_content(item_id)
 
 
 def open_file(event_or_path: Union[tk.Event, str, None] = None) -> None:
