@@ -61,6 +61,15 @@ def test_is_supported_file_shebang(tmp_path):
         f9.write_bytes(b"#!/usr/bin/env powershell\nls")
         assert Config.is_supported_file(f9) is True
 
+        # Regression test for substring matches (ships vs sh)
+        f10 = tmp_path / "not_sh_script"
+        f10.write_bytes(b"#!/usr/bin/env ships\necho hi")
+        assert Config.is_supported_file(f10) is False
+
+        f11 = tmp_path / "not_node_script"
+        f11.write_bytes(b"#!/usr/bin/env modern\necho hi")
+        assert Config.is_supported_file(f11) is False
+
     finally:
         Config.extensions_set = original_exts
 

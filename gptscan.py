@@ -4,6 +4,7 @@ import html
 import json
 import os
 import queue
+import re
 import shutil
 import subprocess
 import sys
@@ -161,8 +162,9 @@ class Config:
                     first_line = f.readline(126).decode('utf-8', errors='ignore').lower()
                     # Common interpreters for supported or similar script types
                     interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell']
-                    if any(interp in first_line for interp in interpreters):
-                        return True
+                    for interp in interpreters:
+                        if re.search(rf"(?:/|\s|^){re.escape(interp)}\d*\b", first_line):
+                            return True
         except (OSError, UnicodeDecodeError):
             pass
 
