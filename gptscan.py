@@ -471,6 +471,28 @@ async def async_handle_gpt_response(
     return None
 
 
+def request_single_gpt_analysis(snippet: str) -> Optional[Dict[str, Any]]:
+    """Perform a one-off AI assessment for a code snippet."""
+    if not Config.GPT_ENABLED:
+        return None
+
+    async def run_analysis():
+        rate_limiter = AsyncRateLimiter(60)
+        semaphore = asyncio.Semaphore(1)
+        return await async_handle_gpt_response(
+            snippet,
+            Config.taskdesc,
+            rate_limiter=rate_limiter,
+            semaphore=semaphore
+        )
+
+    try:
+        return asyncio.run(run_analysis())
+    except Exception as e:
+        print(f"Error during on-demand AI analysis: {e}", file=sys.stderr)
+        return None
+
+
 def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Callable[[str], int]] = None) -> Any:
     """Wrap strings based on the available column width."""
     if not isinstance(val, str):
@@ -2033,6 +2055,46 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     btn_frame = ttk.Frame(main_frame)
     btn_frame.pack(fill=tk.X, pady=(10, 0))
 
+    def on_analyze_now():
+        if not Config.GPT_ENABLED:
+            messagebox.showwarning("AI Disabled", "AI Analysis is disabled (task.txt not found or API key missing).")
+            return
+
+        analyze_btn.config(state='disabled', text="Analyzing...")
+
+        def run_thread(target_id):
+            try:
+                vals = _get_item_raw_values(target_id)
+                if not vals: return
+                snippet = vals[5]
+
+                result = request_single_gpt_analysis(snippet)
+
+                if result:
+                    # updated_vals: (path, own_conf, admin, user, gpt_conf, snippet)
+                    updated_vals = list(vals)
+                    updated_vals[2] = result.get("administrator", "")
+                    updated_vals[3] = result.get("end-user", "")
+                    # Safer extraction of threat-level
+                    threat_level = result.get("threat-level", 0)
+                    try:
+                        updated_vals[4] = "{:.0%}".format(int(threat_level) / 100.)
+                    except (ValueError, TypeError):
+                        updated_vals[4] = "Error"
+
+                    enqueue_ui_update(update_tree_row, target_id, tuple(updated_vals))
+                    # Only refresh the details view if the user is still viewing the same item
+                    if current_item_id == target_id:
+                        enqueue_ui_update(refresh_content, target_id)
+                else:
+                    enqueue_ui_update(messagebox.showerror, "AI Analysis Failed", "Could not obtain a response from the AI.")
+            except Exception as e:
+                enqueue_ui_update(messagebox.showerror, "Error", f"An unexpected error occurred: {e}")
+            finally:
+                enqueue_ui_update(lambda: analyze_btn.config(state='normal', text="Analyze with AI"))
+
+        threading.Thread(target=run_thread, args=(current_item_id,), daemon=True).start()
+
     def copy_analysis():
         path = path_entry.get()
         own_conf = own_conf_label.cget("text")
@@ -2052,6 +2114,12 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     ttk.Button(btn_frame, text="Open File", command=lambda: open_file(path_entry.get())).pack(side=tk.LEFT, padx=5)
     ttk.Button(btn_frame, text="Copy Analysis", command=copy_analysis).pack(side=tk.LEFT, padx=5)
+
+    analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", command=on_analyze_now)
+    analyze_btn.pack(side=tk.LEFT, padx=5)
+    if not Config.GPT_ENABLED:
+        analyze_btn.config(state='disabled')
+
     ttk.Button(btn_frame, text="Close", command=details_win.destroy).pack(side=tk.RIGHT, padx=5)
 
     # Navigation buttons
