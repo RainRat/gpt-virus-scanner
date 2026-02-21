@@ -61,6 +61,15 @@ def test_is_supported_file_shebang(tmp_path):
         f9.write_bytes(b"#!/usr/bin/env powershell\nls")
         assert Config.is_supported_file(f9) is True
 
+        # Regression test for substring false positives (e.g., 'sh' in 'ships')
+        f10 = tmp_path / "ships_script"
+        f10.write_bytes(b"#!/usr/bin/ships\n")
+        assert Config.is_supported_file(f10) is False
+
+        f11 = tmp_path / "mysh_script"
+        f11.write_bytes(b"#!/usr/bin/mysh\n")
+        assert Config.is_supported_file(f11) is False
+
     finally:
         Config.extensions_set = original_exts
 
