@@ -35,6 +35,8 @@ filter_var: Optional[tk.StringVar] = None
 tree: Optional[ttk.Treeview] = None
 scan_button: Optional[ttk.Button] = None
 cancel_button: Optional[ttk.Button] = None
+view_button: Optional[ttk.Button] = None
+rescan_button: Optional[ttk.Button] = None
 context_menu: Optional[tk.Menu] = None
 _all_results_cache: List[Tuple[Any, ...]] = []
 _last_scan_summary: str = ""
@@ -2149,6 +2151,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     next_btn.pack(side=tk.LEFT, padx=5)
     details_win.bind('<Left>', lambda e: on_prev())
     details_win.bind('<Right>', lambda e: on_next())
+    details_win.bind('<Escape>', lambda e: details_win.destroy())
     refresh_content(item_id)
 
 
@@ -2252,6 +2255,16 @@ def show_context_menu(event: tk.Event) -> None:
         context_menu.post(event.x_root, event.y_root)
 
 
+def update_button_states(event: Optional[tk.Event] = None) -> None:
+    """Enable or disable selection-dependent buttons."""
+    if not tree or not view_button or not rescan_button:
+        return
+
+    has_selection = bool(tree.selection())
+    view_button.config(state="normal" if has_selection else "disabled")
+    rescan_button.config(state="normal" if has_selection else "disabled")
+
+
 def select_all_items(event: Optional[tk.Event] = None) -> str:
     """Select all items currently visible in the Results Treeview."""
     if tree:
@@ -2295,7 +2308,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, filter_var, tree, scan_button, cancel_button, default_font_measure
+    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, filter_var, tree, scan_button, cancel_button, view_button, rescan_button, default_font_measure
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -2569,16 +2582,20 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     view_button.grid(row=0, column=1, padx=2)
     bind_hover_message(view_button, "Show full analysis and code for the selected result.")
 
+    rescan_button = ttk.Button(footer_frame, text="Rescan Selected", command=rescan_selected)
+    rescan_button.grid(row=0, column=2, padx=2)
+    bind_hover_message(rescan_button, "Re-scan the currently selected items.")
+
     import_button = ttk.Button(footer_frame, text="Import Results...", command=import_results)
-    import_button.grid(row=0, column=2, padx=2)
+    import_button.grid(row=0, column=3, padx=2)
     bind_hover_message(import_button, "Load results from a JSON or CSV file.")
 
     export_button = ttk.Button(footer_frame, text="Export Results...", command=export_results)
-    export_button.grid(row=0, column=3, padx=2)
+    export_button.grid(row=0, column=4, padx=2)
     bind_hover_message(export_button, "Save results to CSV, HTML, JSON, or SARIF.")
 
     clear_button = ttk.Button(footer_frame, text="Clear Results", command=clear_results)
-    clear_button.grid(row=0, column=4, padx=(2, 0))
+    clear_button.grid(row=0, column=5, padx=(2, 0))
     bind_hover_message(clear_button, "Clear all results from the list.")
 
     # --- Context Menu ---
@@ -2604,6 +2621,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<Menu>', show_context_menu)
 
     # Bind selection and rescan keys
+    root.bind('<Control-f>', lambda e: filter_entry.focus_set())
+    root.bind('<Command-f>', lambda e: filter_entry.focus_set())
+    tree.bind('<<TreeviewSelect>>', update_button_states)
     tree.bind('<Control-a>', select_all_items)
     tree.bind('<Command-a>', select_all_items)
     tree.bind('<space>', view_details)
@@ -2612,6 +2632,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     motion_handler(tree, None)   # Perform initial wrapping
     update_tree_columns()        # Adjust columns based on initial AI settings
+    update_button_states()       # Initialize button states
     set_scanning_state(False)
     return root
 
