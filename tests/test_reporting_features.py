@@ -26,6 +26,10 @@ def test_scan_summary_gui(monkeypatch):
 
 def test_treeview_highlighting(monkeypatch):
     """Test that insert_tree_row applies the correct tags based on confidence."""
+    monkeypatch.setattr(gptscan.Config, 'THRESHOLD', 50)
+    mock_all_var = MagicMock()
+    mock_all_var.get.return_value = True
+    monkeypatch.setattr(gptscan, 'all_var', mock_all_var)
     mock_tree = MagicMock()
     mock_tree.column.return_value = {'width': 100}
     monkeypatch.setattr(gptscan, 'tree', mock_tree, raising=False)

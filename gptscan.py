@@ -685,7 +685,14 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
 
 
 def _matches_filter(values: Tuple[Any, ...]) -> bool:
-    """Check if the given values match the current filter string."""
+    """Check if the given values match the current filter string and threat threshold."""
+    # Check threshold first unless "Show all files" is checked
+    is_show_all = all_var.get() if all_var else False
+    if not is_show_all:
+        conf = get_effective_confidence(values[1], values[4])
+        if conf < Config.THRESHOLD:
+            return False
+
     if not filter_var:
         return True
     query = filter_var.get().lower().strip()
@@ -717,8 +724,12 @@ def _apply_filter(*args: Any) -> None:
     # Update status label with filtered count if not currently scanning
     if current_cancel_event is None:
         query = filter_var.get().strip() if filter_var else ""
-        if query:
-            update_status(f"Showing {match_count} of {len(_all_results_cache)} results matching '{query}'")
+        total_count = len(_all_results_cache)
+        if query or match_count < total_count:
+            msg = f"Showing {match_count} of {total_count} results"
+            if query:
+                msg += f" matching '{query}'"
+            update_status(msg)
         elif _last_scan_summary:
             update_status(_last_scan_summary)
         else:
@@ -2465,7 +2476,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(deep_checkbox, "Scan the entire file content (slower). Default scans only start/end.")
 
     all_var = tk.BooleanVar()
-    all_checkbox = ttk.Checkbutton(options_frame, text="Show all files", variable=all_var)
+    all_checkbox = ttk.Checkbutton(options_frame, text="Show all files", variable=all_var, command=_apply_filter)
     all_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(all_checkbox, "Display all scanned files, including safe ones.")
 
@@ -2482,6 +2493,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         try:
             val = int(threshold_spin.get())
             Config.THRESHOLD = max(0, min(100, val))
+            _apply_filter()
         except ValueError:
             pass
 
