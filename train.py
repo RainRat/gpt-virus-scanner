@@ -5,7 +5,7 @@ import random
 import shutil
 import argparse
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 from dataclasses import dataclass, asdict, field
 from tensorflow.keras.layers import (
     Dense, Input, LSTM, Embedding, Dropout, GRU, concatenate,
@@ -77,6 +77,21 @@ class Hyperparameters:
         params[random.randint(0, 16)] = random.random()
         params[random.randint(0, 16)] = random.random()
         return Hyperparameters.from_list(params)
+
+    def get_derived_params(self) -> Dict[str, Any]:
+        """Calculate scaled parameters from base hyperparameters."""
+        return {
+            'embedding_dim': int(self.embedding_scale * 128) + 32,
+            'rnn_units': int(self.rnn_scale * 128) + 32,
+            'dense_units': int(self.dense_scale * 128) + 32,
+            'conv_filters': int(self.conv_filters_scale * 90) + 8,
+            'conv_kernel_size': int(self.conv_kernel_scale * 3) + 2,
+            'spatial_dropout': self.spatial_dropout * 0.5,
+            'rnn_dropout': self.rnn_dropout * 0.5,
+            'rnn_recurrent_dropout': self.rnn_recurrent_dropout * 0.5,
+            'dropout1': self.dropout1 * 0.5,
+            'dropout2': self.dropout2 * 0.5,
+        }
 
 
 class DataLoader:
@@ -203,12 +218,8 @@ class ModelBuilder:
     def build_model(self, hp: Hyperparameters) -> Optional[Model]:
         """Build model from hyperparameters."""
         try:
-            # Calculate integer parameters
-            embedding_dim = int(hp.embedding_scale * 128) + 32
-            rnn_units = int(hp.rnn_scale * 128) + 32
-            dense_units = int(hp.dense_scale * 128) + 32
-            conv_filters = int(hp.conv_filters_scale * 90) + 8
-            conv_kernel_size = int(hp.conv_kernel_scale * 3) + 2
+            # Get derived parameters
+            dp = hp.get_derived_params()
             
             # Get categorical parameters
             activation = self._get_activation(hp.activation)
@@ -218,40 +229,40 @@ class ModelBuilder:
             
             # Build model
             inp = Input(shape=(self.max_length,))
-            x = Embedding(256, embedding_dim)(inp)
-            x = SpatialDropout1D(hp.spatial_dropout * 0.5)(x)
+            x = Embedding(256, dp['embedding_dim'])(inp)
+            x = SpatialDropout1D(dp['spatial_dropout'])(x)
             
             # RNN layer selection
             if hp.rnn_type > 0.75:
                 x = LSTM(
-                    rnn_units, return_sequences=True,
-                    dropout=hp.rnn_dropout * 0.5,
-                    recurrent_dropout=hp.rnn_recurrent_dropout * 0.5
+                    dp['rnn_units'], return_sequences=True,
+                    dropout=dp['rnn_dropout'],
+                    recurrent_dropout=dp['rnn_recurrent_dropout']
                 )(x)
             elif hp.rnn_type > 0.5:
                 x = GRU(
-                    rnn_units, return_sequences=True,
-                    dropout=hp.rnn_dropout * 0.5,
-                    recurrent_dropout=hp.rnn_recurrent_dropout * 0.5
+                    dp['rnn_units'], return_sequences=True,
+                    dropout=dp['rnn_dropout'],
+                    recurrent_dropout=dp['rnn_recurrent_dropout']
                 )(x)
             elif hp.rnn_type > 0.25:
                 x = Bidirectional(GRU(
-                    rnn_units, return_sequences=True,
-                    dropout=hp.rnn_dropout * 0.5,
-                    recurrent_dropout=hp.rnn_recurrent_dropout * 0.5
+                    dp['rnn_units'], return_sequences=True,
+                    dropout=dp['rnn_dropout'],
+                    recurrent_dropout=dp['rnn_recurrent_dropout']
                 ))(x)
             else:
                 x = Bidirectional(LSTM(
-                    rnn_units, return_sequences=True,
-                    dropout=hp.rnn_dropout * 0.5,
-                    recurrent_dropout=hp.rnn_recurrent_dropout * 0.5
+                    dp['rnn_units'], return_sequences=True,
+                    dropout=dp['rnn_dropout'],
+                    recurrent_dropout=dp['rnn_recurrent_dropout']
                 ))(x)
             
             # Optional Conv1D layer
             if hp.use_conv > 0.5:
                 padding = 'same' if hp.conv_padding < 0.5 else 'valid'
                 x = Conv1D(
-                    conv_filters, kernel_size=conv_kernel_size,
+                    dp['conv_filters'], kernel_size=dp['conv_kernel_size'],
                     padding=padding, kernel_initializer=initializer
                 )(x)
             
@@ -268,9 +279,9 @@ class ModelBuilder:
                 x = Flatten()(x)
             
             # Dense layers
-            x = Dropout(hp.dropout1 * 0.5)(x)
-            x = Dense(dense_units, activation=activation)(x)
-            x = Dropout(hp.dropout2 * 0.5)(x)
+            x = Dropout(dp['dropout1'])(x)
+            x = Dense(dp['dense_units'], activation=activation)(x)
+            x = Dropout(dp['dropout2'])(x)
             x = Dense(1, activation="sigmoid")(x)
             
             # Compile model
@@ -300,30 +311,32 @@ class ModelBuilder:
     
     def print_architecture(self, hp: Hyperparameters):
         """Print human-readable architecture description."""
+        dp = hp.get_derived_params()
+
         rnn_type = "BiLSTM" if hp.rnn_type < 0.25 else \
                    "BiGRU" if hp.rnn_type < 0.5 else \
                    "GRU" if hp.rnn_type < 0.75 else "LSTM"
         
         pooling = self._get_pooling_type(hp.pooling_type)
         
-        print(f"Features: {int(hp.embedding_scale * 128) + 32}, "
-              f"SpatialDrop: {hp.spatial_dropout * 0.5:.3f}, "
-              f"{rnn_type} Size: {int(hp.rnn_scale * 128) + 32}, "
-              f"Drop: {hp.rnn_dropout * 0.5:.3f}, "
-              f"RecDrop: {hp.rnn_recurrent_dropout * 0.5:.3f}")
+        print(f"Features: {dp['embedding_dim']}, "
+              f"SpatialDrop: {dp['spatial_dropout']:.3f}, "
+              f"{rnn_type} Size: {dp['rnn_units']}, "
+              f"Drop: {dp['rnn_dropout']:.3f}, "
+              f"RecDrop: {dp['rnn_recurrent_dropout']:.3f}")
         
         if hp.use_conv > 0.5:
             padding = 'same' if hp.conv_padding < 0.5 else 'valid'
-            print(f"Conv1D Filt: {int(hp.conv_filters_scale * 90) + 8}, "
+            print(f"Conv1D Filt: {dp['conv_filters']}, "
                   f"Pad: {padding}, "
                   f"Init: {self._get_initializer(hp.kernel_init)}, "
-                  f"Size: {int(hp.conv_kernel_scale * 3) + 2}")
+                  f"Size: {dp['conv_kernel_size']}")
         
         print(f"Pool: {pooling}, "
-              f"Dropout1: {hp.dropout1 * 0.5:.3f}, "
-              f"Dense: {int(hp.dense_scale * 128) + 32}, "
+              f"Dropout1: {dp['dropout1']:.3f}, "
+              f"Dense: {dp['dense_units']}, "
               f"Activation: {self._get_activation(hp.activation)}, "
-              f"Dropout2: {hp.dropout2 * 0.5:.3f}, "
+              f"Dropout2: {dp['dropout2']:.3f}, "
               f"Opt: {self._get_optimizer(hp.optimizer)}")
 
 
