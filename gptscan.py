@@ -397,20 +397,20 @@ def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
         return str(exc)
 
     if not isinstance(json_data, dict):
-        return "Response JSON must be an object with expected keys."
+        return "The AI's response was not in the expected format."
 
     missing_keys = [key for key in Config.EXPECTED_KEYS if key not in json_data]
     if missing_keys:
-        return f"Missing keys: {', '.join(missing_keys)}"
+        return f"The AI's response was missing required information: {', '.join(missing_keys)}"
 
     threat_level_value = json_data.get("threat-level")
     try:
         threat_level = int(threat_level_value)
     except (TypeError, ValueError):
-        return f"The 'threat-level' value '{threat_level_value}' is not a valid integer."
+        return f"The threat level '{threat_level_value}' is not a valid number."
 
     if not 0 <= threat_level <= 100:
-        return f"The 'threat-level' value {threat_level} is not between 0 and 100 inclusive."
+        return f"The threat level {threat_level} is not between 0 and 100."
 
     json_data["threat-level"] = threat_level
     return json_data
@@ -2462,7 +2462,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     deep_var = tk.BooleanVar()
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
     deep_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
-    bind_hover_message(deep_checkbox, "Scan the entire file content (slower). Default scans only start/end.")
+    bind_hover_message(deep_checkbox, "Scan the whole file. This is slower but more thorough. Normally, the scanner only checks the beginning and end.")
 
     all_var = tk.BooleanVar()
     all_checkbox = ttk.Checkbutton(options_frame, text="Show all files", variable=all_var)
@@ -2490,7 +2490,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     threshold_spin.insert(0, str(Config.THRESHOLD))
     threshold_spin.pack(side=tk.LEFT, padx=5)
     threshold_spin.bind('<KeyRelease>', lambda e: on_threshold_change())
-    bind_hover_message(threshold_spin, "Minimum threat level percentage to report a file as suspicious.")
+    bind_hover_message(threshold_spin, "Files with a threat score lower than this will be ignored. Set this higher to see only the most dangerous files.")
 
     # --- Provider Frame ---
     provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis")
@@ -2508,7 +2508,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
     gpt_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
-    bind_hover_message(gpt_checkbox, "Send suspicious code to AI for explanation.")
+    bind_hover_message(gpt_checkbox, "Use AI to analyze suspicious code and explain what it does.")
 
     if not Config.GPT_ENABLED:
         gpt_var.set(False)
@@ -2728,7 +2728,7 @@ def main():
 
     scan_group = parser.add_argument_group("Scan Options")
     scan_group.add_argument('-p', '--path', type=str, help='An alternative way to specify the scan target.')
-    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan every part of the file. By default, it only checks the first and last 1,024 bytes.')
+    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. Normally, it only checks the start and end to save time.')
     scan_group.add_argument('--dry-run', action='store_true', help='Show which files would be scanned without analyzing them.')
     scan_group.add_argument(
         '--extensions',
@@ -2753,17 +2753,17 @@ def main():
     scan_group.add_argument(
         '--fail-threshold',
         type=int,
-        help='Stop with an error if any file meets this threat level or higher (0-100).'
+        help='Exit with an error if any file has a threat score at or above this number (0-100).'
     )
     scan_group.add_argument(
         '--threshold', '-t',
         type=int,
         default=50,
-        help='The minimum threat level to report (0-100). Default is 50.'
+        help='The lowest threat score to report (0-100). The default is 50.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
-    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Enable AI Analysis for detailed reports (requires an API key).')
+    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Use AI to create detailed reports for suspicious files. This requires an API key.')
     ai_group.add_argument(
         '--provider',
         type=str,
@@ -2791,7 +2791,7 @@ def main():
     output_group = parser.add_argument_group("Output")
     output_group.add_argument('--cli', action='store_true', help='Run in command-line mode instead of opening a window.')
     output_group.add_argument('-a', '--show-all', action='store_true', help='Show all scanned files, including safe ones.')
-    output_group.add_argument('-o', '--output', type=str, help='Save the scan results to the specified file. The format is inferred from the extension if not specified.')
+    output_group.add_argument('-o', '--output', type=str, help='Save the scan results to a file. The tool chooses the format based on the file extension.')
     output_group.add_argument('-j', '--json', action='store_true', help='Output results in JSON format (one object per line).')
     output_group.add_argument('--csv', action='store_true', help='Output results in CSV format (default).')
     output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format, a standard for security tools.')

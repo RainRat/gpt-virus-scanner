@@ -95,7 +95,7 @@ def test_extract_data_from_gpt_response_invalid_missing_keys():
 
     error = gptscan.extract_data_from_gpt_response(response)
 
-    assert "Missing keys" in error
+    assert "missing required information" in error
 
 
 def test_extract_data_from_gpt_response_invalid_threat_level():
@@ -111,7 +111,7 @@ def test_extract_data_from_gpt_response_invalid_threat_level():
 
     error = gptscan.extract_data_from_gpt_response(response)
 
-    assert "not a valid integer" in error
+    assert "not a valid number" in error
 
 
 def test_extract_data_from_gpt_response_accepts_extra_keys():
@@ -137,7 +137,7 @@ def test_extract_data_from_gpt_response_rejects_non_object():
 
     error = gptscan.extract_data_from_gpt_response(response)
 
-    assert "must be an object" in error
+    assert "not in the expected format" in error
 
 
 def test_extract_data_from_gpt_response_none_root():
@@ -145,7 +145,7 @@ def test_extract_data_from_gpt_response_none_root():
 
     error = gptscan.extract_data_from_gpt_response(response)
 
-    assert "must be an object" in error
+    assert "not in the expected format" in error
 
 
 def test_extract_data_from_gpt_response_coerces_threat_level_string():

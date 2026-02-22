@@ -88,7 +88,7 @@ async def test_gpt_correction_flow_success(mock_openai_client):
     assert call2["messages"][2]["content"] == resp1_content
     assert call2["messages"][3]["role"] == "user"
     assert "I encountered an issue" in call2["messages"][3]["content"]
-    assert "Missing keys: threat-level" in call2["messages"][3]["content"]
+    assert "missing required information: threat-level" in call2["messages"][3]["content"]
 
 @pytest.mark.asyncio
 async def test_gpt_correction_flow_failure_max_retries(mock_openai_client, monkeypatch):

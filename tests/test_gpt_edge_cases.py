@@ -16,7 +16,7 @@ def mock_response():
 def test_extract_data_non_dict(mock_response):
     response = mock_response('[1, 2, 3]')
     result = extract_data_from_gpt_response(response)
-    assert result == "Response JSON must be an object with expected keys."
+    assert result == "The AI's response was not in the expected format."
 
 def test_extract_data_extra_keys(mock_response):
     # keys are: administrator, end-user, threat-level
@@ -30,7 +30,7 @@ def test_extract_data_threat_level_type_error(mock_response):
     content = '{"administrator": "a", "end-user": "b", "threat-level": "high"}'
     response = mock_response(content)
     result = extract_data_from_gpt_response(response)
-    assert "not a valid integer" in result
+    assert "not a valid number" in result
 
 def test_extract_data_threat_level_bounds(mock_response):
     content = '{"administrator": "a", "end-user": "b", "threat-level": 150}'
