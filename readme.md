@@ -2,11 +2,11 @@
 
 ## What is this?
 
-The GPT Virus Scanner uses AI to find malicious code in script files. It works in two stages:
-1.  **Local Scan:** A fast, built-in model checks your files locally.
-2.  **AI Analysis:** If a file looks suspicious, the tool sends a code snippet to an AI service (like OpenAI) for a detailed assessment.
+GPT Virus Scanner uses AI to find malicious code in script files. It works in two stages:
+1.  **Local Scan:** A fast, built-in model checks your files on your computer.
+2.  **AI Analysis:** If a file looks suspicious, the tool sends it to an AI service (like OpenAI) for a detailed report.
 
-**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (such as Python, JavaScript, PowerShell, and Batch files) but does not analyze compiled programs or compressed files (like .zip).
+**Note:** This tool is a prototype. It is not a commercial antivirus product. It scans scripts (such as Python, JavaScript, PowerShell, and Batch files) but does not analyze compiled programs or compressed files (like .zip).
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ python gptscan.py ./my_scripts --cli --json
 
 ## Requirements
 
-*   **Python 3.9, 3.10, or 3.11** is required. Newer versions (like 3.12) are currently not compatible.
+*   **Python 3.9, 3.10, or 3.11** is required. Newer versions (like 3.12) are currently not compatible with the local scanner.
 *   **TensorFlow** (version 2.15 or older) for local scanning.
 *   **AI Service** (Optional, for detailed analysis):
     *   **OpenAI** or **OpenRouter** (requires an API key).
@@ -32,14 +32,14 @@ python gptscan.py ./my_scripts --cli --json
 
 ## Installation
 
-1.  **Download the tool:** Clone this repository or download the files. Ensure `gptscan.py` and `scripts.h5` are in the same folder.
+1.  **Download the tool:** Clone this repository or download the files. Make sure `gptscan.py` and `scripts.h5` are in the same folder.
 2.  **Install Python:** Download and install Python (version 3.9, 3.10, or 3.11) from [python.org](https://www.python.org/).
 3.  **Install libraries:** Open your terminal and run:
     ```bash
     pip install "tensorflow<2.16" openai
     ```
-    *Linux users:* You might also need to install Tkinter: `sudo apt-get install python3-tk`.
-4.  **Set up AI (Optional):** To use **AI Analysis**, ensure `task.txt` is in the same folder and set up an API key (see below).
+    *Note for Linux users:* You may need to install Tkinter using your package manager (for example, `sudo apt-get install python3-tk` on Ubuntu).
+4.  **Set up AI (Optional):** To use AI Analysis, make sure `task.txt` is in the same folder and set up an API key.
 
     If you want to use **AI Analysis** (OpenAI or OpenRouter), you need an API key:
     *   Create a file named `apikey.txt` in the same folder as `gptscan.py`.
@@ -54,9 +54,9 @@ python gptscan.py ./my_scripts --cli --json
 
 ## Supported Files
 
-The scanner automatically finds scripts to analyze in two ways:
-*   **By extension:** It looks for `.py`, `.js`, `.bat`, and `.ps1` files by default. The repository also includes an `extensions.txt` file that allows the scanner to recognize dozens of other script types (like `.sh`, `.rb`, and `.php`).
-*   **By "shebang" line:** It detects script files without extensions by checking the first line for a valid "shebang" (e.g., `#!/bin/bash`). It supports common interpreters like Python, Node.js, Bash, Sh, Zsh, PHP, Perl, Ruby, and PowerShell.
+The scanner finds scripts to analyze in two ways:
+*   **By extension:** It looks for `.py`, `.js`, `.bat`, and `.ps1` files by default. The `extensions.txt` file helps the scanner recognize many other file types, such as `.sh`, `.rb`, and `.php`.
+*   **By "shebang" line:** The tool identifies scripts without extensions by looking at the first line (for example, `#!/bin/bash`). It supports common interpreters like Python, Node.js, Bash, Sh, Zsh, PHP, Perl, Ruby, and PowerShell.
 
 ## Configuration
 
