@@ -106,6 +106,44 @@ def test_import_results_csv(monkeypatch, tmp_path):
     args, _ = mock_insert.call_args
     assert args[0][0] == "test.py"
 
+def test_import_results_csv_alternative_headers(monkeypatch, tmp_path):
+    csv_file = tmp_path / "alt_results.csv"
+    headers = ["File Path", "Local Conf.", "Admin Notes", "User Notes", "AI Conf.", "Snippet"]
+    data = ["alt_test.py", "70%", "Alt Admin", "Alt User", "75%", "alt_code"]
+
+    with open(csv_file, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(headers)
+        writer.writerow(data)
+
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **kwargs: str(csv_file))
+
+    mock_tree = MagicMock()
+    columns = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "orig_json")
+    mock_tree.__getitem__.side_effect = lambda key: columns if key == "columns" else MagicMock()
+    monkeypatch.setattr(gptscan, "tree", mock_tree)
+
+    mock_insert = MagicMock()
+    monkeypatch.setattr(gptscan, "insert_tree_row", mock_insert)
+
+    monkeypatch.setattr(gptscan, "update_status", MagicMock())
+    monkeypatch.setattr(gptscan, "clear_results", MagicMock())
+    monkeypatch.setattr(gptscan, "update_tree_columns", MagicMock())
+
+    gptscan.import_results()
+
+    mock_insert.assert_called_once()
+    args, _ = mock_insert.call_args
+    values = args[0]
+
+    assert values[0] == "alt_test.py"
+    assert values[1] == "70%"
+    assert values[2] == "Alt Admin"
+    assert values[3] == "Alt User"
+    assert values[4] == "75%"
+    assert values[5] == "alt_code"
+    assert values[6] == ""
+
 def test_import_results_invalid_json(monkeypatch, tmp_path):
     """Test error handling when importing an invalid JSON file."""
     bad_file = tmp_path / "bad.json"

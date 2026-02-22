@@ -3,3 +3,5 @@ apikey.txt
 gpt-tmp.txt
 __pycache__/
 *.pyc
+.coverage
+.pytest_cache/
