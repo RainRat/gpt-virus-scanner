@@ -6,7 +6,27 @@ import os
 
 def test_generate_markdown_empty():
     """Test generate_markdown with empty results (covers line 1413)."""
-    assert gptscan.generate_markdown([]) == "# GPT Scan Results\n\nNo suspicious files found."
+    md = gptscan.generate_markdown([])
+    assert "# GPT Scan Results" in md
+    assert "Scanner Version: 1.4.0" in md
+    assert "No suspicious files found." in md
+
+def test_generate_markdown_with_ai_notes():
+    """Test generate_markdown with AI analysis notes to ensure they are displayed correctly."""
+    results = [{
+        "path": "threat.py",
+        "own_conf": "80%",
+        "gpt_conf": "90%",
+        "admin_desc": "Technical analysis",
+        "end-user_desc": "User explanation",
+        "snippet": "dangerous_code()"
+    }]
+    md = gptscan.generate_markdown(results)
+    assert "### File: `threat.py`" in md
+    assert "#### AI Analysis" in md
+    assert "**Administrator Notes:**\nTechnical analysis" in md
+    assert "**End-User Notes:**\nUser explanation" in md
+    assert "dangerous_code()" in md
 
 def test_generate_markdown_long_snippet():
     """Test generate_markdown with snippets longer than 100 characters (covers line 1442)."""
