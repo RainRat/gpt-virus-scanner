@@ -109,4 +109,29 @@ def test_git_commands_use_relative_flag():
         cmd2 = args2[0]
         assert "git" in cmd2
         assert "ls-files" in cmd2
-        assert "--relative" in cmd2
+        # --relative is NOT supported by git ls-files
+        assert "--relative" not in cmd2
+
+def test_get_git_changed_files_with_file_path(tmp_path):
+    """Test that get_git_changed_files handles being passed a file path instead of a directory."""
+    f = tmp_path / "test.txt"
+    f.touch()
+
+    # This should not raise NotADirectoryError (fix for bug where cwd was set to a file)
+    results = get_git_changed_files(str(f))
+    assert results == []
+
+def test_get_git_changed_files_untracked_real_git(tmp_path):
+    """Verify that untracked files are correctly detected in a real git repository."""
+    # Initialize a git repo
+    subprocess.run(["git", "init"], cwd=str(tmp_path), check=True, capture_output=True)
+    # Create an untracked file
+    untracked = tmp_path / "untracked.py"
+    untracked.touch()
+
+    # Run get_git_changed_files
+    results = get_git_changed_files(str(tmp_path))
+
+    # It should find the untracked file.
+    # If --relative is passed to ls-files, this will likely be empty because the command failed.
+    assert any(str(untracked) == os.path.abspath(r) for r in results)
