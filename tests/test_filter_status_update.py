@@ -23,6 +23,7 @@ def test_apply_filter_updates_status(monkeypatch):
 
     # Mock _prepare_tree_row and _matches_filter to work with our data
     monkeypatch.setattr(gptscan, '_prepare_tree_row', lambda v: (list(v), ()))
+    monkeypatch.setattr(gptscan.Config, 'THRESHOLD', 0)
 
     # 1. Test filtering with results
     mock_filter_var.get.return_value = "danger"

@@ -48,6 +48,7 @@ def test_apply_filter_empty(monkeypatch):
 
     # Mock _prepare_tree_row
     monkeypatch.setattr(gptscan, '_prepare_tree_row', lambda v: (list(v), ()))
+    monkeypatch.setattr(gptscan.Config, 'THRESHOLD', 0)
 
     # Run filter (simulating clearing)
     gptscan._apply_filter()
