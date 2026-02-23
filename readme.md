@@ -78,10 +78,10 @@ python gptscan.py
 
 *   **Select File/Folder:** Choose the specific script or folder you want to scan.
 *   **Filter results:** Quickly search through findings by filename, confidence level, or analysis notes.
-*   **Deep Scan:** Scan every part of the file. By default, the tool only checks the beginning and end (the first and last 1,024 bytes) to save time.
-*   **Minimum Threat Level:** Set the threshold (0-100%) for what the tool considers "suspicious."
-*   **Show all files:** List every file scanned, even the safe ones.
-*   **Use AI Analysis:** Get a detailed report for suspicious files.
+*   **Deep Scan:** Check the entire file. By default, the scanner only looks at the start and end of a file to finish faster.
+*   **Minimum Threat Level:** Set the sensitivity of the scan. A higher percentage means the tool will only report files that look very dangerous.
+*   **Show all files:** See every file that was scanned, including those that are not suspicious.
+*   **Use AI Analysis:** Use AI to create a detailed report for suspicious files.
 *   **AI Analysis Settings:** Choose your service (OpenAI, OpenRouter, or Ollama) and the model you want to use.
 *   **Import/Export Results:** Save your results to CSV, JSON, HTML, SARIF, or Markdown files. You can load CSV, JSON, and SARIF files back into the tool later. (Markdown is for export only).
 
