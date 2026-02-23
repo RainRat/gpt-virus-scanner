@@ -558,21 +558,21 @@ def get_git_changed_files(path: str = ".") -> List[str]:
             universal_newlines=True
         )
         files.update(line.strip() for line in output.splitlines() if line.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        # HEAD might not exist in a new repo, or git is missing
+    except (subprocess.CalledProcessError, OSError):
+        # HEAD might not exist, git missing, or path is not a directory
         pass
 
     # Untracked files
     try:
         output = subprocess.check_output(
-            ["git", "ls-files", "--others", "--exclude-standard", "--relative"],
+            ["git", "ls-files", "--others", "--exclude-standard"],
             cwd=path,
             stderr=subprocess.PIPE,
             universal_newlines=True
         )
         files.update(line.strip() for line in output.splitlines() if line.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        # Not a git repo or git is missing
+    except (subprocess.CalledProcessError, OSError):
+        # Not a git repo, git missing, or path is not a directory
         pass
 
     return [os.path.join(path, f) for f in files if os.path.exists(os.path.join(path, f))]
@@ -2885,10 +2885,16 @@ def main():
                     scan_targets.append(line)
 
         if args.git_changes:
-            git_files = get_git_changed_files()
-            if not git_files:
-                print("No git changes detected or not a git repository.", file=sys.stderr)
-            scan_targets.extend(git_files)
+            git_roots = scan_targets if scan_targets else ["."]
+            all_git_files = []
+            for root in git_roots:
+                all_git_files.extend(get_git_changed_files(root))
+
+            if not all_git_files:
+                print("No git changes detected in specified targets.", file=sys.stderr)
+                return 0
+            # Replace targets with deduplicated list of git files
+            scan_targets = list(dict.fromkeys(all_git_files))
 
         if not scan_targets:
             # Default to current directory if no targets provided

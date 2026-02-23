@@ -88,8 +88,8 @@ def test_path_argument_passed():
         assert kwargs1["cwd"] == target_dir
         assert kwargs2["cwd"] == target_dir
 
-def test_git_commands_use_relative_flag():
-    """Verify that both git diff and git ls-files include the --relative flag."""
+def test_git_commands_use_correct_flags():
+    """Verify that git diff includes --relative, while ls-files does not."""
     with patch("subprocess.check_output") as mock_check_output, \
          patch("os.path.exists") as mock_exists:
         mock_check_output.side_effect = ["", ""]
@@ -109,4 +109,4 @@ def test_git_commands_use_relative_flag():
         cmd2 = args2[0]
         assert "git" in cmd2
         assert "ls-files" in cmd2
-        assert "--relative" in cmd2
+        assert "--relative" not in cmd2
