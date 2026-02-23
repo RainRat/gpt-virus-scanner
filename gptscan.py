@@ -2689,8 +2689,15 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     tree.configure(yscrollcommand=scrollbar.set)
     tree.bind('<ButtonRelease-1>', partial(motion_handler, tree))
-    tree.bind('<Double-1>', open_file)
-    tree.bind('<Return>', open_file)
+
+    def on_tree_double_click(event):
+        """Show details only if a data cell was double-clicked."""
+        if tree.identify_region(event.x, event.y) == "cell":
+            view_details(event)
+
+    tree.bind('<Double-1>', on_tree_double_click)
+    tree.bind('<Return>', view_details)
+    tree.bind('<Shift-Return>', open_file)
     tree.grid(row=0, column=0, sticky="nsew")
 
     # --- Footer Frame ---
