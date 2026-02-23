@@ -66,7 +66,7 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
 
 class Config:
     """Global configuration settings for the scanner."""
-    VERSION = "1.3.0"
+    VERSION = "1.4.0"
     MAXLEN = 1024
     EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
     MAX_RETRIES = 3
@@ -1591,13 +1591,18 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
     str
         The Markdown report as a string.
     """
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     if not results:
-        return "# GPT Scan Results\n\nNo suspicious files found."
+        return f"# GPT Scan Results\n\nGenerated on: {timestamp}\nScanner Version: {Config.VERSION}\n\nNo suspicious files found."
 
     lines = [
         "# GPT Scan Results",
         "",
-        f"**Total Results:** {len(results)}",
+        f"**Generated on:** {timestamp}",
+        f"**Scanner Version:** {Config.VERSION}",
+        f"**Total Findings:** {len(results)}",
+        "",
+        "## Summary Table",
         "",
         "| Path | Confidence | Analysis | Snippet |",
         "| :--- | :--- | :--- | :--- |"
@@ -1612,13 +1617,12 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         snippet = r.get("snippet", "")
 
         conf_str = gpt_conf or own_conf
-        analysis = ""
+        analysis_parts = []
         if admin:
-            admin_esc = admin.replace('|', '\\|')
-            analysis += f"**Admin:** {admin_esc}<br>"
+            analysis_parts.append(f"**Admin:** {admin.replace('|', '\\|')}")
         if user:
-            user_esc = user.replace('|', '\\|')
-            analysis += f"**User:** {user_esc}"
+            analysis_parts.append(f"**User:** {user.replace('|', '\\|')}")
+        analysis = "<br>".join(analysis_parts)
 
         # Clean up snippet for markdown table (one line, escaped)
         clean_snippet = snippet.replace("\n", " ").replace("|", "\\|")
@@ -1626,6 +1630,42 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
             clean_snippet = clean_snippet[:97] + "..."
 
         lines.append(f"| {path} | {conf_str} | {analysis} | `{clean_snippet}` |")
+
+    lines.append("")
+    lines.append("## Detailed Findings")
+    lines.append("")
+
+    for r in results:
+        path = r.get("path", "")
+        own_conf = r.get("own_conf", "")
+        gpt_conf = r.get("gpt_conf", "")
+        admin = r.get("admin_desc", "")
+        user = r.get("end-user_desc", "")
+        snippet = r.get("snippet", "")
+
+        lines.append(f"### File: `{path}`")
+        lines.append(f"- **Local Confidence:** {own_conf}")
+        if gpt_conf:
+            lines.append(f"- **AI Confidence:** {gpt_conf}")
+        lines.append("")
+
+        if admin or user:
+            lines.append("#### AI Analysis")
+            if admin:
+                lines.append(f"**Administrator Notes:**\n{admin}\n")
+            if user:
+                lines.append(f"**End-User Notes:**\n{user}\n")
+            lines.append("")
+
+        lines.append("#### Code Snippet")
+        # Try to infer language from extension
+        ext = os.path.splitext(path)[1].lower().lstrip('.')
+        lang = ext if ext in ('py', 'js', 'bat', 'ps1', 'sh', 'rb', 'php', 'pl') else ''
+        lines.append(f"```{lang}")
+        lines.append(snippet)
+        lines.append("```")
+        lines.append("")
+        lines.append("---")
 
     return "\n".join(lines)
 
