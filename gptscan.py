@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import hashlib
 import html
 import json
 import os
@@ -10,6 +11,7 @@ import subprocess
 import sys
 import threading
 import time
+import webbrowser
 from collections import deque
 import tkinter.scrolledtext as scrolledtext
 from functools import partial
@@ -628,6 +630,25 @@ def format_bytes(num: float) -> str:
             return f"{num:3.1f} {unit}"
         num /= 1024.0
     return f"{num:.1f} PiB"
+
+
+def get_file_sha256(file_path: Union[str, Path]) -> str:
+    """Calculate the SHA256 hash of a file.
+
+    Args:
+        file_path: The path to the file.
+
+    Returns:
+        The hex digest of the SHA256 hash, or an empty string if calculation fails.
+    """
+    sha256_hash = hashlib.sha256()
+    try:
+        with open(file_path, "rb") as f:
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()
+    except Exception:
+        return ""
 
 
 def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, use_color: bool = False) -> str:
@@ -2170,6 +2191,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     ttk.Button(btn_frame, text="Open File", command=lambda: open_file(path_entry.get())).pack(side=tk.LEFT, padx=5)
     ttk.Button(btn_frame, text="Copy Analysis", command=copy_analysis).pack(side=tk.LEFT, padx=5)
+    ttk.Button(btn_frame, text="VirusTotal", command=lambda: check_virustotal(path_entry.get())).pack(side=tk.LEFT, padx=5)
 
     analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", command=on_analyze_now)
     analyze_btn.pack(side=tk.LEFT, padx=5)
@@ -2308,6 +2330,44 @@ def copy_path() -> None:
     file_path = str(values[0])
     tree.clipboard_clear()
     tree.clipboard_append(file_path)
+
+
+def copy_sha256() -> None:
+    """Calculate and copy the selected file's SHA256 hash to the clipboard."""
+    values = _get_selected_row_values()
+    if not values:
+        return
+    file_path = str(values[0])
+    h = get_file_sha256(file_path)
+    if h:
+        tree.clipboard_clear()
+        tree.clipboard_append(h)
+        update_status(f"SHA256 copied: {h[:8]}...")
+    else:
+        messagebox.showwarning("Error", "Could not calculate file hash.")
+
+
+def check_virustotal(event_or_path: Union[tk.Event, str, None] = None) -> None:
+    """Check the selected or specified file's hash on VirusTotal."""
+    if isinstance(event_or_path, str):
+        file_path = event_or_path
+    else:
+        values = _get_selected_row_values()
+        if not values:
+            return
+        file_path = str(values[0])
+
+    if not os.path.exists(file_path):
+        messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
+        return
+
+    h = get_file_sha256(file_path)
+    if h:
+        url = f"https://www.virustotal.com/gui/file/{h}"
+        webbrowser.open(url)
+        update_status(f"Opening VirusTotal for {os.path.basename(file_path)}...")
+    else:
+        messagebox.showwarning("Error", "Could not calculate file hash.")
 
 
 def copy_snippet() -> None:
@@ -2735,6 +2795,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu.add_command(label="Show in Folder", command=show_in_folder)
     context_menu.add_separator()
     context_menu.add_command(label="Copy File Path", command=copy_path)
+    context_menu.add_command(label="Copy SHA256", command=copy_sha256)
+    context_menu.add_command(label="Check on VirusTotal", command=check_virustotal)
     context_menu.add_command(label="Copy Snippet", command=copy_snippet)
     context_menu.add_command(label="Copy as Markdown", command=copy_as_markdown)
 
