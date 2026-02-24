@@ -56,7 +56,7 @@ def test_view_details_navigation(mock_tree, monkeypatch):
     gptscan.view_details(item_id="item2")
 
     # Verify initial state
-    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result Details - file2.py"
+    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result 2 of 3 - file2.py"
     assert "< Previous" in captured_commands
     assert "Next >" in captured_commands
 
@@ -65,19 +65,19 @@ def test_view_details_navigation(mock_tree, monkeypatch):
     # Verify it updated selection and title
     mock_tree.selection_set.assert_called_with("item3")
     mock_tree.see.assert_called_with("item3")
-    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result Details - file3.py"
+    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result 3 of 3 - file3.py"
 
     # Test "< Previous" button
     captured_commands["< Previous"]()
     # Verify it updated selection and title back to item2
     mock_tree.selection_set.assert_called_with("item2")
     mock_tree.see.assert_called_with("item2")
-    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result Details - file2.py"
+    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result 2 of 3 - file2.py"
 
     # Test Previous again to item1
     captured_commands["< Previous"]()
     mock_tree.selection_set.assert_called_with("item1")
-    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result Details - file1.py"
+    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result 1 of 3 - file1.py"
 
 def test_view_details_keyboard_bindings(mock_tree, monkeypatch):
     # Mock Toplevel
@@ -97,9 +97,9 @@ def test_view_details_keyboard_bindings(mock_tree, monkeypatch):
     # Trigger Right arrow
     captured_bindings['<Right>'](None)
     mock_tree.selection_set.assert_called_with("item3")
-    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result Details - file3.py"
+    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result 3 of 3 - file3.py"
 
     # Trigger Left arrow
     captured_bindings['<Left>'](None)
     mock_tree.selection_set.assert_called_with("item2")
-    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result Details - file2.py"
+    assert mock_toplevel.title.call_args_list[-1][0][0] == "Result 2 of 3 - file2.py"

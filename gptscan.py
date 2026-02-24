@@ -2225,7 +2225,20 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         if not vals: return
         path, own_conf, admin, user, gpt_conf, snippet = vals[:6]
 
-        details_win.title(f"Result Details - {os.path.basename(path)}")
+        all_visible = tree.get_children()
+        total = len(all_visible)
+        try:
+            idx = all_visible.index(new_id)
+            prev_btn.config(state='normal' if idx > 0 else 'disabled')
+            next_btn.config(state='normal' if idx < total - 1 else 'disabled')
+            count_label.config(text=f"Result {idx + 1} of {total}")
+            details_win.title(f"Result {idx + 1} of {total} - {os.path.basename(path)}")
+        except ValueError:
+            prev_btn.config(state='disabled')
+            next_btn.config(state='disabled')
+            count_label.config(text="")
+            details_win.title(f"Result Details - {os.path.basename(path)}")
+
         path_entry.config(state='normal')
         path_entry.delete(0, tk.END)
         path_entry.insert(0, path)
@@ -2271,15 +2284,6 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         snippet_text.insert(tk.END, snippet)
         snippet_text.config(state='disabled')
 
-        all_visible = tree.get_children()
-        try:
-            idx = all_visible.index(new_id)
-            prev_btn.config(state='normal' if idx > 0 else 'disabled')
-            next_btn.config(state='normal' if idx < len(all_visible) - 1 else 'disabled')
-        except ValueError:
-            prev_btn.config(state='disabled')
-            next_btn.config(state='disabled')
-
     def on_prev():
         all_visible = tree.get_children()
         try:
@@ -2304,6 +2308,10 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     prev_btn = ttk.Button(nav_frame, text="< Previous", command=on_prev)
     prev_btn.pack(side=tk.LEFT, padx=5)
+
+    count_label = ttk.Label(nav_frame, text="")
+    count_label.pack(side=tk.LEFT, padx=10)
+
     next_btn = ttk.Button(nav_frame, text="Next >", command=on_next)
     next_btn.pack(side=tk.LEFT, padx=5)
     details_win.bind('<Left>', lambda e: on_prev())
