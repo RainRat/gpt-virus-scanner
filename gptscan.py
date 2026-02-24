@@ -785,9 +785,9 @@ def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ..
     conf = get_effective_confidence(values[1], values[4])
 
     tag = ''
-    if conf > 80:
+    if conf >= 80:
         tag = 'high-risk'
-    elif conf > Config.THRESHOLD:
+    elif conf >= Config.THRESHOLD:
         tag = 'medium-risk'
 
     return wrapped_values, (tag,) if tag else ()
@@ -1234,7 +1234,7 @@ def scan_files(
                         snippet = ''.join(map(chr, max_window_bytes)).strip()
                         cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
                         threshold_val = Config.THRESHOLD / 100.0
-                        if maxconf > threshold_val and use_gpt and Config.GPT_ENABLED:
+                        if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
                             gpt_requests.append(
                                 {
                                     "path": str(file_path),
@@ -1243,7 +1243,7 @@ def scan_files(
                                     "cleaned_snippet": cleaned_snippet,
                                 }
                             )
-                        elif maxconf > threshold_val or show_all:
+                        elif maxconf >= threshold_val or show_all:
                             yield (
                                 'result',
                                 (
@@ -1387,7 +1387,7 @@ def run_scan(
                 # data format: (path, own_conf, admin, user, gpt_conf, snippet)
                 conf = get_effective_confidence(data[1], data[4])
 
-                if conf > Config.THRESHOLD:
+                if conf >= Config.THRESHOLD:
                     threats_found += 1
 
                 if not cancel_event.is_set():
@@ -1447,7 +1447,7 @@ def run_rescan(
                 item_id = item_map.get(path)
                 if item_id:
                     conf = get_effective_confidence(data[1], data[4])
-                    if conf > Config.THRESHOLD:
+                    if conf >= Config.THRESHOLD:
                         threats_found += 1
                     enqueue_ui_update(update_tree_row, item_id, data)
             elif event_type == 'summary':
@@ -1482,9 +1482,9 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         # Convert confidence strings to levels
         level = "note"
         conf = get_effective_confidence(r.get("own_conf", ""), r.get("gpt_conf", ""))
-        if conf > 80:
+        if conf >= 80:
             level = "error"
-        elif conf > Config.THRESHOLD:
+        elif conf >= Config.THRESHOLD:
             level = "warning"
 
         message_text = r.get("admin_desc") or r.get("end-user_desc") or "Suspicious content detected"
@@ -1563,9 +1563,9 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
         conf_val = get_effective_confidence(own_conf, gpt_conf)
 
         row_class = ""
-        if conf_val > 80:
+        if conf_val >= 80:
             row_class = "high-risk"
-        elif conf_val > Config.THRESHOLD:
+        elif conf_val >= Config.THRESHOLD:
             row_class = "medium-risk"
 
         rows.append(f"""
@@ -1777,7 +1777,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             if fail_threshold is not None:
                 if conf >= fail_threshold:
                     is_threat = True
-            elif conf > Config.THRESHOLD:
+            elif conf >= Config.THRESHOLD:
                 is_threat = True
 
             if is_threat:
