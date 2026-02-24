@@ -26,7 +26,7 @@ python gptscan.py ./my_scripts --cli -o report.json
 
 Follow these steps to get the scanner running:
 
-1.  **Download the code:** Clone this repository or download the zip file. Ensure `gptscan.py` and `scripts.h5` are in the same folder.
+1.  **Download the code:** Clone this repository or download the zip file. Ensure `gptscan.py` and `scripts.h5` are in the same folder. The `scripts.h5` file is mandatory for scanning.
 2.  **Install Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not yet supported because of model compatibility. You can download it from [python.org](https://www.python.org/).
 3.  **Install dependencies:** Open your terminal and run:
     ```bash
@@ -60,7 +60,7 @@ You can customize the scanner using these files in the same folder:
 Run `python gptscan.py` to open the GUI.
 
 *   **Select File/Folder:** Choose what you want to scan.
-*   **Filter results:** Search findings by filename or threat score.
+*   **Filter results:** Search findings by path, confidence, notes, or code snippets.
 *   **Deep Scan:** Check the entire file. By default, it only checks the beginning and end to save time.
 *   **Minimum Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
 *   **Show all files:** See every scanned file, even safe ones.
@@ -71,8 +71,8 @@ Run `python gptscan.py` to open the GUI.
 *   **Ctrl+A / Cmd+A:** Select all results.
 *   **Ctrl+F / Cmd+F:** Focus the search filter.
 *   **F5 / R:** Rescan selected files.
-*   **Double-click / Enter:** Open selected file.
-*   **Space:** View detailed analysis and code.
+*   **Double-click / Enter / Space:** View detailed analysis and code.
+*   **Shift+Enter:** Open selected file.
 *   **Esc:** Cancel the active scan.
 
 ### Using the Command Line (CLI)
@@ -105,8 +105,8 @@ python gptscan.py ./my_scripts --cli -o results.json --exclude "tests/*"
 ## Troubleshooting
 
 *   **Tkinter not found:** On Linux, run `sudo apt-get install python3-tk`.
-*   **Model file missing:** Ensure `scripts.h5` is in the same folder as `gptscan.py`.
-*   **AI Analysis disabled:** Ensure `task.txt` exists in the same folder.
+*   **Model file missing:** Ensure `scripts.h5` is in the same folder as `gptscan.py`. This file is required for the scanner to function.
+*   **AI Analysis disabled:** Ensure `task.txt` exists in the same folder. Detailed AI reports will not work without it.
 
 ## Contributing
 
