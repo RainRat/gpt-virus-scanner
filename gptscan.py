@@ -551,33 +551,46 @@ def get_git_changed_files(path: str = ".") -> List[str]:
     """Get a list of changed files (staged, unstaged, untracked) from git."""
     files = set()
 
+    # Ensure we have a directory for cwd
+    if os.path.isfile(path):
+        cwd = os.path.dirname(path) or "."
+        # If we are looking at a specific file, we only care about that file
+        targets = [os.path.basename(path)]
+    else:
+        cwd = path
+        targets = []
+
     # Changed (staged and unstaged) relative to HEAD
     try:
+        cmd = ["git", "diff", "--name-only", "HEAD", "--relative"] + targets
         output = subprocess.check_output(
-            ["git", "diff", "--name-only", "HEAD", "--relative"],
-            cwd=path,
+            cmd,
+            cwd=cwd,
             stderr=subprocess.PIPE,
             universal_newlines=True
         )
         files.update(line.strip() for line in output.splitlines() if line.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        # HEAD might not exist in a new repo, or git is missing
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        # HEAD might not exist, git is missing, or cwd is invalid
         pass
 
     # Untracked files
     try:
+        # Note: git ls-files does not support --relative in all versions,
+        # and it returns relative paths by default when run inside a subdirectory.
+        cmd = ["git", "ls-files", "--others", "--exclude-standard"] + targets
         output = subprocess.check_output(
-            ["git", "ls-files", "--others", "--exclude-standard", "--relative"],
-            cwd=path,
+            cmd,
+            cwd=cwd,
             stderr=subprocess.PIPE,
             universal_newlines=True
         )
         files.update(line.strip() for line in output.splitlines() if line.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        # Not a git repo or git is missing
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        # Not a git repo, git is missing, or cwd is invalid
         pass
 
-    return [os.path.join(path, f) for f in files if os.path.exists(os.path.join(path, f))]
+    return [os.path.join(cwd, f) for f in files if os.path.exists(os.path.join(cwd, f))]
 
 
 def collect_files(targets: Union[str, List[str]]) -> List[Path]:
