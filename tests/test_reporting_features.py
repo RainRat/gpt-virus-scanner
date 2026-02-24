@@ -13,12 +13,12 @@ def test_scan_summary_gui(monkeypatch):
     monkeypatch.setattr(gptscan, 'cancel_button', MagicMock(), raising=False)
 
     # 1 suspicious file (singular)
-    gptscan.finish_scan_state(total_scanned=10, threats_found=1)
-    mock_status_label.config.assert_called_with(text="Scan complete: 10 files scanned, 1 suspicious file found.")
+    gptscan.finish_scan_state(total_scanned=10, threats_found=1, high_risk=0, medium_risk=0)
+    mock_status_label.config.assert_called_with(text="Scan complete: 10 files scanned, 1 suspicious file found (0 high risk, 0 medium risk).")
 
     # 5 suspicious files (plural)
-    gptscan.finish_scan_state(total_scanned=20, threats_found=5)
-    mock_status_label.config.assert_called_with(text="Scan complete: 20 files scanned, 5 suspicious files found.")
+    gptscan.finish_scan_state(total_scanned=20, threats_found=5, high_risk=2, medium_risk=3)
+    mock_status_label.config.assert_called_with(text="Scan complete: 20 files scanned, 5 suspicious files found (2 high risk, 3 medium risk).")
 
     # No args (Ready)
     gptscan.finish_scan_state()
@@ -101,4 +101,4 @@ def test_cli_summary(capsys, monkeypatch):
     gptscan.run_cli(["."], deep=False, show_all=False, use_gpt=False, rate_limit=60)
 
     captured = capsys.readouterr()
-    assert "Scan complete: 1 files scanned, 1 suspicious file found." in captured.err
+    assert "Scan complete: 1 files scanned, 1 suspicious file found (1 high risk, 0 medium risk)." in captured.err

@@ -664,8 +664,26 @@ def get_file_sha256(file_path: Union[str, Path]) -> str:
         return ""
 
 
-def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, use_color: bool = False) -> str:
-    """Format a human-readable summary of the scan results."""
+def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, use_color: bool = False, high_risk: int = 0, medium_risk: int = 0) -> str:
+    """Format a human-readable summary of the scan results.
+
+    Parameters
+    ----------
+    total_scanned : int
+        Total number of files scanned.
+    threats_found : int
+        Total number of suspicious files detected.
+    total_bytes : int, optional
+        Total bytes scanned.
+    elapsed_time : float, optional
+        Time taken for the scan in seconds.
+    use_color : bool, optional
+        Whether to use ANSI color codes in the output.
+    high_risk : int, optional
+        Number of high risk files found.
+    medium_risk : int, optional
+        Number of medium risk files found.
+    """
     threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
 
     threats_display = str(threats_found)
@@ -673,7 +691,12 @@ def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Opt
         # Use Bold Red for threats in terminal
         threats_display = f"\033[1;91m{threats_found}\033[0m"
 
-    summary = f"Scan complete: {total_scanned} files scanned, {threats_display} {threat_text} found."
+    summary = f"Scan complete: {total_scanned} files scanned, {threats_display} {threat_text} found"
+
+    if threats_found > 0:
+        summary += f" ({high_risk} high risk, {medium_risk} medium risk)."
+    else:
+        summary += "."
 
     if elapsed_time and elapsed_time > 0:
         files_per_sec = total_scanned / elapsed_time
@@ -691,6 +714,15 @@ def get_effective_confidence(own_conf_str: Any, gpt_conf_str: Any) -> float:
     if gpt_val >= 0:
         return gpt_val
     return parse_percent(own_conf_str)
+
+
+def get_risk_category(conf: float, threshold: int) -> Optional[str]:
+    """Categorize a confidence score into 'high', 'medium', or None (no threat)."""
+    if conf < threshold:
+        return None
+    if conf >= 80:
+        return 'high'
+    return 'medium'
 
 
 def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
@@ -783,12 +815,9 @@ def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ..
     # Determine risk level based on confidence scores
     # data format: (path, own_conf, admin, user, gpt_conf, snippet)
     conf = get_effective_confidence(values[1], values[4])
+    risk = get_risk_category(conf, Config.THRESHOLD)
 
-    tag = ''
-    if conf > 80:
-        tag = 'high-risk'
-    elif conf > Config.THRESHOLD:
-        tag = 'medium-risk'
+    tag = f"{risk}-risk" if risk else ""
 
     return wrapped_values, (tag,) if tag else ()
 
@@ -852,7 +881,7 @@ def set_scanning_state(is_scanning: bool) -> None:
         cancel_button.config(state="normal" if is_scanning else "disabled")
 
 
-def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Optional[int] = None, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None) -> None:
+def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Optional[int] = None, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, high_risk: int = 0, medium_risk: int = 0) -> None:
     """Reset scanning controls when a scan finishes or is cancelled.
 
     Parameters
@@ -865,6 +894,10 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
         Total bytes scanned.
     elapsed_time : float, optional
         Time taken for the scan in seconds.
+    high_risk : int
+        Number of high risk files found.
+    medium_risk : int
+        Number of medium risk files found.
     """
 
     global current_cancel_event
@@ -872,7 +905,7 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
     set_scanning_state(False)
 
     if total_scanned is not None and threats_found is not None:
-        summary = format_scan_summary(total_scanned, threats_found, total_bytes, elapsed_time)
+        summary = format_scan_summary(total_scanned, threats_found, total_bytes, elapsed_time, high_risk=high_risk, medium_risk=medium_risk)
         global _last_scan_summary
         _last_scan_summary = summary
         update_status(summary)
@@ -1353,6 +1386,8 @@ def run_scan(
     """
     last_total: Optional[int] = 0
     threats_found = 0
+    high_risk_found = 0
+    medium_risk_found = 0
     metrics: Dict[str, Any] = {}
     current_scanned = 0
 
@@ -1377,7 +1412,10 @@ def run_scan(
                     last_total = total
                 enqueue_ui_update(update_progress, current)
 
-                threat_suffix = f" ({threats_found} suspicious found)" if threats_found > 0 else ""
+                if threats_found > 0:
+                    threat_suffix = f" ({threats_found} suspicious: {high_risk_found} high, {medium_risk_found} medium)"
+                else:
+                    threat_suffix = ""
                 status_text = f"{status} ({current}/{total}){threat_suffix}" if status else f"Scanning: {current}/{total}{threat_suffix}"
                 print(status_text, file=sys.stderr)
                 enqueue_ui_update(update_status, status_text)
@@ -1386,9 +1424,14 @@ def run_scan(
                     continue
                 # data format: (path, own_conf, admin, user, gpt_conf, snippet)
                 conf = get_effective_confidence(data[1], data[4])
+                risk = get_risk_category(conf, Config.THRESHOLD)
 
-                if conf > Config.THRESHOLD:
+                if risk == 'high':
                     threats_found += 1
+                    high_risk_found += 1
+                elif risk == 'medium':
+                    threats_found += 1
+                    medium_risk_found += 1
 
                 if not cancel_event.is_set():
                     enqueue_ui_update(insert_tree_row, data)
@@ -1402,7 +1445,9 @@ def run_scan(
             current_scanned,
             threats_found,
             metrics.get('total_bytes'),
-            metrics.get('elapsed_time')
+            metrics.get('elapsed_time'),
+            high_risk_found,
+            medium_risk_found
         )
 
 
@@ -1414,6 +1459,8 @@ def run_rescan(
 ) -> None:
     """Perform background scan for specific paths and update existing UI rows."""
     threats_found = 0
+    high_risk_found = 0
+    medium_risk_found = 0
     metrics: Dict[str, Any] = {}
     current_scanned = 0
     last_total: Optional[int] = 0
@@ -1437,7 +1484,10 @@ def run_rescan(
                     enqueue_ui_update(configure_progress, total)
                     last_total = total
                 enqueue_ui_update(update_progress, current)
-                threat_suffix = f" ({threats_found} suspicious found)" if threats_found > 0 else ""
+                if threats_found > 0:
+                    threat_suffix = f" ({threats_found} suspicious: {high_risk_found} high, {medium_risk_found} medium)"
+                else:
+                    threat_suffix = ""
                 status_text = f"{status} ({current}/{total}){threat_suffix}" if status else f"Rescanning: {current}/{total}{threat_suffix}"
                 enqueue_ui_update(update_status, status_text)
             elif event_type == 'result':
@@ -1447,8 +1497,13 @@ def run_rescan(
                 item_id = item_map.get(path)
                 if item_id:
                     conf = get_effective_confidence(data[1], data[4])
-                    if conf > Config.THRESHOLD:
+                    risk = get_risk_category(conf, Config.THRESHOLD)
+                    if risk == 'high':
                         threats_found += 1
+                        high_risk_found += 1
+                    elif risk == 'medium':
+                        threats_found += 1
+                        medium_risk_found += 1
                     enqueue_ui_update(update_tree_row, item_id, data)
             elif event_type == 'summary':
                 total_files, total_bytes, elapsed_time = data
@@ -1460,7 +1515,9 @@ def run_rescan(
             current_scanned,
             threats_found,
             metrics.get('total_bytes'),
-            metrics.get('elapsed_time')
+            metrics.get('elapsed_time'),
+            high_risk_found,
+            medium_risk_found
         )
 
 
@@ -1752,6 +1809,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     cancel_event = threading.Event()
     final_progress: Optional[Tuple[int, int]] = None
     threats_found = 0
+    high_risk_found = 0
+    medium_risk_found = 0
     use_color = sys.stderr.isatty()
     metrics: Dict[str, Any] = {}
 
@@ -1777,11 +1836,16 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             if fail_threshold is not None:
                 if conf >= fail_threshold:
                     is_threat = True
-            elif conf > Config.THRESHOLD:
+            elif conf >= Config.THRESHOLD:
                 is_threat = True
 
             if is_threat:
                 threats_found += 1
+                risk = get_risk_category(conf, 0) # Already confirmed as threat, just categorize
+                if risk == 'high':
+                    high_risk_found += 1
+                else:
+                    medium_risk_found += 1
 
             record = dict(zip(keys, data))
             if output_format == 'json':
@@ -1799,7 +1863,10 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             if use_color and threats_found > 0:
                 threat_display = f"\033[1;91m{threats_found}\033[0m"
 
-            threat_suffix = f" ({threat_display} suspicious found)" if threats_found > 0 else ""
+            if threats_found > 0:
+                threat_suffix = f" ({threat_display} suspicious: {high_risk_found} high, {medium_risk_found} medium)"
+            else:
+                threat_suffix = ""
             msg = f"{status} ({current}/{total}){threat_suffix}" if status else f"Scanning: {current}/{total} files{threat_suffix}"
 
             # Use \r to overwrite same line, and pad with spaces to clear any previous longer line.
@@ -1821,7 +1888,9 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             threats_found,
             metrics.get('total_bytes'),
             metrics.get('elapsed_time'),
-            use_color=use_color
+            use_color=use_color,
+            high_risk=high_risk_found,
+            medium_risk=medium_risk_found
         )
         print(summary, file=sys.stderr)
 
