@@ -3,13 +3,13 @@ from gptscan import format_scan_summary
 
 def test_format_scan_summary_basic():
     # Basic summary without time or bytes
-    summary = format_scan_summary(total_scanned=10, threats_found=2)
-    assert summary == "Scan complete: 10 files scanned, 2 suspicious files found."
+    summary = format_scan_summary(total_scanned=10, threats_found=2, high_risk=1, medium_risk=1)
+    assert summary == "Scan complete: 10 files scanned, 2 suspicious files found (1 high risk, 1 medium risk)."
 
 def test_format_scan_summary_singular():
     # Test singular "suspicious file"
-    summary = format_scan_summary(total_scanned=1, threats_found=1)
-    assert summary == "Scan complete: 1 files scanned, 1 suspicious file found."
+    summary = format_scan_summary(total_scanned=1, threats_found=1, high_risk=1, medium_risk=0)
+    assert summary == "Scan complete: 1 files scanned, 1 suspicious file found (1 high risk, 0 medium risk)."
 
 def test_format_scan_summary_zero():
     # Test zero suspicious files

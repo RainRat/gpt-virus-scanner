@@ -37,13 +37,15 @@ def test_run_scan_basic_flow(monkeypatch):
     assert calls[4][0][1] == 1
 
     assert calls[5][0][0] == gptscan.update_status
-    assert calls[5][0][1] == "Scanning: 1/1 (1 suspicious found)"
+    assert calls[5][0][1] == "Scanning: 1/1 (1 suspicious: 1 high, 0 medium)"
 
     assert calls[6][0][0] == gptscan.finish_scan_state
     assert calls[6][0][1] == 1
     assert calls[6][0][2] == 1
     assert calls[6][0][3] == 1024
     assert calls[6][0][4] == 1.5
+    assert calls[6][0][5] == 1
+    assert calls[6][0][6] == 0
 
 def test_run_scan_cancellation(monkeypatch):
     cancel_event = threading.Event()

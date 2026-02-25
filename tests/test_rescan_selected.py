@@ -81,7 +81,7 @@ def test_run_rescan_updates_ui():
         # Check if update_tree_row was enqueued
         mock_enqueue.assert_any_call(gptscan.update_tree_row, "item1", mock_result_data)
         # Check if finish_scan_state was enqueued
-        mock_enqueue.assert_any_call(gptscan.finish_scan_state, 1, 1, 100, 0.5)
+        mock_enqueue.assert_any_call(gptscan.finish_scan_state, 1, 1, 100, 0.5, 1, 0)
 
 def test_rescan_no_selection():
     gptscan.tree = MagicMock()
