@@ -34,6 +34,46 @@ def test_hyperparameters_mutate():
     diffs = [h != m for h, m in zip(hp.to_list(), mutated.to_list())]
     assert any(diffs)
 
+def test_hyperparameters_get_derived_params():
+    # Test with scale 0.0
+    hp_min = Hyperparameters(*([0.0] * 17))
+    dp_min = hp_min.get_derived_params()
+    assert dp_min['embedding_dim'] == 32
+    assert dp_min['rnn_units'] == 32
+    assert dp_min['dense_units'] == 32
+    assert dp_min['conv_filters'] == 8
+    assert dp_min['conv_kernel_size'] == 2
+    assert dp_min['spatial_dropout'] == 0.0
+    assert dp_min['rnn_dropout'] == 0.0
+    assert dp_min['rnn_recurrent_dropout'] == 0.0
+    assert dp_min['dropout1'] == 0.0
+    assert dp_min['dropout2'] == 0.0
+
+    # Test with scale 1.0
+    hp_max = Hyperparameters(*([1.0] * 17))
+    dp_max = hp_max.get_derived_params()
+    assert dp_max['embedding_dim'] == 160
+    assert dp_max['rnn_units'] == 160
+    assert dp_max['dense_units'] == 160
+    assert dp_max['conv_filters'] == 98
+    assert dp_max['conv_kernel_size'] == 5
+    assert dp_max['spatial_dropout'] == 0.5
+    assert dp_max['rnn_dropout'] == 0.5
+    assert dp_max['rnn_recurrent_dropout'] == 0.5
+    assert dp_max['dropout1'] == 0.5
+    assert dp_max['dropout2'] == 0.5
+
+    # Test with scale 0.5
+    hp_mid = Hyperparameters(*([0.5] * 17))
+    dp_mid = hp_mid.get_derived_params()
+    # int(0.5 * 128) + 32 = 64 + 32 = 96
+    assert dp_mid['embedding_dim'] == 96
+    # int(0.5 * 90) + 8 = 45 + 8 = 53
+    assert dp_mid['conv_filters'] == 53
+    # int(0.5 * 3) + 2 = 1 + 2 = 3
+    assert dp_mid['conv_kernel_size'] == 3
+    assert dp_mid['dropout1'] == 0.25
+
 def test_dataloader_load_file_padding(tmp_path):
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
