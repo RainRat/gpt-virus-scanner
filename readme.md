@@ -71,8 +71,8 @@ Run `python gptscan.py` to open the GUI.
 *   **Ctrl+A / Cmd+A:** Select all results.
 *   **Ctrl+F / Cmd+F:** Focus the search filter.
 *   **F5 / R:** Rescan selected files.
-*   **Double-click / Enter:** Open selected file.
-*   **Space:** View detailed analysis and code.
+*   **Double-click / Enter / Space:** View detailed analysis and code.
+*   **Shift+Enter:** Open selected file.
 *   **Esc:** Cancel the active scan.
 
 ### Using the Command Line (CLI)

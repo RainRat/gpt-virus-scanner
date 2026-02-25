@@ -45,7 +45,7 @@ def test_view_details_open_window(mock_tree, monkeypatch):
 
     # Verify Toplevel was created with correct title
     gptscan.tk.Toplevel.assert_called_once()
-    mock_toplevel.title.assert_called_with("Result Details - test.py")
+    mock_toplevel.title.assert_called_with("Result 1 of 1 - test.py")
 
     # Verify data was inserted into ScrolledText widgets (we expect 3: admin, user, snippet)
     # Actually if both admin and user are present, there are 3 ScrolledText calls.
