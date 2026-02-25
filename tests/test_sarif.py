@@ -241,3 +241,11 @@ def test_import_results_sarif_content_detection(monkeypatch, tmp_path):
     gptscan.import_results()
 
     mock_status.assert_called_with(f"Imported 1 results from not_sarif_ext.json")
+
+def test_generate_sarif_boundary_80():
+    """Verify that exactly 80% is categorized as an error (high risk)."""
+    results = [
+        {"path": "boundary.py", "own_conf": "80%", "admin_desc": "Boundary test"}
+    ]
+    sarif = generate_sarif(results)
+    assert sarif["runs"][0]["results"][0]["level"] == "error"

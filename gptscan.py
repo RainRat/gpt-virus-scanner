@@ -1537,12 +1537,14 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     sarif_results = []
     for r in results:
         # Convert confidence strings to levels
-        level = "note"
         conf = get_effective_confidence(r.get("own_conf", ""), r.get("gpt_conf", ""))
-        if conf > 80:
+        risk = get_risk_category(conf, Config.THRESHOLD)
+        if risk == 'high':
             level = "error"
-        elif conf > Config.THRESHOLD:
+        elif risk == 'medium':
             level = "warning"
+        else:
+            level = "note"
 
         message_text = r.get("admin_desc") or r.get("end-user_desc") or "Suspicious content detected"
 
@@ -1618,11 +1620,12 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
         snippet = r.get("snippet", "")
 
         conf_val = get_effective_confidence(own_conf, gpt_conf)
+        risk = get_risk_category(conf_val, Config.THRESHOLD)
 
         row_class = ""
-        if conf_val > 80:
+        if risk == 'high':
             row_class = "high-risk"
-        elif conf_val > Config.THRESHOLD:
+        elif risk == 'medium':
             row_class = "medium-risk"
 
         rows.append(f"""
