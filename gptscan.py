@@ -69,6 +69,7 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
 class Config:
     """Global configuration settings for the scanner."""
     VERSION = "1.4.0"
+    SETTINGS_FILE = ".gptscan_settings.json"
     MAXLEN = 1024
     EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
     MAX_RETRIES = 3
@@ -85,6 +86,11 @@ class Config:
     api_base: Optional[str] = None
     ignore_patterns: List[str] = []
     THRESHOLD: int = 50
+    last_path: str = ""
+    deep_scan: bool = False
+    git_changes_only: bool = False
+    show_all_files: bool = False
+    use_ai_analysis: bool = False
 
     DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1']
 
@@ -106,6 +112,44 @@ class Config:
             clean_ext = ext.strip().lower()
             if clean_ext:
                 cls.extensions_set.add(clean_ext if clean_ext.startswith('.') else f".{clean_ext}")
+
+    @classmethod
+    def save_settings(cls) -> None:
+        """Save persistent GUI settings to a JSON file."""
+        settings = {
+            "last_path": cls.last_path,
+            "deep_scan": cls.deep_scan,
+            "git_changes_only": cls.git_changes_only,
+            "show_all_files": cls.show_all_files,
+            "use_ai_analysis": cls.use_ai_analysis,
+            "provider": cls.provider,
+            "model_name": cls.model_name,
+            "threshold": cls.THRESHOLD,
+        }
+        try:
+            with open(cls.SETTINGS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, indent=4)
+        except Exception as e:
+            print(f"Warning: Could not save settings: {e}", file=sys.stderr)
+
+    @classmethod
+    def load_settings(cls) -> None:
+        """Load persistent GUI settings from a JSON file."""
+        if not os.path.exists(cls.SETTINGS_FILE):
+            return
+        try:
+            with open(cls.SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                cls.last_path = settings.get("last_path", cls.last_path)
+                cls.deep_scan = settings.get("deep_scan", cls.deep_scan)
+                cls.git_changes_only = settings.get("git_changes_only", cls.git_changes_only)
+                cls.show_all_files = settings.get("show_all_files", cls.show_all_files)
+                cls.use_ai_analysis = settings.get("use_ai_analysis", cls.use_ai_analysis)
+                cls.provider = settings.get("provider", cls.provider)
+                cls.model_name = settings.get("model_name", cls.model_name)
+                cls.THRESHOLD = settings.get("threshold", cls.THRESHOLD)
+        except Exception as e:
+            print(f"Warning: Could not load settings: {e}", file=sys.stderr)
 
     @classmethod
     def initialize(cls) -> None:
@@ -135,6 +179,8 @@ class Config:
                 line.strip() for line in loaded_ignores
                 if line.strip() and not line.strip().startswith('#')
             ]
+
+        cls.load_settings()
 
     @classmethod
     def is_supported_file(cls, file_path: Path, is_explicit: bool = False) -> bool:
@@ -691,7 +737,8 @@ def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Opt
         # Use Bold Red for threats in terminal
         threats_display = f"\033[1;91m{threats_found}\033[0m"
 
-    summary = f"Scan complete: {total_scanned} files scanned, {threats_display} {threat_text} found"
+    bytes_info = f" ({format_bytes(total_bytes)})" if total_bytes is not None else ""
+    summary = f"Scan complete: {total_scanned} files{bytes_info} scanned, {threats_display} {threat_text} found"
 
     if threats_found > 0:
         summary += f" ({high_risk} high risk, {medium_risk} medium risk)."
@@ -948,6 +995,9 @@ def button_click() -> None:
         messagebox.showerror("Scan Error", "Model file scripts.h5 not found.")
         return
 
+    Config.last_path = scan_path
+    Config.save_settings()
+
     current_cancel_event = threading.Event()
     set_scanning_state(True)
     update_status("Starting scan...")
@@ -1201,23 +1251,11 @@ def scan_files(
 
         is_explicit = file_path in explicit_files
         if Config.is_supported_file(file_path, is_explicit=is_explicit):
-            if dry_run:
-                yield (
-                    'result',
-                    (
-                        str(file_path),
-                        'Dry Run',
-                        '',
-                        '',
-                        '',
-                        '(File would be scanned)',
-                    )
-                )
-            else:
-                print(file_path, file=sys.stderr)
-                try:
-                    file_size = file_path.stat().st_size
-                except OSError as err:
+            try:
+                file_size = file_path.stat().st_size
+            except OSError as err:
+                file_size = None
+                if not dry_run:
                     yield (
                         'result',
                         (
@@ -1229,10 +1267,25 @@ def scan_files(
                             f"Error reading file metadata: {err}",
                         )
                     )
-                    file_size = None
 
+            if file_size is not None:
+                total_bytes_scanned += file_size
+
+            if dry_run:
+                yield (
+                    'result',
+                    (
+                        str(file_path),
+                        'Dry Run',
+                        '',
+                        '',
+                        '',
+                        f"(File would be scanned, size: {format_bytes(file_size) if file_size is not None else 'unknown'})",
+                    )
+                )
+            else:
+                print(file_path, file=sys.stderr)
                 if file_size is not None:
-                    total_bytes_scanned += file_size
                     maxconf = -1.0
                     max_window_bytes = b""
                     error_message: Optional[str] = None
@@ -2614,7 +2667,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     ttk.Label(input_frame, text="Path to scan:").grid(row=0, column=0, sticky="w", padx=(0, 5))
     textbox = ttk.Entry(input_frame)
-    path_to_use = initial_path if initial_path else os.getcwd()
+    path_to_use = initial_path if initial_path else (Config.last_path if Config.last_path else os.getcwd())
     textbox.insert(0, path_to_use)
     textbox.select_range(0, tk.END)
     textbox.grid(row=0, column=1, sticky="ew", padx=5)
@@ -2653,19 +2706,19 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     options_frame = ttk.LabelFrame(settings_frame, text="Scan Options")
     options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
 
-    gpt_var = tk.BooleanVar()
+    gpt_var = tk.BooleanVar(value=Config.use_ai_analysis)
 
-    git_var = tk.BooleanVar()
+    git_var = tk.BooleanVar(value=Config.git_changes_only)
     git_checkbox = ttk.Checkbutton(options_frame, text="Git changes only", variable=git_var)
     git_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(git_checkbox, "Only scan files that have been modified or are untracked in Git.")
 
-    deep_var = tk.BooleanVar()
+    deep_var = tk.BooleanVar(value=Config.deep_scan)
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
     deep_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(deep_checkbox, "Scan the whole file. This is slower but more thorough. Normally, the scanner only checks the beginning and end.")
 
-    all_var = tk.BooleanVar()
+    all_var = tk.BooleanVar(value=Config.show_all_files)
     all_checkbox = ttk.Checkbutton(options_frame, text="Show all files", variable=all_var, command=_apply_filter)
     all_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(all_checkbox, "Display all scanned files, including safe ones.")
@@ -2911,6 +2964,19 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<space>', view_details)
     tree.bind('<F5>', lambda event: rescan_selected())
     tree.bind('r', lambda event: rescan_selected())
+
+    def on_close():
+        Config.last_path = textbox.get()
+        Config.deep_scan = deep_var.get()
+        Config.git_changes_only = git_var.get()
+        Config.show_all_files = all_var.get()
+        Config.use_ai_analysis = gpt_var.get()
+        Config.provider = provider_var.get()
+        Config.model_name = model_var.get()
+        Config.save_settings()
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_close)
 
     motion_handler(tree, None)   # Perform initial wrapping
     update_tree_columns()        # Adjust columns based on initial AI settings

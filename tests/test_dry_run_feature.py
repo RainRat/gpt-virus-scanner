@@ -46,7 +46,7 @@ def test_dry_run_skips_model_and_yields_results(monkeypatch, tmp_path):
     for _, data in results:
         path, status, admin, user, gpt, snippet = data
         assert status == "Dry Run"
-        assert snippet == "(File would be scanned)"
+        assert "(File would be scanned" in snippet
         # Confirm no analysis data
         assert admin == ""
         assert user == ""

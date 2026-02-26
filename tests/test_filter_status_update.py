@@ -51,7 +51,7 @@ def test_finish_scan_updates_summary_variable(monkeypatch):
     # Call finish_scan_state with results
     gptscan.finish_scan_state(total_scanned=10, threats_found=2, total_bytes=1024, elapsed_time=1.0)
 
-    assert "10 files scanned, 2 suspicious files found" in gptscan._last_scan_summary
+    assert "10 files (1.0 KiB) scanned, 2 suspicious files found" in gptscan._last_scan_summary
 
 def test_clear_results_resets_summary_variable(monkeypatch):
     """Test that clear_results resets the _last_scan_summary global."""
