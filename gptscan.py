@@ -922,6 +922,29 @@ def update_tree_columns() -> None:
         tree["displaycolumns"] = ("path", "own_conf", "snippet")
 
 
+def _auto_select_best_result() -> None:
+    """Select the most relevant result (first threat, or first file) and focus it."""
+    if not tree:
+        return
+
+    items = tree.get_children()
+    if not items:
+        return
+
+    # Prioritize selecting the first suspicious file
+    target_item = items[0]
+    for iid in items:
+        tags = tree.item(iid, 'tags')
+        if 'high-risk' in tags or 'medium-risk' in tags:
+            target_item = iid
+            break
+
+    tree.selection_set(target_item)
+    tree.focus(target_item)
+    tree.see(target_item)
+    tree.focus_set()
+
+
 def set_scanning_state(is_scanning: bool) -> None:
     """Enable or disable controls based on scanning state."""
 
@@ -966,14 +989,7 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
         update_status("Ready")
 
     update_tree_columns()
-
-    # Auto-select the first result and focus the tree for immediate keyboard navigation
-    if tree:
-        items = tree.get_children()
-        if items:
-            tree.selection_set(items[0])
-            tree.focus(items[0])
-            tree.focus_set()
+    _auto_select_best_result()
 
 
 def button_click() -> None:
@@ -2093,13 +2109,7 @@ def import_results() -> None:
         _last_scan_summary = msg
         update_status(msg)
         update_tree_columns()
-
-        # Auto-select the first result and focus the tree for immediate keyboard navigation
-        items = tree.get_children()
-        if items:
-            tree.selection_set(items[0])
-            tree.focus(items[0])
-            tree.focus_set()
+        _auto_select_best_result()
 
     except Exception as err:
         messagebox.showerror("Import Failed", f"Could not load results:\n{err}")
