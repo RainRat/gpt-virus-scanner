@@ -2218,6 +2218,22 @@ def _get_selected_row_values() -> Optional[List[Any]]:
     return _get_item_raw_values(selection[0])
 
 
+def _resolve_file_path(event_or_path: Union[tk.Event, str, None], verify: bool = True) -> Optional[str]:
+    """Retrieve and optionally verify a file path from an event or direct argument."""
+    if isinstance(event_or_path, str):
+        file_path = event_or_path
+    else:
+        values = _get_selected_row_values()
+        if not values:
+            return None
+        file_path = str(values[0])
+
+    if verify and not os.path.exists(file_path):
+        messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
+        return None
+    return file_path
+
+
 def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None) -> None:
     """Open a detailed view of the selected scan result."""
     if item_id is None:
@@ -2468,25 +2484,19 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
 def open_file(event_or_path: Union[tk.Event, str, None] = None) -> None:
     """Open the selected or specified file in the system's default application."""
-    if isinstance(event_or_path, str):
-        file_path = event_or_path
-    else:
-        values = _get_selected_row_values()
-        if not values:
-            return
-        file_path = str(values[0])
-    if os.path.exists(file_path):
-        try:
-            if sys.platform == "win32":
-                os.startfile(file_path)
-            elif sys.platform == "darwin":
-                subprocess.run(["open", file_path])
-            else:
-                subprocess.run(["xdg-open", file_path])
-        except Exception as e:
-            messagebox.showerror("Error", f"Could not open file: {e}")
-    else:
-        messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
+    file_path = _resolve_file_path(event_or_path)
+    if not file_path:
+        return
+
+    try:
+        if sys.platform == "win32":
+            os.startfile(file_path)
+        elif sys.platform == "darwin":
+            subprocess.run(["open", file_path])
+        else:
+            subprocess.run(["xdg-open", file_path])
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not open file: {e}")
 
 
 def copy_path() -> None:
@@ -2516,16 +2526,8 @@ def copy_sha256() -> None:
 
 def check_virustotal(event_or_path: Union[tk.Event, str, None] = None) -> None:
     """Check the selected or specified file's hash on VirusTotal."""
-    if isinstance(event_or_path, str):
-        file_path = event_or_path
-    else:
-        values = _get_selected_row_values()
-        if not values:
-            return
-        file_path = str(values[0])
-
-    if not os.path.exists(file_path):
-        messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
+    file_path = _resolve_file_path(event_or_path)
+    if not file_path:
         return
 
     h = get_file_sha256(file_path)
@@ -2566,26 +2568,20 @@ def copy_as_markdown() -> None:
 
 def show_in_folder(event_or_path: Union[tk.Event, str, None] = None) -> None:
     """Reveal the selected or specified file in the system file manager."""
-    if isinstance(event_or_path, str):
-        file_path = event_or_path
-    else:
-        values = _get_selected_row_values()
-        if not values:
-            return
-        file_path = str(values[0])
-    if os.path.exists(file_path):
-        try:
-            if sys.platform == "win32":
-                subprocess.run(['explorer', '/select,', os.path.normpath(file_path)])
-            elif sys.platform == "darwin":
-                subprocess.run(["open", "-R", file_path])
-            else:
-                # On Linux, just open the directory
-                subprocess.run(["xdg-open", os.path.dirname(os.path.abspath(file_path))])
-        except Exception as e:
-            messagebox.showerror("Error", f"Could not reveal file: {e}")
-    else:
-        messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
+    file_path = _resolve_file_path(event_or_path)
+    if not file_path:
+        return
+
+    try:
+        if sys.platform == "win32":
+            subprocess.run(['explorer', '/select,', os.path.normpath(file_path)])
+        elif sys.platform == "darwin":
+            subprocess.run(["open", "-R", file_path])
+        else:
+            # On Linux, just open the directory
+            subprocess.run(["xdg-open", os.path.dirname(os.path.abspath(file_path))])
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not reveal file: {e}")
 
 
 def show_context_menu(event: tk.Event) -> None:
