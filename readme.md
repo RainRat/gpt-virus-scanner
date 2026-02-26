@@ -26,14 +26,14 @@ python gptscan.py ./my_scripts --cli -o report.json
 
 Follow these steps to get the scanner running:
 
-1.  **Download the code:** Clone this repository or download the zip file. Ensure `gptscan.py` and `scripts.h5` are in the same folder. The `scripts.h5` file is mandatory for scanning.
-2.  **Install Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not yet supported because of model compatibility. You can download it from [python.org](https://www.python.org/).
-3.  **Install dependencies:** Open your terminal and run:
+1.  **Download the code:** Clone this repository or download the zip file. Ensure `gptscan.py`, `scripts.h5`, and `task.txt` are in the same folder.
+    *   **Note:** Always run the script from inside its own folder so it can find the required files.
+2.  **Install Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet because of model compatibility.
+3.  **Install requirements:** Open your terminal and run:
     ```bash
     pip install "tensorflow<2.16" openai
     ```
-    *Linux users:* You may also need to install Tkinter (e.g., `sudo apt-get install python3-tk`).
-4.  **Set up AI (Optional):** To use detailed AI analysis, make sure `task.txt` is in the folder.
+    *Linux users:* You may also need to install Tkinter (for example: `sudo apt-get install python3-tk`).
     *   **OpenAI/OpenRouter:** Create a file named `apikey.txt` and paste your API key inside. Alternatively, set the `OPENAI_API_KEY` environment variable.
     *   **Ollama:** Download [Ollama](https://ollama.com/) and run it locally. Pull a model before starting (e.g., `ollama pull llama3.2`).
 
@@ -41,9 +41,9 @@ Follow these steps to get the scanner running:
 
 ## Supported Files
 
-The scanner identifies scripts in two ways:
-*   **By extension:** It looks for `.py`, `.js`, `.bat`, and `.ps1` files by default. It can recognize many others (like `.sh`, `.rb`, and `.php`) if they are listed in `extensions.txt`.
-*   **By "shebang" line:** The tool can identify scripts without extensions by reading the first line (for example, `#!/bin/bash`).
+The scanner finds scripts in two ways:
+*   **By file type:** It recognizes over 70 common script types (like `.py`, `.js`, `.sh`, and `.ps1`) using the included `extensions.txt` file.
+*   **By "shebang" line:** The tool can find scripts without extensions by reading the first line (for example, `#!/bin/bash`).
 
 ## Configuration
 
@@ -101,6 +101,8 @@ python gptscan.py ./my_scripts --cli -o results.json --exclude "tests/*"
 *   `--fail-threshold [0-100]`: Exit with an error if any file meets this threat level.
 *   `--git-changes`: Only scan files that have changed in Git.
 *   `--exclude [patterns], -e [patterns]`: Skip files matching these patterns.
+*   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
+*   `--markdown`: Save the report in Markdown format.
 
 ## Troubleshooting
 
