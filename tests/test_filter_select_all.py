@@ -53,7 +53,7 @@ def test_apply_filter_refreshes_tree(monkeypatch):
     gptscan._apply_filter()
 
     # Verify tree was cleared
-    mock_tree.get_children.assert_called_once()
+    assert mock_tree.get_children.called
     mock_tree.delete.assert_called_once()
 
     # Verify only matching item was inserted

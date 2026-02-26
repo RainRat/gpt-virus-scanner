@@ -848,6 +848,8 @@ def _apply_filter(*args: Any) -> None:
         else:
             update_status("Ready")
 
+    update_tree_columns()
+
 
 def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ...]]:
     """Prepare wrapped values and tags for a Treeview row."""
@@ -927,6 +929,10 @@ def set_scanning_state(is_scanning: bool) -> None:
         scan_button.config(state="disabled" if is_scanning else "normal")
         cancel_button.config(state="normal" if is_scanning else "disabled")
 
+    if view_button and rescan_button:
+        view_button.config(state="disabled" if is_scanning else "normal")
+        rescan_button.config(state="disabled" if is_scanning else "normal")
+
 
 def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Optional[int] = None, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, high_risk: int = 0, medium_risk: int = 0) -> None:
     """Reset scanning controls when a scan finishes or is cancelled.
@@ -960,6 +966,14 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
         update_status("Ready")
 
     update_tree_columns()
+
+    # Auto-select the first result and focus the tree for immediate keyboard navigation
+    if tree:
+        items = tree.get_children()
+        if items:
+            tree.selection_set(items[0])
+            tree.focus(items[0])
+            tree.focus_set()
 
 
 def button_click() -> None:
@@ -2076,6 +2090,13 @@ def import_results() -> None:
         _last_scan_summary = msg
         update_status(msg)
         update_tree_columns()
+
+        # Auto-select the first result and focus the tree for immediate keyboard navigation
+        items = tree.get_children()
+        if items:
+            tree.selection_set(items[0])
+            tree.focus(items[0])
+            tree.focus_set()
 
     except Exception as err:
         messagebox.showerror("Import Failed", f"Could not load results:\n{err}")
