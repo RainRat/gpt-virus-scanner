@@ -1440,6 +1440,70 @@ def scan_files(
     yield ('summary', (len(file_list), total_bytes_scanned, end_time - start_time))
 
 
+def _consume_scan_events(
+    event_gen: Iterable[Tuple[str, Any]],
+    cancel_event: threading.Event,
+    status_prefix: str,
+    result_handler: Callable[[Tuple[Any, ...]], bool],
+    print_status: bool = False
+) -> None:
+    """Helper to process scan events and update UI consistently."""
+    last_total: Optional[int] = 0
+    threats_found = 0
+    high_risk_found = 0
+    medium_risk_found = 0
+    metrics: Dict[str, Any] = {}
+    current_scanned = 0
+
+    try:
+        for event_type, data in event_gen:
+            if event_type == 'progress':
+                current, total, status = data
+                current_scanned = current
+
+                if total != last_total:
+                    enqueue_ui_update(configure_progress, total)
+                    last_total = total
+                enqueue_ui_update(update_progress, current)
+
+                if threats_found > 0:
+                    threat_suffix = f" ({threats_found} suspicious: {high_risk_found} high, {medium_risk_found} medium)"
+                else:
+                    threat_suffix = ""
+                status_text = f"{status} ({current}/{total}){threat_suffix}" if status else f"{status_prefix}: {current}/{total}{threat_suffix}"
+                if print_status:
+                    print(status_text, file=sys.stderr)
+                enqueue_ui_update(update_status, status_text)
+            elif event_type == 'result':
+                if cancel_event.is_set():
+                    continue
+
+                conf = get_effective_confidence(data[1], data[4])
+                risk = get_risk_category(conf, Config.THRESHOLD)
+
+                if result_handler(data):
+                    if risk == 'high':
+                        threats_found += 1
+                        high_risk_found += 1
+                    elif risk == 'medium':
+                        threats_found += 1
+                        medium_risk_found += 1
+            elif event_type == 'summary':
+                total_files, total_bytes, elapsed_time = data
+                metrics['total_bytes'] = total_bytes
+                metrics['elapsed_time'] = elapsed_time
+    finally:
+        enqueue_ui_update(
+            finish_scan_state,
+            current_scanned,
+            threats_found,
+            metrics.get('total_bytes'),
+            metrics.get('elapsed_time'),
+            high_risk_found,
+            medium_risk_found
+        )
+
+
 def run_scan(
     scan_targets: Union[str, List[str]],
     deep_scan: bool,
@@ -1467,71 +1531,23 @@ def run_scan(
     dry_run : bool
         Whether to simulate the scan.
     """
-    last_total: Optional[int] = 0
-    threats_found = 0
-    high_risk_found = 0
-    medium_risk_found = 0
-    metrics: Dict[str, Any] = {}
-    current_scanned = 0
+    event_gen = scan_files(
+        scan_targets,
+        deep_scan,
+        show_all,
+        use_gpt,
+        cancel_event,
+        rate_limit=rate_limit,
+        max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+        dry_run=dry_run,
+        exclude_patterns=exclude_patterns,
+    )
 
-    try:
-        for event_type, data in scan_files(
-            scan_targets,
-            deep_scan,
-            show_all,
-            use_gpt,
-            cancel_event,
-            rate_limit=rate_limit,
-            max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
-            dry_run=dry_run,
-            exclude_patterns=exclude_patterns,
-        ):
-            if event_type == 'progress':
-                current, total, status = data
-                current_scanned = current
+    def scan_handler(data: Tuple[Any, ...]) -> bool:
+        enqueue_ui_update(insert_tree_row, data)
+        return True
 
-                if total != last_total:
-                    enqueue_ui_update(configure_progress, total)
-                    last_total = total
-                enqueue_ui_update(update_progress, current)
-
-                if threats_found > 0:
-                    threat_suffix = f" ({threats_found} suspicious: {high_risk_found} high, {medium_risk_found} medium)"
-                else:
-                    threat_suffix = ""
-                status_text = f"{status} ({current}/{total}){threat_suffix}" if status else f"Scanning: {current}/{total}{threat_suffix}"
-                print(status_text, file=sys.stderr)
-                enqueue_ui_update(update_status, status_text)
-            elif event_type == 'result':
-                if cancel_event.is_set():
-                    continue
-                # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-                conf = get_effective_confidence(data[1], data[4])
-                risk = get_risk_category(conf, Config.THRESHOLD)
-
-                if risk == 'high':
-                    threats_found += 1
-                    high_risk_found += 1
-                elif risk == 'medium':
-                    threats_found += 1
-                    medium_risk_found += 1
-
-                if not cancel_event.is_set():
-                    enqueue_ui_update(insert_tree_row, data)
-            elif event_type == 'summary':
-                total_files, total_bytes, elapsed_time = data
-                metrics['total_bytes'] = total_bytes
-                metrics['elapsed_time'] = elapsed_time
-    finally:
-        enqueue_ui_update(
-            finish_scan_state,
-            current_scanned,
-            threats_found,
-            metrics.get('total_bytes'),
-            metrics.get('elapsed_time'),
-            high_risk_found,
-            medium_risk_found
-        )
+    _consume_scan_events(event_gen, cancel_event, "Scanning", scan_handler, print_status=True)
 
 
 def run_rescan(
@@ -1541,67 +1557,27 @@ def run_rescan(
     cancel_event: threading.Event
 ) -> None:
     """Perform background scan for specific paths and update existing UI rows."""
-    threats_found = 0
-    high_risk_found = 0
-    medium_risk_found = 0
-    metrics: Dict[str, Any] = {}
-    current_scanned = 0
-    last_total: Optional[int] = 0
+    event_gen = scan_files(
+        paths,
+        settings['deep'],
+        show_all=True,  # Always show results for rescan to update rows
+        use_gpt=settings['gpt'],
+        cancel_event=cancel_event,
+        rate_limit=Config.RATE_LIMIT_PER_MINUTE,
+        max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+        dry_run=settings['dry'],
+        exclude_patterns=None,  # Already selected, don't re-exclude
+    )
 
-    try:
-        for event_type, data in scan_files(
-            paths,
-            settings['deep'],
-            show_all=True,  # Always show results for rescan to update rows
-            use_gpt=settings['gpt'],
-            cancel_event=cancel_event,
-            rate_limit=Config.RATE_LIMIT_PER_MINUTE,
-            max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
-            dry_run=settings['dry'],
-            exclude_patterns=None,  # Already selected, don't re-exclude
-        ):
-            if event_type == 'progress':
-                current, total, status = data
-                current_scanned = current
-                if total != last_total:
-                    enqueue_ui_update(configure_progress, total)
-                    last_total = total
-                enqueue_ui_update(update_progress, current)
-                if threats_found > 0:
-                    threat_suffix = f" ({threats_found} suspicious: {high_risk_found} high, {medium_risk_found} medium)"
-                else:
-                    threat_suffix = ""
-                status_text = f"{status} ({current}/{total}){threat_suffix}" if status else f"Rescanning: {current}/{total}{threat_suffix}"
-                enqueue_ui_update(update_status, status_text)
-            elif event_type == 'result':
-                if cancel_event.is_set():
-                    continue
-                path = data[0]
-                item_id = item_map.get(path)
-                if item_id:
-                    conf = get_effective_confidence(data[1], data[4])
-                    risk = get_risk_category(conf, Config.THRESHOLD)
-                    if risk == 'high':
-                        threats_found += 1
-                        high_risk_found += 1
-                    elif risk == 'medium':
-                        threats_found += 1
-                        medium_risk_found += 1
-                    enqueue_ui_update(update_tree_row, item_id, data)
-            elif event_type == 'summary':
-                total_files, total_bytes, elapsed_time = data
-                metrics['total_bytes'] = total_bytes
-                metrics['elapsed_time'] = elapsed_time
-    finally:
-        enqueue_ui_update(
-            finish_scan_state,
-            current_scanned,
-            threats_found,
-            metrics.get('total_bytes'),
-            metrics.get('elapsed_time'),
-            high_risk_found,
-            medium_risk_found
-        )
+    def rescan_handler(data: Tuple[Any, ...]) -> bool:
+        path = data[0]
+        item_id = item_map.get(path)
+        if item_id:
+            enqueue_ui_update(update_tree_row, item_id, data)
+            return True
+        return False
+
+    _consume_scan_events(event_gen, cancel_event, "Rescanning", rescan_handler)
 
 
 def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
