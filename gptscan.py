@@ -2,6 +2,7 @@ import asyncio
 import csv
 import hashlib
 import html
+import io
 import json
 import os
 import queue
@@ -691,18 +692,21 @@ def format_bytes(num: float) -> str:
     return f"{num:.1f} PiB"
 
 
-def get_file_sha256(file_path: Union[str, Path]) -> str:
-    """Calculate the SHA256 hash of a file.
+def get_file_sha256(file_path_or_data: Union[str, Path, bytes]) -> str:
+    """Calculate the SHA256 hash of a file or bytes.
 
     Args:
-        file_path: The path to the file.
+        file_path_or_data: The path to the file or the data itself as bytes.
 
     Returns:
         The hex digest of the SHA256 hash, or an empty string if calculation fails.
     """
+    if isinstance(file_path_or_data, bytes):
+        return hashlib.sha256(file_path_or_data).hexdigest()
+
     sha256_hash = hashlib.sha256()
     try:
-        with open(file_path, "rb") as f:
+        with open(file_path_or_data, "rb") as f:
             for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
@@ -992,8 +996,13 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
     _auto_select_best_result()
 
 
-def button_click() -> None:
+def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None) -> None:
     """Trigger a scan in a background thread using the selected path.
+
+    Parameters
+    ----------
+    extra_snippets : List[Tuple[str, bytes]], optional
+        List of (name, content) tuples to scan as in-memory buffers.
 
     Returns
     -------
@@ -1040,6 +1049,7 @@ def button_click() -> None:
         Config.RATE_LIMIT_PER_MINUTE,
         dry_var.get(),
         Config.ignore_patterns,
+        extra_snippets,
     )
     scan_thread = threading.Thread(target=run_scan, args=scan_args, daemon=True)
     scan_thread.start()
@@ -1205,6 +1215,7 @@ def scan_files(
     max_concurrent_requests: int = Config.MAX_CONCURRENT_REQUESTS,
     dry_run: bool = False,
     exclude_patterns: Optional[List[str]] = None,
+    extra_snippets: Optional[List[Tuple[str, bytes]]] = None,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for malicious content and optionally request GPT analysis.
 
@@ -1226,6 +1237,8 @@ def scan_files(
         Whether to list files that would be scanned without running the model or API.
     exclude_patterns : List[str], optional
         List of glob patterns to exclude from the scan.
+    extra_snippets : List[Tuple[str, bytes]], optional
+        List of (name, content) tuples to scan as in-memory buffers.
 
     Yields
     ------
@@ -1264,7 +1277,8 @@ def scan_files(
             if not any(f.match(p) for p in exclude_patterns)
         ]
 
-    total_progress = len(file_list)
+    extra_snippets = extra_snippets or []
+    total_progress = len(file_list) + len(extra_snippets)
     progress_count = 0
     total_bytes_scanned = 0
     start_time = time.perf_counter()
@@ -1372,6 +1386,67 @@ def scan_files(
                                 )
                             )
 
+    for name, content in extra_snippets:
+        if cancel_event.is_set():
+            break
+
+        progress_count += 1
+        yield ('progress', (progress_count, total_progress, f"Scanning: {name}"))
+
+        file_size = len(content)
+        total_bytes_scanned += file_size
+
+        if dry_run:
+            yield (
+                'result',
+                (
+                    name,
+                    'Dry Run',
+                    '',
+                    '',
+                    '',
+                    f"(Snippet would be scanned, size: {format_bytes(file_size)})",
+                )
+            )
+        else:
+            maxconf = -1.0
+            max_window_bytes = b""
+            with io.BytesIO(content) as f:
+                for offset, window in iter_windows(f, file_size, deep_scan):
+                    if cancel_event.is_set():
+                        break
+                    result, padded_bytes = predict_window(window)
+                    if result > maxconf:
+                        maxconf = result
+                        max_window_bytes = padded_bytes
+
+            if maxconf >= 0:
+                percent = f"{maxconf:.0%}"
+                snippet = ''.join(map(chr, max_window_bytes)).strip()
+                cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+                threshold_val = Config.THRESHOLD / 100.0
+                if maxconf > threshold_val and use_gpt and Config.GPT_ENABLED:
+                    gpt_requests.append(
+                        {
+                            "path": name,
+                            "percent": percent,
+                            "snippet": snippet,
+                            "cleaned_snippet": cleaned_snippet,
+                        }
+                    )
+                elif maxconf > threshold_val or show_all:
+                    yield (
+                        'result',
+                        (
+                            name,
+                            percent,
+                            '',
+                            '',
+                            '',
+                            cleaned_snippet,
+                        )
+                    )
+
     if cancel_event.is_set():
         return
 
@@ -1437,7 +1512,7 @@ def scan_files(
             )
 
     end_time = time.perf_counter()
-    yield ('summary', (len(file_list), total_bytes_scanned, end_time - start_time))
+    yield ('summary', (len(file_list) + len(extra_snippets), total_bytes_scanned, end_time - start_time))
 
 
 def run_scan(
@@ -1449,6 +1524,7 @@ def run_scan(
     rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
     dry_run: bool = False,
     exclude_patterns: Optional[List[str]] = None,
+    extra_snippets: Optional[List[Tuple[str, bytes]]] = None,
 ) -> None:
     """Consume scan events and forward them to the UI thread.
 
@@ -1485,6 +1561,7 @@ def run_scan(
             max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
             dry_run=dry_run,
             exclude_patterns=exclude_patterns,
+            extra_snippets=extra_snippets,
         ):
             if event_type == 'progress':
                 current, total, status = data
@@ -1858,7 +1935,7 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None) -> int:
     """Run scans and stream results to stdout or a file.
 
     Parameters
@@ -1883,6 +1960,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         Confidence threshold to trigger a failure count.
     output_file : str, optional
         Path to a file where results should be saved.
+    extra_snippets : List[Tuple[str, bytes]], optional
+        List of (name, content) tuples to scan as in-memory buffers.
     """
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]
 
@@ -1912,6 +1991,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
         dry_run=dry_run,
         exclude_patterns=exclude_patterns,
+        extra_snippets=extra_snippets,
     ):
         if event_type == 'result':
             # data format: (path, own_conf, admin, user, gpt_conf, snippet)
@@ -2238,7 +2318,7 @@ def _resolve_file_path(event_or_path: Union[tk.Event, str, None], verify: bool =
             return None
         file_path = str(values[0])
 
-    if verify and not os.path.exists(file_path):
+    if verify and not file_path.startswith("[") and not os.path.exists(file_path):
         messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
         return None
     return file_path
@@ -2525,7 +2605,14 @@ def copy_sha256() -> None:
     if not values:
         return
     file_path = str(values[0])
-    h = get_file_sha256(file_path)
+
+    if file_path.startswith("["):
+        # For virtual paths, hash the snippet content
+        snippet = str(values[5])
+        h = get_file_sha256(snippet.encode('utf-8'))
+    else:
+        h = get_file_sha256(file_path)
+
     if h:
         tree.clipboard_clear()
         tree.clipboard_append(h)
@@ -2540,7 +2627,16 @@ def check_virustotal(event_or_path: Union[tk.Event, str, None] = None) -> None:
     if not file_path:
         return
 
-    h = get_file_sha256(file_path)
+    if file_path.startswith("["):
+        # For virtual paths, hash the snippet content from selection
+        values = _get_selected_row_values()
+        if not values:
+            return
+        snippet = str(values[5])
+        h = get_file_sha256(snippet.encode('utf-8'))
+    else:
+        h = get_file_sha256(file_path)
+
     if h:
         url = f"https://www.virustotal.com/gui/file/{h}"
         webbrowser.open(url)
@@ -2720,12 +2816,24 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     select_dir_btn.grid(row=0, column=3, sticky="e", padx=(5, 0))
     bind_hover_message(select_dir_btn, "Select a directory to scan.")
 
+    def scan_clipboard_click():
+        try:
+            content = root.clipboard_get()
+            if content:
+                button_click(extra_snippets=[("[Clipboard]", content.encode('utf-8'))])
+        except Exception as e:
+            messagebox.showwarning("Clipboard Error", f"Could not read from clipboard: {e}")
+
+    select_clipboard_btn = ttk.Button(input_frame, text="Clipboard", command=scan_clipboard_click)
+    select_clipboard_btn.grid(row=0, column=4, sticky="e", padx=(5, 0))
+    bind_hover_message(select_clipboard_btn, "Scan code currently in your clipboard.")
+
     scan_button = ttk.Button(input_frame, text="Scan now", command=button_click, default='active')
-    scan_button.grid(row=0, column=4, sticky="e", padx=(5, 0))
+    scan_button.grid(row=0, column=5, sticky="e", padx=(5, 0))
     bind_hover_message(scan_button, "Start the scan.")
 
     cancel_button = ttk.Button(input_frame, text="Cancel", command=cancel_scan, state="disabled")
-    cancel_button.grid(row=0, column=5, sticky="e", padx=(5, 0))
+    cancel_button.grid(row=0, column=6, sticky="e", padx=(5, 0))
     bind_hover_message(cancel_button, "Stop the current scan.")
 
     # --- Settings Container ---
@@ -3022,7 +3130,8 @@ def main():
         epilog="Examples:\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n"
                "  python gptscan.py ./my_script.py --cli --json\n"
-               "  python gptscan.py --git-changes --cli --fail-threshold 50",
+               "  python gptscan.py --git-changes --cli --fail-threshold 50\n"
+               "  echo \"print('hello')\" | python gptscan.py --cli --stdin",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {Config.VERSION}')
@@ -3067,6 +3176,11 @@ def main():
         type=int,
         default=50,
         help='The lowest threat score to report (0-100). The default is 50.'
+    )
+    scan_group.add_argument(
+        '--stdin',
+        action='store_true',
+        help='Read a code snippet from standard input to scan.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
@@ -3175,6 +3289,17 @@ def main():
                 output_format = 'csv'
 
         final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or [])))
+
+        extra_snippets = []
+        if args.stdin:
+            try:
+                # Read from stdin buffer for binary safety
+                stdin_content = sys.stdin.buffer.read()
+                if stdin_content:
+                    extra_snippets.append(("[Stdin]", stdin_content))
+            except Exception as e:
+                print(f"Error reading from stdin: {e}", file=sys.stderr)
+
         threats = run_cli(
             scan_targets,
             args.deep,
@@ -3185,7 +3310,8 @@ def main():
             dry_run=args.dry_run,
             exclude_patterns=final_excludes,
             fail_threshold=args.fail_threshold,
-            output_file=args.output
+            output_file=args.output,
+            extra_snippets=extra_snippets
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
