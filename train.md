@@ -13,13 +13,15 @@ This tool trains the local "brain" (the file classifier) used by the GPT Virus S
 
 ## Installation
 
-```bash
-pip install tensorflow numpy pyyaml
-```
+1.  **Install Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet because of model compatibility.
+2.  **Install requirements:** Open your terminal and run:
+    ```bash
+    pip install "tensorflow<2.16" numpy pyyaml
+    ```
 
 ## Configuration
 
-The trainer requires a `config.yml` file to run. This file contains settings for the model, training process, and AI hyperparameters.
+The trainer requires a `config.yml` file to run. This file contains settings for the model, the training process, and the AI settings.
 
 ### Example `config.yml`
 
@@ -47,9 +49,9 @@ weights:
   positive_sample_weight: 1.0 # Importance of malicious examples during training
   positive_class_weight: 1.0  # Weight applied to the malicious class
 
-# AI settings for the genetic algorithm.
+# AI settings for the automatic optimization process.
 # These values (0.0 to 1.0) control how the brain is built.
-# The script will automatically mutate and improve these over time.
+# The script will automatically adjust and improve these over time.
 hyperparameters:
   embedding_scale: 0.5        # Size of the memory for byte patterns
   rnn_scale: 0.5              # Memory capacity for long sequences
@@ -79,10 +81,10 @@ project/
 ├── config.yml
 ├── train.py
 └── scripts/           # model_name from config
-    ├── 0/             # negative examples (class 0)
+    ├── 0/             # safe files
     │   ├── file1.bin
     │   └── file2.bin
-    └── 1/             # positive examples (class 1)
+    └── 1/             # malicious files
         ├── file3.bin
         └── file4.bin
 ```
@@ -138,7 +140,7 @@ python train.py --config config.yml \
 python train.py --config config.yml --mode train
 ```
 
-**Continue training from best hyperparameters:**
+**Continue training from the best AI settings:**
 ```bash
 # The script automatically loads scripts_best_hp.yml if it exists
 python train.py --config config.yml --mode train
@@ -165,8 +167,8 @@ python train.py --config config.yml \
 --config, -c           Path to YAML configuration file (required)
 --mode, -m             Mode: train or predict (overrides config)
 --model-name           Model name (overrides config)
---positive-dir         Directory with positive examples (class 1)
---negative-dir         Directory with negative examples (class 0)
+--positive-dir         Directory with malicious files
+--negative-dir         Directory with safe files
 --predict-dir          Directory with files to predict on
 --output-dir           Output directory for prediction results
 --epochs               Number of training epochs (overrides config)
@@ -218,13 +220,13 @@ The script uses numbers between 0 and 1 to represent these settings. You can fin
 
 ## Tips
 
-- Start with the provided default hyperparameters
-- Let training run for several hours to explore the hyperparameter space
-- Monitor the console output for "New Best Model!" messages
-- Use the saved `*_best_hp.yml` file to resume training from the best configuration
+- Start with the default AI settings.
+- Let training run for several hours to find the best settings.
+- Watch the terminal for "New Best Model!" messages.
+- Use the saved `*_best_hp.yml` file to resume training from the best settings.
 - Adjust `positive_sample_weight` if you have class imbalance
 - Increase `max_params` if you want larger models (at cost of training time)
 
 ## Stopping Training
 
-Press `Ctrl+C` to stop training. The best model and hyperparameters are already saved, so you can resume anytime.
+Press `Ctrl+C` to stop training. The best model and AI settings are already saved, so you can resume at any time.
