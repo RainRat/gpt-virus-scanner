@@ -23,6 +23,30 @@ mock_tk.TclError = Exception
 sys.modules['tkinter'] = mock_tk
 sys.modules['tkinter.filedialog'] = MagicMock()
 sys.modules['tkinter.font'] = MagicMock()
-sys.modules['tkinter.ttk'] = MagicMock()
+
+# Explicitly mock Label to be a real class so it's not a mock instance
+class MockLabel:
+    def __init__(self, *args, **kwargs): pass
+    def grid(self, *args, **kwargs): pass
+    def pack(self, *args, **kwargs): pass
+    def config(self, *args, **kwargs): pass
+    def cget(self, *args, **kwargs): return ""
+    def __repr__(self): return "MockLabel"
+
+mock_tk.Label = MockLabel
+
+mock_ttk = MagicMock()
+# Explicitly mock Frame to be a real class so it's not a mock instance
+class MockFrame:
+    def __init__(self, *args, **kwargs): pass
+    def grid(self, *args, **kwargs): pass
+    def pack(self, *args, **kwargs): pass
+    def columnconfigure(self, *args, **kwargs): pass
+    def rowconfigure(self, *args, **kwargs): pass
+    def winfo_viewable(self): return True
+    def __repr__(self): return "MockFrame"
+
+mock_ttk.Frame = MockFrame
+sys.modules['tkinter.ttk'] = mock_ttk
 sys.modules['tkinter.messagebox'] = MagicMock()
 sys.modules['tkinter.scrolledtext'] = MagicMock()

@@ -34,6 +34,10 @@ def test_view_details_open_window(mock_tree, monkeypatch):
     mock_toplevel = MagicMock()
     monkeypatch.setattr(gptscan.tk, 'Toplevel', MagicMock(return_value=mock_toplevel))
 
+    # Mock tk.Label for risk_badge
+    mock_label = MagicMock()
+    monkeypatch.setattr(gptscan.tk, 'Label', MagicMock(return_value=mock_label))
+
     # Mock scrolledtext
     mock_scrolledtext = MagicMock()
     mock_st_class = MagicMock(return_value=mock_scrolledtext)
@@ -47,8 +51,14 @@ def test_view_details_open_window(mock_tree, monkeypatch):
     gptscan.tk.Toplevel.assert_called_once()
     mock_toplevel.title.assert_called_with("Result 1 of 1 - test.py")
 
+    # Verify risk_badge was created and configured correctly (90% own_conf -> HIGH RISK)
+    gptscan.tk.Label.assert_called()
+    # Check that config was called with HIGH RISK. Note: Label might be used for other things
+    # but in view_details it's currently only used for risk_badge after my changes.
+    # Actually, own_conf_label is a ttk.Label.
+    mock_label.config.assert_any_call(text="HIGH RISK", background="#ffcccc", foreground="darkred")
+
     # Verify data was inserted into ScrolledText widgets (we expect 3: admin, user, snippet)
-    # Actually if both admin and user are present, there are 3 ScrolledText calls.
     assert mock_st_class.call_count == 3
 
     # Check that the data was inserted
@@ -57,6 +67,22 @@ def test_view_details_open_window(mock_tree, monkeypatch):
     assert "Admin Note" in contents
     assert "User Note" in contents
     assert "print('hello')" in contents
+
+def test_view_details_low_risk(mock_tree, monkeypatch):
+    # Setup mock selection with low confidence
+    mock_tree.selection.return_value = ["item1"]
+    raw_values = ["safe.py", "10%", "", "", "", "print('safe')"]
+    mock_tree._item_values["item1"] = ("safe.py", "10%", "", "", "", "print('safe')", json.dumps(raw_values))
+
+    monkeypatch.setattr(gptscan.tk, 'Toplevel', MagicMock())
+    mock_label = MagicMock()
+    monkeypatch.setattr(gptscan.tk, 'Label', MagicMock(return_value=mock_label))
+    monkeypatch.setattr(gptscan.scrolledtext, 'ScrolledText', MagicMock())
+
+    gptscan.view_details()
+
+    # Verify risk_badge was configured as LOW RISK (10% < 50% threshold)
+    mock_label.config.assert_any_call(text="LOW RISK", background="lightgrey", foreground="grey")
 
 def test_view_details_no_selection(mock_tree, monkeypatch):
     mock_tree.selection.return_value = []
