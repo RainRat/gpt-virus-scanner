@@ -477,7 +477,7 @@ async def async_handle_gpt_response(
 
     retries = 0
     json_data: Optional[Union[Dict, str]] = None
-    cache_key = hash(snippet)
+    cache_key = hashlib.sha256(snippet.encode('utf-8')).hexdigest()
     if cache_key in Config.gpt_cache:
         return Config.gpt_cache[cache_key]
 
@@ -601,16 +601,22 @@ def get_git_changed_files(path: str = ".") -> List[str]:
 
     # Ensure we have a directory for cwd
     if os.path.isfile(path):
-        cwd = os.path.dirname(path) or "."
+        cwd = os.path.abspath(os.path.dirname(path)) or "."
         # If we are looking at a specific file, we only care about that file
         targets = [os.path.basename(path)]
     else:
-        cwd = path
+        cwd = os.path.abspath(path)
         targets = []
+
+    # Check if we are in a git repository
+    try:
+        subprocess.check_output(["git", "rev-parse", "--is-inside-work-tree"], cwd=cwd, stderr=subprocess.PIPE)
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return []
 
     # Changed (staged and unstaged) relative to HEAD
     try:
-        cmd = ["git", "diff", "--name-only", "HEAD", "--relative"] + targets
+        cmd = ["git", "diff", "--name-only", "HEAD", "--"] + targets
         output = subprocess.check_output(
             cmd,
             cwd=cwd,
@@ -619,14 +625,12 @@ def get_git_changed_files(path: str = ".") -> List[str]:
         )
         files.update(line.strip() for line in output.splitlines() if line.strip())
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
-        # HEAD might not exist, git is missing, or cwd is invalid
+        # HEAD might not exist (new repo)
         pass
 
     # Untracked files
     try:
-        # Note: git ls-files does not support --relative in all versions,
-        # and it returns relative paths by default when run inside a subdirectory.
-        cmd = ["git", "ls-files", "--others", "--exclude-standard"] + targets
+        cmd = ["git", "ls-files", "--others", "--exclude-standard", "--"] + targets
         output = subprocess.check_output(
             cmd,
             cwd=cwd,
@@ -635,7 +639,6 @@ def get_git_changed_files(path: str = ".") -> List[str]:
         )
         files.update(line.strip() for line in output.splitlines() if line.strip())
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
-        # Not a git repo, git is missing, or cwd is invalid
         pass
 
     return [os.path.join(cwd, f) for f in files if os.path.exists(os.path.join(cwd, f))]
@@ -1133,6 +1136,11 @@ def exclude_selected() -> None:
     try:
         # Update .gptscanignore
         ignore_file = Path('.gptscanignore')
+        existing_patterns = set()
+        if ignore_file.exists():
+            with open(ignore_file, 'r', encoding='utf-8') as fr:
+                existing_patterns = {line.strip() for line in fr if line.strip()}
+
         with open(ignore_file, 'a', encoding='utf-8') as f:
             # Add a newline if file is not empty and doesn't end with one
             if ignore_file.exists() and ignore_file.stat().st_size > 0:
@@ -1142,25 +1150,27 @@ def exclude_selected() -> None:
                         f.write('\n')
 
             for path in excluded_paths:
-                # Use relative path if possible for cleaner ignore patterns
+                # Ensure path is a string (handles potential mock objects in tests)
+                path_str = str(path)
                 try:
-                    rel_path = os.path.relpath(path, os.getcwd())
-                    # If it's outside CWD, it might return something like ../...
-                    # but match() handles it.
-                    f.write(f"{rel_path}\n")
+                    rel_path = os.path.relpath(path_str, os.getcwd())
+                    if rel_path not in existing_patterns:
+                        f.write(f"{rel_path}\n")
+                        existing_patterns.add(rel_path)
                     if rel_path not in Config.ignore_patterns:
                         Config.ignore_patterns.append(rel_path)
                 except ValueError:
-                    # Fallback to absolute if relpath fails (e.g. different drives on Windows)
-                    f.write(f"{path}\n")
-                    if path not in Config.ignore_patterns:
-                        Config.ignore_patterns.append(path)
+                    if path_str not in existing_patterns:
+                        f.write(f"{path_str}\n")
+                        existing_patterns.add(path_str)
+                    if path_str not in Config.ignore_patterns:
+                        Config.ignore_patterns.append(path_str)
 
         # Update cache and refresh view
         global _all_results_cache
         for path in excluded_paths:
             # Remove from cache
-            _all_results_cache = [v for v in _all_results_cache if v[0] != path]
+            _all_results_cache = [v for v in _all_results_cache if v[0] != str(path)]
 
         _apply_filter()
         update_status(f"Excluded {len(excluded_paths)} file(s).")
@@ -1461,6 +1471,8 @@ def scan_files(
                 wait_messages.append("Waiting for API rate limit...")
 
             async def run_request(request: Dict[str, Any]):
+                if cancel_event.is_set():
+                    return request, None
                 json_data = await async_handle_gpt_response(
                     request["snippet"],
                     Config.taskdesc,
@@ -1470,9 +1482,13 @@ def scan_files(
                 )
                 return request, json_data
 
-            tasks = [asyncio.create_task(run_request(request)) for request in requests]
+            tasks = [asyncio.create_task(run_request(request)) for request in gpt_requests]
             results: List[Tuple[Dict[str, Any], Optional[Dict]]] = []
             for completed in asyncio.as_completed(tasks):
+                if cancel_event.is_set():
+                    for t in tasks:
+                        t.cancel()
+                    break
                 results.append(await completed)
             return results, wait_messages
 
