@@ -22,6 +22,11 @@ Scan a folder and save a JSON report:
 python gptscan.py ./my_scripts --cli -o report.json
 ```
 
+Scan a code snippet from standard input:
+```bash
+echo "print('hello')" | python gptscan.py --cli --stdin
+```
+
 ## Setup
 
 Follow these steps to get the scanner running:
@@ -60,6 +65,7 @@ You can customize the scanner using these files in the same folder:
 Run `python gptscan.py` to open the GUI.
 
 *   **Select File/Folder:** Choose what you want to scan.
+*   **Clipboard:** Scan code currently in your clipboard.
 *   **Filter results:** Search findings by path, confidence, notes, or code snippets.
 *   **Deep Scan:** Check the entire file. By default, it only checks the beginning and end to save time.
 *   **Minimum Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
@@ -84,6 +90,9 @@ Run scans from your terminal using the `--cli` flag.
 # Basic scan with AI analysis
 python gptscan.py ./my_scripts --cli --use-gpt
 
+# Scan a code snippet from standard input
+echo "print('hello')" | python gptscan.py --cli --stdin
+
 # Scan using Ollama (local AI)
 python gptscan.py ./my_scripts --cli --use-gpt --provider ollama --model llama3.2
 
@@ -93,6 +102,7 @@ python gptscan.py ./my_scripts --cli -o results.json --exclude "tests/*"
 
 **Common Options:**
 *   `--cli`: Run in command-line mode.
+*   `--stdin`: Read a code snippet from standard input to scan.
 *   `--deep`: Scan the entire file.
 *   `--show-all`: List all files, even safe ones.
 *   `--use-gpt`: Enable AI Analysis for suspicious code.
