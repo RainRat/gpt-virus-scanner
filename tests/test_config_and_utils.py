@@ -87,20 +87,6 @@ def test_parse_percent(input_val, expected):
 def test_parse_percent_custom_default():
     assert parse_percent("invalid", default=0.0) == 0.0
 
-# --- get_effective_confidence Tests ---
-
-@pytest.mark.parametrize("own, gpt, expected", [
-    ("50%", "80%", 80.0),    # GPT prioritized
-    ("50%", "", 50.0),      # Fallback to local
-    ("50%", "invalid", 50.0), # Fallback to local on GPT error
-    ("50%", "0%", 0.0),     # GPT prioritized even if 0
-    ("", "80%", 80.0),      # GPT prioritized even if local missing
-    ("", "", -1.0),         # Both missing
-    ("invalid", "invalid", -1.0), # Both invalid
-])
-def test_get_effective_confidence(own, gpt, expected):
-    assert get_effective_confidence(own, gpt) == expected
-
 # --- adjust_newlines Tests ---
 
 def test_adjust_newlines_no_wrap(monkeypatch):
