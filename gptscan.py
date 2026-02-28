@@ -1375,7 +1375,7 @@ def scan_files(
                         snippet = ''.join(map(chr, max_window_bytes)).strip()
                         cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
                         threshold_val = Config.THRESHOLD / 100.0
-                        if maxconf > threshold_val and use_gpt and Config.GPT_ENABLED:
+                        if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
                             gpt_requests.append(
                                 {
                                     "path": str(file_path),
@@ -1384,7 +1384,7 @@ def scan_files(
                                     "cleaned_snippet": cleaned_snippet,
                                 }
                             )
-                        elif maxconf > threshold_val or show_all:
+                        elif maxconf >= threshold_val or show_all:
                             yield (
                                 'result',
                                 (
@@ -1436,7 +1436,7 @@ def scan_files(
                 snippet = ''.join(map(chr, max_window_bytes)).strip()
                 cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
                 threshold_val = Config.THRESHOLD / 100.0
-                if maxconf > threshold_val and use_gpt and Config.GPT_ENABLED:
+                if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
                     gpt_requests.append(
                         {
                             "path": name,
@@ -1445,7 +1445,7 @@ def scan_files(
                             "cleaned_snippet": cleaned_snippet,
                         }
                     )
-                elif maxconf > threshold_val or show_all:
+                elif maxconf >= threshold_val or show_all:
                     yield (
                         'result',
                         (
