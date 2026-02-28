@@ -1784,9 +1784,11 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         conf_str = gpt_conf or own_conf
         analysis_parts = []
         if admin:
-            analysis_parts.append(f"**Admin:** {admin.replace('|', '\\|')}")
+            admin_clean = admin.replace("|", "\\|")
+            analysis_parts.append(f"**Admin:** {admin_clean}")
         if user:
-            analysis_parts.append(f"**User:** {user.replace('|', '\\|')}")
+            user_clean = user.replace("|", "\\|")
+            analysis_parts.append(f"**User:** {user_clean}")
         analysis = "<br>".join(analysis_parts)
 
         # Clean up snippet for markdown table (one line, escaped)
