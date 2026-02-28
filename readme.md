@@ -13,7 +13,7 @@ GPT Virus Scanner uses AI to find malicious code in script files.
 
 ### Use the Windowed App (GUI)
 1. Run the script: `python gptscan.py`
-2. Select a folder to scan.
+2. Select a folder to scan. The tool will also scan all subfolders.
 3. Click **Scan now**.
 
 ### Use the Terminal (CLI)
@@ -39,7 +39,7 @@ Follow these steps to get the scanner running:
     pip install "tensorflow<2.16" openai
     ```
     *Linux users:* You may also need to install Tkinter (for example: `sudo apt-get install python3-tk`).
-    *   **OpenAI/OpenRouter:** Create a file named `apikey.txt` and paste your API key inside. Alternatively, set the `OPENAI_API_KEY` environment variable.
+    *   **OpenAI/OpenRouter:** Create a file named `apikey.txt` and paste your API key on the first line. Alternatively, set the `OPENAI_API_KEY` environment variable.
     *   **Ollama:** Download [Ollama](https://ollama.com/) and run it locally. Pull a model before starting (e.g., `ollama pull llama3.2`).
 
 *Privacy Note:* Your code is only sent to an AI service if you enable "Use AI Analysis."
@@ -64,14 +64,16 @@ You can customize the scanner using these files in the same folder:
 
 Run `python gptscan.py` to open the GUI.
 
-*   **Select File/Folder:** Choose what you want to scan.
+*   **Select File/Folder:** Choose what you want to scan. If you select a folder, the tool scans all files inside it and its subfolders.
 *   **Clipboard:** Scan code currently in your clipboard.
 *   **Filter results:** Search findings by path, confidence, notes, or code snippets.
-*   **Deep Scan:** Check the entire file. By default, it only checks the beginning and end to save time.
+*   **Deep Scan:** Check the entire file. By default, the scanner only checks the first and last 1024 bytes to save time.
 *   **Minimum Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
 *   **Show all files:** See every scanned file, even safe ones.
 *   **Use AI Analysis:** Enable detailed reports for suspicious findings.
-*   **Import/Export:** Save or load results in CSV, JSON, HTML, or SARIF formats. (Markdown is for export only).
+*   **Import/Export:** Save or load results.
+    *   **Import:** Supports CSV, JSON, JSONL, NDJSON, and SARIF formats.
+    *   **Export:** Supports CSV, JSON, HTML, SARIF, and Markdown formats.
 
 **Shortcuts:**
 *   **Ctrl+A / Cmd+A:** Select all results.
