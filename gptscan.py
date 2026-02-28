@@ -1000,6 +1000,17 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
     _auto_select_best_result()
 
 
+def scan_clipboard_click():
+    """Scan code currently in the clipboard."""
+    try:
+        if root:
+            content = root.clipboard_get()
+            if content:
+                button_click(extra_snippets=[("[Clipboard]", content.encode('utf-8'))])
+    except Exception as e:
+        messagebox.showwarning("Clipboard Error", f"Could not read from clipboard: {e}")
+
+
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None) -> None:
     """Trigger a scan in a background thread using the selected path.
 
@@ -1375,7 +1386,7 @@ def scan_files(
                         snippet = ''.join(map(chr, max_window_bytes)).strip()
                         cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
                         threshold_val = Config.THRESHOLD / 100.0
-                        if maxconf > threshold_val and use_gpt and Config.GPT_ENABLED:
+                        if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
                             gpt_requests.append(
                                 {
                                     "path": str(file_path),
@@ -1384,7 +1395,7 @@ def scan_files(
                                     "cleaned_snippet": cleaned_snippet,
                                 }
                             )
-                        elif maxconf > threshold_val or show_all:
+                        elif maxconf >= threshold_val or show_all:
                             yield (
                                 'result',
                                 (
@@ -1436,7 +1447,7 @@ def scan_files(
                 snippet = ''.join(map(chr, max_window_bytes)).strip()
                 cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
                 threshold_val = Config.THRESHOLD / 100.0
-                if maxconf > threshold_val and use_gpt and Config.GPT_ENABLED:
+                if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
                     gpt_requests.append(
                         {
                             "path": name,
@@ -1445,7 +1456,7 @@ def scan_files(
                             "cleaned_snippet": cleaned_snippet,
                         }
                     )
-                elif maxconf > threshold_val or show_all:
+                elif maxconf >= threshold_val or show_all:
                     yield (
                         'result',
                         (
@@ -2802,14 +2813,6 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     select_dir_btn = ttk.Button(input_frame, text="Folder...", command=browse_dir_click)
     select_dir_btn.grid(row=0, column=3, sticky="e", padx=(5, 0))
     bind_hover_message(select_dir_btn, "Select a directory to scan.")
-
-    def scan_clipboard_click():
-        try:
-            content = root.clipboard_get()
-            if content:
-                button_click(extra_snippets=[("[Clipboard]", content.encode('utf-8'))])
-        except Exception as e:
-            messagebox.showwarning("Clipboard Error", f"Could not read from clipboard: {e}")
 
     select_clipboard_btn = ttk.Button(input_frame, text="Clipboard", command=scan_clipboard_click)
     select_clipboard_btn.grid(row=0, column=4, sticky="e", padx=(5, 0))

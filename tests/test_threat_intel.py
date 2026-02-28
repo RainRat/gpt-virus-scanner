@@ -80,6 +80,36 @@ def test_check_virustotal_with_path(tmp_path):
     expected_url = f"https://www.virustotal.com/gui/file/{expected_hash}"
     mock_open.assert_called_once_with(expected_url)
 
+def test_copy_sha256_virtual_path(mock_tree):
+    """Test that copy_sha256 hashes the snippet for virtual paths."""
+    snippet = "print('virtual')"
+    expected_hash = hashlib.sha256(snippet.encode('utf-8')).hexdigest()
+
+    mock_tree.selection.return_value = ["item1"]
+    raw_values = ["[Clipboard]", "50%", "", "", "", snippet]
+    mock_tree._item_values["item1"] = ("[Clipboard]", "50%", "", "", "", snippet, json.dumps(raw_values))
+
+    with patch('gptscan.update_status'):
+        gptscan.copy_sha256()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    mock_tree.clipboard_append.assert_called_with(expected_hash)
+
+def test_check_virustotal_virtual_path(mock_tree):
+    """Test that check_virustotal hashes the snippet for virtual paths."""
+    snippet = "print('virtual')"
+    expected_hash = hashlib.sha256(snippet.encode('utf-8')).hexdigest()
+
+    mock_tree.selection.return_value = ["item1"]
+    raw_values = ["[Stdin]", "50%", "", "", "", snippet]
+    mock_tree._item_values["item1"] = ("[Stdin]", "50%", "", "", "", snippet, json.dumps(raw_values))
+
+    with patch('webbrowser.open') as mock_open, patch('gptscan.update_status'):
+        gptscan.check_virustotal()
+
+    expected_url = f"https://www.virustotal.com/gui/file/{expected_hash}"
+    mock_open.assert_called_once_with(expected_url)
+
 def test_check_virustotal_not_found(monkeypatch):
     mock_msgbox = MagicMock()
     monkeypatch.setattr(gptscan, 'messagebox', mock_msgbox)
