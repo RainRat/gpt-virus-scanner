@@ -36,7 +36,7 @@ model:
   max_params: 1000000       # Maximum allowed parameters (brain size)
 
 training:
-  batch_size: 32            # Files processed in one batch
+  batch_size: 32            # Files processed at once
   epochs: 100               # Number of training rounds
   validation_split: 0.2     # Percentage of data used for testing accuracy
   patience: 10              # Rounds to wait before stopping if no improvement
@@ -47,7 +47,7 @@ prediction:
 
 weights:
   positive_sample_weight: 1.0 # Importance of malicious examples during training
-  positive_class_weight: 1.0  # Weight applied to the malicious class
+  positive_class_weight: 1.0  # Weight applied to malicious files
 
 # AI settings for the automatic optimization process.
 # These values (0.0 to 1.0) control how the brain is built.
@@ -171,8 +171,8 @@ python train.py --config config.yml \
 --negative-dir         Directory with safe files
 --predict-dir          Directory with files to predict on
 --output-dir           Output directory for prediction results
---epochs               Number of training epochs (overrides config)
---batch-size           Batch size (overrides config)
+--epochs               Number of training rounds (overrides config)
+--batch-size           Number of files processed at once (overrides config)
 ```
 
 ## Output Files
@@ -224,8 +224,8 @@ The script uses numbers between 0 and 1 to represent these settings. You can fin
 - Let training run for several hours to find the best settings.
 - Watch the terminal for "New Best Model!" messages.
 - Use the saved `*_best_hp.yml` file to resume training from the best settings.
-- Adjust `positive_sample_weight` if you have class imbalance
-- Increase `max_params` if you want larger models (at cost of training time)
+- Adjust `positive_sample_weight` if you have many more safe files than malicious ones
+- Increase `max_params` if you want larger models (though this will make training slower)
 
 ## Stopping Training
 
