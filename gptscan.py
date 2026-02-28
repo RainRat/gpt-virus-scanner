@@ -89,6 +89,7 @@ class Config:
     ignore_patterns: List[str] = []
     THRESHOLD: int = 50
     last_path: str = ""
+    recent_paths: List[str] = []
     deep_scan: bool = False
     git_changes_only: bool = False
     show_all_files: bool = False
@@ -127,6 +128,7 @@ class Config:
             "provider": cls.provider,
             "model_name": cls.model_name,
             "threshold": cls.THRESHOLD,
+            "recent_paths": cls.recent_paths,
         }
         try:
             with open(cls.SETTINGS_FILE, 'w', encoding='utf-8') as f:
@@ -150,6 +152,7 @@ class Config:
                 cls.provider = settings.get("provider", cls.provider)
                 cls.model_name = settings.get("model_name", cls.model_name)
                 cls.THRESHOLD = settings.get("threshold", cls.THRESHOLD)
+                cls.recent_paths = settings.get("recent_paths", cls.recent_paths)
         except Exception as e:
             print(f"Warning: Could not load settings: {e}", file=sys.stderr)
 
@@ -1039,6 +1042,13 @@ def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None) -> No
         return
 
     Config.last_path = scan_path
+    if scan_path and (not Config.recent_paths or Config.recent_paths[0] != scan_path):
+        if scan_path in Config.recent_paths:
+            Config.recent_paths.remove(scan_path)
+        Config.recent_paths.insert(0, scan_path)
+        Config.recent_paths = Config.recent_paths[:10]
+        if textbox:
+            textbox['values'] = Config.recent_paths
     Config.save_settings()
 
     current_cancel_event = threading.Event()
@@ -2203,6 +2213,15 @@ def clear_results() -> None:
     update_status("Ready")
 
 
+def clear_path_history() -> None:
+    """Clear the history of scanned paths."""
+    Config.recent_paths = []
+    if textbox:
+        textbox['values'] = []
+    Config.save_settings()
+    update_status("Path history cleared.")
+
+
 def _get_tree_results_as_dicts(item_ids: Iterable[str]) -> List[Dict[str, Any]]:
     """Extract raw results from the given Treeview item IDs as a list of dictionaries."""
     if not tree:
@@ -2767,6 +2786,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     file_menu.add_command(label="Export Results...", command=export_results)
     file_menu.add_separator()
     file_menu.add_command(label="Clear Results", command=clear_results)
+    file_menu.add_command(label="Clear Path History", command=clear_path_history)
     file_menu.add_separator()
     file_menu.add_command(label="Exit", command=root.quit)
     menubar.add_cascade(label="File", menu=file_menu)
@@ -2786,7 +2806,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     input_frame.columnconfigure(1, weight=1)
 
     ttk.Label(input_frame, text="Path to scan:").grid(row=0, column=0, sticky="w", padx=(0, 5))
-    textbox = ttk.Entry(input_frame)
+    textbox = ttk.Combobox(input_frame, values=Config.recent_paths)
     path_to_use = initial_path if initial_path else (Config.last_path if Config.last_path else os.getcwd())
     textbox.insert(0, path_to_use)
     textbox.select_range(0, tk.END)
