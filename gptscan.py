@@ -2652,85 +2652,147 @@ def open_file(event_or_path: Union[tk.Event, str, None] = None) -> None:
         messagebox.showerror("Error", f"Could not open file: {e}")
 
 
-def copy_path() -> None:
-    """Copy the selected file's path to the clipboard."""
-    values = _get_selected_row_values()
-    if not values:
+def copy_path(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected file paths to the clipboard (newline-separated)."""
+    if not tree:
         return
-    file_path = str(values[0])
-    tree.clipboard_clear()
-    tree.clipboard_append(file_path)
-
-
-def copy_sha256() -> None:
-    """Calculate and copy the selected file's SHA256 hash to the clipboard."""
-    values = _get_selected_row_values()
-    if not values:
+    selection = tree.selection()
+    if not selection:
         return
-    file_path = str(values[0])
 
-    if file_path.startswith("["):
-        # For virtual paths, hash the snippet content
-        snippet = str(values[5])
-        h = get_file_sha256(snippet.encode('utf-8'))
-    else:
-        h = get_file_sha256(file_path)
+    paths = []
+    for item_id in selection:
+        values = _get_item_raw_values(item_id)
+        if values:
+            paths.append(str(values[0]))
 
-    if h:
+    if paths:
         tree.clipboard_clear()
-        tree.clipboard_append(h)
-        update_status(f"SHA256 copied: {h[:8]}...")
+        tree.clipboard_append("\n".join(paths))
+        update_status(f"Copied {len(paths)} path(s) to clipboard.")
+
+
+def copy_sha256(event: Optional[tk.Event] = None) -> None:
+    """Calculate and copy SHA256 hashes for selected files to the clipboard."""
+    if not tree:
+        return
+    selection = tree.selection()
+    if not selection:
+        return
+
+    hashes = []
+    for item_id in selection:
+        values = _get_item_raw_values(item_id)
+        if not values:
+            continue
+        file_path = str(values[0])
+
+        if file_path.startswith("["):
+            # For virtual paths, hash the snippet content
+            snippet = str(values[5])
+            h = get_file_sha256(snippet.encode('utf-8'))
+        else:
+            h = get_file_sha256(file_path)
+
+        if h:
+            hashes.append(h)
+
+    if hashes:
+        tree.clipboard_clear()
+        tree.clipboard_append("\n".join(hashes))
+        if len(hashes) == 1:
+            update_status(f"SHA256 copied: {hashes[0][:8]}...")
+        else:
+            update_status(f"Copied {len(hashes)} SHA256 hashes.")
     else:
-        messagebox.showwarning("Error", "Could not calculate file hash.")
+        messagebox.showwarning("Error", "Could not calculate file hashes.")
 
 
 def check_virustotal(event_or_path: Union[tk.Event, str, None] = None) -> None:
-    """Check the selected or specified file's hash on VirusTotal."""
-    file_path = _resolve_file_path(event_or_path)
-    if not file_path:
+    """Check selected files on VirusTotal (opens multiple tabs if needed)."""
+    if not tree:
         return
 
-    if file_path.startswith("["):
-        # For virtual paths, try to get the snippet from the current UI state if possible
-        # We search for the item in the tree that matches this path to get its cached snippet
-        snippet = ""
-        for item_id in tree.get_children():
-            vals = _get_item_raw_values(item_id)
-            if vals and vals[0] == file_path:
-                snippet = str(vals[5])
-                break
+    # List of (path, snippet_if_available)
+    targets: List[Tuple[str, Optional[str]]] = []
+
+    if isinstance(event_or_path, str):
+        targets.append((event_or_path, None))
+    else:
+        selection = tree.selection()
+        if not selection:
+            return
         
-        if not snippet:
-            # Fallback to selection if not found (less reliable if viewing different item)
-            values = _get_selected_row_values()
-            if not values: return
-            snippet = str(values[5])
+        # Avoid accidental mass tab opening
+        if len(selection) > 5:
+            if not messagebox.askyesno("Check on VirusTotal",
+                                        f"You have selected {len(selection)} files. Do you want to open that many browser tabs?"):
+                return
+
+        for item_id in selection:
+            vals = _get_item_raw_values(item_id)
+            if vals:
+                path = str(vals[0])
+                snippet = str(vals[5]) if path.startswith("[") else None
+                targets.append((path, snippet))
+
+    found_any = False
+    for file_path, snippet in targets:
+        h = None
+        if file_path.startswith("["):
+            if snippet is None:
+                # Try to find it in the tree if snippet wasn't provided (explicit path case)
+                for item_id in tree.get_children():
+                    vals = _get_item_raw_values(item_id)
+                    if vals and vals[0] == file_path:
+                        snippet = str(vals[5])
+                        break
             
-        h = get_file_sha256(snippet.encode('utf-8'))
-    else:
-        h = get_file_sha256(file_path)
+            if snippet:
+                h = get_file_sha256(snippet.encode('utf-8'))
+        else:
+            if os.path.exists(file_path):
+                h = get_file_sha256(file_path)
+            elif isinstance(event_or_path, str):
+                messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
+                return
 
-    if h:
-        url = f"https://www.virustotal.com/gui/file/{h}"
-        webbrowser.open(url)
-        update_status(f"Opening VirusTotal for {os.path.basename(file_path)}...")
-    else:
-        messagebox.showwarning("Error", "Could not calculate file hash.")
+        if h:
+            url = f"https://www.virustotal.com/gui/file/{h}"
+            webbrowser.open(url)
+            found_any = True
+
+    if found_any:
+        if len(targets) == 1:
+            update_status(f"Opening VirusTotal for {os.path.basename(targets[0][0])}...")
+        else:
+            update_status(f"Opening VirusTotal for {len(targets)} files...")
+    elif not isinstance(event_or_path, str):
+        messagebox.showwarning("Error", "Could not calculate hashes for selected files.")
 
 
-def copy_snippet() -> None:
-    """Copy the selected row's code snippet to the clipboard."""
-    values = _get_selected_row_values()
-    if not values:
+def copy_snippet(event: Optional[tk.Event] = None) -> None:
+    """Copy code snippets from the selected rows to the clipboard."""
+    if not tree:
         return
-    # Snippet is the last column in the 6-column data
-    snippet = str(values[5])
-    tree.clipboard_clear()
-    tree.clipboard_append(snippet)
-    update_status("Snippet copied to clipboard.")
+    selection = tree.selection()
+    if not selection:
+        return
+
+    snippets = []
+    for item_id in selection:
+        values = _get_item_raw_values(item_id)
+        if values:
+            # Snippet is the last column in the 6-column data
+            snippets.append(str(values[5]))
+
+    if snippets:
+        tree.clipboard_clear()
+        tree.clipboard_append("\n---\n".join(snippets))
+        update_status(f"Copied {len(snippets)} snippet(s) to clipboard.")
 
 
-def copy_as_markdown() -> None:
+def copy_as_markdown(event: Optional[tk.Event] = None) -> None:
     """Copy the selected rows as a Markdown table to the clipboard."""
     if not tree:
         return
@@ -2744,6 +2806,24 @@ def copy_as_markdown() -> None:
     md = generate_markdown(results)
     tree.clipboard_clear()
     tree.clipboard_append(md)
+    update_status(f"Copied {len(results)} item(s) as Markdown.")
+
+
+def copy_as_json(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as a JSON array to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+
+    js = json.dumps(results, indent=2)
+    tree.clipboard_clear()
+    tree.clipboard_append(js)
+    update_status(f"Copied {len(results)} item(s) as JSON.")
 
 
 def show_in_folder(event_or_path: Union[tk.Event, str, None] = None) -> None:
@@ -3147,6 +3227,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu.add_command(label="Check on VirusTotal", command=check_virustotal)
     context_menu.add_command(label="Copy Snippet", command=copy_snippet)
     context_menu.add_command(label="Copy as Markdown", command=copy_as_markdown)
+    context_menu.add_command(label="Copy as JSON", command=copy_as_json)
 
     # Bind context menu to right-click and menu key
     tree.bind('<Button-3>', show_context_menu) # Windows/Linux
@@ -3163,6 +3244,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Return>', on_root_return)
     root.bind('<Control-f>', lambda e: filter_entry.focus_set())
     root.bind('<Command-f>', lambda e: filter_entry.focus_set())
+    root.bind('<Control-j>', copy_as_json)
+    root.bind('<Command-j>', copy_as_json)
     tree.bind('<<TreeviewSelect>>', update_button_states)
     tree.bind('<Control-a>', select_all_items)
     tree.bind('<Command-a>', select_all_items)
