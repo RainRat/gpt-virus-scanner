@@ -2382,6 +2382,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     ai_conf_prefix = ttk.Label(conf_frame, text="AI Confidence:")
     gpt_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
 
+    risk_badge = tk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'), padx=8, pady=2)
+    risk_badge.grid(row=0, column=4, sticky="w", padx=(20, 0))
+
     ttk.Separator(main_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
 
     # Analysis sections
@@ -2501,6 +2504,16 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         path_entry.insert(0, path)
         path_entry.config(state='readonly')
         own_conf_label.config(text=own_conf)
+
+        conf = get_effective_confidence(own_conf, gpt_conf)
+        risk = get_risk_category(conf, Config.THRESHOLD)
+
+        if risk == 'high':
+            risk_badge.config(text="HIGH RISK", background="#ffcccc", foreground="darkred")
+        elif risk == 'medium':
+            risk_badge.config(text="MEDIUM RISK", background="#fff0cc", foreground="darkorange")
+        else:
+            risk_badge.config(text="LOW RISK", background="lightgrey", foreground="grey")
 
         if gpt_conf:
             ai_conf_prefix.grid(row=0, column=2, sticky="w")
