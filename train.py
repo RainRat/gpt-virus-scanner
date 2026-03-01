@@ -27,7 +27,6 @@ class ModelConfig:
     mode: str
     predict_threshold: float
     positive_sample_weight: float
-    positive_class_weight: float
     validation_split: float
     patience: int
     max_params: int
@@ -74,8 +73,10 @@ class Hyperparameters:
     def mutate(self) -> 'Hyperparameters':
         """Create a mutated copy of hyperparameters."""
         params = self.to_list()
-        params[random.randint(0, 16)] = random.random()
-        params[random.randint(0, 16)] = random.random()
+        # Ensure we mutate two unique indices
+        idx1, idx2 = random.sample(range(len(params)), 2)
+        params[idx1] = random.random()
+        params[idx2] = random.random()
         return Hyperparameters.from_list(params)
 
     def get_derived_params(self) -> Dict[str, Any]:
@@ -489,8 +490,7 @@ def load_config(config_path: str) -> Tuple[ModelConfig, Optional[Hyperparameters
         patience=training_data['patience'],
         mode=training_data['mode'],
         predict_threshold=prediction_data['threshold'],
-        positive_sample_weight=weights_data['positive_sample_weight'],
-        positive_class_weight=weights_data['positive_class_weight']
+        positive_sample_weight=weights_data['positive_sample_weight']
     )
     
     # Load hyperparameters if present

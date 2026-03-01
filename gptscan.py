@@ -179,6 +179,7 @@ class Config:
             cls.set_extensions(loaded_extensions)
 
         loaded_ignores = load_file('.gptscanignore', mode='multi_line')
+        cls.ignore_patterns = []
         if loaded_ignores:
             cls.ignore_patterns = [
                 line.strip() for line in loaded_ignores
@@ -996,8 +997,6 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
         global _last_scan_summary
         _last_scan_summary = summary
         update_status(summary)
-    else:
-        update_status("Ready")
 
     update_tree_columns()
     _auto_select_best_result()
@@ -1014,7 +1013,7 @@ def scan_clipboard_click():
         messagebox.showwarning("Clipboard Error", f"Could not read from clipboard: {e}")
 
 
-def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None) -> None:
+def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None) -> None:
     """Trigger a scan in a background thread using the selected path.
 
     Parameters
@@ -1075,6 +1074,7 @@ def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None) -> No
         dry_var.get(),
         Config.ignore_patterns,
         extra_snippets,
+        fail_threshold
     )
     scan_thread = threading.Thread(target=run_scan, args=scan_args, daemon=True)
     scan_thread.start()
@@ -1248,6 +1248,7 @@ def scan_files(
     dry_run: bool = False,
     exclude_patterns: Optional[List[str]] = None,
     extra_snippets: Optional[List[Tuple[str, bytes]]] = None,
+    fail_threshold: Optional[int] = None,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for malicious content and optionally request GPT analysis.
 
@@ -1306,13 +1307,14 @@ def scan_files(
     if exclude_patterns:
         file_list = [
             f for f in file_list
-            if not any(f.match(p) for p in exclude_patterns)
+            if not any(f.match(p) or any(parent.match(p) for parent in f.parents) for p in exclude_patterns)
         ]
 
     extra_snippets = extra_snippets or []
     total_progress = len(file_list) + len(extra_snippets)
     progress_count = 0
     total_bytes_scanned = 0
+    actual_files_scanned = 0
     start_time = time.perf_counter()
     yield ('progress', (progress_count, total_progress, "Collecting files..."))
 
@@ -1327,6 +1329,7 @@ def scan_files(
 
         is_explicit = file_path in explicit_files
         if Config.is_supported_file(file_path, is_explicit=is_explicit):
+            actual_files_scanned += 1
             try:
                 file_size = file_path.stat().st_size
             except OSError as err:
@@ -1396,6 +1399,9 @@ def scan_files(
                         snippet = ''.join(map(chr, max_window_bytes)).strip()
                         cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
                         threshold_val = Config.THRESHOLD / 100.0
+                        if fail_threshold is not None:
+                            threshold_val = min(threshold_val, fail_threshold / 100.0)
+
                         if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
                             gpt_requests.append(
                                 {
@@ -1427,6 +1433,7 @@ def scan_files(
 
         file_size = len(content)
         total_bytes_scanned += file_size
+        actual_files_scanned += 1
 
         if dry_run:
             yield (
@@ -1457,6 +1464,9 @@ def scan_files(
                 snippet = ''.join(map(chr, max_window_bytes)).strip()
                 cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
                 threshold_val = Config.THRESHOLD / 100.0
+                if fail_threshold is not None:
+                    threshold_val = min(threshold_val, fail_threshold / 100.0)
+
                 if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
                     gpt_requests.append(
                         {
@@ -1550,7 +1560,7 @@ def scan_files(
             )
 
     end_time = time.perf_counter()
-    yield ('summary', (len(file_list) + len(extra_snippets), total_bytes_scanned, end_time - start_time))
+    yield ('summary', (actual_files_scanned, total_bytes_scanned, end_time - start_time))
 
 
 def _consume_scan_events(
@@ -1558,7 +1568,8 @@ def _consume_scan_events(
     cancel_event: threading.Event,
     status_prefix: str,
     result_handler: Callable[[Tuple[Any, ...]], bool],
-    print_status: bool = False
+    print_status: bool = False,
+    fail_threshold: Optional[int] = None
 ) -> None:
     """Helper to process scan events and update UI consistently."""
     last_total: Optional[int] = 0
@@ -1592,7 +1603,13 @@ def _consume_scan_events(
                     continue
 
                 conf = get_effective_confidence(data[1], data[4])
-                risk = get_risk_category(conf, Config.THRESHOLD)
+                
+                # Use fail_threshold for internal threat counting if lower than reporting threshold
+                effective_threshold = Config.THRESHOLD
+                if fail_threshold is not None:
+                    effective_threshold = min(effective_threshold, fail_threshold)
+                
+                risk = get_risk_category(conf, effective_threshold)
 
                 if result_handler(data):
                     if risk == 'high':
@@ -1606,15 +1623,21 @@ def _consume_scan_events(
                 metrics['total_bytes'] = total_bytes
                 metrics['elapsed_time'] = elapsed_time
     finally:
-        enqueue_ui_update(
-            finish_scan_state,
-            current_scanned,
-            threats_found,
-            metrics.get('total_bytes'),
-            metrics.get('elapsed_time'),
-            high_risk_found,
-            medium_risk_found
-        )
+        if cancel_event.is_set():
+            enqueue_ui_update(set_scanning_state, False)
+            enqueue_ui_update(update_status, f"Scan cancelled after {current_scanned} files.")
+            enqueue_ui_update(update_tree_columns)
+            enqueue_ui_update(_auto_select_best_result)
+        else:
+            enqueue_ui_update(
+                finish_scan_state,
+                current_scanned,
+                threats_found,
+                metrics.get('total_bytes'),
+                metrics.get('elapsed_time'),
+                high_risk_found,
+                medium_risk_found
+            )
 
 
 def run_scan(
@@ -1627,6 +1650,7 @@ def run_scan(
     dry_run: bool = False,
     exclude_patterns: Optional[List[str]] = None,
     extra_snippets: Optional[List[Tuple[str, bytes]]] = None,
+    fail_threshold: Optional[int] = None,
 ) -> None:
     """Consume scan events and forward them to the UI thread.
 
@@ -1656,13 +1680,14 @@ def run_scan(
         dry_run=dry_run,
         exclude_patterns=exclude_patterns,
         extra_snippets=extra_snippets,
+        fail_threshold=fail_threshold,
     )
 
     def scan_handler(data: Tuple[Any, ...]) -> bool:
         enqueue_ui_update(insert_tree_row, data)
         return True
 
-    _consume_scan_events(event_gen, cancel_event, "Scanning", scan_handler, print_status=True)
+    _consume_scan_events(event_gen, cancel_event, "Scanning", scan_handler, print_status=True, fail_threshold=fail_threshold)
 
 def run_rescan(
     paths: List[str],
@@ -2007,6 +2032,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         dry_run=dry_run,
         exclude_patterns=exclude_patterns,
         extra_snippets=extra_snippets,
+        fail_threshold=fail_threshold,
     ):
         if event_type == 'result':
             # data format: (path, own_conf, admin, user, gpt_conf, snippet)
@@ -2665,11 +2691,21 @@ def check_virustotal(event_or_path: Union[tk.Event, str, None] = None) -> None:
         return
 
     if file_path.startswith("["):
-        # For virtual paths, hash the snippet content from selection
-        values = _get_selected_row_values()
-        if not values:
-            return
-        snippet = str(values[5])
+        # For virtual paths, try to get the snippet from the current UI state if possible
+        # We search for the item in the tree that matches this path to get its cached snippet
+        snippet = ""
+        for item_id in tree.get_children():
+            vals = _get_item_raw_values(item_id)
+            if vals and vals[0] == file_path:
+                snippet = str(vals[5])
+                break
+        
+        if not snippet:
+            # Fallback to selection if not found (less reliable if viewing different item)
+            values = _get_selected_row_values()
+            if not values: return
+            snippet = str(values[5])
+            
         h = get_file_sha256(snippet.encode('utf-8'))
     else:
         h = get_file_sha256(file_path)
@@ -2691,6 +2727,7 @@ def copy_snippet() -> None:
     snippet = str(values[5])
     tree.clipboard_clear()
     tree.clipboard_append(snippet)
+    update_status("Snippet copied to clipboard.")
 
 
 def copy_as_markdown() -> None:
@@ -3284,13 +3321,15 @@ def main():
                     scan_targets.append(line)
 
         if args.git_changes:
-            git_files = get_git_changed_files()
+            # Use the specified target as the git root, or current directory if none.
+            git_root = scan_target or "."
+            git_files = get_git_changed_files(git_root)
             if not git_files:
-                print("No git changes detected or not a git repository.", file=sys.stderr)
+                print(f"No git changes detected or '{git_root}' is not a git repository.", file=sys.stderr)
             scan_targets.extend(git_files)
 
-        if not scan_targets:
-            # Default to current directory if no targets provided
+        if not scan_targets and not args.git_changes:
+            # Default to current directory if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
         output_format = 'csv'
