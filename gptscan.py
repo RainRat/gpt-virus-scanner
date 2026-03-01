@@ -2652,36 +2652,60 @@ def open_file(event_or_path: Union[tk.Event, str, None] = None) -> None:
         messagebox.showerror("Error", f"Could not open file: {e}")
 
 
-def copy_path() -> None:
-    """Copy the selected file's path to the clipboard."""
-    values = _get_selected_row_values()
-    if not values:
+def copy_path(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected file's path(s) to the clipboard."""
+    if not tree:
         return
-    file_path = str(values[0])
-    tree.clipboard_clear()
-    tree.clipboard_append(file_path)
-
-
-def copy_sha256() -> None:
-    """Calculate and copy the selected file's SHA256 hash to the clipboard."""
-    values = _get_selected_row_values()
-    if not values:
+    selection = tree.selection()
+    if not selection:
         return
-    file_path = str(values[0])
 
-    if file_path.startswith("["):
-        # For virtual paths, hash the snippet content
-        snippet = str(values[5])
-        h = get_file_sha256(snippet.encode('utf-8'))
-    else:
-        h = get_file_sha256(file_path)
+    paths = []
+    for item_id in selection:
+        values = _get_item_raw_values(item_id)
+        if values:
+            paths.append(str(values[0]))
 
-    if h:
+    if paths:
         tree.clipboard_clear()
-        tree.clipboard_append(h)
-        update_status(f"SHA256 copied: {h[:8]}...")
+        tree.clipboard_append("\n".join(paths))
+        update_status(f"Copied {len(paths)} path(s) to clipboard.")
+
+
+def copy_sha256(event: Optional[tk.Event] = None) -> None:
+    """Calculate and copy the selected file's SHA256 hash(es) to the clipboard."""
+    if not tree:
+        return
+    selection = tree.selection()
+    if not selection:
+        return
+
+    hashes = []
+    for item_id in selection:
+        values = _get_item_raw_values(item_id)
+        if not values:
+            continue
+        file_path = str(values[0])
+
+        if file_path.startswith("["):
+            # For virtual paths, hash the snippet content
+            snippet = str(values[5])
+            h = get_file_sha256(snippet.encode('utf-8'))
+        else:
+            h = get_file_sha256(file_path)
+
+        if h:
+            hashes.append(h)
+
+    if hashes:
+        tree.clipboard_clear()
+        tree.clipboard_append("\n".join(hashes))
+        if len(hashes) == 1:
+            update_status(f"SHA256 copied: {hashes[0][:8]}...")
+        else:
+            update_status(f"Copied {len(hashes)} SHA256 hash(es) to clipboard.")
     else:
-        messagebox.showwarning("Error", "Could not calculate file hash.")
+        messagebox.showwarning("Error", "Could not calculate file hash(es).")
 
 
 def check_virustotal(event_or_path: Union[tk.Event, str, None] = None) -> None:
@@ -2718,19 +2742,32 @@ def check_virustotal(event_or_path: Union[tk.Event, str, None] = None) -> None:
         messagebox.showwarning("Error", "Could not calculate file hash.")
 
 
-def copy_snippet() -> None:
-    """Copy the selected row's code snippet to the clipboard."""
-    values = _get_selected_row_values()
-    if not values:
+def copy_snippet(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected row's code snippet(s) to the clipboard."""
+    if not tree:
         return
-    # Snippet is the last column in the 6-column data
-    snippet = str(values[5])
-    tree.clipboard_clear()
-    tree.clipboard_append(snippet)
-    update_status("Snippet copied to clipboard.")
+    selection = tree.selection()
+    if not selection:
+        return
+
+    snippets = []
+    for item_id in selection:
+        values = _get_item_raw_values(item_id)
+        if values:
+            path = values[0]
+            snippet = values[5]
+            if len(selection) > 1:
+                snippets.append(f"--- {path} ---\n{snippet}")
+            else:
+                snippets.append(snippet)
+
+    if snippets:
+        tree.clipboard_clear()
+        tree.clipboard_append("\n\n".join(snippets))
+        update_status(f"Copied {len(snippets)} snippet(s) to clipboard.")
 
 
-def copy_as_markdown() -> None:
+def copy_as_markdown(event: Optional[tk.Event] = None) -> None:
     """Copy the selected rows as a Markdown table to the clipboard."""
     if not tree:
         return
@@ -2888,7 +2925,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     select_clipboard_btn.grid(row=0, column=4, sticky="e", padx=(5, 0))
     bind_hover_message(select_clipboard_btn, "Scan code currently in your clipboard.")
 
-    scan_button = ttk.Button(input_frame, text="Scan now", command=button_click, default='active')
+    scan_button = ttk.Button(input_frame, text="Scan Now", command=button_click, default='active')
     scan_button.grid(row=0, column=5, sticky="e", padx=(5, 0))
     bind_hover_message(scan_button, "Start the scan.")
 
@@ -3166,6 +3203,16 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<<TreeviewSelect>>', update_button_states)
     tree.bind('<Control-a>', select_all_items)
     tree.bind('<Command-a>', select_all_items)
+    tree.bind('<Control-c>', copy_path)
+    tree.bind('<Command-c>', copy_path)
+    tree.bind('<Control-Shift-C>', copy_as_markdown)
+    tree.bind('<Command-Shift-C>', copy_as_markdown)
+    tree.bind('<Control-h>', copy_sha256)
+    tree.bind('<Command-h>', copy_sha256)
+    tree.bind('<Control-s>', copy_snippet)
+    tree.bind('<Command-s>', copy_snippet)
+    tree.bind('<Control-Return>', show_in_folder)
+    tree.bind('<Command-Return>', show_in_folder)
     tree.bind('<space>', view_details)
     tree.bind('<F5>', lambda event: rescan_selected())
     tree.bind('r', lambda event: rescan_selected())
