@@ -64,7 +64,7 @@ You can customize the scanner using these files in the same folder:
 
 Run `python gptscan.py` to open the GUI.
 
-*   **Select File/Folder:** Choose what you want to scan. If you select a folder, the tool scans all files inside it and its subfolders.
+*   **Select File/Folder:** Choose what you want to scan. If you select a folder, the tool scans all files inside it and its subfolders. The path input is a dropdown that remembers your last 10 scan locations.
 *   **Clipboard:** Scan code currently in your clipboard.
 *   **Filter results:** Search findings by path, confidence, notes, or code snippets.
 *   **Deep Scan:** Check the entire file. By default, the scanner only checks the first and last 1024 bytes to save time.

@@ -6,5 +6,11 @@
     "use_ai_analysis": false,
     "provider": "openai",
     "model_name": "gpt-4o",
-    "threshold": 50
+    "threshold": 50,
+    "recent_paths": [
+        "/some/path",
+        "/some/repo",
+        "/new/path",
+        "/old/path"
+    ]
 }
