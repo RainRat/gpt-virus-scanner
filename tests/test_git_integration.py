@@ -142,3 +142,33 @@ def test_get_git_changed_files_untracked_real_git(tmp_path):
 
     # It should find the untracked file.
     assert any(str(untracked) == os.path.abspath(r) for r in results)
+
+def test_get_git_changed_files_subdirectory_resolution(tmp_path):
+    """Verify that files in a subdirectory are correctly identified when scanning the subdirectory."""
+    # Initialize a git repo
+    subprocess.run(["git", "init"], cwd=str(tmp_path), check=True, capture_output=True)
+
+    # Create a subdirectory and a file in it
+    subdir = tmp_path / "subdir"
+    subdir.mkdir()
+    f = subdir / "test.py"
+    f.write_text("print('hello')")
+
+    # Add and commit the file
+    subprocess.run(["git", "add", "subdir/test.py"], cwd=str(tmp_path), check=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=str(tmp_path), check=True)
+
+    # Modify the file
+    f.write_text("print('hello')\n# change")
+
+    # Create an untracked file in the same subdirectory
+    untracked = subdir / "untracked.py"
+    untracked.write_text("untracked")
+
+    # Run get_git_changed_files on the subdirectory
+    results = get_git_changed_files(str(subdir))
+
+    # Both files should be found and paths should be correct
+    result_paths = [os.path.abspath(r) for r in results]
+    assert os.path.abspath(f) in result_paths
+    assert os.path.abspath(untracked) in result_paths

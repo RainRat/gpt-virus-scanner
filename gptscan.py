@@ -612,9 +612,14 @@ def get_git_changed_files(path: str = ".") -> List[str]:
         cwd = os.path.abspath(path)
         targets = []
 
-    # Check if we are in a git repository
+    # Check if we are in a git repository and get the root directory
     try:
-        subprocess.check_output(["git", "rev-parse", "--is-inside-work-tree"], cwd=cwd, stderr=subprocess.PIPE)
+        toplevel = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=cwd,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        ).strip()
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         return []
 
@@ -634,7 +639,7 @@ def get_git_changed_files(path: str = ".") -> List[str]:
 
     # Untracked files
     try:
-        cmd = ["git", "ls-files", "--others", "--exclude-standard", "--"] + targets
+        cmd = ["git", "ls-files", "--others", "--exclude-standard", "--full-name", "--"] + targets
         output = subprocess.check_output(
             cmd,
             cwd=cwd,
@@ -645,7 +650,7 @@ def get_git_changed_files(path: str = ".") -> List[str]:
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         pass
 
-    return [os.path.join(cwd, f) for f in files if os.path.exists(os.path.join(cwd, f))]
+    return [os.path.join(toplevel, f) for f in files if os.path.exists(os.path.join(toplevel, f))]
 
 
 def collect_files(targets: Union[str, List[str]]) -> List[Path]:
