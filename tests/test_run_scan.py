@@ -64,7 +64,14 @@ def test_run_scan_cancellation(monkeypatch):
 
     enqueued_funcs = [call[0][0] for call in mock_enqueue.call_args_list]
     assert gptscan.insert_tree_row not in enqueued_funcs
-    assert gptscan.finish_scan_state in enqueued_funcs
+    # In the new code, finish_scan_state is skipped on cancellation
+    assert gptscan.finish_scan_state not in enqueued_funcs
+    # Instead, update_status should be called with "Scan cancelled..."
+    assert gptscan.update_status in enqueued_funcs
+    
+    # Verify the "Scan cancelled" message was enqueued
+    cancel_calls = [call for call in mock_enqueue.call_args_list if call[0][0] == gptscan.update_status]
+    assert any("Scan cancelled" in str(c[0][1]) for c in cancel_calls)
 
 def test_run_scan_gpt_json_error(monkeypatch):
     mock_scan_files = MagicMock()

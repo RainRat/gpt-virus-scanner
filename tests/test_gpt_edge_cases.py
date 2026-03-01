@@ -38,6 +38,26 @@ def test_extract_data_threat_level_bounds(mock_response):
     result = extract_data_from_gpt_response(response)
     assert "not between 0 and 100" in result
 
+def test_extract_data_none_root(mock_response):
+    response = mock_response('null')
+    result = extract_data_from_gpt_response(response)
+    assert "not in the expected format" in result
+
+def test_extract_data_missing_keys(mock_response):
+    response = mock_response('{"administrator": "Only admin"}')
+    result = extract_data_from_gpt_response(response)
+    assert "missing required information" in result
+
+def test_extract_data_coerces_threat_level_string(mock_response):
+    content = '{"administrator": "Admin", "end-user": "User", "threat-level": "80"}'
+    response = mock_response(content)
+    result = extract_data_from_gpt_response(response)
+    assert result["threat-level"] == 80
+
+def test_extract_data_invalid_structure():
+    with pytest.raises(AttributeError):
+        extract_data_from_gpt_response(object())
+
 class MockRateLimitError(Exception):
     def __init__(self):
         self.status_code = 429

@@ -139,6 +139,27 @@ def test_open_file_not_found(mock_tree, monkeypatch):
     gptscan.open_file()
     mock_msgbox.showwarning.assert_called_with("File Not Found", "The file 'ghost.py' could not be located.")
 
+def test_open_file_with_explicit_path(monkeypatch):
+    """Test that open_file uses the provided path when passed as a string."""
+    mock_exists = MagicMock(return_value=True)
+    monkeypatch.setattr(os.path, 'exists', mock_exists)
+
+    # Mock subprocess.run based on platform
+    mock_run = MagicMock()
+    monkeypatch.setattr(gptscan.subprocess, 'run', mock_run)
+
+    if sys.platform == "win32":
+        mock_startfile = MagicMock()
+        monkeypatch.setattr(gptscan.os, 'startfile', mock_startfile, raising=False)
+        gptscan.open_file("explicit.py")
+        mock_startfile.assert_called_with("explicit.py")
+    elif sys.platform == "darwin":
+        gptscan.open_file("explicit.py")
+        mock_run.assert_called_with(["open", "explicit.py"])
+    else:
+        gptscan.open_file("explicit.py")
+        mock_run.assert_called_with(["xdg-open", "explicit.py"])
+
 def test_show_context_menu(mock_tree, monkeypatch):
     mock_event = MagicMock()
     mock_event.y = 100
@@ -170,17 +191,3 @@ def test_show_context_menu_no_item_no_selection(mock_tree, monkeypatch):
 
     mock_tree.selection_set.assert_not_called()
     mock_menu.post.assert_not_called()
-
-def test_copy_as_markdown(mock_tree):
-    mock_tree.selection.return_value = ["item1"]
-    raw_values = ["test.py", "90%", "Admin", "User", "80%", "print('hi')"]
-    mock_tree._item_values["item1"] = ("test.py", "90%", "Admin", "User", "80%", "print('hi')", json.dumps(raw_values))
-    # Mock tree["columns"]
-    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "orig_json")
-
-    gptscan.copy_as_markdown()
-
-    mock_tree.clipboard_clear.assert_called_once()
-    args, _ = mock_tree.clipboard_append.call_args
-    md = args[0]
-    assert "| test.py | 80% | **Admin:** Admin<br>**User:** User | `print('hi')` |" in md

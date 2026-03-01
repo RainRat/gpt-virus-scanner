@@ -99,7 +99,9 @@ def test_finish_scan_state_resets_state(monkeypatch):
     gptscan.finish_scan_state()
 
     # Assert
-    mock_status_label.config.assert_called_with(text="Ready")
+    # We no longer expect "Ready" to be called if no args passed to finish_scan_state
+    # because it avoids overwriting a possible "Scan cancelled" status set by _consume_scan_events.
+    mock_status_label.config.assert_not_called()
     assert gptscan.current_cancel_event is None
     mock_scan_button.config.assert_called_with(state="normal")
     mock_cancel_button.config.assert_called_with(state="disabled")

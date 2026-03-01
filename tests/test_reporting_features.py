@@ -20,9 +20,10 @@ def test_scan_summary_gui(monkeypatch):
     gptscan.finish_scan_state(total_scanned=20, threats_found=5, high_risk=2, medium_risk=3)
     mock_status_label.config.assert_called_with(text="Scan complete: 20 files scanned, 5 suspicious files found (2 high risk, 3 medium risk).")
 
-    # No args (Ready)
+    # No args (should NOT overwrite with "Ready" now, as it might be "Scan cancelled")
     gptscan.finish_scan_state()
-    mock_status_label.config.assert_called_with(text="Ready")
+    # It should still be the last summary from previous call in this test
+    mock_status_label.config.assert_called_with(text="Scan complete: 20 files scanned, 5 suspicious files found (2 high risk, 3 medium risk).")
 
 def test_treeview_highlighting(monkeypatch):
     """Test that insert_tree_row applies the correct tags based on confidence."""
