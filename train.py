@@ -35,7 +35,7 @@ class ModelConfig:
 
 @dataclass
 class Hyperparameters:
-    """Settings that control how the AI 'brain' is built and trained."""
+    """Settings that control how the AI model is built and trained."""
     embedding_scale: float
     rnn_scale: float
     pooling_type: float
@@ -162,14 +162,14 @@ class DataLoader:
 
 
 class ModelBuilder:
-    """Builds neural network models based on hyperparameters."""
+    """Builds neural network models based on AI settings."""
     
     def __init__(self, config: ModelConfig):
         self.config = config
         self.max_length = config.max_length
     
     def _get_activation(self, value: float) -> str:
-        """Map hyperparameter to activation function."""
+        """Map AI setting to activation function."""
         if value < 0.25:
             return "relu"
         elif value < 0.5:
@@ -180,7 +180,7 @@ class ModelBuilder:
             return "hard_sigmoid"
     
     def _get_initializer(self, value: float) -> str:
-        """Map hyperparameter to kernel initializer."""
+        """Map AI setting to kernel initializer."""
         thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
         initializers = [
             "glorot_normal", "glorot_uniform", "he_normal", "he_uniform",
@@ -193,7 +193,7 @@ class ModelBuilder:
         return initializers[-1]
     
     def _get_optimizer(self, value: float) -> str:
-        """Map hyperparameter to optimizer."""
+        """Map AI setting to optimizer."""
         if value < 0.2:
             return "sgd"
         elif value < 0.4:
@@ -206,7 +206,7 @@ class ModelBuilder:
             return "nadam"
     
     def _get_pooling_type(self, value: float) -> str:
-        """Map hyperparameter to pooling type."""
+        """Map AI setting to pooling type."""
         if value > 0.75:
             return "avg"
         elif value > 0.50:
@@ -217,7 +217,7 @@ class ModelBuilder:
             return "none"
     
     def build_model(self, hp: Hyperparameters) -> Optional[Model]:
-        """Build model from hyperparameters."""
+        """Build model from AI settings."""
         try:
             # Get derived parameters
             dp = hp.get_derived_params()
@@ -342,7 +342,7 @@ class ModelBuilder:
 
 
 class Trainer:
-    """Handles model training with genetic algorithm optimization."""
+    """Handles model training with an automatic optimization process."""
     
     def __init__(self, config: ModelConfig):
         self.config = config
@@ -354,10 +354,10 @@ class Trainer:
     
     def train(self, x_train: np.ndarray, y_train: np.ndarray, 
               sample_weights: np.ndarray, initial_hp: Optional[Hyperparameters] = None):
-        """Train models using genetic algorithm optimization."""
+        """Train models using an automatic optimization process."""
         current_hp = initial_hp
         if current_hp is None:
-            raise ValueError("No initial hyperparameters provided. Load from config or provide starting values.")
+            raise ValueError("No initial AI settings provided. Load from config or provide starting values.")
         
         self.best_hp = current_hp
         should_mutate = False
@@ -504,7 +504,7 @@ def load_config(config_path: str) -> Tuple[ModelConfig, Optional[Hyperparameters
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description='Train or run predictions with a binary file classifier using genetic algorithm optimization.',
+        description='Train or run predictions with a binary file classifier using an automatic optimization process.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -518,7 +518,7 @@ Examples:
   python script.py --config config.yml --model-name my_model
   
   # Use custom data directories
-  python script.py --config config.yml --positive-dir data/positive --negative-dir data/negative
+  python script.py --config config.yml --positive-dir data/malicious --negative-dir data/safe
         """
     )
     
@@ -526,7 +526,7 @@ Examples:
         '--config', '-c',
         type=str,
         required=True,
-        help='Path to YAML configuration file'
+        help='Path to YAML settings file'
     )
     
     parser.add_argument(
@@ -545,13 +545,13 @@ Examples:
     parser.add_argument(
         '--positive-dir',
         type=str,
-        help='Directory containing positive examples (class 1)'
+        help='Directory with malicious files'
     )
     
     parser.add_argument(
         '--negative-dir',
         type=str,
-        help='Directory containing negative examples (class 0)'
+        help='Directory with safe files'
     )
     
     parser.add_argument(
@@ -622,8 +622,8 @@ def main():
         # Training mode
         print(f"Running training mode")
         print(f"Model: {config.model_name}")
-        print(f"Positive examples: {positive_dir}")
-        print(f"Negative examples: {negative_dir}")
+        print(f"Malicious files: {positive_dir}")
+        print(f"Safe files: {negative_dir}")
         
         trainer = Trainer(config)
         data_loader = DataLoader(config)
@@ -635,8 +635,8 @@ def main():
         )
         
         print(f"Loaded {len(x_train)} samples")
-        print(f"Positive samples: {np.sum(y_train)}")
-        print(f"Negative samples: {len(y_train) - np.sum(y_train)}")
+        print(f"Malicious files: {np.sum(y_train)}")
+        print(f"Safe files: {len(y_train) - np.sum(y_train)}")
         
         # Load best hyperparameters if available
         hp_file = f'{config.model_name}_best_hp.yml'
@@ -649,7 +649,7 @@ def main():
                 "No hyperparameters found. Please provide 'hyperparameters' section in config.yml"
             )
         
-        print("Starting training with genetic algorithm optimization...")
+        print("Starting training with an automatic optimization process...")
         # Train
         trainer.train(x_train, y_train, sample_weights, initial_hp)
 

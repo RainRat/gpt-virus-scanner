@@ -1,6 +1,6 @@
 # Training the Local Scanner
 
-This tool trains the local "brain" (the file classifier) used by the GPT Virus Scanner. It learns to recognize the difference between safe and malicious files by studying many examples.
+This tool trains the local model (the file classifier) used by the GPT Virus Scanner. It learns to recognize the difference between safe and malicious files by studying many examples.
 
 ## Features
 
@@ -33,7 +33,7 @@ model:
   name: "scripts"           # Name used for saved model files (e.g., scripts.h5)
   max_length: 1024          # Number of bytes analyzed from each file
   pad_value: 13             # Byte value used for padding small files
-  max_params: 1000000       # Maximum allowed parameters (brain size)
+  max_params: 1000000       # Maximum allowed parameters (model size)
 
 training:
   batch_size: 32            # Files processed at once
@@ -50,26 +50,26 @@ weights:
   positive_class_weight: 1.0  # Weight applied to malicious files
 
 # AI settings for the automatic optimization process.
-# These values (0.0 to 1.0) control how the brain is built.
+# These values (0.0 to 1.0) control how the model is built.
 # The script will automatically adjust and improve these over time.
 hyperparameters:
   embedding_scale: 0.5        # Size of the memory for byte patterns
   rnn_scale: 0.5              # Memory capacity for long sequences
   pooling_type: 0.5           # How patterns are summarized
-  dropout1: 0.2               # Prevents the brain from memorizing specific files
+  dropout1: 0.2               # Prevents the model from memorizing specific files
   dense_scale: 0.5            # Complexity of the final decision layer
-  activation: 0.1             # Mathematical style of the neurons
+  activation: 0.1             # Mathematical style of the connections
   dropout2: 0.2               # Additional prevention of over-memorization
   spatial_dropout: 0.1        # Pattern-based memorization prevention
   rnn_type: 0.1               # Type of memory layers used (LSTM or GRU)
   use_conv: 0.6               # Whether to use "vision" layers for patterns
   conv_filters_scale: 0.5     # Number of "vision" patterns to look for
   conv_padding: 0.1           # How patterns at the edges are handled
-  kernel_init: 0.1            # Starting state of the brain's connections
+  kernel_init: 0.1            # Starting state of the model's connections
   rnn_dropout: 0.1            # Reliability of memory connections
   rnn_recurrent_dropout: 0.1  # Reliability of internal memory feedback
   conv_kernel_scale: 0.5      # Size of the patterns to look for
-  optimizer: 0.5              # How the brain learns from its mistakes
+  optimizer: 0.5              # How the model learns from its mistakes
 ```
 
 ## Directory Structure
@@ -178,7 +178,7 @@ python train.py --config config.yml \
 ## Output Files
 
 **Training mode produces:**
-- `{model_name}.h5` - The trained "brain" (detection model).
+- `{model_name}.h5` - The trained detection model.
 - `{model_name}_best_hp.yml` - The best settings found during training.
 
 **Prediction mode produces:**
@@ -202,7 +202,7 @@ python train.py --config config.yml \
 
 ### Prediction Process
 
-1. **Loads the Brain:** The script loads your trained model.
+1. **Loads the Model:** The script loads your trained model.
 2. **Scans New Files:** It looks at all files in your input folder.
 3. **Assigns Scores:** It calculates how likely each file is to be malicious.
 4. **Filters Results:** Any file that crosses your "threat" threshold is copied to the output folder for you to review.
@@ -211,7 +211,7 @@ python train.py --config config.yml \
 
 The script automatically tries different ways to build and train the model:
 
-- **Structure:** How the "brain" is organized and how much it can remember.
+- **Structure:** How the model is organized and how much it can remember.
 - **Learning Style:** How it learns from its mistakes and how it processes information.
 - **Special Layers:** Optional parts that can help it see patterns in the data more clearly.
 - **Training Method:** The specific mathematical approaches used to improve the model's accuracy.
