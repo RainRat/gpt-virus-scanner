@@ -191,3 +191,87 @@ def test_show_context_menu_no_item_no_selection(mock_tree, monkeypatch):
 
     mock_tree.selection_set.assert_not_called()
     mock_menu.post.assert_not_called()
+
+
+def test_copy_path_batch(mock_tree):
+    mock_tree.selection.return_value = ["item1", "item2"]
+    raw1 = ["path1.py", "50%", "", "", "", "code1"]
+    raw2 = ["path2.js", "60%", "", "", "", "code2"]
+    mock_tree._item_values["item1"] = ("path1.py", "50%", "", "", "", "code1", json.dumps(raw1))
+    mock_tree._item_values["item2"] = ("path2.js", "60%", "", "", "", "code2", json.dumps(raw2))
+
+    gptscan.copy_path()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    mock_tree.clipboard_append.assert_called_with("path1.py\npath2.js")
+
+
+def test_copy_sha256_batch(mock_tree, monkeypatch):
+    mock_tree.selection.return_value = ["item1", "item2"]
+    raw1 = ["path1.py", "50%", "", "", "", "code1"]
+    raw2 = ["[Stdin]", "60%", "", "", "", "code2"]
+    mock_tree._item_values["item1"] = ("path1.py", "50%", "", "", "", "code1", json.dumps(raw1))
+    mock_tree._item_values["item2"] = ("[Stdin]", "60%", "", "", "", "code2", json.dumps(raw2))
+
+    monkeypatch.setattr(os.path, 'exists', lambda p: True if p == "path1.py" else False)
+
+    def mock_get_hash(data_or_path):
+        if data_or_path == "path1.py": return "hash1"
+        if data_or_path == b"code2": return "hash2"
+        return ""
+
+    monkeypatch.setattr(gptscan, 'get_file_sha256', mock_get_hash)
+
+    gptscan.copy_sha256()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    mock_tree.clipboard_append.assert_called_with("hash1\nhash2")
+
+
+def test_copy_snippet_batch(mock_tree):
+    mock_tree.selection.return_value = ["item1", "item2"]
+    raw1 = ["path1.py", "50%", "", "", "", "code1"]
+    raw2 = ["path2.js", "60%", "", "", "", "code2"]
+    mock_tree._item_values["item1"] = ("path1.py", "50%", "", "", "", "code1", json.dumps(raw1))
+    mock_tree._item_values["item2"] = ("path2.js", "60%", "", "", "", "code2", json.dumps(raw2))
+
+    gptscan.copy_snippet()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    mock_tree.clipboard_append.assert_called_with("code1\n---\ncode2")
+
+
+def test_copy_as_json(mock_tree, monkeypatch):
+    mock_tree.selection.return_value = ["item1"]
+    raw = ["path1.py", "50%", "admin", "user", "60%", "code1"]
+    mock_tree._item_values["item1"] = ("path1.py", "50%", "admin", "user", "60%", "code1", json.dumps(raw))
+    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
+
+    gptscan.copy_as_json()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    args = mock_tree.clipboard_append.call_args[0][0]
+    data = json.loads(args)
+    assert isinstance(data, list)
+    assert data[0]["path"] == "path1.py"
+    assert data[0]["own_conf"] == "50%"
+
+
+def test_check_virustotal_batch(mock_tree, monkeypatch):
+    mock_tree.selection.return_value = ["item1", "item2"]
+    raw1 = ["path1.py", "50%", "", "", "", "code1"]
+    raw2 = ["path2.js", "60%", "", "", "", "code2"]
+    mock_tree._item_values["item1"] = ("path1.py", "50%", "", "", "", "code1", json.dumps(raw1))
+    mock_tree._item_values["item2"] = ("path2.js", "60%", "", "", "", "code2", json.dumps(raw2))
+
+    monkeypatch.setattr(os.path, 'exists', lambda p: True)
+    monkeypatch.setattr(gptscan, 'get_file_sha256', lambda p: "hash_" + p)
+
+    mock_web = MagicMock()
+    monkeypatch.setattr(gptscan.webbrowser, 'open', mock_web)
+
+    gptscan.check_virustotal()
+
+    assert mock_web.call_count == 2
+    mock_web.assert_any_call("https://www.virustotal.com/gui/file/hash_path1.py")
+    mock_web.assert_any_call("https://www.virustotal.com/gui/file/hash_path2.js")
