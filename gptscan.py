@@ -1335,6 +1335,37 @@ def scan_files(
     yield ('progress', (progress_count, total_progress, "Collecting files..."))
 
     gpt_requests: List[Dict[str, Any]] = []
+    threshold_val = Config.THRESHOLD / 100.0
+    if fail_threshold is not None:
+        threshold_val = min(threshold_val, fail_threshold / 100.0)
+
+    def handle_scan_result(path: str, maxconf: float, max_window_bytes: bytes) -> Generator[Tuple[str, Any], None, None]:
+        if maxconf >= 0:
+            percent = f"{maxconf:.0%}"
+            snippet = ''.join(map(chr, max_window_bytes)).strip()
+            cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+
+            if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
+                gpt_requests.append(
+                    {
+                        "path": path,
+                        "percent": percent,
+                        "snippet": snippet,
+                        "cleaned_snippet": cleaned_snippet,
+                    }
+                )
+            elif maxconf >= threshold_val or show_all:
+                yield (
+                    'result',
+                    (
+                        path,
+                        percent,
+                        '',
+                        '',
+                        '',
+                        cleaned_snippet,
+                    )
+                )
 
     for index, file_path in enumerate(file_list):
         if cancel_event.is_set():
@@ -1410,35 +1441,8 @@ def scan_files(
                                 error_message,
                             )
                         )
-                    elif maxconf >= 0:
-                        percent = f"{maxconf:.0%}"
-                        snippet = ''.join(map(chr, max_window_bytes)).strip()
-                        cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
-                        threshold_val = Config.THRESHOLD / 100.0
-                        if fail_threshold is not None:
-                            threshold_val = min(threshold_val, fail_threshold / 100.0)
-
-                        if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
-                            gpt_requests.append(
-                                {
-                                    "path": str(file_path),
-                                    "percent": percent,
-                                    "snippet": snippet,
-                                    "cleaned_snippet": cleaned_snippet,
-                                }
-                            )
-                        elif maxconf >= threshold_val or show_all:
-                            yield (
-                                'result',
-                                (
-                                    str(file_path),
-                                    percent,
-                                    '',
-                                    '',
-                                    '',
-                                    cleaned_snippet,
-                                )
-                            )
+                    else:
+                        yield from handle_scan_result(str(file_path), maxconf, max_window_bytes)
 
     for name, content in extra_snippets:
         if cancel_event.is_set():
@@ -1475,35 +1479,7 @@ def scan_files(
                         maxconf = result
                         max_window_bytes = padded_bytes
 
-            if maxconf >= 0:
-                percent = f"{maxconf:.0%}"
-                snippet = ''.join(map(chr, max_window_bytes)).strip()
-                cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
-                threshold_val = Config.THRESHOLD / 100.0
-                if fail_threshold is not None:
-                    threshold_val = min(threshold_val, fail_threshold / 100.0)
-
-                if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
-                    gpt_requests.append(
-                        {
-                            "path": name,
-                            "percent": percent,
-                            "snippet": snippet,
-                            "cleaned_snippet": cleaned_snippet,
-                        }
-                    )
-                elif maxconf >= threshold_val or show_all:
-                    yield (
-                        'result',
-                        (
-                            name,
-                            percent,
-                            '',
-                            '',
-                            '',
-                            cleaned_snippet,
-                        )
-                    )
+            yield from handle_scan_result(name, maxconf, max_window_bytes)
 
     if cancel_event.is_set():
         return
