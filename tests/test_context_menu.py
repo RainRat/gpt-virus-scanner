@@ -238,7 +238,8 @@ def test_copy_snippet_batch(mock_tree):
     gptscan.copy_snippet()
 
     mock_tree.clipboard_clear.assert_called_once()
-    mock_tree.clipboard_append.assert_called_with("code1\n---\ncode2")
+    expected = "--- path1.py ---\ncode1\n\n--- path2.js ---\ncode2"
+    mock_tree.clipboard_append.assert_called_with(expected)
 
 
 def test_copy_as_json(mock_tree, monkeypatch):

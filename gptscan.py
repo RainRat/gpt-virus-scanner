@@ -2879,6 +2879,16 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
     rescan_button.config(state="normal" if has_selection else "disabled")
 
 
+def on_root_return(event: Optional[tk.Event] = None) -> None:
+    """Trigger a scan if the focus is not on a widget that handles Return."""
+    if not root:
+        return
+    # Trigger scan if focus is not on results tree, path textbox or filter entry
+    focused = root.focus_get()
+    if str(focused) not in (str(tree), str(textbox), str(filter_entry)):
+        button_click()
+
+
 def select_all_items(event: Optional[tk.Event] = None) -> str:
     """Select all items currently visible in the Results Treeview."""
     if tree:
@@ -3244,12 +3254,6 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<Menu>', show_context_menu)
 
     # Bind selection and rescan keys
-    def on_root_return(event):
-        # Trigger scan if focus is not on results tree, path textbox or filter entry
-        focused = root.focus_get()
-        if str(focused) not in (str(tree), str(textbox), str(filter_entry)):
-            button_click()
-
     root.bind('<Return>', on_root_return)
     root.bind('<Control-f>', lambda e: filter_entry.focus_set())
     root.bind('<Command-f>', lambda e: filter_entry.focus_set())
