@@ -1134,30 +1134,23 @@ def rescan_selected() -> None:
     scan_thread.start()
 
 
-def exclude_selected() -> None:
-    """Exclude selected files from future scans by adding them to .gptscanignore."""
-    if not tree:
-        return
+def exclude_paths(paths: List[str], confirm: bool = True) -> bool:
+    """Exclude a list of file paths from future scans.
 
-    selection = tree.selection()
-    if not selection:
-        return
+    Args:
+        paths: List of file paths to exclude.
+        confirm: Whether to ask for confirmation before proceeding.
 
-    # Ask for confirmation
-    if not messagebox.askyesno("Exclude from Scan",
-                                f"Are you sure you want to exclude {len(selection)} selected item(s) from future scans?\n"
-                                "This will add them to your .gptscanignore file."):
-        return
+    Returns:
+        True if the paths were excluded, False otherwise.
+    """
+    if not paths:
+        return False
 
-    excluded_paths = []
-    for item_id in selection:
-        values = _get_item_raw_values(item_id)
-        if values:
-            path = values[0]
-            excluded_paths.append(path)
-
-    if not excluded_paths:
-        return
+    if confirm:
+        msg = f"Are you sure you want to exclude {len(paths)} item(s) from future scans?\nThis will add them to your .gptscanignore file."
+        if not messagebox.askyesno("Exclude from Scan", msg):
+            return False
 
     try:
         # Update .gptscanignore
@@ -1175,8 +1168,7 @@ def exclude_selected() -> None:
                     if content and not content.endswith('\n'):
                         f.write('\n')
 
-            for path in excluded_paths:
-                # Ensure path is a string (handles potential mock objects in tests)
+            for path in paths:
                 path_str = str(path)
                 try:
                     rel_path = os.path.relpath(path_str, os.getcwd())
@@ -1194,15 +1186,34 @@ def exclude_selected() -> None:
 
         # Update cache and refresh view
         global _all_results_cache
-        for path in excluded_paths:
-            # Remove from cache
+        for path in paths:
             _all_results_cache = [v for v in _all_results_cache if v[0] != str(path)]
 
         _apply_filter()
-        update_status(f"Excluded {len(excluded_paths)} file(s).")
+        update_status(f"Excluded {len(paths)} file(s).")
+        return True
 
     except Exception as e:
         messagebox.showerror("Error", f"Could not update .gptscanignore: {e}")
+        return False
+
+
+def exclude_selected() -> None:
+    """Exclude selected files from future scans by adding them to .gptscanignore."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    excluded_paths = []
+    for item_id in selection:
+        values = _get_item_raw_values(item_id)
+        if values:
+            excluded_paths.append(values[0])
+
+    exclude_paths(excluded_paths, confirm=True)
 
 
 def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
@@ -2387,7 +2398,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             return
         item_id = selection[0]
 
-    values = _get_item_raw_values(item_id)
+    current_item_id = item_id
+
+    values = _get_item_raw_values(current_item_id)
     if not values:
         return
 
@@ -2512,7 +2525,38 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         root.clipboard_append(text)
         messagebox.showinfo("Copied", "Detailed analysis copied to clipboard.")
 
+    def on_exclude():
+        """Exclude current file and move to next."""
+        nonlocal current_item_id
+        p = path_entry.get()
+
+        # Capture current list and index to handle transition correctly
+        all_visible = list(tree.get_children())
+        try:
+            current_idx = all_visible.index(current_item_id)
+        except ValueError:
+            current_idx = -1
+
+        if exclude_paths([p], confirm=True):
+            # After exclusion, list changes. Get new list.
+            new_visible = list(tree.get_children())
+            if not new_visible:
+                details_win.destroy()
+                return
+
+            # Try to stay at the same index, or go to previous if we were at the end
+            if current_idx >= len(new_visible):
+                new_idx = len(new_visible) - 1
+            else:
+                new_idx = max(0, current_idx)
+
+            new_item_id = new_visible[new_idx]
+            tree.selection_set(new_item_id)
+            tree.see(new_item_id)
+            refresh_content(new_item_id)
+
     ttk.Button(btn_frame, text="Open File", command=lambda: open_file(path_entry.get())).pack(side=tk.LEFT, padx=5)
+    ttk.Button(btn_frame, text="Exclude", command=on_exclude).pack(side=tk.LEFT, padx=5)
     ttk.Button(btn_frame, text="Copy Analysis", command=copy_analysis).pack(side=tk.LEFT, padx=5)
     ttk.Button(btn_frame, text="VirusTotal", command=lambda: check_virustotal(path_entry.get())).pack(side=tk.LEFT, padx=5)
 
@@ -2526,7 +2570,6 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     # Navigation buttons
     nav_frame = ttk.Frame(main_frame)
     nav_frame.pack(fill=tk.X, pady=(10, 0))
-    current_item_id = item_id
 
     def refresh_content(new_id):
         nonlocal current_item_id
@@ -2636,8 +2679,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     next_btn.pack(side=tk.LEFT, padx=5)
     details_win.bind('<Left>', lambda e: on_prev())
     details_win.bind('<Right>', lambda e: on_next())
+    details_win.bind('<Delete>', lambda e: on_exclude())
     details_win.bind('<Escape>', lambda e: details_win.destroy())
-    refresh_content(item_id)
+    refresh_content(current_item_id)
 
 
 def open_file(event_or_path: Union[tk.Event, str, None] = None) -> None:
@@ -3273,6 +3317,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<Control-Return>', show_in_folder)
     tree.bind('<Command-Return>', show_in_folder)
     tree.bind('<space>', view_details)
+    tree.bind('<Delete>', lambda event: exclude_selected())
     tree.bind('<F5>', lambda event: rescan_selected())
     tree.bind('r', lambda event: rescan_selected())
 
