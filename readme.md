@@ -48,7 +48,7 @@ Follow these steps to get the scanner running:
 
 The scanner finds scripts in two ways:
 *   **By file type:** It recognizes over 70 common script types (like `.py`, `.js`, `.sh`, and `.ps1`) using the included `extensions.txt` file.
-*   **By "shebang" line:** The tool can find scripts without extensions by reading the first line (for example, `#!/bin/bash`).
+*   **By the first line of the file:** If a file does not have an extension, the tool checks the very first line to identify the script type (for example, a line starting with `#!/bin/bash`).
 
 ## Configuration
 
