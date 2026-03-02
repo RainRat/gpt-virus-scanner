@@ -579,7 +579,7 @@ def get_wrapped_values(tree: ttk.Treeview, values: Iterable[Any], measure: Optio
     measure = measure or (default_font_measure or tkinter.font.Font(font='TkDefaultFont').measure)
     col_widths = col_widths or [tree.column(cid)['width'] for cid in tree['columns']]
 
-    # Only wrap the first 6 columns, leave the hidden orig_json column as is
+    # Only wrap the first 6 columns, leave the rest (including line and hidden orig_json) as is
     wrapped = [adjust_newlines(v, w, measure=measure) for v, w in zip(list(values)[:6], col_widths[:6])]
     if len(values) > 6:
         wrapped.extend(list(values)[6:])
@@ -871,11 +871,11 @@ def _apply_filter(*args: Any) -> None:
 def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ...]]:
     """Prepare wrapped values and tags for a Treeview row."""
     # Preserve original values in a hidden column as a JSON string
-    # only use the first 6 columns as the 7th is the hidden one itself if updating
-    orig_data = list(values[:6])
+    # only use the first 7 columns (including line number)
+    orig_data = list(values[:7])
     orig_json = json.dumps(orig_data)
 
-    wrapped_values = get_wrapped_values(tree, values[:6])
+    wrapped_values = get_wrapped_values(tree, values[:7])
     wrapped_values.append(orig_json)
 
     # Determine risk level based on confidence scores
@@ -934,9 +934,9 @@ def update_tree_columns() -> None:
             break
 
     if show_ai or has_ai_data:
-        tree["displaycolumns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
+        tree["displaycolumns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line")
     else:
-        tree["displaycolumns"] = ("path", "own_conf", "snippet")
+        tree["displaycolumns"] = ("path", "own_conf", "snippet", "line")
 
 
 def _auto_select_best_result() -> None:
@@ -1294,7 +1294,7 @@ def scan_files(
     Generator[Tuple[str, Any], None, None]
         Tuples indicating events:
         - ('progress', (current: int, total: int, status: Optional[str]))
-        - ('result', (path: str, own_conf: str, admin: str, user: str, gpt: str, snippet: str))
+        - ('result', (path: str, own_conf: str, admin: str, user: str, gpt: str, snippet: str, line: Union[int, str]))
         - ('summary', (total_files: int, total_bytes: int, elapsed_time: float))
     """
     global _tf_module
@@ -1339,7 +1339,7 @@ def scan_files(
     if fail_threshold is not None:
         threshold_val = min(threshold_val, fail_threshold / 100.0)
 
-    def handle_scan_result(path: str, maxconf: float, max_window_bytes: bytes) -> Generator[Tuple[str, Any], None, None]:
+    def handle_scan_result(path: str, maxconf: float, max_window_bytes: bytes, line_num: Union[int, str]) -> Generator[Tuple[str, Any], None, None]:
         if maxconf >= 0:
             percent = f"{maxconf:.0%}"
             snippet = ''.join(map(chr, max_window_bytes)).strip()
@@ -1352,6 +1352,7 @@ def scan_files(
                         "percent": percent,
                         "snippet": snippet,
                         "cleaned_snippet": cleaned_snippet,
+                        "line": line_num,
                     }
                 )
             elif maxconf >= threshold_val or show_all:
@@ -1364,6 +1365,7 @@ def scan_files(
                         '',
                         '',
                         cleaned_snippet,
+                        line_num,
                     )
                 )
 
@@ -1391,6 +1393,7 @@ def scan_files(
                             '',
                             '',
                             f"Error reading file metadata: {err}",
+                            '-',
                         )
                     )
 
@@ -1407,6 +1410,7 @@ def scan_files(
                         '',
                         '',
                         f"(File would be scanned, size: {format_bytes(file_size) if file_size is not None else 'unknown'})",
+                        '-',
                     )
                 )
             else:
@@ -1414,6 +1418,7 @@ def scan_files(
                 if file_size is not None:
                     maxconf = -1.0
                     max_window_bytes = b""
+                    max_offset = 0
                     error_message: Optional[str] = None
 
                     try:
@@ -1426,6 +1431,7 @@ def scan_files(
                                 if result > maxconf:
                                     maxconf = result
                                     max_window_bytes = padded_bytes
+                                    max_offset = offset
                     except OSError as err:
                         error_message = f"Error reading file: {err}"
 
@@ -1439,10 +1445,18 @@ def scan_files(
                                 '',
                                 '',
                                 error_message,
+                                '-',
                             )
                         )
                     else:
-                        yield from handle_scan_result(str(file_path), maxconf, max_window_bytes)
+                        # Calculate line number
+                        line_num = 1
+                        try:
+                            with open(file_path, 'rb') as f:
+                                line_num = f.read(max_offset).count(b'\n') + 1
+                        except Exception:
+                            pass
+                        yield from handle_scan_result(str(file_path), maxconf, max_window_bytes, line_num)
 
     for name, content in extra_snippets:
         if cancel_event.is_set():
@@ -1465,11 +1479,13 @@ def scan_files(
                     '',
                     '',
                     f"(Snippet would be scanned, size: {format_bytes(file_size)})",
+                    '-',
                 )
             )
         else:
             maxconf = -1.0
             max_window_bytes = b""
+            max_offset = 0
             with io.BytesIO(content) as f:
                 for offset, window in iter_windows(f, file_size, deep_scan):
                     if cancel_event.is_set():
@@ -1478,8 +1494,11 @@ def scan_files(
                     if result > maxconf:
                         maxconf = result
                         max_window_bytes = padded_bytes
+                        max_offset = offset
 
-            yield from handle_scan_result(name, maxconf, max_window_bytes)
+            # Calculate line number for snippet
+            line_num = content[:max_offset].count(b'\n') + 1
+            yield from handle_scan_result(name, maxconf, max_window_bytes, line_num)
 
     if cancel_event.is_set():
         return
@@ -1548,6 +1567,7 @@ def scan_files(
                     enduser_desc,
                     chatgpt_conf_percent,
                     request["cleaned_snippet"],
+                    request.get("line", 1),
                 )
             )
 
@@ -1749,6 +1769,9 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
                     "physicalLocation": {
                         "artifactLocation": {
                             "uri": r.get("path", "").replace("\\", "/")
+                        },
+                        "region": {
+                            "startLine": int(r.get("line")) if str(r.get("line")).isdigit() else 1
                         }
                     }
                 }
@@ -1821,6 +1844,7 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
         rows.append(f"""
         <tr class="{row_class}">
             <td>{html.escape(path)}</td>
+            <td>{html.escape(str(r.get("line", "-")))}</td>
             <td>{html.escape(gpt_conf or own_conf)}</td>
             <td>
                 <strong>Admin:</strong> {html.escape(admin)}<br>
@@ -1860,8 +1884,9 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
         <thead>
             <tr>
                 <th style="width: 20%">Path</th>
+                <th style="width: 5%">Line</th>
                 <th style="width: 10%">Confidence</th>
-                <th style="width: 30%">Analysis</th>
+                <th style="width: 25%">Analysis</th>
                 <th style="width: 40%">Snippet</th>
             </tr>
         </thead>
@@ -1899,12 +1924,13 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         "",
         "## Summary Table",
         "",
-        "| Path | Confidence | Analysis | Snippet |",
-        "| :--- | :--- | :--- | :--- |"
+        "| Path | Line | Confidence | Analysis | Snippet |",
+        "| :--- | :--- | :--- | :--- | :--- |"
     ]
 
     for r in results:
         path = r.get("path", "").replace("|", "\\|")
+        line = r.get("line", "-")
         own_conf = r.get("own_conf", "")
         gpt_conf = r.get("gpt_conf", "")
         admin = r.get("admin_desc", "")
@@ -1926,7 +1952,7 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         if len(clean_snippet) > 100:
             clean_snippet = clean_snippet[:97] + "..."
 
-        lines.append(f"| {path} | {conf_str} | {analysis} | `{clean_snippet}` |")
+        lines.append(f"| {path} | {line} | {conf_str} | {analysis} | `{clean_snippet}` |")
 
     lines.append("")
     lines.append("## Detailed Findings")
@@ -1934,6 +1960,7 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
 
     for r in results:
         path = r.get("path", "")
+        line = r.get("line", "-")
         own_conf = r.get("own_conf", "")
         gpt_conf = r.get("gpt_conf", "")
         admin = r.get("admin_desc", "")
@@ -1941,6 +1968,7 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         snippet = r.get("snippet", "")
 
         lines.append(f"### File: `{path}`")
+        lines.append(f"- **Detected Line:** {line}")
         lines.append(f"- **Local Confidence:** {own_conf}")
         if gpt_conf:
             lines.append(f"- **AI Confidence:** {gpt_conf}")
@@ -1995,7 +2023,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     extra_snippets : List[Tuple[str, bytes]], optional
         List of (name, content) tuples to scan as in-memory buffers.
     """
-    keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]
+    keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
 
     out_stream = open(output_file, 'w', encoding='utf-8') if output_file else sys.stdout
 
@@ -2161,13 +2189,18 @@ def import_results() -> None:
                                 "admin_desc": props.get("admin_desc") or result.get("message", {}).get("text", ""),
                                 "end-user_desc": props.get("end-user_desc", ""),
                                 "gpt_conf": props.get("gpt_conf", ""),
-                                "snippet": props.get("snippet", "")
+                                "snippet": props.get("snippet", ""),
+                                "line": "-"
                             }
-                            # Extract path
+                            # Extract path and line
                             locations = result.get("locations", [])
                             if locations:
-                                uri = locations[0].get("physicalLocation", {}).get("artifactLocation", {}).get("uri", "")
+                                phys_loc = locations[0].get("physicalLocation", {})
+                                uri = phys_loc.get("artifactLocation", {}).get("uri", "")
                                 mapped["path"] = uri.replace("/", os.sep)
+                                region = phys_loc.get("region", {})
+                                if "startLine" in region:
+                                    mapped["line"] = region["startLine"]
 
                             data_to_import.append(mapped)
                 else:
@@ -2211,6 +2244,8 @@ def import_results() -> None:
                         val = item.get("AI Conf.")
                     elif col == "snippet":
                         val = item.get("Snippet")
+                    elif col == "line":
+                        val = item.get("Line")
 
                 values.append(val if val is not None else "")
 
@@ -2256,7 +2291,7 @@ def _get_tree_results_as_dicts(item_ids: Iterable[str]) -> List[Dict[str, Any]]:
     if not tree:
         return []
 
-    columns = tree["columns"][:6]
+    columns = tree["columns"][:7]
     results = []
     for item_id in item_ids:
         values = _get_item_raw_values(item_id)
@@ -2313,7 +2348,7 @@ def export_results() -> None:
         else: # Default to CSV
             with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
                 writer = csv.writer(csv_file)
-                columns = tree["columns"][:6]
+                columns = tree["columns"][:7]
                 writer.writerow(columns)
                 for r in results:
                     writer.writerow([r[col] for col in columns])
@@ -2337,7 +2372,7 @@ def _get_item_raw_values(item_id: str) -> Optional[List[Any]]:
         except (json.JSONDecodeError, TypeError):
             pass
     # Fallback: unwrap display newlines by replacing them with spaces
-    return [str(v).replace('\n', ' ') for v in values[:6]]
+    return [str(v).replace('\n', ' ') for v in values[:7]]
 
 
 def _get_selected_row_values() -> Optional[List[Any]]:
@@ -2421,8 +2456,12 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     ai_conf_prefix = ttk.Label(conf_frame, text="AI Confidence:")
     gpt_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
 
+    ttk.Label(conf_frame, text="Detected Line:").grid(row=0, column=5, sticky="w", padx=(20, 5))
+    line_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
+    line_label.grid(row=0, column=6, sticky="w")
+
     risk_badge = tk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'), padx=8, pady=2)
-    risk_badge.grid(row=0, column=4, sticky="w", padx=(20, 0))
+    risk_badge.grid(row=0, column=7, sticky="w", padx=(20, 0))
 
     ttk.Separator(main_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
 
@@ -2552,7 +2591,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         current_item_id = new_id
         vals = _get_item_raw_values(new_id)
         if not vals: return
+        # vals: (path, own_conf, admin, user, gpt_conf, snippet, line)
         path, own_conf, admin, user, gpt_conf, snippet = vals[:6]
+        line = vals[6] if len(vals) > 6 else "-"
 
         all_visible = tree.get_children()
         total = len(all_visible)
@@ -2573,6 +2614,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         path_entry.insert(0, path)
         path_entry.config(state='readonly')
         own_conf_label.config(text=own_conf)
+        line_label.config(text=str(line))
 
         conf = get_effective_confidence(own_conf, gpt_conf)
         risk = get_risk_category(conf, Config.THRESHOLD)
@@ -3181,7 +3223,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree = ttk.Treeview(tree_frame, style='Scanner.Treeview')
     tree.tag_configure('high-risk', background='#ffcccc')
     tree.tag_configure('medium-risk', background='#fff0cc')
-    tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "orig_json")
+    tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line", "orig_json")
     tree.column("#0", width=0, stretch=tk.NO)
     tree.column("path", width=150, stretch=tk.YES, anchor="w")
     tree.column("own_conf", width=80, stretch=tk.NO, anchor="e")
@@ -3189,6 +3231,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.column("end-user_desc", width=150, stretch=tk.YES, anchor="w")
     tree.column("gpt_conf", width=80, stretch=tk.NO, anchor="e")
     tree.column("snippet", width=150, stretch=tk.YES, anchor="w")
+    tree.column("line", width=60, stretch=tk.NO, anchor="center")
     tree.column("orig_json", width=0, stretch=tk.NO) # Hidden column for raw data
     root.after(0, process_ui_queue)
 
@@ -3203,6 +3246,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.heading("gpt_conf", text="AI Conf.",
                  command=lambda: sort_column(tree, "gpt_conf", False))
     tree.heading("snippet", text="Snippet", command=lambda: sort_column(tree, "snippet", False))
+    tree.heading("line", text="Line", command=lambda: sort_column(tree, "line", False))
 
     scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
     scrollbar.grid(row=0, column=1, sticky="ns")
