@@ -78,6 +78,11 @@ Run `python gptscan.py` to open the GUI.
 **Shortcuts:**
 *   **Ctrl+A / Cmd+A:** Select all results.
 *   **Ctrl+F / Cmd+F:** Focus the search filter.
+*   **Ctrl+C / Cmd+C:** Copy path(s) of selected result(s).
+*   **Ctrl+Shift+C / Cmd+Shift+C:** Copy selected result(s) as a Markdown table.
+*   **Ctrl+H / Cmd+H:** Copy SHA256 hash(es) of selected result(s).
+*   **Ctrl+S / Cmd+S:** Copy code snippet(s) of selected result(s).
+*   **Ctrl+Return / Cmd+Return:** Reveal selected file in folder.
 *   **F5 / R:** Rescan selected files.
 *   **Double-click / Enter / Space:** View detailed analysis and code.
 *   **Shift+Enter:** Open selected file.
