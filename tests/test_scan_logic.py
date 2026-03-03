@@ -122,7 +122,7 @@ def test_scan_files_metadata_error(monkeypatch, tmp_path, mock_scan_dependencies
     event_type, event_data = results[2]
     assert event_type == 'result'
 
-    path, own_conf, admin, user, gpt, snippet = event_data
+    path, own_conf, admin, user, gpt, snippet, line = event_data
     assert path == "/path/to/bad_file.bin"
     assert own_conf == 'Error'
     assert "Metadata inaccessible" in snippet

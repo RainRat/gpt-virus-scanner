@@ -2435,10 +2435,10 @@ def _get_item_raw_values(item_id: str) -> Optional[List[Any]]:
         return None
     values = list(tree.item(item_id, "values"))
 
-    # Try to return raw values from the hidden column (index 6) if available
-    if len(values) > 6 and values[6]:
+    # Try to return raw values from the hidden column (index 7) if available
+    if len(values) > 7 and values[7]:
         try:
-            return json.loads(values[6])
+            return json.loads(values[7])
         except (json.JSONDecodeError, TypeError):
             pass
     # Fallback: unwrap display newlines by replacing them with spaces
@@ -3021,6 +3021,27 @@ def on_root_return(event: Optional[tk.Event] = None) -> None:
         button_click()
 
 
+def focus_filter(event: Optional[tk.Event] = None) -> str:
+    """Set focus to the filter entry and select all text for easy replacement."""
+    if filter_entry:
+        filter_entry.focus_set()
+        filter_entry.selection_range(0, tk.END)
+    return "break"
+
+
+def on_filter_return(event: Optional[tk.Event] = None) -> str:
+    """Move focus from the filter entry to the results tree."""
+    if tree:
+        tree.focus_set()
+        # If nothing is selected, select the first item to allow immediate keyboard navigation
+        if not tree.selection() and tree.get_children():
+            first_item = tree.get_children()[0]
+            tree.selection_set(first_item)
+            tree.focus(first_item)
+            tree.see(first_item)
+    return "break"
+
+
 def select_all_items(event: Optional[tk.Event] = None) -> str:
     """Select all items currently visible in the Results Treeview."""
     if tree:
@@ -3064,7 +3085,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, filter_var, tree, scan_button, cancel_button, view_button, rescan_button, default_font_measure
+    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, default_font_measure
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -3247,6 +3268,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     filter_entry = ttk.Entry(filter_frame, textvariable=filter_var)
     filter_entry.grid(row=0, column=1, sticky="ew")
     filter_entry.bind('<KeyRelease>', _apply_filter)
+    filter_entry.bind('<Return>', on_filter_return)
     bind_hover_message(filter_entry, "Search results by any column (path, confidence, analysis, snippet).")
 
     def clear_filter():
@@ -3389,8 +3411,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # Bind selection and rescan keys
     root.bind('<Return>', on_root_return)
-    root.bind('<Control-f>', lambda e: filter_entry.focus_set())
-    root.bind('<Command-f>', lambda e: filter_entry.focus_set())
+    root.bind('<Control-f>', focus_filter)
+    root.bind('<Command-f>', focus_filter)
     root.bind('<Control-j>', copy_as_json)
     root.bind('<Command-j>', copy_as_json)
     tree.bind('<<TreeviewSelect>>', update_button_states)

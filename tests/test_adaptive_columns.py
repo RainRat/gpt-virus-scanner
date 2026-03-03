@@ -6,7 +6,7 @@ import gptscan
 def test_update_tree_columns_hides_ai_when_disabled_and_no_data(monkeypatch):
     # Setup mocks
     mock_tree = MagicMock()
-    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
+    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line")
     mock_tree.get_children.return_value = []
 
     mock_gpt_var = MagicMock()
@@ -19,7 +19,7 @@ def test_update_tree_columns_hides_ai_when_disabled_and_no_data(monkeypatch):
     gptscan.update_tree_columns()
 
     # Verify
-    expected_cols = ("path", "own_conf", "snippet")
+    expected_cols = ("path", "own_conf", "snippet", "line")
     mock_tree.__setitem__.assert_called_with("displaycolumns", expected_cols)
 
 def test_update_tree_columns_shows_ai_when_enabled(monkeypatch):
@@ -37,7 +37,7 @@ def test_update_tree_columns_shows_ai_when_enabled(monkeypatch):
     gptscan.update_tree_columns()
 
     # Verify
-    expected_cols = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
+    expected_cols = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line")
     mock_tree.__setitem__.assert_called_with("displaycolumns", expected_cols)
 
 def test_update_tree_columns_shows_ai_when_data_present_even_if_disabled(monkeypatch):
@@ -49,7 +49,7 @@ def test_update_tree_columns_shows_ai_when_data_present_even_if_disabled(monkeyp
     mock_tree.get_children.return_value = [item_id]
     # values[4] is gpt_conf. We set it to something non-empty.
     # The code calls tree.item(item_id, 'values')
-    mock_tree.item.return_value = ("file.py", "10%", "Admin says bad", "User avoid", "90%", "snippet")
+    mock_tree.item.return_value = ("file.py", "10%", "Admin says bad", "User avoid", "90%", "snippet", "1")
 
     mock_gpt_var = MagicMock()
     mock_gpt_var.get.return_value = False
@@ -61,7 +61,7 @@ def test_update_tree_columns_shows_ai_when_data_present_even_if_disabled(monkeyp
     gptscan.update_tree_columns()
 
     # Verify
-    expected_cols = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet")
+    expected_cols = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line")
     mock_tree.__setitem__.assert_called_with("displaycolumns", expected_cols)
 
 def test_update_tree_columns_hides_ai_when_disabled_and_data_is_empty(monkeypatch):
@@ -71,7 +71,7 @@ def test_update_tree_columns_hides_ai_when_disabled_and_data_is_empty(monkeypatc
     item_id = "item1"
     mock_tree.get_children.return_value = [item_id]
     # values[4] is gpt_conf. We set it to empty string.
-    mock_tree.item.return_value = ("file.py", "10%", "", "", "", "snippet")
+    mock_tree.item.return_value = ("file.py", "10%", "", "", "", "snippet", "1")
 
     mock_gpt_var = MagicMock()
     mock_gpt_var.get.return_value = False
@@ -83,5 +83,5 @@ def test_update_tree_columns_hides_ai_when_disabled_and_data_is_empty(monkeypatc
     gptscan.update_tree_columns()
 
     # Verify
-    expected_cols = ("path", "own_conf", "snippet")
+    expected_cols = ("path", "own_conf", "snippet", "line")
     mock_tree.__setitem__.assert_called_with("displaycolumns", expected_cols)

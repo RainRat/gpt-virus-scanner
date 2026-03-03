@@ -44,7 +44,7 @@ def test_dry_run_skips_model_and_yields_results(monkeypatch, tmp_path):
     assert len(results) == 2, "Should yield a result for each file"
 
     for _, data in results:
-        path, status, admin, user, gpt, snippet = data
+        path, status, admin, user, gpt, snippet, line = data
         assert status == "Dry Run"
         assert "(File would be scanned" in snippet
         # Confirm no analysis data

@@ -63,7 +63,7 @@ def test_generate_markdown_escaping():
 def test_run_cli_markdown(monkeypatch, capsys):
     """Test run_cli with markdown output format (covers line 1547)."""
     def mock_scan_files(*args, **kwargs):
-        yield ('result', ("test.py", "90%", "Admin", "User", "95%", "print('hi')"))
+        yield ('result', ("test.py", "90%", "Admin", "User", "95%", "print('hi')", "1"))
 
     monkeypatch.setattr(gptscan, "scan_files", mock_scan_files)
 
@@ -74,17 +74,17 @@ def test_run_cli_markdown(monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert "# GPT Scan Results" in captured.out
-    assert "| test.py | 95% | **Admin:** Admin<br>**User:** User | `print('hi')` |" in captured.out
+    assert "| test.py | 1 | 95% | **Admin:** Admin<br>**User:** User | `print('hi')` |" in captured.out
 
 def test_export_results_markdown(monkeypatch, tmp_path):
     """Test export_results with .md extension (covers line 1725)."""
     mock_tree = MagicMock()
-    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "orig_json")
+    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line", "orig_json")
     mock_tree.get_children.return_value = ["item1"]
 
     # Case where orig_json is present
-    raw_values = ["test.py", "90%", "Admin", "User", "95%", "print('hi')"]
-    vals = ("test.py", "90%", "Admin", "User", "95%", "print('hi')", json.dumps(raw_values))
+    raw_values = ["test.py", "90%", "Admin", "User", "95%", "print('hi')", "1"]
+    vals = ("test.py", "90%", "Admin", "User", "95%", "print('hi')", "1", json.dumps(raw_values))
     def mock_item(iid, option=None):
         if option == "values": return vals
         return {"values": vals}
@@ -106,11 +106,11 @@ def test_export_results_markdown(monkeypatch, tmp_path):
 def test_copy_as_markdown_fallback(monkeypatch):
     """Test copy_as_markdown fallback when orig_json is missing (covers lines 1817-1818)."""
     mock_tree = MagicMock()
-    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "orig_json")
+    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line", "orig_json")
     mock_tree.selection.return_value = ["item1"]
 
-    # Case where orig_json is missing or empty (6 columns only or 7th is empty)
-    vals = ("test.py", "90%", "Admin", "User", "95%", "print('hi\nwrapped')")
+    # Case where orig_json is missing or empty (7 columns only or 8th is empty)
+    vals = ("test.py", "90%", "Admin", "User", "95%", "print('hi\nwrapped')", "1")
     def mock_item(iid, option=None):
         if option == "values": return vals
         return {"values": vals}
@@ -148,10 +148,10 @@ def test_get_selected_row_values_no_tree(monkeypatch):
 def test_export_results_sarif(monkeypatch, tmp_path):
     """Test export_results with .sarif extension (covers lines 1720-1722)."""
     mock_tree = MagicMock()
-    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "orig_json")
+    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line", "orig_json")
     mock_tree.get_children.return_value = ["item1"]
 
-    vals = ("test.py", "90%", "Admin", "User", "95%", "print('hi')")
+    vals = ("test.py", "90%", "Admin", "User", "95%", "print('hi')", "1")
     def mock_item(iid, option=None):
         if option == "values": return vals
         return {"values": vals}
