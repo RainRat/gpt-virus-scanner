@@ -7,7 +7,7 @@ def test_run_cli_output_csv_format(monkeypatch, capsys):
     # Mock scan_files to yield predictable results
     def mock_scan_files(*args, **kwargs):
         yield ('progress', (0, 1, None))
-        yield ('result', ("/path/file.py", "95%", "Admin Info", "User Info", "90%", "print('test')"))
+        yield ('result', ("/path/file.py", "95%", "Admin Info", "User Info", "90%", "print('test')", "1"))
         yield ('progress', (1, 1, None))
 
     monkeypatch.setattr(gptscan, "scan_files", mock_scan_files)
@@ -24,15 +24,15 @@ def test_run_cli_output_csv_format(monkeypatch, capsys):
     rows = list(reader)
 
     assert len(rows) == 2
-    assert rows[0] == ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]
-    assert rows[1] == ["/path/file.py", "95%", "Admin Info", "User Info", "90%", "print('test')"]
+    assert rows[0] == ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
+    assert rows[1] == ["/path/file.py", "95%", "Admin Info", "User Info", "90%", "print('test')", "1"]
 
 def test_run_cli_handles_special_characters(monkeypatch, capsys):
     # Mock scan_files with special characters in snippet
     snippet_with_chars = 'line1, "quoted", \nline2'
 
     def mock_scan_files(*args, **kwargs):
-        yield ('result', ("/path/complex.py", "50%", "", "", "", snippet_with_chars))
+        yield ('result', ("/path/complex.py", "50%", "", "", "", snippet_with_chars, "10"))
 
     monkeypatch.setattr(gptscan, "scan_files", mock_scan_files)
 

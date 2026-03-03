@@ -38,7 +38,7 @@ def test_scan_files_extra_snippets_basic(mock_tf_env):
     results = [data for event, data in events if event == 'result']
 
     assert len(results) == 1
-    path, own_conf, admin, user, gpt, snippet = results[0]
+    path, own_conf, admin, user, gpt, snippet, line = results[0]
     assert path == "[Clipboard]"
     assert own_conf == "50%"
     assert "print('hello world')" in snippet
@@ -110,7 +110,7 @@ def test_scan_files_extra_snippets_gpt_trigger(mock_tf_env, monkeypatch):
 
     results = [data for event, data in events if event == 'result']
     assert len(results) == 1
-    path, own, admin, user, gpt, snippet = results[0]
+    path, own, admin, user, gpt, snippet, line = results[0]
     assert path == "[Stdin]"
     assert admin == "Admin analysis"
     assert gpt == "85%"

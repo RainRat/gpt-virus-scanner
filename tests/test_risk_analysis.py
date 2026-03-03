@@ -42,38 +42,38 @@ def test_get_effective_confidence(own, gpt, expected):
 
 def test_prepare_tree_row(monkeypatch):
     mock_tree = MagicMock()
-    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin", "user", "gpt_conf", "snippet")
+    mock_tree.__getitem__.return_value = ("path", "own_conf", "admin", "user", "gpt_conf", "snippet", "line")
     mock_tree.column.return_value = {'width': 100}
     monkeypatch.setattr("gptscan.tree", mock_tree)
     monkeypatch.setattr(Config, "THRESHOLD", 50)
     monkeypatch.setattr("gptscan.default_font_measure", lambda x: 10)
 
     # Test High Risk
-    values = ("high.py", "90%", "Admin Notes", "User Notes", "85%", "Snippet")
+    values = ("high.py", "90%", "Admin Notes", "User Notes", "85%", "Snippet", 10)
     wrapped, tags = _prepare_tree_row(values)
 
     assert tags == ('high-risk',)
     assert wrapped[0] == "high.py"
     assert wrapped[4] == "85%"
-    # 7th column should be raw JSON of first 6 columns
-    assert json.loads(wrapped[6]) == list(values)
+    # 8th column (index 7) should be raw JSON of first 7 elements
+    assert json.loads(wrapped[7]) == list(values)
 
     # Test Medium Risk
-    values = ("medium.py", "60%", "Admin", "User", "", "Snippet")
+    values = ("medium.py", "60%", "Admin", "User", "", "Snippet", 1)
     wrapped, tags = _prepare_tree_row(values)
     assert tags == ('medium-risk',)
 
     # Test Safe
-    values = ("safe.py", "10%", "", "", "", "Snippet")
+    values = ("safe.py", "10%", "", "", "", "Snippet", 1)
     wrapped, tags = _prepare_tree_row(values)
     assert tags == ()
 
     # Test boundary 80%
-    values = ("boundary.py", "80%", "", "", "", "Snippet")
+    values = ("boundary.py", "80%", "", "", "", "Snippet", 1)
     wrapped, tags = _prepare_tree_row(values)
     assert tags == ('high-risk',)
 
     # Test boundary Threshold
-    values = ("threshold.py", "50%", "", "", "", "Snippet")
+    values = ("threshold.py", "50%", "", "", "", "Snippet", 1)
     wrapped, tags = _prepare_tree_row(values)
     assert tags == ('medium-risk',)
