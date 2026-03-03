@@ -1995,7 +1995,7 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None) -> int:
     """Run scans and stream results to stdout or a file.
 
     Parameters
@@ -2022,6 +2022,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         Path to a file where results should be saved.
     extra_snippets : List[Tuple[str, bytes]], optional
         List of (name, content) tuples to scan as in-memory buffers.
+    import_file : str, optional
+        Path to a previous scan report to import and process.
     """
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
 
@@ -2041,19 +2043,24 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     result_buffer = []
 
-    for event_type, data in scan_files(
-        targets,
-        deep,
-        show_all,
-        use_gpt,
-        cancel_event,
-        rate_limit=rate_limit,
-        max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
-        dry_run=dry_run,
-        exclude_patterns=exclude_patterns,
-        extra_snippets=extra_snippets,
-        fail_threshold=fail_threshold,
-    ):
+    if import_file:
+        event_gen = import_results_generator(import_file)
+    else:
+        event_gen = scan_files(
+            targets,
+            deep,
+            show_all,
+            use_gpt,
+            cancel_event,
+            rate_limit=rate_limit,
+            max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+            dry_run=dry_run,
+            exclude_patterns=exclude_patterns,
+            extra_snippets=extra_snippets,
+            fail_threshold=fail_threshold,
+        )
+
+    for event_type, data in event_gen:
         if event_type == 'result':
             # data format: (path, own_conf, admin, user, gpt_conf, snippet)
             conf = get_effective_confidence(data[1], data[4])
@@ -2135,6 +2142,135 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     return threats_found
 
 
+def standardize_result_dict(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Map various report keys back to the standard internal format.
+
+    Args:
+        item: A dictionary containing raw result data from a report.
+
+    Returns:
+        A dictionary with standardized keys for internal use.
+    """
+    mapping = {
+        "path": ["path", "File Path", "uri"],
+        "own_conf": ["own_conf", "Local Conf.", "local_conf"],
+        "admin_desc": ["admin_desc", "Admin Notes", "admin"],
+        "end-user_desc": ["end-user_desc", "User Notes", "end_user_desc", "user_desc"],
+        "gpt_conf": ["gpt_conf", "AI Conf.", "ai_conf"],
+        "snippet": ["snippet", "Snippet", "code"],
+        "line": ["line", "Line", "startLine"]
+    }
+
+    standardized = {}
+    for standard_key, alternatives in mapping.items():
+        val = None
+        for alt in alternatives:
+            if alt in item:
+                val = item[alt]
+                break
+        standardized[standard_key] = str(val) if val is not None else ""
+
+    return standardized
+
+
+def load_report_file(file_path: str) -> List[Dict[str, Any]]:
+    """Parse a report file in JSON, SARIF, or CSV format.
+
+    Args:
+        file_path: Path to the report file.
+
+    Returns:
+        A list of standardized result dictionaries.
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+    data_to_import = []
+
+    if ext in ('.json', '.jsonl', '.ndjson', '.sarif'):
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+            if not content:
+                raise ValueError("File is empty.")
+
+            if content.startswith('['):
+                # Standard JSON list
+                data_to_import = json.loads(content)
+            elif ext == '.sarif' or (content.startswith('{') and '"runs"' in content):
+                # SARIF format
+                sarif_data = json.loads(content)
+                for run in sarif_data.get("runs", []):
+                    for result in run.get("results", []):
+                        props = result.get("properties", {})
+                        mapped = {
+                            "path": "",
+                            "own_conf": props.get("own_conf", ""),
+                            "admin_desc": props.get("admin_desc") or result.get("message", {}).get("text", ""),
+                            "end-user_desc": props.get("end-user_desc", ""),
+                            "gpt_conf": props.get("gpt_conf", ""),
+                            "snippet": props.get("snippet", ""),
+                            "line": "-"
+                        }
+                        locations = result.get("locations", [])
+                        if locations:
+                            phys_loc = locations[0].get("physicalLocation", {})
+                            uri = phys_loc.get("artifactLocation", {}).get("uri", "")
+                            mapped["path"] = uri.replace("/", os.sep)
+                            region = phys_loc.get("region", {})
+                            if "startLine" in region:
+                                mapped["line"] = region["startLine"]
+                        data_to_import.append(mapped)
+            else:
+                # NDJSON (newline-delimited JSON)
+                data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
+    elif ext == '.csv':
+        with open(file_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            data_to_import = list(reader)
+    else:
+        raise ValueError(f"Unsupported file extension: {ext}")
+
+    return [standardize_result_dict(item) for item in data_to_import]
+
+
+def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None, None]:
+    """Generator that yields events from an imported report file.
+
+    Mimics the event stream from scan_files to allow processing of imported
+    results through the standard CLI and GUI logic.
+
+    Args:
+        file_path: Path to the report file to import.
+
+    Yields:
+        Events ('progress', 'result', 'summary') identical to scan_files.
+    """
+    try:
+        results = load_report_file(file_path)
+    except Exception as e:
+        yield ('progress', (0, 1, f"Error loading report: {e}"))
+        return
+
+    total = len(results)
+    yield ('progress', (0, total, f"Importing: {os.path.basename(file_path)}"))
+
+    for i, item in enumerate(results):
+        yield ('progress', (i + 1, total, f"Importing: {os.path.basename(item.get('path', 'unknown'))}"))
+
+        # Format as the expected 7-element tuple:
+        # (path, own_conf, admin_desc, user_desc, gpt_conf, snippet, line)
+        data = (
+            item.get("path", ""),
+            item.get("own_conf", ""),
+            item.get("admin_desc", ""),
+            item.get("end-user_desc", ""),
+            item.get("gpt_conf", ""),
+            item.get("snippet", ""),
+            item.get("line", "-")
+        )
+        yield ('result', data)
+
+    yield ('summary', (total, 0, 0.0))
+
+
 def import_results() -> None:
     """Load results from a JSON or CSV file into the Treeview.
 
@@ -2162,57 +2298,7 @@ def import_results() -> None:
         return
 
     try:
-        data_to_import = []
-        ext = os.path.splitext(file_path)[1].lower()
-
-        if ext in ('.json', '.jsonl', '.ndjson', '.sarif'):
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-                if not content:
-                    raise ValueError("File is empty.")
-
-                if content.startswith('['):
-                    # Standard JSON list
-                    data_to_import = json.loads(content)
-                elif ext == '.sarif' or (content.startswith('{') and '"runs"' in content):
-                    # SARIF format
-                    sarif_data = json.loads(content)
-                    data_to_import = []
-                    for run in sarif_data.get("runs", []):
-                        for result in run.get("results", []):
-                            # Extract properties
-                            props = result.get("properties", {})
-
-                            mapped = {
-                                "path": "",
-                                "own_conf": props.get("own_conf", ""),
-                                "admin_desc": props.get("admin_desc") or result.get("message", {}).get("text", ""),
-                                "end-user_desc": props.get("end-user_desc", ""),
-                                "gpt_conf": props.get("gpt_conf", ""),
-                                "snippet": props.get("snippet", ""),
-                                "line": "-"
-                            }
-                            # Extract path and line
-                            locations = result.get("locations", [])
-                            if locations:
-                                phys_loc = locations[0].get("physicalLocation", {})
-                                uri = phys_loc.get("artifactLocation", {}).get("uri", "")
-                                mapped["path"] = uri.replace("/", os.sep)
-                                region = phys_loc.get("region", {})
-                                if "startLine" in region:
-                                    mapped["line"] = region["startLine"]
-
-                            data_to_import.append(mapped)
-                else:
-                    # NDJSON (newline-delimited JSON)
-                    data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
-        elif ext == '.csv':
-            with open(file_path, "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                data_to_import = list(reader)
-        else:
-            messagebox.showerror("Import Error", f"Unsupported file extension: {ext}")
-            return
+        data_to_import = load_report_file(file_path)
 
         if not data_to_import:
             messagebox.showwarning("Import Warning", "No data found in the selected file.")
@@ -2221,35 +2307,19 @@ def import_results() -> None:
         # Clear existing results
         clear_results()
 
-        columns = tree["columns"]
         count = 0
         for item in data_to_import:
-            # item is a dict from JSON or csv.DictReader
             # Map item keys back to the expected column order
-            values = []
-            for col in columns:
-                # Try exact match first
-                val = item.get(col)
-                if val is None:
-                    # Try to map some known alternatives or header names
-                    if col == "path":
-                        val = item.get("File Path")
-                    elif col == "own_conf":
-                        val = item.get("Local Conf.")
-                    elif col == "admin_desc":
-                        val = item.get("Admin Notes")
-                    elif col == "end-user_desc":
-                        val = item.get("User Notes")
-                    elif col == "gpt_conf":
-                        val = item.get("AI Conf.")
-                    elif col == "snippet":
-                        val = item.get("Snippet")
-                    elif col == "line":
-                        val = item.get("Line")
-
-                values.append(val if val is not None else "")
-
-            insert_tree_row(tuple(values))
+            values = (
+                item["path"],
+                item["own_conf"],
+                item["admin_desc"],
+                item["end-user_desc"],
+                item["gpt_conf"],
+                item["snippet"],
+                item["line"]
+            )
+            insert_tree_row(values)
             count += 1
 
         msg = f"Imported {count} results from {os.path.basename(file_path)}"
@@ -3442,6 +3512,11 @@ def main():
         action='store_true',
         help='Read a code snippet from standard input to scan.'
     )
+    scan_group.add_argument(
+        '--import-results', '--import',
+        type=str,
+        help='Import and process results from a previous scan (JSON, CSV, or SARIF).'
+    )
 
     ai_group = parser.add_argument_group("AI Analysis")
     ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Use AI to create detailed reports for suspicious files. This requires an API key.')
@@ -3573,7 +3648,8 @@ def main():
             exclude_patterns=final_excludes,
             fail_threshold=args.fail_threshold,
             output_file=args.output,
-            extra_snippets=extra_snippets
+            extra_snippets=extra_snippets,
+            import_file=args.import_results
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)

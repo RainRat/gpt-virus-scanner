@@ -174,4 +174,4 @@ def test_import_results_unsupported_ext(monkeypatch, tmp_path):
 
     gptscan.import_results()
 
-    mock_messagebox.showerror.assert_called_with("Import Error", "Unsupported file extension: .txt")
+    mock_messagebox.showerror.assert_called_with("Import Failed", "Could not load results:\nUnsupported file extension: .txt")
