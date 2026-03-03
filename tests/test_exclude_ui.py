@@ -40,12 +40,12 @@ def test_exclude_selected_logic(tmp_path, monkeypatch, mock_gui):
     # Mock item values
     # Item 1 has raw data in hidden column
     path1 = str(tmp_path / "bad1.py")
-    raw_data1 = [path1, "90%", "Malicious", "Dangerous", "95%", "print('evil')"]
+    raw_data1 = [path1, "90%", "Malicious", "Dangerous", "95%", "print('evil')", "1"]
 
     def mock_item(iid, option=None):
         data = {
-            "item1": {"values": ["bad1.py", "90%", "Malicious", "Dangerous", "95%", "print('evil')", json.dumps(raw_data1)]},
-            "item2": {"values": ["bad2.py", "80%", "Sus", "Bad", "", "exec('code')", ""]} # No hidden column
+            "item1": {"values": ["bad1.py", "90%", "Malicious", "Dangerous", "95%", "print('evil')", "1", json.dumps(raw_data1)]},
+            "item2": {"values": ["bad2.py", "80%", "Sus", "Bad", "", "exec('code')", "1", ""]} # No hidden column
         }
         if option == "values":
             return data[iid]["values"]
@@ -59,9 +59,9 @@ def test_exclude_selected_logic(tmp_path, monkeypatch, mock_gui):
     # Mock _all_results_cache
     path2 = "bad2.py"
     gptscan._all_results_cache = [
-        (path1, "90%", "Malicious", "Dangerous", "95%", "print('evil')"),
-        (path2, "80%", "Sus", "Bad", "", "exec('code')"),
-        ("safe.py", "5%", "", "", "", "print('hi')")
+        (path1, "90%", "Malicious", "Dangerous", "95%", "print('evil')", "1"),
+        (path2, "80%", "Sus", "Bad", "", "exec('code')", "1"),
+        ("safe.py", "5%", "", "", "", "print('hi')", "1")
     ]
 
     # Execute

@@ -55,12 +55,12 @@ def test_scan_files_gpt_processing_flow(mock_gpt_env, monkeypatch):
     assert len(gpt_results) == 2
 
     res1 = next(r for r in gpt_results if "test1.py" in r[0])
-    path1, own1, admin1, user1, gpt1, snip1 = res1
+    path1, own1, admin1, user1, gpt1, snip1, line1 = res1
     assert admin1 == "Admin Hello"
     assert gpt1 == "90%"
 
     res2 = next(r for r in gpt_results if "test2.py" in r[0])
-    path2, own2, admin2, user2, gpt2, snip2 = res2
+    path2, own2, admin2, user2, gpt2, snip2, line2 = res2
     assert admin2 == "JSON Parse Error"
     assert gpt2 == "JSON Parse Error"
 
