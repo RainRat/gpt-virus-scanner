@@ -2365,10 +2365,12 @@ def _get_item_raw_values(item_id: str) -> Optional[List[Any]]:
         return None
     values = list(tree.item(item_id, "values"))
 
-    # Try to return raw values from the hidden column (index 6) if available
-    if len(values) > 6 and values[6]:
+    # Try to return raw values from the hidden column (index 7) if available
+    if len(values) > 7 and values[7]:
         try:
-            return json.loads(values[6])
+            data = json.loads(values[7])
+            if isinstance(data, list):
+                return data
         except (json.JSONDecodeError, TypeError):
             pass
     # Fallback: unwrap display newlines by replacing them with spaces
