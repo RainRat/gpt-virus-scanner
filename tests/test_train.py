@@ -78,7 +78,7 @@ def test_dataloader_load_file_padding(tmp_path):
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
         mode="train", predict_threshold=0.5, positive_sample_weight=1.0,
-        positive_class_weight=1.0, validation_split=0.2, patience=3,
+        validation_split=0.2, patience=3,
         max_params=1000000, pad_value=0
     )
     loader = DataLoader(config)
@@ -95,7 +95,7 @@ def test_dataloader_load_file_truncation(tmp_path):
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
         mode="train", predict_threshold=0.5, positive_sample_weight=1.0,
-        positive_class_weight=1.0, validation_split=0.2, patience=3,
+        validation_split=0.2, patience=3,
         max_params=1000000, pad_value=0
     )
     loader = DataLoader(config)
@@ -115,7 +115,7 @@ def test_dataloader_load_dataset(tmp_path):
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
         mode="train", predict_threshold=0.5, positive_sample_weight=2.0,
-        positive_class_weight=1.0, validation_split=0.2, patience=3,
+        validation_split=0.2, patience=3,
         max_params=1000000, pad_value=0
     )
     loader = DataLoader(config)
@@ -139,7 +139,7 @@ def test_dataloader_load_prediction_files(tmp_path):
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
         mode="train", predict_threshold=0.5, positive_sample_weight=1.0,
-        positive_class_weight=1.0, validation_split=0.2, patience=3,
+        validation_split=0.2, patience=3,
         max_params=1000000, pad_value=0
     )
     loader = DataLoader(config)
@@ -160,7 +160,7 @@ def test_model_builder_mappings():
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
         mode="train", predict_threshold=0.5, positive_sample_weight=1.0,
-        positive_class_weight=1.0, validation_split=0.2, patience=3,
+        validation_split=0.2, patience=3,
         max_params=1000000, pad_value=0
     )
     builder = ModelBuilder(config)
@@ -189,7 +189,7 @@ def test_model_builder_build_model():
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
         mode="train", predict_threshold=0.5, positive_sample_weight=1.0,
-        positive_class_weight=1.0, validation_split=0.2, patience=3,
+        validation_split=0.2, patience=3,
         max_params=1000000, pad_value=0
     )
     builder = ModelBuilder(config)
@@ -212,7 +212,7 @@ def test_model_builder_too_large(capsys):
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
         mode="train", predict_threshold=0.5, positive_sample_weight=1.0,
-        positive_class_weight=1.0, validation_split=0.2, patience=3,
+        validation_split=0.2, patience=3,
         max_params=10,
         pad_value=0
     )
@@ -227,7 +227,7 @@ def test_model_builder_print_architecture(capsys):
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
         mode="train", predict_threshold=0.5, positive_sample_weight=1.0,
-        positive_class_weight=1.0, validation_split=0.2, patience=3,
+        validation_split=0.2, patience=3,
         max_params=1000000, pad_value=0
     )
     builder = ModelBuilder(config)
@@ -282,7 +282,7 @@ def test_trainer_save_load_hp(tmp_path):
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
         mode="train", predict_threshold=0.5, positive_sample_weight=1.0,
-        positive_class_weight=1.0, validation_split=0.2, patience=3,
+        validation_split=0.2, patience=3,
         max_params=1000000, pad_value=0
     )
     trainer = Trainer(config)
@@ -306,7 +306,7 @@ def test_predictor_predict(mock_load_model, tmp_path):
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
         mode="predict", predict_threshold=0.5, positive_sample_weight=1.0,
-        positive_class_weight=1.0, validation_split=0.2, patience=3,
+        validation_split=0.2, patience=3,
         max_params=1000000, pad_value=0
     )
 
@@ -330,7 +330,7 @@ def test_predictor_predict_below_threshold(mock_load_model, tmp_path):
     config = ModelConfig(
         model_name="test", max_length=10, batch_size=32, epochs=1,
         mode="predict", predict_threshold=0.5, positive_sample_weight=1.0,
-        positive_class_weight=1.0, validation_split=0.2, patience=3,
+        validation_split=0.2, patience=3,
         max_params=1000000, pad_value=0
     )
 

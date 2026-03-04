@@ -21,7 +21,8 @@ def test_focus_filter_sets_focus_and_selects_all(mock_ui_env):
     res = gptscan.focus_filter()
 
     mock_ui_env['filter_entry'].focus_set.assert_called_once()
-    mock_ui_env['filter_entry'].selection_range.assert_called_once_with(0, tk.END)
+    # The mocked tk.END value is "end" (see tests/conftest.py)
+    mock_ui_env['filter_entry'].selection_range.assert_called_once_with(0, "end")
     assert res == "break"
 
 def test_focus_filter_handles_none_entry(monkeypatch):
