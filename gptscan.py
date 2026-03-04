@@ -42,6 +42,7 @@ scan_button: Optional[ttk.Button] = None
 cancel_button: Optional[ttk.Button] = None
 view_button: Optional[ttk.Button] = None
 rescan_button: Optional[ttk.Button] = None
+analyze_button: Optional[ttk.Button] = None
 context_menu: Optional[tk.Menu] = None
 _all_results_cache: List[Tuple[Any, ...]] = []
 _last_scan_summary: str = ""
@@ -972,6 +973,8 @@ def set_scanning_state(is_scanning: bool) -> None:
     if view_button and rescan_button:
         view_button.config(state="disabled" if is_scanning else "normal")
         rescan_button.config(state="disabled" if is_scanning else "normal")
+    if analyze_button:
+        analyze_button.config(state="disabled" if is_scanning else "normal")
 
 
 def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Optional[int] = None, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, high_risk: int = 0, medium_risk: int = 0) -> None:
@@ -1129,6 +1132,53 @@ def rescan_selected() -> None:
     scan_thread = threading.Thread(
         target=run_rescan,
         args=(paths, item_map, settings, current_cancel_event),
+        daemon=True
+    )
+    scan_thread.start()
+
+
+def analyze_selected_with_ai(event: Optional[tk.Event] = None) -> None:
+    """Perform AI analysis for the currently selected items in the Treeview."""
+    global current_cancel_event
+
+    if not tree or current_cancel_event is not None:
+        return
+
+    if not Config.GPT_ENABLED:
+        messagebox.showwarning("AI Disabled", "AI Analysis is disabled (task.txt not found or API key missing).")
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    gpt_requests = []
+    for item_id in selection:
+        values = _get_item_raw_values(item_id)
+        if values:
+            path = values[0]
+            snippet = values[5]
+            cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+
+            gpt_requests.append({
+                "path": path,
+                "percent": values[1],
+                "snippet": snippet,
+                "cleaned_snippet": cleaned_snippet,
+                "line": values[6] if len(values) > 6 else 1,
+                "item_id": item_id,
+            })
+
+    if not gpt_requests:
+        return
+
+    current_cancel_event = threading.Event()
+    set_scanning_state(True)
+    update_status(f"Requesting AI analysis for {len(gpt_requests)} selected item(s)...")
+
+    scan_thread = threading.Thread(
+        target=run_batch_ai_analysis,
+        args=(gpt_requests, current_cancel_event),
         daemon=True
     )
     scan_thread.start()
@@ -1575,6 +1625,101 @@ def scan_files(
     yield ('summary', (actual_files_scanned, total_bytes_scanned, end_time - start_time))
 
 
+def batch_ai_analysis_events(
+    gpt_requests: List[Dict[str, Any]],
+    cancel_event: threading.Event,
+    rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
+    max_concurrent_requests: int = Config.MAX_CONCURRENT_REQUESTS,
+) -> Generator[Tuple[str, Any], None, None]:
+    """Generator that performs AI analysis for a batch of requests.
+
+    Args:
+        gpt_requests: List of dictionaries with 'path', 'percent', 'snippet', 'cleaned_snippet', and 'line'.
+        cancel_event: Event to signal cancellation.
+        rate_limit: Requests per minute limit.
+        max_concurrent_requests: Maximum parallel requests.
+
+    Yields:
+        Standard scan events ('progress', 'result', 'summary').
+    """
+    if not gpt_requests or not Config.GPT_ENABLED:
+        return
+
+    async def process_requests(requests: Iterable[Dict[str, Any]]):
+        rate_limiter = AsyncRateLimiter(rate_limit)
+        semaphore = asyncio.Semaphore(max_concurrent_requests)
+        total = len(requests)
+        progress = 0
+
+        def wait_notifier(_wait_time: float) -> None:
+            enqueue_ui_update(update_status, "Waiting for API rate limit...")
+
+        async def run_request(request: Dict[str, Any]):
+            nonlocal progress
+            if cancel_event.is_set():
+                return
+            json_data = await async_handle_gpt_response(
+                request["snippet"],
+                Config.taskdesc,
+                rate_limiter=rate_limiter,
+                semaphore=semaphore,
+                wait_callback=wait_notifier,
+            )
+            progress += 1
+
+            # Prepare result data
+            if json_data is None:
+                admin_desc = 'AI Error' if not cancel_event.is_set() else 'Cancelled'
+                enduser_desc = admin_desc
+                chatgpt_conf_percent = admin_desc
+            else:
+                admin_desc = json_data["administrator"]
+                enduser_desc = json_data["end-user"]
+                chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
+
+            result_data = (
+                request["path"],
+                request["percent"],
+                admin_desc,
+                enduser_desc,
+                chatgpt_conf_percent,
+                request["cleaned_snippet"],
+                request.get("line", 1),
+                request.get("item_id"),
+            )
+
+            # Yield results via queue to the generator consumer
+            result_queue.put(('result', result_data))
+            result_queue.put(('progress', (progress, total, f"AI Analysis: {os.path.basename(request['path'])}")))
+
+        tasks = [asyncio.create_task(run_request(request)) for request in requests]
+        try:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        finally:
+            result_queue.put(('summary', (total, 0, 0.0)))
+            result_queue.put((None, None))
+
+    result_queue = queue.Queue()
+    total_count = len(gpt_requests)
+    yield ('progress', (0, total_count, "Starting AI Analysis..."))
+
+    # Start async processing in a separate thread to not block this generator's consumer
+    def run_async_loop():
+        try:
+            asyncio.run(process_requests(gpt_requests))
+        except Exception as e:
+            result_queue.put(('progress', (0, 0, f"Error: {e}")))
+            result_queue.put((None, None))
+
+    threading.Thread(target=run_async_loop, daemon=True).start()
+
+    while True:
+        event_type, data = result_queue.get()
+        if event_type is None:
+            break
+        yield event_type, data
+
+
 def _consume_scan_events(
     event_gen: Iterable[Tuple[str, Any]],
     cancel_event: threading.Event,
@@ -1729,6 +1874,29 @@ def run_rescan(
         return False
 
     _consume_scan_events(event_gen, cancel_event, "Rescanning", rescan_handler)
+
+
+def run_batch_ai_analysis(
+    gpt_requests: List[Dict[str, Any]],
+    cancel_event: threading.Event
+) -> None:
+    """Perform background AI analysis for multiple items and update Treeview rows."""
+    event_gen = batch_ai_analysis_events(
+        gpt_requests,
+        cancel_event,
+        rate_limit=Config.RATE_LIMIT_PER_MINUTE,
+        max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
+    )
+
+    def batch_handler(data: Tuple[Any, ...]) -> bool:
+        # data format: (path, own_conf, admin, user, gpt, snippet, line, item_id)
+        item_id = data[7] if len(data) > 7 else None
+        if item_id:
+            enqueue_ui_update(update_tree_row, item_id, data[:7])
+            return True
+        return False
+
+    _consume_scan_events(event_gen, cancel_event, "AI Analysis", batch_handler)
 
 
 def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -3010,6 +3178,10 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
     view_button.config(state="normal" if has_selection else "disabled")
     rescan_button.config(state="normal" if has_selection else "disabled")
 
+    if analyze_button:
+        ai_available = Config.GPT_ENABLED
+        analyze_button.config(state="normal" if has_selection and ai_available else "disabled")
+
 
 def on_root_return(event: Optional[tk.Event] = None) -> None:
     """Trigger a scan if the focus is not on a widget that handles Return."""
@@ -3085,7 +3257,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, default_font_measure
+    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, analyze_button, default_font_measure
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -3372,16 +3544,20 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     rescan_button.grid(row=0, column=2, padx=2)
     bind_hover_message(rescan_button, "Re-scan the currently selected items.")
 
+    analyze_button = ttk.Button(footer_frame, text="Analyze with AI", command=analyze_selected_with_ai)
+    analyze_button.grid(row=0, column=3, padx=2)
+    bind_hover_message(analyze_button, "Use AI to analyze the currently selected items.")
+
     import_button = ttk.Button(footer_frame, text="Import Results...", command=import_results)
-    import_button.grid(row=0, column=3, padx=2)
+    import_button.grid(row=0, column=4, padx=2)
     bind_hover_message(import_button, "Load results from a JSON or CSV file.")
 
     export_button = ttk.Button(footer_frame, text="Export Results...", command=export_results)
-    export_button.grid(row=0, column=4, padx=2)
+    export_button.grid(row=0, column=5, padx=2)
     bind_hover_message(export_button, "Save results to CSV, HTML, JSON, or SARIF.")
 
     clear_button = ttk.Button(footer_frame, text="Clear Results", command=clear_results)
-    clear_button.grid(row=0, column=5, padx=(2, 0))
+    clear_button.grid(row=0, column=6, padx=(2, 0))
     bind_hover_message(clear_button, "Clear all results from the list.")
 
     # --- Context Menu ---
@@ -3390,6 +3566,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu.add_command(label="View Details...", command=view_details)
     context_menu.add_separator()
     context_menu.add_command(label="Rescan Selected", command=rescan_selected)
+    context_menu.add_command(label="Analyze with AI", command=analyze_selected_with_ai)
     context_menu.add_command(label="Exclude from future scans", command=exclude_selected)
     context_menu.add_separator()
     context_menu.add_command(label="Select All", command=select_all_items)
@@ -3415,6 +3592,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-f>', focus_filter)
     root.bind('<Control-j>', copy_as_json)
     root.bind('<Command-j>', copy_as_json)
+    root.bind('<Control-g>', analyze_selected_with_ai)
+    root.bind('<Command-g>', analyze_selected_with_ai)
     tree.bind('<<TreeviewSelect>>', update_button_states)
     tree.bind('<Control-a>', select_all_items)
     tree.bind('<Command-a>', select_all_items)
