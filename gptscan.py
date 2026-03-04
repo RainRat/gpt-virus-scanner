@@ -43,6 +43,10 @@ cancel_button: Optional[ttk.Button] = None
 view_button: Optional[ttk.Button] = None
 rescan_button: Optional[ttk.Button] = None
 analyze_button: Optional[ttk.Button] = None
+exclude_button: Optional[ttk.Button] = None
+import_button: Optional[ttk.Button] = None
+export_button: Optional[ttk.Button] = None
+clear_button: Optional[ttk.Button] = None
 context_menu: Optional[tk.Menu] = None
 _all_results_cache: List[Tuple[Any, ...]] = []
 _last_scan_summary: str = ""
@@ -975,11 +979,18 @@ def set_scanning_state(is_scanning: bool) -> None:
         scan_button.config(state="disabled" if is_scanning else "normal")
         cancel_button.config(state="normal" if is_scanning else "disabled")
 
-    if view_button and rescan_button:
-        view_button.config(state="disabled" if is_scanning else "normal")
-        rescan_button.config(state="disabled" if is_scanning else "normal")
-    if analyze_button:
-        analyze_button.config(state="disabled" if is_scanning else "normal")
+    # Disable all footer buttons during a scan
+    footer_buttons = [
+        view_button, rescan_button, analyze_button, exclude_button,
+        import_button, export_button, clear_button
+    ]
+    for btn in footer_buttons:
+        if btn:
+            btn.config(state="disabled" if is_scanning else "normal")
+
+    if not is_scanning:
+        # Re-evaluate selection-dependent buttons when scan ends
+        update_button_states()
 
 
 def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Optional[int] = None, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, high_risk: int = 0, medium_risk: int = 0) -> None:
@@ -1262,13 +1273,28 @@ def exclude_selected() -> None:
     if not selection:
         return
 
+    # Capture current list and index to handle transition correctly
+    all_visible = list(tree.get_children())
+    try:
+        current_idx = all_visible.index(selection[0])
+    except (ValueError, IndexError):
+        current_idx = -1
+
     excluded_paths = []
     for item_id in selection:
         values = _get_item_raw_values(item_id)
         if values:
             excluded_paths.append(values[0])
 
-    exclude_paths(excluded_paths, confirm=True)
+    if exclude_paths(excluded_paths, confirm=True):
+        # After exclusion, list changes. Select the next item at the same index.
+        new_visible = list(tree.get_children())
+        if new_visible and current_idx != -1:
+            new_idx = min(current_idx, len(new_visible) - 1)
+            new_item_id = new_visible[new_idx]
+            tree.selection_set(new_item_id)
+            tree.focus(new_item_id)
+            tree.see(new_item_id)
 
 
 def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
@@ -3174,12 +3200,16 @@ def show_context_menu(event: tk.Event) -> None:
 
 def update_button_states(event: Optional[tk.Event] = None) -> None:
     """Enable or disable selection-dependent buttons."""
-    if not tree or not view_button or not rescan_button:
+    if not tree:
         return
 
     has_selection = bool(tree.selection())
-    view_button.config(state="normal" if has_selection else "disabled")
-    rescan_button.config(state="normal" if has_selection else "disabled")
+
+    # Buttons that depend on having one or more items selected
+    dependent_buttons = [view_button, rescan_button, exclude_button]
+    for btn in dependent_buttons:
+        if btn:
+            btn.config(state="normal" if has_selection else "disabled")
 
     if analyze_button:
         ai_available = Config.GPT_ENABLED
@@ -3260,7 +3290,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, analyze_button, default_font_measure
+    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, analyze_button, exclude_button, import_button, export_button, clear_button, default_font_measure
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -3551,16 +3581,22 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     analyze_button.grid(row=0, column=3, padx=2)
     bind_hover_message(analyze_button, "Use AI to analyze the currently selected items.")
 
+    exclude_button = ttk.Button(footer_frame, text="Exclude Selected", command=exclude_selected)
+    exclude_button.grid(row=0, column=4, padx=2)
+    bind_hover_message(exclude_button, "Exclude the selected items from future scans.")
+
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=5, sticky="ns", padx=5)
+
     import_button = ttk.Button(footer_frame, text="Import Results...", command=import_results)
-    import_button.grid(row=0, column=4, padx=2)
+    import_button.grid(row=0, column=6, padx=2)
     bind_hover_message(import_button, "Load results from a JSON or CSV file.")
 
     export_button = ttk.Button(footer_frame, text="Export Results...", command=export_results)
-    export_button.grid(row=0, column=5, padx=2)
+    export_button.grid(row=0, column=7, padx=2)
     bind_hover_message(export_button, "Save results to CSV, HTML, JSON, or SARIF.")
 
     clear_button = ttk.Button(footer_frame, text="Clear Results", command=clear_results)
-    clear_button.grid(row=0, column=6, padx=(2, 0))
+    clear_button.grid(row=0, column=8, padx=(2, 0))
     bind_hover_message(clear_button, "Clear all results from the list.")
 
     # --- Context Menu ---
