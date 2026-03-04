@@ -64,8 +64,8 @@ def test_run_scan_cancellation(monkeypatch):
 
     enqueued_funcs = [call[0][0] for call in mock_enqueue.call_args_list]
     assert gptscan.insert_tree_row not in enqueued_funcs
-    # In the new code, finish_scan_state is skipped on cancellation
-    assert gptscan.finish_scan_state not in enqueued_funcs
+    # finish_scan_state should be called even on cancellation to reset state
+    assert gptscan.finish_scan_state in enqueued_funcs
     # Instead, update_status should be called with "Scan cancelled..."
     assert gptscan.update_status in enqueued_funcs
     

@@ -559,19 +559,24 @@ def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Calla
 
     measure = measure or tkinter.font.Font(font='TkDefaultFont').measure
     words = val.split()
-    lines: List[Union[str, List[str]]] = [[]]
+    if not words:
+        return val
+
+    lines: List[List[str]] = [[]]
     for word in words:
-        line = lines[-1] + [word]
-        if not lines[-1] or measure(' '.join(line)) < (width - pad):
-            lines[-1].append(word)
+        current_line = lines[-1]
+        if not current_line:
+            current_line.append(word)
         else:
-            lines[-1] = ' '.join(lines[-1])
-            lines.append([word])
+            # Check if adding this word would exceed the width
+            test_line = ' '.join(current_line + [word])
+            if measure(test_line) < (width - pad):
+                current_line.append(word)
+            else:
+                # Start a new line
+                lines.append([word])
 
-    if isinstance(lines[-1], list):
-        lines[-1] = ' '.join(lines[-1])
-
-    return '\n'.join(lines)
+    return '\n'.join([' '.join(line) for line in lines])
 
 
 def get_wrapped_values(tree: ttk.Treeview, values: Iterable[Any], measure: Optional[Callable[[str], int]] = None, col_widths: Optional[List[int]] = None) -> List[Any]:
@@ -1636,10 +1641,8 @@ def _consume_scan_events(
                 metrics['elapsed_time'] = elapsed_time
     finally:
         if cancel_event.is_set():
-            enqueue_ui_update(set_scanning_state, False)
+            enqueue_ui_update(finish_scan_state)
             enqueue_ui_update(update_status, f"Scan cancelled after {current_scanned} files.")
-            enqueue_ui_update(update_tree_columns)
-            enqueue_ui_update(_auto_select_best_result)
         else:
             enqueue_ui_update(
                 finish_scan_state,
