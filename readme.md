@@ -71,6 +71,7 @@ Run `python gptscan.py` to open the GUI.
 *   **Minimum Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
 *   **Show all files:** See every scanned file, even safe ones.
 *   **Use AI Analysis:** Enable detailed reports for suspicious findings.
+*   **Batch AI Analysis:** Select multiple findings and analyze them all at once using the "Analyze with AI" button or right-click menu.
 *   **Import/Export:** Save or load results.
     *   **Import:** Supports CSV, JSON, JSONL, NDJSON, and SARIF formats.
     *   **Export:** Supports CSV, JSON, HTML, SARIF, and Markdown formats.
@@ -80,6 +81,7 @@ Run `python gptscan.py` to open the GUI.
 *   **Ctrl+F / Cmd+F:** Focus the search filter.
 *   **Ctrl+C / Cmd+C:** Copy path(s) of selected result(s).
 *   **Ctrl+Shift+C / Cmd+Shift+C:** Copy selected result(s) as a Markdown table.
+*   **Ctrl+G / Cmd+G:** Analyze selected result(s) with AI.
 *   **Ctrl+H / Cmd+H:** Copy SHA256 hash(es) of selected result(s).
 *   **Ctrl+S / Cmd+S:** Copy code snippet(s) of selected result(s).
 *   **Ctrl+Return / Cmd+Return:** Reveal selected file in folder.
