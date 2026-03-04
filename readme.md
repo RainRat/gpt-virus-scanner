@@ -39,7 +39,7 @@ Follow these steps to get the scanner running:
     pip install "tensorflow<2.16" openai
     ```
     *Linux users:* You may also need to install Tkinter (for example: `sudo apt-get install python3-tk`).
-    *   **OpenAI/OpenRouter:** Create a file named `apikey.txt` and paste your API key on the first line. Alternatively, set the `OPENAI_API_KEY` environment variable.
+    *   **OpenAI/OpenRouter:** Create a file named `apikey.txt` and paste your API key on the first line. Alternatively, set the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable.
     *   **Ollama:** Download [Ollama](https://ollama.com/) and run it locally. Pull a model before starting (e.g., `ollama pull llama3.2`).
 
 *Privacy Note:* Your code is only sent to an AI service if you enable "Use AI Analysis."
