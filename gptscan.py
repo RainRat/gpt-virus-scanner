@@ -611,48 +611,45 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
 
 def get_git_changed_files(path: str = ".") -> List[str]:
     """Get a list of changed files (staged, unstaged, untracked) from git."""
-    files = set()
+    abs_path = os.path.abspath(path)
+    search_dir = os.path.dirname(abs_path) if os.path.isfile(abs_path) else abs_path
 
-    # Ensure we have a directory for cwd
-    if os.path.isfile(path):
-        cwd = os.path.abspath(os.path.dirname(path)) or "."
-        # If we are looking at a specific file, we only care about that file
-        targets = [os.path.basename(path)]
-    else:
-        cwd = os.path.abspath(path)
-        targets = []
-
-    # Check if we are in a git repository and get the root directory
     try:
         toplevel = subprocess.check_output(
             ["git", "rev-parse", "--show-toplevel"],
-            cwd=cwd,
+            cwd=search_dir,
             stderr=subprocess.PIPE,
             universal_newlines=True
         ).strip()
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         return []
 
+    try:
+        rel_target = os.path.relpath(abs_path, toplevel)
+        targets = [rel_target]
+    except ValueError:
+        return []
+
+    files = set()
     # Changed (staged and unstaged) relative to HEAD
     try:
         cmd = ["git", "diff", "--name-only", "HEAD", "--"] + targets
         output = subprocess.check_output(
             cmd,
-            cwd=cwd,
+            cwd=toplevel,
             stderr=subprocess.PIPE,
             universal_newlines=True
         )
         files.update(line.strip() for line in output.splitlines() if line.strip())
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
-        # HEAD might not exist (new repo)
         pass
 
     # Untracked files
     try:
-        cmd = ["git", "ls-files", "--others", "--exclude-standard", "--full-name", "--"] + targets
+        cmd = ["git", "ls-files", "--others", "--exclude-standard", "--"] + targets
         output = subprocess.check_output(
             cmd,
-            cwd=cwd,
+            cwd=toplevel,
             stderr=subprocess.PIPE,
             universal_newlines=True
         )

@@ -80,7 +80,8 @@ def test_path_argument_passed():
     """Test that the path argument is correctly passed to git command cwd."""
     with patch("subprocess.check_output") as mock_check_output, \
          patch("os.path.exists") as mock_exists:
-        mock_check_output.side_effect = ["", "changed.py", ""]
+        # First call is rev-parse to get toplevel
+        mock_check_output.side_effect = ["/some", "changed.py", ""]
         mock_exists.return_value = True
 
         target_dir = os.path.abspath("/some/path")
@@ -88,9 +89,11 @@ def test_path_argument_passed():
         with patch("os.path.exists", return_value=True):
             files = get_git_changed_files(target_dir)
 
-        # Verify cwd was set correctly in all calls (rev-parse, diff, ls-files)
-        for call in mock_check_output.call_args_list:
-            assert call[1]["cwd"] == target_dir
+        # First call is rev-parse, cwd should be search_dir (target_dir)
+        assert mock_check_output.call_args_list[0][1]["cwd"] == target_dir
+        # Subsequent calls (diff, ls-files) should have cwd as toplevel ("/some")
+        assert mock_check_output.call_args_list[1][1]["cwd"] == "/some"
+        assert mock_check_output.call_args_list[2][1]["cwd"] == "/some"
 
 def test_git_commands_use_relative_flag():
     """Verify that git commands are called correctly."""
