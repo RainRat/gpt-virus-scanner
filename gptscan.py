@@ -620,7 +620,7 @@ def get_git_changed_files(path: str = ".") -> List[str]:
         targets = [os.path.basename(path)]
     else:
         cwd = os.path.abspath(path)
-        targets = []
+        targets = ["."]
 
     # Check if we are in a git repository and get the root directory
     try:
