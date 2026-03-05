@@ -77,12 +77,13 @@ class Config:
     """Global configuration settings for the scanner."""
     VERSION = "1.4.0"
     SETTINGS_FILE = ".gptscan_settings.json"
+    CACHE_FILE = ".gptscan_cache.json"
     MAXLEN = 1024
     EXPECTED_KEYS = ["administrator", "end-user", "threat-level"]
     MAX_RETRIES = 3
     RATE_LIMIT_PER_MINUTE = 60
     MAX_CONCURRENT_REQUESTS = 5
-    gpt_cache: Dict[int, Dict[str, Any]] = {}
+    gpt_cache: Dict[str, Dict[str, Any]] = {}
     apikey: str = load_file('apikey.txt')
     taskdesc: str = load_file('task.txt')
     GPT_ENABLED: bool = False
@@ -162,6 +163,26 @@ class Config:
             print(f"Warning: Could not load settings: {e}", file=sys.stderr)
 
     @classmethod
+    def save_cache(cls) -> None:
+        """Save AI analysis cache to a JSON file."""
+        try:
+            with open(cls.CACHE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(cls.gpt_cache, f, indent=4)
+        except Exception as e:
+            print(f"Warning: Could not save AI cache: {e}", file=sys.stderr)
+
+    @classmethod
+    def load_cache(cls) -> None:
+        """Load AI analysis cache from a JSON file."""
+        if not os.path.exists(cls.CACHE_FILE):
+            return
+        try:
+            with open(cls.CACHE_FILE, 'r', encoding='utf-8') as f:
+                cls.gpt_cache = json.load(f)
+        except Exception as e:
+            print(f"Warning: Could not load AI cache: {e}", file=sys.stderr)
+
+    @classmethod
     def initialize(cls) -> None:
         if not cls.apikey:
             # Fallback to environment variables if apikey.txt is missing or empty
@@ -192,6 +213,7 @@ class Config:
             ]
 
         cls.load_settings()
+        cls.load_cache()
 
     @classmethod
     def is_supported_file(cls, file_path: Path, is_explicit: bool = False) -> bool:
@@ -486,7 +508,9 @@ async def async_handle_gpt_response(
 
     retries = 0
     json_data: Optional[Union[Dict, str]] = None
-    cache_key = hashlib.sha256(snippet.encode('utf-8')).hexdigest()
+    # Include provider, model and prompt in cache key for robustness
+    cache_input = f"{Config.provider}:{Config.model_name}:{taskdesc}:{snippet}"
+    cache_key = hashlib.sha256(cache_input.encode('utf-8')).hexdigest()
     if cache_key in Config.gpt_cache:
         return Config.gpt_cache[cache_key]
 
@@ -529,6 +553,7 @@ async def async_handle_gpt_response(
 
     if isinstance(json_data, dict):
         Config.gpt_cache[cache_key] = json_data
+        Config.save_cache()
         return json_data
 
     print("Failed to obtain a valid response from GPT after multiple retries.", file=sys.stderr)
@@ -2530,6 +2555,13 @@ def import_results() -> None:
         messagebox.showerror("Import Failed", f"Could not load results:\n{err}")
 
 
+def clear_ai_cache() -> None:
+    """Clear the AI analysis cache and update the persistent file."""
+    Config.gpt_cache = {}
+    Config.save_cache()
+    update_status("AI Analysis cache cleared.")
+
+
 def clear_results() -> None:
     """Clear all results from the Treeview and reset progress/status."""
     global _all_results_cache, _last_scan_summary
@@ -3307,6 +3339,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     file_menu.add_command(label="Export Results...", command=export_results)
     file_menu.add_separator()
     file_menu.add_command(label="Clear Results", command=clear_results)
+    file_menu.add_command(label="Clear AI Cache", command=clear_ai_cache)
     file_menu.add_command(label="Clear Path History", command=clear_path_history)
     file_menu.add_separator()
     file_menu.add_command(label="Exit", command=root.quit)
@@ -3767,6 +3800,11 @@ def main():
         default=Config.RATE_LIMIT_PER_MINUTE,
         help='Limit AI requests per minute to avoid errors (default: 60).'
     )
+    ai_group.add_argument(
+        '--clear-cache',
+        action='store_true',
+        help='Clear the AI analysis cache.'
+    )
 
     output_group = parser.add_argument_group("Output")
     output_group.add_argument('--cli', action='store_true', help='Run in command-line mode instead of opening a window.')
@@ -3779,6 +3817,14 @@ def main():
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report of the results.')
 
     args = parser.parse_args()
+
+    if args.clear_cache:
+        Config.gpt_cache = {}
+        Config.save_cache()
+        print("AI Analysis cache cleared.", file=sys.stderr)
+        # If we ONLY wanted to clear cache, exit now.
+        if not any([args.target, args.path, args.stdin, args.import_results, args.files]):
+            sys.exit(0)
 
     Config.provider = args.provider
     if args.api_base:
