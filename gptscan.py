@@ -3297,6 +3297,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.title("GPT Virus Scanner")
     default_font_measure = tkinter.font.Font(font='TkDefaultFont').measure
 
+    style = ttk.Style(root)
+    style.configure('Primary.TButton', font=('TkDefaultFont', 9, 'bold'))
+
     # --- Menu Bar ---
     menubar = tk.Menu(root)
     file_menu = tk.Menu(menubar, tearoff=0)
@@ -3345,20 +3348,12 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     select_clipboard_btn.grid(row=0, column=4, sticky="e", padx=(5, 0))
     bind_hover_message(select_clipboard_btn, "Scan code currently in your clipboard.")
 
-    scan_button = ttk.Button(input_frame, text="Scan Now", command=button_click, default='active')
-    scan_button.grid(row=0, column=5, sticky="e", padx=(5, 0))
-    bind_hover_message(scan_button, "Start the scan.")
-
-    cancel_button = ttk.Button(input_frame, text="Cancel", command=cancel_scan, state="disabled")
-    cancel_button.grid(row=0, column=6, sticky="e", padx=(5, 0))
-    bind_hover_message(cancel_button, "Stop the current scan.")
-
     # --- Settings Container ---
     settings_frame = ttk.Frame(root)
     settings_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
     # --- Options Frame ---
-    options_frame = ttk.LabelFrame(settings_frame, text="Scan Options")
+    options_frame = ttk.LabelFrame(settings_frame, text="Scan Options", padding=10)
     options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
 
     gpt_var = tk.BooleanVar(value=Config.use_ai_analysis)
@@ -3381,7 +3376,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
     # --- Provider Frame ---
-    provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis")
+    provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis", padding=10)
     provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
     def toggle_ai_controls():
@@ -3452,6 +3447,18 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     model_var.trace_add("write", on_model_change)
 
+    # --- Actions Frame ---
+    actions_frame = ttk.Frame(settings_frame)
+    actions_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
+
+    scan_button = ttk.Button(actions_frame, text="Scan Now", command=button_click, style='Primary.TButton', default='active')
+    scan_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
+    bind_hover_message(scan_button, "Start the scan.")
+
+    cancel_button = ttk.Button(actions_frame, text="Cancel", command=cancel_scan, state="disabled")
+    cancel_button.pack(side=tk.TOP, fill=tk.X, pady=2)
+    bind_hover_message(cancel_button, "Stop the current scan.")
+
     if Config.extensions_missing:
         default_exts = ', '.join(sorted(Config.extensions_set)) if Config.extensions_set else 'none'
         messagebox.showwarning(
@@ -3507,7 +3514,6 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(all_checkbox, "Display all scanned files, including safe ones.")
 
     # --- Treeview ---
-    style = ttk.Style(root)
     style.configure('Scanner.Treeview', rowheight=50)
 
     # Configure tags for row highlighting
