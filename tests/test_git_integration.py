@@ -175,3 +175,35 @@ def test_get_git_changed_files_subdirectory_resolution(tmp_path):
     result_paths = [os.path.abspath(r) for r in results]
     assert os.path.abspath(f) in result_paths
     assert os.path.abspath(untracked) in result_paths
+
+def test_get_git_changed_files_subdir_scoping(tmp_path):
+    """Verify that changes in the root are NOT leaked when scanning a subdirectory."""
+    # Initialize a git repo
+    subprocess.run(["git", "init"], cwd=str(tmp_path), check=True, capture_output=True)
+
+    # 1. Create and commit a file in the root
+    root_file = tmp_path / "root.py"
+    root_file.write_text("root")
+
+    # 2. Create a subdirectory and a file in it
+    subdir = tmp_path / "target_subdir"
+    subdir.mkdir()
+    sub_file = subdir / "sub.py"
+    sub_file.write_text("sub")
+
+    # Commit both
+    subprocess.run(["git", "add", "."], cwd=str(tmp_path), check=True)
+    subprocess.run(["git", "commit", "-m", "initial"], cwd=str(tmp_path), check=True)
+
+    # 3. Modify BOTH files
+    root_file.write_text("root modified")
+    sub_file.write_text("sub modified")
+
+    # 4. Scan the subdirectory
+    results = get_git_changed_files(str(subdir))
+
+    result_paths = [os.path.abspath(r) for r in results]
+
+    # Only the sub file should be in results
+    assert os.path.abspath(sub_file) in result_paths
+    assert os.path.abspath(root_file) not in result_paths
