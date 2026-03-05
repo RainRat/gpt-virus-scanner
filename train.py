@@ -509,16 +509,16 @@ def parse_args():
         epilog="""
 Examples:
   # Train with config file
-  python script.py --config config.yml --mode train
+  python train.py --config config.yml --mode train
   
   # Predict with config file
-  python script.py --config config.yml --mode predict
+  python train.py --config config.yml --mode predict
   
   # Override model name
-  python script.py --config config.yml --model-name my_model
+  python train.py --config config.yml --model-name my_model
   
   # Use custom data directories
-  python script.py --config config.yml --positive-dir data/malicious --negative-dir data/safe
+  python train.py --config config.yml --positive-dir data/malicious --negative-dir data/safe
         """
     )
     

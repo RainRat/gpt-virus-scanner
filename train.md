@@ -47,7 +47,6 @@ prediction:
 
 weights:
   positive_sample_weight: 1.0 # Importance of malicious examples during training
-  positive_class_weight: 1.0  # Weight applied to malicious files
 
 # AI settings for the automatic optimization process.
 # These values (0.0 to 1.0) control how the model is built.
