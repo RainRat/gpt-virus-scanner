@@ -2268,7 +2268,16 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     result_buffer = []
 
     if import_file:
-        event_gen = import_results_generator(import_file)
+        if import_file == "-":
+            try:
+                content = sys.stdin.read()
+                event_gen = import_results_from_content_generator(content)
+            except Exception as e:
+                def error_gen():
+                    yield ('progress', (0, 1, f"Error reading from stdin: {e}"))
+                event_gen = error_gen()
+        else:
+            event_gen = import_results_generator(import_file)
     else:
         event_gen = scan_files(
             targets,
@@ -2397,6 +2406,84 @@ def standardize_result_dict(item: Dict[str, Any]) -> Dict[str, Any]:
     return standardized
 
 
+def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Parse report content in JSON, SARIF, or CSV format.
+
+    Args:
+        content: The raw string content of the report.
+        filename_hint: Optional filename or extension hint (e.g., '.json', '.csv').
+
+    Returns:
+        A list of standardized result dictionaries.
+    """
+    content = content.strip()
+    if not content:
+        return []
+
+    ext = ""
+    if filename_hint:
+        ext = os.path.splitext(filename_hint)[1].lower()
+
+    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv'):
+        raise ValueError(f"Unsupported file extension: {ext}")
+
+    data_to_import = []
+
+    # Auto-detection logic
+    if content.startswith('[') or (ext in ('.json', '.jsonl', '.ndjson')):
+        if content.startswith('['):
+            # Standard JSON list
+            data_to_import = json.loads(content)
+        else:
+            # Try to parse as single JSON object first
+            try:
+                item = json.loads(content)
+                if isinstance(item, list):
+                    data_to_import = item
+                else:
+                    data_to_import = [item]
+            except json.JSONDecodeError:
+                # Fallback to NDJSON
+                data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
+    elif (content.startswith('{') and '"runs"' in content) or ext == '.sarif':
+        # SARIF format
+        sarif_data = json.loads(content)
+        for run in sarif_data.get("runs", []):
+            for result in run.get("results", []):
+                props = result.get("properties", {})
+                mapped = {
+                    "path": "",
+                    "own_conf": props.get("own_conf", ""),
+                    "admin_desc": props.get("admin_desc") or result.get("message", {}).get("text", ""),
+                    "end-user_desc": props.get("end-user_desc", ""),
+                    "gpt_conf": props.get("gpt_conf", ""),
+                    "snippet": props.get("snippet", ""),
+                    "line": "-"
+                }
+                locations = result.get("locations", [])
+                if locations:
+                    phys_loc = locations[0].get("physicalLocation", {})
+                    uri = phys_loc.get("artifactLocation", {}).get("uri", "")
+                    mapped["path"] = uri.replace("/", os.sep)
+                    region = phys_loc.get("region", {})
+                    if "startLine" in region:
+                        mapped["line"] = region["startLine"]
+                data_to_import.append(mapped)
+    elif ext == '.csv' or ',' in content.splitlines()[0]:
+        # CSV format
+        f = io.StringIO(content)
+        reader = csv.DictReader(f)
+        data_to_import = list(reader)
+    else:
+        # Last resort: try JSON parsing anyway
+        try:
+            data_to_import = [json.loads(content)]
+        except json.JSONDecodeError:
+            raise ValueError("Could not determine report format.")
+
+    return [standardize_result_dict(item) for item in data_to_import]
+
+
 def load_report_file(file_path: str) -> List[Dict[str, Any]]:
     """Parse a report file in JSON, SARIF, or CSV format.
 
@@ -2406,87 +2493,37 @@ def load_report_file(file_path: str) -> List[Dict[str, Any]]:
     Returns:
         A list of standardized result dictionaries.
     """
-    ext = os.path.splitext(file_path)[1].lower()
-    data_to_import = []
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
 
-    if ext in ('.json', '.jsonl', '.ndjson', '.sarif'):
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            if not content:
-                raise ValueError("File is empty.")
+    if not content.strip():
+        raise ValueError("File is empty.")
 
-            try:
-                # Try to parse the entire content as a single JSON entity (list or object)
-                json_data = json.loads(content)
-                if isinstance(json_data, list):
-                    # Standard JSON list
-                    data_to_import = json_data
-                elif isinstance(json_data, dict):
-                    if "runs" in json_data:
-                        # SARIF format
-                        for run in json_data.get("runs", []):
-                            for result in run.get("results", []):
-                                props = result.get("properties", {})
-                                mapped = {
-                                    "path": "",
-                                    "own_conf": props.get("own_conf", ""),
-                                    "admin_desc": props.get("admin_desc") or result.get("message", {}).get("text", ""),
-                                    "end-user_desc": props.get("end-user_desc", ""),
-                                    "gpt_conf": props.get("gpt_conf", ""),
-                                    "snippet": props.get("snippet", ""),
-                                    "line": "-"
-                                }
-                                locations = result.get("locations", [])
-                                if locations:
-                                    phys_loc = locations[0].get("physicalLocation", {})
-                                    uri = phys_loc.get("artifactLocation", {}).get("uri", "")
-                                    mapped["path"] = uri.replace("/", os.sep)
-                                    region = phys_loc.get("region", {})
-                                    if "startLine" in region:
-                                        mapped["line"] = region["startLine"]
-                                data_to_import.append(mapped)
-                    else:
-                        # Single JSON object (one result)
-                        data_to_import = [json_data]
-                else:
-                    # Non-iterable JSON type (e.g., string, number)
-                    raise ValueError("JSON content is not a list or object.")
-            except json.JSONDecodeError:
-                # Fallback to NDJSON (newline-delimited JSON)
-                try:
-                    data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
-                except json.JSONDecodeError:
-                    raise ValueError("Invalid JSON format.")
-    elif ext == '.csv':
-        with open(file_path, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            data_to_import = list(reader)
-    else:
-        raise ValueError(f"Unsupported file extension: {ext}")
-
-    return [standardize_result_dict(item) for item in data_to_import]
+    return parse_report_content(content, filename_hint=file_path)
 
 
-def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None, None]:
-    """Generator that yields events from an imported report file.
+def import_results_from_content_generator(content: str, filename_hint: Optional[str] = None) -> Generator[Tuple[str, Any], None, None]:
+    """Generator that yields events from imported report content.
 
     Mimics the event stream from scan_files to allow processing of imported
     results through the standard CLI and GUI logic.
 
     Args:
-        file_path: Path to the report file to import.
+        content: Raw report content string.
+        filename_hint: Optional filename or extension hint.
 
     Yields:
         Events ('progress', 'result', 'summary') identical to scan_files.
     """
     try:
-        results = load_report_file(file_path)
+        results = parse_report_content(content, filename_hint=filename_hint)
     except Exception as e:
-        yield ('progress', (0, 1, f"Error loading report: {e}"))
+        yield ('progress', (0, 1, f"Error parsing report: {e}"))
         return
 
     total = len(results)
-    yield ('progress', (0, total, f"Importing: {os.path.basename(file_path)}"))
+    source_name = os.path.basename(filename_hint) if filename_hint else "Content"
+    yield ('progress', (0, total, f"Importing: {source_name}"))
 
     for i, item in enumerate(results):
         yield ('progress', (i + 1, total, f"Importing: {os.path.basename(item.get('path', 'unknown'))}"))
@@ -2505,6 +2542,20 @@ def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None,
         yield ('result', data)
 
     yield ('summary', (total, 0, 0.0))
+
+
+def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None, None]:
+    """Generator that yields events from an imported report file."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        if not content.strip():
+            raise ValueError("File is empty.")
+    except Exception as e:
+        yield ('progress', (0, 1, f"Error: {e}"))
+        return
+
+    yield from import_results_from_content_generator(content, filename_hint=file_path)
 
 
 def import_results() -> None:
@@ -2567,6 +2618,61 @@ def import_results() -> None:
 
     except Exception as err:
         messagebox.showerror("Import Failed", f"Could not load results:\n{err}")
+
+
+def import_from_clipboard(event: Optional[tk.Event] = None) -> Optional[str]:
+    """Import scan results from the system clipboard."""
+    if not tree:
+        return "break"
+
+    # Don't intercept paste if focus is on an entry or text widget
+    focused = root.focus_get() if root else None
+    if isinstance(focused, (ttk.Entry, tk.Entry, tk.Text, scrolledtext.ScrolledText)):
+        return None
+
+    try:
+        content = root.clipboard_get()
+        if not content:
+            return "break"
+    except Exception as e:
+        messagebox.showwarning("Clipboard Error", f"Could not read from clipboard: {e}")
+        return "break"
+
+    try:
+        data_to_import = parse_report_content(content)
+
+        if not data_to_import:
+            messagebox.showwarning("Import Warning", "No valid scan results found in clipboard.")
+            return "break"
+
+        # Clear existing results
+        clear_results()
+
+        count = 0
+        for item in data_to_import:
+            values = (
+                item["path"],
+                item["own_conf"],
+                item["admin_desc"],
+                item["end-user_desc"],
+                item["gpt_conf"],
+                item["snippet"],
+                item["line"]
+            )
+            insert_tree_row(values)
+            count += 1
+
+        msg = f"Imported {count} results from clipboard"
+        global _last_scan_summary
+        _last_scan_summary = msg
+        update_status(msg)
+        update_tree_columns()
+        _auto_select_best_result()
+
+    except Exception as err:
+        messagebox.showerror("Import Failed", f"Could not parse clipboard content:\n{err}")
+
+    return "break"
 
 
 def clear_ai_cache() -> None:
@@ -3350,6 +3456,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     menubar = tk.Menu(root)
     file_menu = tk.Menu(menubar, tearoff=0)
     file_menu.add_command(label="Import Results...", command=import_results)
+    file_menu.add_command(label="Import from Clipboard", command=import_from_clipboard)
     file_menu.add_command(label="Export Results...", command=export_results)
     file_menu.add_separator()
     file_menu.add_command(label="Clear Results", command=clear_results)
@@ -3680,6 +3787,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # Bind selection and rescan keys
     root.bind('<Return>', on_root_return)
+    root.bind('<Control-v>', import_from_clipboard)
+    root.bind('<Command-v>', import_from_clipboard)
     root.bind('<Control-f>', focus_filter)
     root.bind('<Command-f>', focus_filter)
     root.bind('<Control-j>', copy_as_json)
@@ -3786,7 +3895,7 @@ def main():
     scan_group.add_argument(
         '--import-results', '--import',
         type=str,
-        help='Import and process results from a previous scan (JSON, CSV, or SARIF).'
+        help='Import and process results from a previous scan (JSON, CSV, or SARIF). Use "-" to read from standard input.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
