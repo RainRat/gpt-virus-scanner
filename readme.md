@@ -107,12 +107,16 @@ python gptscan.py ./my_scripts --cli --use-gpt --provider ollama --model llama3.
 
 # Save results to a JSON file
 python gptscan.py ./my_scripts --cli -o results.json --exclude "tests/*"
+
+# Convert an existing JSON report to an HTML report
+python gptscan.py --cli --import results.json -o report.html
 ```
 
 **Common Options:**
 *   `--cli`: Run in command-line mode.
 *   `--stdin`: Read a code snippet from standard input to scan.
 *   `--deep`: Scan the entire file.
+*   `--dry-run`: Show which files would be scanned without analyzing them.
 *   `--show-all`: List all files, even safe ones.
 *   `--use-gpt`: Enable AI Analysis for suspicious code.
 *   `--output [file], -o [file]`: Save results to a file. The format is chosen based on the extension (.json, .csv, .html, .sarif, .md).
@@ -121,6 +125,7 @@ python gptscan.py ./my_scripts --cli -o results.json --exclude "tests/*"
 *   `--git-changes`: Only scan files that have changed in Git.
 *   `--exclude [patterns], -e [patterns]`: Skip files matching these patterns.
 *   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
+*   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF).
 *   `--markdown`: Save the report in Markdown format.
 
 ## Troubleshooting
