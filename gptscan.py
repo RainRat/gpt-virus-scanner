@@ -472,6 +472,11 @@ def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
     """
     content = response.choices[0].message.content
 
+    # Extract JSON from markdown blocks if present
+    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', content, re.DOTALL)
+    if json_match:
+        content = json_match.group(1)
+
     try:
         json_data = json.loads(content)
     except json.JSONDecodeError as exc:

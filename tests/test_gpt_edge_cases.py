@@ -58,6 +58,38 @@ def test_extract_data_invalid_structure():
     with pytest.raises(AttributeError):
         extract_data_from_gpt_response(object())
 
+def test_extract_data_markdown_json(mock_response):
+    content = """
+Here is the analysis:
+```json
+{
+  "administrator": "admin notes",
+  "end-user": "user notes",
+  "threat-level": 25
+}
+```
+"""
+    response = mock_response(content)
+    result = extract_data_from_gpt_response(response)
+    assert isinstance(result, dict)
+    assert result["threat-level"] == 25
+    assert result["administrator"] == "admin notes"
+
+def test_extract_data_markdown_no_lang(mock_response):
+    content = """
+```
+{
+  "administrator": "a",
+  "end-user": "u",
+  "threat-level": 50
+}
+```
+"""
+    response = mock_response(content)
+    result = extract_data_from_gpt_response(response)
+    assert isinstance(result, dict)
+    assert result["threat-level"] == 50
+
 class MockRateLimitError(Exception):
     def __init__(self):
         self.status_code = 429
