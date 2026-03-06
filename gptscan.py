@@ -2410,36 +2410,48 @@ def load_report_file(file_path: str) -> List[Dict[str, Any]]:
             if not content:
                 raise ValueError("File is empty.")
 
-            if content.startswith('['):
-                # Standard JSON list
-                data_to_import = json.loads(content)
-            elif ext == '.sarif' or (content.startswith('{') and '"runs"' in content):
-                # SARIF format
-                sarif_data = json.loads(content)
-                for run in sarif_data.get("runs", []):
-                    for result in run.get("results", []):
-                        props = result.get("properties", {})
-                        mapped = {
-                            "path": "",
-                            "own_conf": props.get("own_conf", ""),
-                            "admin_desc": props.get("admin_desc") or result.get("message", {}).get("text", ""),
-                            "end-user_desc": props.get("end-user_desc", ""),
-                            "gpt_conf": props.get("gpt_conf", ""),
-                            "snippet": props.get("snippet", ""),
-                            "line": "-"
-                        }
-                        locations = result.get("locations", [])
-                        if locations:
-                            phys_loc = locations[0].get("physicalLocation", {})
-                            uri = phys_loc.get("artifactLocation", {}).get("uri", "")
-                            mapped["path"] = uri.replace("/", os.sep)
-                            region = phys_loc.get("region", {})
-                            if "startLine" in region:
-                                mapped["line"] = region["startLine"]
-                        data_to_import.append(mapped)
-            else:
-                # NDJSON (newline-delimited JSON)
-                data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
+            try:
+                # Try to parse the entire content as a single JSON entity (list or object)
+                json_data = json.loads(content)
+                if isinstance(json_data, list):
+                    # Standard JSON list
+                    data_to_import = json_data
+                elif isinstance(json_data, dict):
+                    if "runs" in json_data:
+                        # SARIF format
+                        for run in json_data.get("runs", []):
+                            for result in run.get("results", []):
+                                props = result.get("properties", {})
+                                mapped = {
+                                    "path": "",
+                                    "own_conf": props.get("own_conf", ""),
+                                    "admin_desc": props.get("admin_desc") or result.get("message", {}).get("text", ""),
+                                    "end-user_desc": props.get("end-user_desc", ""),
+                                    "gpt_conf": props.get("gpt_conf", ""),
+                                    "snippet": props.get("snippet", ""),
+                                    "line": "-"
+                                }
+                                locations = result.get("locations", [])
+                                if locations:
+                                    phys_loc = locations[0].get("physicalLocation", {})
+                                    uri = phys_loc.get("artifactLocation", {}).get("uri", "")
+                                    mapped["path"] = uri.replace("/", os.sep)
+                                    region = phys_loc.get("region", {})
+                                    if "startLine" in region:
+                                        mapped["line"] = region["startLine"]
+                                data_to_import.append(mapped)
+                    else:
+                        # Single JSON object (one result)
+                        data_to_import = [json_data]
+                else:
+                    # Non-iterable JSON type (e.g., string, number)
+                    raise ValueError("JSON content is not a list or object.")
+            except json.JSONDecodeError:
+                # Fallback to NDJSON (newline-delimited JSON)
+                try:
+                    data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
+                except json.JSONDecodeError:
+                    raise ValueError("Invalid JSON format.")
     elif ext == '.csv':
         with open(file_path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)

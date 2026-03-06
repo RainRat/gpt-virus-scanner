@@ -175,3 +175,25 @@ def test_import_results_unsupported_ext(monkeypatch, tmp_path):
     gptscan.import_results()
 
     mock_messagebox.showerror.assert_called_with("Import Failed", "Could not load results:\nUnsupported file extension: .txt")
+
+def test_import_results_single_object_json(tmp_path):
+    """Test importing a pretty-printed single JSON object result."""
+    data = {
+        "path": "single.py",
+        "own_conf": "95%",
+        "admin_desc": "One object",
+        "end-user_desc": "Careful",
+        "gpt_conf": "99%",
+        "snippet": "dangerous()",
+        "line": "42"
+    }
+    json_file = tmp_path / "single.json"
+    # Write as pretty-printed JSON
+    json_file.write_text(json.dumps(data, indent=2))
+
+    results = gptscan.load_report_file(str(json_file))
+
+    assert len(results) == 1
+    assert results[0]["path"] == "single.py"
+    assert results[0]["gpt_conf"] == "99%"
+    assert results[0]["line"] == "42"
