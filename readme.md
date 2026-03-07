@@ -27,7 +27,7 @@ Scan a code snippet from standard input:
 echo "print('hello')" | python gptscan.py --cli --stdin
 ```
 
-## Setup
+## Installation
 
 Follow these steps to get the scanner running:
 
@@ -39,10 +39,21 @@ Follow these steps to get the scanner running:
     pip install "tensorflow<2.16" openai
     ```
     *Linux users:* You may also need to install Tkinter (for example: `sudo apt-get install python3-tk`).
-    *   **OpenAI/OpenRouter:** Create a file named `apikey.txt` and paste your API key on the first line. Alternatively, set the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable.
-    *   **Ollama:** Download [Ollama](https://ollama.com/) and run it locally. Pull a model before starting (e.g., `ollama pull llama3.2`).
 
-*Privacy Note:* Your code is only sent to an AI service if you enable "Use AI Analysis."
+## AI Service Setup
+
+To use the "AI Analysis" feature, you need to set up an AI provider. Your code is only sent to an AI service if you enable this option.
+
+### OpenAI or OpenRouter
+1.  **Get an API key:** Sign up for [OpenAI](https://openai.com/) or [OpenRouter](https://openrouter.ai/).
+2.  **Add your key:** You have two options:
+    *   Create a file named `apikey.txt` in the scanner folder and paste your key on the first line.
+    *   Set the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable in your terminal.
+
+### Ollama (Local AI)
+1.  **Install Ollama:** Download and install [Ollama](https://ollama.com/).
+2.  **Download a model:** Run `ollama pull llama3.2` (or your preferred model) in your terminal.
+3.  **Run Ollama:** Ensure the Ollama app is running before you start the scanner.
 
 ## Supported Files
 
@@ -127,6 +138,10 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
 *   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF).
 *   `--markdown`: Save the report in Markdown format.
+
+## Advanced: Training
+
+You can retrain the local scanner model to recognize new types of threats. For detailed instructions on how to prepare your data and run the trainer, see the [Training Guide](train.md).
 
 ## Troubleshooting
 
