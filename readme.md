@@ -88,6 +88,7 @@ Run `python gptscan.py` to open the GUI.
 *   **F5 / R:** Rescan selected files.
 *   **Double-click / Enter / Space:** View detailed analysis and code.
 *   **Shift+Enter:** Open selected file.
+*   **Ctrl+Shift+E / Cmd+Shift+E:** Copy the current scan settings as a CLI command.
 *   **Esc:** Cancel the active scan.
 
 ### Using the Command Line (CLI)

@@ -7,6 +7,7 @@ import json
 import os
 import queue
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -3368,6 +3369,59 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
         analyze_button.config(state="normal" if has_selection and ai_available else "disabled")
 
 
+def get_cli_command() -> str:
+    """Generate a CLI command equivalent to the current GUI settings.
+
+    Returns
+    -------
+    str
+        A string representing the `python gptscan.py ...` command.
+    """
+    cmd_parts = ["python", "gptscan.py"]
+
+    # Target path
+    target = textbox.get() if textbox else Config.last_path
+    if target:
+        cmd_parts.append(shlex.quote(target))
+
+    cmd_parts.append("--cli")
+
+    # Scan Options
+    if deep_var and deep_var.get():
+        cmd_parts.append("--deep")
+    if git_var and git_var.get():
+        cmd_parts.append("--git-changes")
+    if dry_var and dry_var.get():
+        cmd_parts.append("--dry-run")
+    if all_var and all_var.get():
+        cmd_parts.append("--show-all")
+
+    # Threshold
+    if Config.THRESHOLD != 50:
+        cmd_parts.extend(["--threshold", str(Config.THRESHOLD)])
+
+    # AI Analysis
+    if gpt_var and gpt_var.get():
+        cmd_parts.append("--use-gpt")
+        if Config.provider != "openai":
+            cmd_parts.extend(["--provider", Config.provider])
+        if Config.model_name:
+            cmd_parts.extend(["--model", Config.model_name])
+        if Config.api_base:
+            cmd_parts.extend(["--api-base", Config.api_base])
+
+    return " ".join(cmd_parts)
+
+
+def copy_cli_command(event: Optional[tk.Event] = None) -> None:
+    """Copy the equivalent CLI command to the system clipboard."""
+    cmd = get_cli_command()
+    if root:
+        root.clipboard_clear()
+        root.clipboard_append(cmd)
+        update_status("CLI command copied to clipboard.")
+
+
 def on_root_return(event: Optional[tk.Event] = None) -> None:
     """Trigger a scan if the focus is not on a widget that handles Return."""
     if not root:
@@ -3458,6 +3512,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     file_menu.add_command(label="Import Results...", command=import_results)
     file_menu.add_command(label="Import from Clipboard", command=import_from_clipboard)
     file_menu.add_command(label="Export Results...", command=export_results)
+    file_menu.add_command(label="Copy as CLI Command", command=copy_cli_command)
     file_menu.add_separator()
     file_menu.add_command(label="Clear Results", command=clear_results)
     file_menu.add_command(label="Clear AI Cache", command=clear_ai_cache)
@@ -3612,6 +3667,10 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     cancel_button = ttk.Button(actions_frame, text="Cancel", command=cancel_scan, state="disabled")
     cancel_button.pack(side=tk.TOP, fill=tk.X, pady=2)
     bind_hover_message(cancel_button, "Stop the current scan.")
+
+    copy_cmd_button = ttk.Button(actions_frame, text="Copy CLI Command", command=copy_cli_command)
+    copy_cmd_button.pack(side=tk.TOP, fill=tk.X, pady=2)
+    bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
 
     if Config.extensions_missing:
         default_exts = ', '.join(sorted(Config.extensions_set)) if Config.extensions_set else 'none'
@@ -3787,6 +3846,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # Bind selection and rescan keys
     root.bind('<Return>', on_root_return)
+    root.bind('<Control-Shift-E>', copy_cli_command)
+    root.bind('<Command-Shift-E>', copy_cli_command)
     root.bind('<Control-v>', import_from_clipboard)
     root.bind('<Command-v>', import_from_clipboard)
     root.bind('<Control-f>', focus_filter)
