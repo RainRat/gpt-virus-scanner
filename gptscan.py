@@ -971,9 +971,9 @@ def update_tree_columns() -> None:
             break
 
     if show_ai or has_ai_data:
-        tree["displaycolumns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line")
+        tree["displaycolumns"] = ("path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet")
     else:
-        tree["displaycolumns"] = ("path", "own_conf", "snippet", "line")
+        tree["displaycolumns"] = ("path", "line", "own_conf", "snippet")
 
 
 def _auto_select_best_result() -> None:
@@ -3685,27 +3685,27 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line", "orig_json")
     tree.column("#0", width=0, stretch=tk.NO)
     tree.column("path", width=150, stretch=tk.YES, anchor="w")
+    tree.column("line", width=60, stretch=tk.NO, anchor="center")
     tree.column("own_conf", width=80, stretch=tk.NO, anchor="e")
+    tree.column("gpt_conf", width=80, stretch=tk.NO, anchor="e")
     tree.column("admin_desc", width=150, stretch=tk.YES, anchor="w")
     tree.column("end-user_desc", width=150, stretch=tk.YES, anchor="w")
-    tree.column("gpt_conf", width=80, stretch=tk.NO, anchor="e")
     tree.column("snippet", width=150, stretch=tk.YES, anchor="w")
-    tree.column("line", width=60, stretch=tk.NO, anchor="center")
     tree.column("orig_json", width=0, stretch=tk.NO) # Hidden column for raw data
     root.after(0, process_ui_queue)
 
     tree.heading("#0", text="")
     tree.heading("path", text="File Path", command=lambda: sort_column(tree, "path", False))
+    tree.heading("line", text="Line", command=lambda: sort_column(tree, "line", False))
     tree.heading("own_conf", text="Local Conf.",
                  command=lambda: sort_column(tree, "own_conf", False))
+    tree.heading("gpt_conf", text="AI Conf.",
+                 command=lambda: sort_column(tree, "gpt_conf", False))
     tree.heading("admin_desc", text="Admin Notes",
                  command=lambda: sort_column(tree, "admin_desc", False))
     tree.heading("end-user_desc", text="User Notes",
                  command=lambda: sort_column(tree, "end-user_desc", False))
-    tree.heading("gpt_conf", text="AI Conf.",
-                 command=lambda: sort_column(tree, "gpt_conf", False))
     tree.heading("snippet", text="Snippet", command=lambda: sort_column(tree, "snippet", False))
-    tree.heading("line", text="Line", command=lambda: sort_column(tree, "line", False))
 
     scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
     scrollbar.grid(row=0, column=1, sticky="ns")
