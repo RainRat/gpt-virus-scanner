@@ -2375,7 +2375,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     return threats_found
 
 
-def standardize_result_dict(item: Dict[str, Any]) -> Dict[str, Any]:
+def standardize_result_dict(item: Any) -> Dict[str, Any]:
     """Map various report keys back to the standard internal format.
 
     Args:
@@ -2397,10 +2397,11 @@ def standardize_result_dict(item: Dict[str, Any]) -> Dict[str, Any]:
     standardized = {}
     for standard_key, alternatives in mapping.items():
         val = None
-        for alt in alternatives:
-            if alt in item:
-                val = item[alt]
-                break
+        if isinstance(item, dict):
+            for alt in alternatives:
+                if alt in item:
+                    val = item[alt]
+                    break
         standardized[standard_key] = str(val) if val is not None else ""
 
     return standardized
@@ -2481,7 +2482,8 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
         except json.JSONDecodeError:
             raise ValueError("Could not determine report format.")
 
-    return [standardize_result_dict(item) for item in data_to_import]
+    # Filter out non-dictionary items before standardizing
+    return [standardize_result_dict(item) for item in data_to_import if isinstance(item, dict)]
 
 
 def load_report_file(file_path: str) -> List[Dict[str, Any]]:
