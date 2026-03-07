@@ -19,7 +19,7 @@ def test_update_tree_columns_hides_ai_when_disabled_and_no_data(monkeypatch):
     gptscan.update_tree_columns()
 
     # Verify
-    expected_cols = ("path", "own_conf", "snippet", "line")
+    expected_cols = ("path", "line", "own_conf", "snippet")
     mock_tree.__setitem__.assert_called_with("displaycolumns", expected_cols)
 
 def test_update_tree_columns_shows_ai_when_enabled(monkeypatch):
@@ -37,7 +37,7 @@ def test_update_tree_columns_shows_ai_when_enabled(monkeypatch):
     gptscan.update_tree_columns()
 
     # Verify
-    expected_cols = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line")
+    expected_cols = ("path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet")
     mock_tree.__setitem__.assert_called_with("displaycolumns", expected_cols)
 
 def test_update_tree_columns_shows_ai_when_data_present_even_if_disabled(monkeypatch):
@@ -61,7 +61,7 @@ def test_update_tree_columns_shows_ai_when_data_present_even_if_disabled(monkeyp
     gptscan.update_tree_columns()
 
     # Verify
-    expected_cols = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line")
+    expected_cols = ("path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet")
     mock_tree.__setitem__.assert_called_with("displaycolumns", expected_cols)
 
 def test_update_tree_columns_hides_ai_when_disabled_and_data_is_empty(monkeypatch):
@@ -83,5 +83,5 @@ def test_update_tree_columns_hides_ai_when_disabled_and_data_is_empty(monkeypatc
     gptscan.update_tree_columns()
 
     # Verify
-    expected_cols = ("path", "own_conf", "snippet", "line")
+    expected_cols = ("path", "line", "own_conf", "snippet")
     mock_tree.__setitem__.assert_called_with("displaycolumns", expected_cols)
