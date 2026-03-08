@@ -2395,14 +2395,16 @@ def standardize_result_dict(item: Any) -> Dict[str, Any]:
         "line": ["line", "Line", "startLine"]
     }
 
+    if not isinstance(item, dict):
+        return {k: "" for k in mapping}
+
     standardized = {}
     for standard_key, alternatives in mapping.items():
         val = None
-        if isinstance(item, dict):
-            for alt in alternatives:
-                if alt in item:
-                    val = item[alt]
-                    break
+        for alt in alternatives:
+            if alt in item:
+                val = item[alt]
+                break
         standardized[standard_key] = str(val) if val is not None else ""
 
     return standardized
