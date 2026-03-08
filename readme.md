@@ -66,7 +66,12 @@ The scanner finds scripts in two ways:
 You can customize the scanner using these files in the same folder:
 *   `apikey.txt`: Your AI service API key.
 *   `extensions.txt`: A list of file extensions to scan (one per line).
-*   `.gptscanignore`: Patterns of files or folders to skip.
+*   `.gptscanignore`: Patterns of files or folders to skip (one per line). For example:
+    ```text
+    node_modules/*
+    *.log
+    temp_dir/
+    ```
 *   `task.txt`: Instructions for the AI analysis.
 
 ## How to Use
@@ -94,12 +99,15 @@ Run `python gptscan.py` to open the GUI.
 *   **Ctrl+Shift+C / Cmd+Shift+C:** Copy selected result(s) as a Markdown table.
 *   **Ctrl+G / Cmd+G:** Analyze selected result(s) with AI.
 *   **Ctrl+H / Cmd+H:** Copy SHA256 hash(es) of selected result(s).
+*   **Ctrl+J / Cmd+J:** Copy selected result(s) as JSON.
 *   **Ctrl+S / Cmd+S:** Copy code snippet(s) of selected result(s).
+*   **Ctrl+V / Cmd+V:** Import results from clipboard.
 *   **Ctrl+Return / Cmd+Return:** Reveal selected file in folder.
 *   **F5 / R:** Rescan selected files.
 *   **Double-click / Enter / Space:** View detailed analysis and code.
 *   **Shift+Enter:** Open selected file.
 *   **Ctrl+Shift+E / Cmd+Shift+E:** Copy the current scan settings as a CLI command.
+*   **Delete:** Exclude selected results from future scans.
 *   **Esc:** Cancel the active scan.
 
 ### Using the Command Line (CLI)
@@ -137,7 +145,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--git-changes`: Only scan files that have changed in Git.
 *   `--exclude [patterns], -e [patterns]`: Skip files matching these patterns.
 *   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
-*   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF).
+*   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF). Use `-` to read from standard input.
 *   `--markdown`: Save the report in Markdown format.
 
 ## Advanced: Training
