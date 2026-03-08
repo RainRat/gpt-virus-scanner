@@ -3612,18 +3612,17 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         messagebox.showwarning("AI Analysis Disabled",
                                        "task.txt not found. AI Analysis is disabled.")
 
-    provider_row = ttk.Frame(provider_frame)
-    provider_row.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
-    ttk.Label(provider_row, text="Provider:", width=10).pack(side=tk.LEFT)
-    provider_var = tk.StringVar(value=Config.provider)
-    provider_combo = ttk.Combobox(provider_row, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
-    provider_combo.pack(side=tk.LEFT, padx=5)
+    settings_row = ttk.Frame(provider_frame)
+    settings_row.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
 
-    model_row = ttk.Frame(provider_frame)
-    model_row.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
-    ttk.Label(model_row, text="Model:", width=10).pack(side=tk.LEFT)
+    ttk.Label(settings_row, text="Provider:").pack(side=tk.LEFT)
+    provider_var = tk.StringVar(value=Config.provider)
+    provider_combo = ttk.Combobox(settings_row, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
+    provider_combo.pack(side=tk.LEFT, padx=(5, 15))
+
+    ttk.Label(settings_row, text="Model:").pack(side=tk.LEFT)
     model_var = tk.StringVar(value=Config.model_name)
-    model_combo = ttk.Combobox(model_row, textvariable=model_var, width=20)
+    model_combo = ttk.Combobox(settings_row, textvariable=model_var, width=20)
     model_combo.pack(side=tk.LEFT, padx=5)
 
     toggle_ai_controls()
