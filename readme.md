@@ -31,7 +31,7 @@ echo "print('hello')" | python gptscan.py --cli --stdin
 
 Follow these steps to get the scanner running:
 
-1.  **Download the code:** Clone this repository or download the zip file. Ensure `gptscan.py`, `scripts.h5`, and `task.txt` are in the same folder.
+1.  **Download the code:** Clone this repository or download the zip file. Ensure `gptscan.py`, `scripts.h5`, `task.txt`, and `extensions.txt` are in the same folder.
     *   **Note:** Always run the script from inside its own folder so it can find the required files.
 2.  **Install Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet because of model compatibility.
 3.  **Install requirements:** Open your terminal and run:
@@ -156,6 +156,7 @@ You can retrain the local scanner model to recognize new types of threats. For d
 
 *   **Tkinter not found:** On Linux, run `sudo apt-get install python3-tk`.
 *   **Model file missing:** Ensure `scripts.h5` is in the same folder as `gptscan.py`. This file is required for the scanner to function.
+*   **Extensions list missing:** Ensure `extensions.txt` exists in the same folder. This file is required to detect script files by their extension.
 *   **AI Analysis disabled:** Ensure `task.txt` exists in the same folder. Detailed AI reports will not work without it.
 
 ## Contributing
