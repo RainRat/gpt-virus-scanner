@@ -2398,16 +2398,10 @@ def standardize_result_dict(item: Any) -> Dict[str, Any]:
     if not isinstance(item, dict):
         return {k: "" for k in mapping}
 
-    standardized = {}
-    for standard_key, alternatives in mapping.items():
-        val = None
-        for alt in alternatives:
-            if alt in item:
-                val = item[alt]
-                break
-        standardized[standard_key] = str(val) if val is not None else ""
-
-    return standardized
+    return {
+        key: next((str(item[alt]) if item[alt] is not None else "" for alt in alts if alt in item), "")
+        for key, alts in mapping.items()
+    }
 
 
 def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:

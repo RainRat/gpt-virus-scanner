@@ -14,6 +14,12 @@ def test_standardize_result_dict_non_dict():
     for val in result.values():
         assert val == ""
 
+def test_standardize_result_dict_none_values():
+    item = {"path": "test.py", "own_conf": None}
+    result = standardize_result_dict(item)
+    assert result["path"] == "test.py"
+    assert result["own_conf"] == ""
+
 def test_parse_report_content_with_null_elements():
     content = '[{"path": "test.py", "own_conf": "50%"}, null, {"path": "test2.py", "own_conf": "60%"}]'
     results = parse_report_content(content, filename_hint="test.json")
