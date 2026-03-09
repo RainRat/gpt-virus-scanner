@@ -3722,19 +3722,19 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     model_var.trace_add("write", on_model_change)
 
     # --- Actions Frame ---
-    actions_frame = ttk.Frame(settings_frame)
-    actions_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
+    actions_frame = ttk.LabelFrame(settings_frame, text="Control", padding=10)
+    actions_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(10, 0))
 
     scan_button = ttk.Button(actions_frame, text="Scan Now", command=button_click, style='Primary.TButton', default='active')
     scan_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
     bind_hover_message(scan_button, "Start the scan.")
 
     cancel_button = ttk.Button(actions_frame, text="Cancel", command=cancel_scan, state="disabled")
-    cancel_button.pack(side=tk.TOP, fill=tk.X, pady=2)
+    cancel_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
     bind_hover_message(cancel_button, "Stop the current scan.")
 
     copy_cmd_button = ttk.Button(actions_frame, text="Copy CLI Command", command=copy_cli_command)
-    copy_cmd_button.pack(side=tk.TOP, fill=tk.X, pady=2)
+    copy_cmd_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
     bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
 
     if Config.extensions_missing:
