@@ -33,6 +33,7 @@ progress_bar: Optional[ttk.Progressbar] = None
 status_label: Optional[ttk.Label] = None
 deep_var: Optional[tk.BooleanVar] = None
 all_var: Optional[tk.BooleanVar] = None
+scan_all_var: Optional[tk.BooleanVar] = None
 gpt_var: Optional[tk.BooleanVar] = None
 dry_var: Optional[tk.BooleanVar] = None
 git_var: Optional[tk.BooleanVar] = None
@@ -100,6 +101,7 @@ class Config:
     deep_scan: bool = False
     git_changes_only: bool = False
     show_all_files: bool = False
+    scan_all_files: bool = False
     use_ai_analysis: bool = False
 
     DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1']
@@ -131,6 +133,7 @@ class Config:
             "deep_scan": cls.deep_scan,
             "git_changes_only": cls.git_changes_only,
             "show_all_files": cls.show_all_files,
+            "scan_all_files": cls.scan_all_files,
             "use_ai_analysis": cls.use_ai_analysis,
             "provider": cls.provider,
             "model_name": cls.model_name,
@@ -155,6 +158,7 @@ class Config:
                 cls.deep_scan = settings.get("deep_scan", cls.deep_scan)
                 cls.git_changes_only = settings.get("git_changes_only", cls.git_changes_only)
                 cls.show_all_files = settings.get("show_all_files", cls.show_all_files)
+                cls.scan_all_files = settings.get("scan_all_files", cls.scan_all_files)
                 cls.use_ai_analysis = settings.get("use_ai_analysis", cls.use_ai_analysis)
                 cls.provider = settings.get("provider", cls.provider)
                 cls.model_name = settings.get("model_name", cls.model_name)
@@ -218,17 +222,17 @@ class Config:
 
     @classmethod
     def is_supported_file(cls, file_path: Path, is_explicit: bool = False) -> bool:
-        """Check if a file should be scanned based on extension, content or explicit request.
+        """Check if a file should be scanned based on extension, content, explicit request, or scan_all_files setting.
 
         Args:
             file_path: The path to the file to check.
             is_explicit: Whether the file was specifically requested by the user.
 
         Returns:
-            True if the file matches a known extension, has a script shebang,
-            or was explicitly requested.
+            True if scan_all_files is enabled, or if the file matches a known extension,
+            has a script shebang, or was explicitly requested.
         """
-        if is_explicit:
+        if is_explicit or cls.scan_all_files:
             return True
 
         extension = file_path.suffix.lower()
@@ -3467,6 +3471,8 @@ def get_cli_command() -> str:
         cmd_parts.append("--dry-run")
     if all_var and all_var.get():
         cmd_parts.append("--show-all")
+    if scan_all_var and scan_all_var.get():
+        cmd_parts.append("--all-files")
 
     # Threshold
     if Config.THRESHOLD != 50:
@@ -3568,7 +3574,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, analyze_button, exclude_button, import_button, export_button, clear_button, default_font_measure
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, analyze_button, exclude_button, import_button, export_button, clear_button, default_font_measure
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -3648,6 +3654,11 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
     deep_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(deep_checkbox, "Scan the whole file. This is slower but more thorough. Normally, the scanner only checks the beginning and end.")
+
+    scan_all_var = tk.BooleanVar(value=Config.scan_all_files)
+    scan_all_checkbox = ttk.Checkbutton(options_frame, text="Scan all files", variable=scan_all_var)
+    scan_all_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
+    bind_hover_message(scan_all_checkbox, "Scan all files regardless of their extension or whether they contain a script shebang.")
 
     all_var = tk.BooleanVar(value=Config.show_all_files)
 
@@ -3950,6 +3961,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         Config.deep_scan = deep_var.get()
         Config.git_changes_only = git_var.get()
         Config.show_all_files = all_var.get()
+        Config.scan_all_files = scan_all_var.get()
         Config.use_ai_analysis = gpt_var.get()
         Config.provider = provider_var.get()
         Config.model_name = model_var.get()
@@ -4007,6 +4019,11 @@ def main():
         '--git-changes',
         action='store_true',
         help='Only scan files that have changed in your Git repository.'
+    )
+    scan_group.add_argument(
+        '--all-files',
+        action='store_true',
+        help='Scan all files regardless of their extension or whether they contain a script shebang.'
     )
     scan_group.add_argument(
         '--fail-threshold',
@@ -4093,6 +4110,9 @@ def main():
     if args.extensions:
         extension_list = [ext.strip() for ext in args.extensions.split(',') if ext.strip()]
         Config.set_extensions(extension_list, missing=False)
+
+    if args.all_files:
+        Config.scan_all_files = True
 
     Config.THRESHOLD = args.threshold
 

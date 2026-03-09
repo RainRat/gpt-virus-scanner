@@ -1,7 +1,7 @@
 {
-    "f2a8f03ec838f83cd6f52aa8f1c1758a82eb9162d2d4efa3c0522a842025c74a": {
-        "administrator": "A",
-        "end-user": "U",
-        "threat-level": 10
+    "c961e56142c0e2771271fdc84e59ce81e0c27d0b83888a77b0a9032d554e9b26": {
+        "administrator": "Admin",
+        "end-user": "User",
+        "threat-level": 70
     }
 }

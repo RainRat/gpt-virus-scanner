@@ -3,6 +3,7 @@
     "deep_scan": false,
     "git_changes_only": false,
     "show_all_files": false,
+    "scan_all_files": false,
     "use_ai_analysis": false,
     "provider": "openai",
     "model_name": "gpt-4o",
