@@ -46,6 +46,7 @@ view_button: Optional[ttk.Button] = None
 rescan_button: Optional[ttk.Button] = None
 analyze_button: Optional[ttk.Button] = None
 exclude_button: Optional[ttk.Button] = None
+reveal_button: Optional[ttk.Button] = None
 import_button: Optional[ttk.Button] = None
 export_button: Optional[ttk.Button] = None
 clear_button: Optional[ttk.Button] = None
@@ -1014,7 +1015,7 @@ def set_scanning_state(is_scanning: bool) -> None:
     # Disable all footer buttons during a scan
     footer_buttons = [
         view_button, rescan_button, analyze_button, exclude_button,
-        import_button, export_button, clear_button
+        reveal_button, import_button, export_button, clear_button
     ]
     for btn in footer_buttons:
         if btn:
@@ -3429,7 +3430,7 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
     has_selection = bool(tree.selection())
 
     # Buttons that depend on having one or more items selected
-    dependent_buttons = [view_button, rescan_button, exclude_button]
+    dependent_buttons = [view_button, rescan_button, exclude_button, reveal_button]
     for btn in dependent_buttons:
         if btn:
             btn.config(state="normal" if has_selection else "disabled")
@@ -3568,7 +3569,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, analyze_button, exclude_button, import_button, export_button, clear_button, default_font_measure
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, analyze_button, exclude_button, reveal_button, import_button, export_button, clear_button, default_font_measure
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -3880,18 +3881,22 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     exclude_button.grid(row=0, column=4, padx=2)
     bind_hover_message(exclude_button, "Exclude the selected items from future scans.")
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=5, sticky="ns", padx=5)
+    reveal_button = ttk.Button(footer_frame, text="Reveal in Folder", command=show_in_folder)
+    reveal_button.grid(row=0, column=5, padx=2)
+    bind_hover_message(reveal_button, "Reveal the selected file in the system file manager.")
+
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=6, sticky="ns", padx=5)
 
     import_button = ttk.Button(footer_frame, text="Import Results...", command=import_results)
-    import_button.grid(row=0, column=6, padx=2)
+    import_button.grid(row=0, column=7, padx=2)
     bind_hover_message(import_button, "Load results from a JSON or CSV file.")
 
     export_button = ttk.Button(footer_frame, text="Export Results...", command=export_results)
-    export_button.grid(row=0, column=7, padx=2)
+    export_button.grid(row=0, column=8, padx=2)
     bind_hover_message(export_button, "Save results to CSV, HTML, JSON, or SARIF.")
 
     clear_button = ttk.Button(footer_frame, text="Clear Results", command=clear_results)
-    clear_button.grid(row=0, column=8, padx=(2, 0))
+    clear_button.grid(row=0, column=9, padx=(2, 0))
     bind_hover_message(clear_button, "Clear all results from the list.")
 
     # --- Context Menu ---
