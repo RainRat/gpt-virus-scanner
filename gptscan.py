@@ -2561,6 +2561,34 @@ def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None,
     yield from import_results_from_content_generator(content, filename_hint=file_path)
 
 
+def _finalize_import(data_to_import: List[Dict[str, Any]], source_name: str) -> None:
+    """Clear results and populate the Treeview with imported data."""
+    # Clear existing results
+    clear_results()
+
+    count = 0
+    for item in data_to_import:
+        # Map item keys back to the expected column order
+        values = (
+            item["path"],
+            item["own_conf"],
+            item["admin_desc"],
+            item["end-user_desc"],
+            item["gpt_conf"],
+            item["snippet"],
+            item["line"]
+        )
+        insert_tree_row(values)
+        count += 1
+
+    msg = f"Imported {count} results from {source_name}"
+    global _last_scan_summary
+    _last_scan_summary = msg
+    update_status(msg)
+    update_tree_columns()
+    _auto_select_best_result()
+
+
 def import_results() -> None:
     """Load results from a JSON or CSV file into the Treeview.
 
@@ -2594,30 +2622,7 @@ def import_results() -> None:
             messagebox.showwarning("Import Warning", "No data found in the selected file.")
             return
 
-        # Clear existing results
-        clear_results()
-
-        count = 0
-        for item in data_to_import:
-            # Map item keys back to the expected column order
-            values = (
-                item["path"],
-                item["own_conf"],
-                item["admin_desc"],
-                item["end-user_desc"],
-                item["gpt_conf"],
-                item["snippet"],
-                item["line"]
-            )
-            insert_tree_row(values)
-            count += 1
-
-        msg = f"Imported {count} results from {os.path.basename(file_path)}"
-        global _last_scan_summary
-        _last_scan_summary = msg
-        update_status(msg)
-        update_tree_columns()
-        _auto_select_best_result()
+        _finalize_import(data_to_import, os.path.basename(file_path))
 
     except Exception as err:
         messagebox.showerror("Import Failed", f"Could not load results:\n{err}")
@@ -2648,29 +2653,7 @@ def import_from_clipboard(event: Optional[tk.Event] = None) -> Optional[str]:
             messagebox.showwarning("Import Warning", "No valid scan results found in clipboard.")
             return "break"
 
-        # Clear existing results
-        clear_results()
-
-        count = 0
-        for item in data_to_import:
-            values = (
-                item["path"],
-                item["own_conf"],
-                item["admin_desc"],
-                item["end-user_desc"],
-                item["gpt_conf"],
-                item["snippet"],
-                item["line"]
-            )
-            insert_tree_row(values)
-            count += 1
-
-        msg = f"Imported {count} results from clipboard"
-        global _last_scan_summary
-        _last_scan_summary = msg
-        update_status(msg)
-        update_tree_columns()
-        _auto_select_best_result()
+        _finalize_import(data_to_import, "clipboard")
 
     except Exception as err:
         messagebox.showerror("Import Failed", f"Could not parse clipboard content:\n{err}")
