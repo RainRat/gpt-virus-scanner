@@ -42,18 +42,27 @@ Follow these steps to get the scanner running:
 
 ## AI Service Setup
 
-To use the "AI Analysis" feature, you need to set up an AI provider. Your code is only sent to an AI service if you enable this option.
+To use the "AI Analysis" feature, you must first set up an AI provider and then enable the feature in the scanner. Your code is only sent to an AI service if you choose to enable this option.
 
-### OpenAI or OpenRouter
+### Step 1: Set up a Provider
+
+#### OpenAI or OpenRouter (Cloud-based)
 1.  **Get an API key:** Sign up for [OpenAI](https://openai.com/) or [OpenRouter](https://openrouter.ai/).
 2.  **Add your key:** You have two options:
     *   Create a file named `apikey.txt` in the scanner folder and paste your key on the first line.
     *   Set the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable in your terminal.
 
-### Ollama (Local AI)
+#### Ollama (Local AI)
+*Note: Ollama runs on your own computer and does not require an API key.*
 1.  **Install Ollama:** Download and install [Ollama](https://ollama.com/).
 2.  **Download a model:** Run `ollama pull llama3.2` (or your preferred model) in your terminal.
 3.  **Run Ollama:** Ensure the Ollama app is running before you start the scanner.
+
+### Step 2: Enable AI Analysis
+
+Once your provider is ready, you must enable the feature when you run a scan:
+*   **In the App Window:** Check the **Use AI Analysis** box before clicking **Scan now**.
+*   **In the Terminal:** Use the `--use-gpt` flag (for example: `python gptscan.py ./my_scripts --cli --use-gpt`).
 
 ## Supported Files
 
@@ -160,6 +169,7 @@ You can retrain the local scanner model to recognize new types of threats. For d
 *   **Model file missing:** Ensure `scripts.h5` is in the same folder as `gptscan.py`. This file is required for the scanner to function.
 *   **Extensions list missing:** Ensure `extensions.txt` exists in the same folder. This file is required to detect script files by their extension.
 *   **AI Analysis disabled:** Ensure `task.txt` exists in the same folder. Detailed AI reports will not work without it.
+*   **AI Analysis results not showing:** Ensure you have checked the **Use AI Analysis** box (GUI) or added the `--use-gpt` flag (CLI). If you are using OpenAI or OpenRouter, double-check that your API key is correct in `apikey.txt` or your environment variables.
 
 ## Contributing
 
