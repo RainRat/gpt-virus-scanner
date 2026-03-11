@@ -21,9 +21,8 @@ from pathlib import Path
 from typing import Any, Callable, Deque, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import tkinter as tk
-import tkinter.filedialog
+from tkinter import messagebox, filedialog, simpledialog
 import tkinter.font
-from tkinter import messagebox
 import tkinter.ttk as ttk
 
 # Global GUI variables for thread-safe updates and testing
@@ -417,7 +416,7 @@ def _set_scan_target(path: str) -> None:
 
 def browse_dir_click() -> None:
     """Handle the directory selection dialog and populate the textbox."""
-    folder_selected = tkinter.filedialog.askdirectory()
+    folder_selected = filedialog.askdirectory()
     _set_scan_target(folder_selected)
 
 
@@ -428,7 +427,7 @@ def browse_file_click() -> None:
         ("Script files", ";".join([f"*{e}" for e in ext_list])),
         ("All files", "*.*")
     ]
-    file_selected = tkinter.filedialog.askopenfilename(
+    file_selected = filedialog.askopenfilename(
         title="Select File to Scan",
         filetypes=file_types
     )
@@ -1233,6 +1232,33 @@ def analyze_selected_with_ai(event: Optional[tk.Event] = None) -> None:
     scan_thread.start()
 
 
+def add_to_ignore_file(patterns: Union[str, List[str]]) -> None:
+    """Add one or more patterns to the .gptscanignore file.
+
+    Args:
+        patterns: A single pattern string or a list of pattern strings.
+    """
+    if isinstance(patterns, str):
+        patterns = [patterns]
+
+    ignore_file = Path('.gptscanignore')
+    # Use 'a+' to handle both checking existence and appending
+    with open(ignore_file, 'a+', encoding='utf-8') as f:
+        # Move pointer to the beginning to read existing patterns
+        f.seek(0)
+        content = f.read()
+        existing_patterns = {line.strip() for line in content.splitlines() if line.strip()}
+
+        # Ensure file ends with newline if not empty
+        if content and not content.endswith('\n'):
+            f.write('\n')
+
+        for pattern in patterns:
+            if pattern and pattern not in existing_patterns:
+                f.write(f"{pattern}\n")
+                existing_patterns.add(pattern)
+
+
 def exclude_paths(paths: List[str], confirm: bool = True) -> bool:
     """Exclude a list of file paths from future scans.
 
@@ -1252,41 +1278,24 @@ def exclude_paths(paths: List[str], confirm: bool = True) -> bool:
             return False
 
     try:
-        # Update .gptscanignore
-        ignore_file = Path('.gptscanignore')
-        existing_patterns = set()
-        if ignore_file.exists():
-            with open(ignore_file, 'r', encoding='utf-8') as fr:
-                existing_patterns = {line.strip() for line in fr if line.strip()}
+        new_patterns = []
+        for path in paths:
+            path_str = str(path)
+            try:
+                pattern = os.path.relpath(path_str, os.getcwd())
+            except ValueError:
+                pattern = path_str
 
-        with open(ignore_file, 'a', encoding='utf-8') as f:
-            # Add a newline if file is not empty and doesn't end with one
-            if ignore_file.exists() and ignore_file.stat().st_size > 0:
-                with open(ignore_file, 'r', encoding='utf-8') as fr:
-                    content = fr.read()
-                    if content and not content.endswith('\n'):
-                        f.write('\n')
+            new_patterns.append(pattern)
+            if pattern not in Config.ignore_patterns:
+                Config.ignore_patterns.append(pattern)
 
-            for path in paths:
-                path_str = str(path)
-                try:
-                    rel_path = os.path.relpath(path_str, os.getcwd())
-                    if rel_path not in existing_patterns:
-                        f.write(f"{rel_path}\n")
-                        existing_patterns.add(rel_path)
-                    if rel_path not in Config.ignore_patterns:
-                        Config.ignore_patterns.append(rel_path)
-                except ValueError:
-                    if path_str not in existing_patterns:
-                        f.write(f"{path_str}\n")
-                        existing_patterns.add(path_str)
-                    if path_str not in Config.ignore_patterns:
-                        Config.ignore_patterns.append(path_str)
+        add_to_ignore_file(new_patterns)
 
         # Update cache and refresh view
         global _all_results_cache
-        for path in paths:
-            _all_results_cache = [v for v in _all_results_cache if v[0] != str(path)]
+        path_set = {str(p) for p in paths}
+        _all_results_cache = [v for v in _all_results_cache if v[0] not in path_set]
 
         _apply_filter()
         update_status(f"Excluded {len(paths)} file(s).")
@@ -1328,6 +1337,107 @@ def exclude_selected() -> None:
             tree.selection_set(new_item_id)
             tree.focus(new_item_id)
             tree.see(new_item_id)
+
+
+def manage_exclusions() -> None:
+    """Open a dialog to manage scan exclusions (.gptscanignore)."""
+    if not root:
+        return
+
+    manage_win = tk.Toplevel(root)
+    manage_win.title("Manage Exclusions")
+    manage_win.geometry("500x400")
+    manage_win.minsize(400, 300)
+    manage_win.transient(root)
+    manage_win.grab_set()
+
+    main_frame = ttk.Frame(manage_win, padding=10)
+    main_frame.pack(fill=tk.BOTH, expand=True)
+
+    ttk.Label(main_frame, text="Excluded patterns (from .gptscanignore):", font=('TkDefaultFont', 9, 'bold')).pack(anchor="w", pady=(0, 5))
+
+    list_frame = ttk.Frame(main_frame)
+    list_frame.pack(fill=tk.BOTH, expand=True)
+
+    ignore_listbox = tk.Listbox(list_frame, selectmode=tk.EXTENDED)
+    ignore_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=ignore_listbox.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    ignore_listbox.config(yscrollcommand=scrollbar.set)
+
+    def refresh_list():
+        ignore_listbox.delete(0, tk.END)
+        for pattern in Config.ignore_patterns:
+            ignore_listbox.insert(tk.END, pattern)
+
+    refresh_list()
+
+    btn_frame = ttk.Frame(main_frame, padding=(0, 10, 0, 0))
+    btn_frame.pack(fill=tk.X)
+
+    def add_pattern():
+        pattern = simpledialog.askstring("Add Pattern", "Enter a file or folder pattern to exclude (e.g., *.log, temp/):", parent=manage_win)
+        if pattern:
+            pattern = pattern.strip()
+            if pattern and pattern not in Config.ignore_patterns:
+                try:
+                    add_to_ignore_file(pattern)
+                    Config.ignore_patterns.append(pattern)
+                    refresh_list()
+                    _apply_filter()
+                except Exception as e:
+                    messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
+
+    def add_folder():
+        folder = filedialog.askdirectory(parent=manage_win)
+        if folder:
+            try:
+                rel_path = os.path.relpath(folder, os.getcwd())
+                if rel_path not in Config.ignore_patterns:
+                    add_to_ignore_file(rel_path)
+                    Config.ignore_patterns.append(rel_path)
+                    refresh_list()
+                    _apply_filter()
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not add folder: {e}", parent=manage_win)
+
+    def remove_selected():
+        selection = ignore_listbox.curselection()
+        if not selection:
+            return
+
+        patterns_to_remove = {ignore_listbox.get(i) for i in selection}
+        if not messagebox.askyesno("Confirm Removal", f"Remove {len(patterns_to_remove)} exclusion(s)?", parent=manage_win):
+            return
+
+        try:
+            ignore_file = Path('.gptscanignore')
+            if ignore_file.exists():
+                with open(ignore_file, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+
+                with open(ignore_file, 'w', encoding='utf-8') as f:
+                    for line in lines:
+                        # Extract the actual pattern part if there's a comment
+                        stripped = line.strip()
+                        pattern_part = stripped.split('#')[0].strip()
+                        if pattern_part not in patterns_to_remove:
+                            f.write(line)
+
+            for p in patterns_to_remove:
+                if p in Config.ignore_patterns:
+                    Config.ignore_patterns.remove(p)
+
+            refresh_list()
+            _apply_filter()
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
+
+    ttk.Button(btn_frame, text="Add Pattern...", command=add_pattern).pack(side=tk.LEFT, padx=(0, 5))
+    ttk.Button(btn_frame, text="Add Folder...", command=add_folder).pack(side=tk.LEFT, padx=5)
+    ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5)
+    ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT)
 
 
 def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
@@ -2603,7 +2713,7 @@ def import_results() -> None:
     if not tree:
         return
 
-    file_path = tkinter.filedialog.askopenfilename(
+    file_path = filedialog.askopenfilename(
         filetypes=[
             ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif"),
             ("JSON files", "*.json;*.jsonl;*.ndjson"),
@@ -2719,7 +2829,7 @@ def export_results() -> None:
     if not tree:
         return
 
-    file_path = tkinter.filedialog.asksaveasfilename(
+    file_path = filedialog.asksaveasfilename(
         defaultextension=".csv",
         filetypes=[
             ("CSV files", "*.csv"),
@@ -3568,6 +3678,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     file_menu.add_command(label="Import Results...", command=import_results)
     file_menu.add_command(label="Import from Clipboard", command=import_from_clipboard)
     file_menu.add_command(label="Export Results...", command=export_results)
+    file_menu.add_command(label="Manage Exclusions...", command=manage_exclusions)
     file_menu.add_command(label="Copy as CLI Command", command=copy_cli_command)
     file_menu.add_separator()
     file_menu.add_command(label="Clear Results", command=clear_results)
