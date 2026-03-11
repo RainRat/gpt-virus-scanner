@@ -1270,23 +1270,20 @@ def exclude_paths(paths: List[str], confirm: bool = True) -> bool:
             for path in paths:
                 path_str = str(path)
                 try:
-                    rel_path = os.path.relpath(path_str, os.getcwd())
-                    if rel_path not in existing_patterns:
-                        f.write(f"{rel_path}\n")
-                        existing_patterns.add(rel_path)
-                    if rel_path not in Config.ignore_patterns:
-                        Config.ignore_patterns.append(rel_path)
+                    p = os.path.relpath(path_str, os.getcwd())
                 except ValueError:
-                    if path_str not in existing_patterns:
-                        f.write(f"{path_str}\n")
-                        existing_patterns.add(path_str)
-                    if path_str not in Config.ignore_patterns:
-                        Config.ignore_patterns.append(path_str)
+                    p = path_str
+
+                if p not in existing_patterns:
+                    f.write(f"{p}\n")
+                    existing_patterns.add(p)
+                if p not in Config.ignore_patterns:
+                    Config.ignore_patterns.append(p)
 
         # Update cache and refresh view
         global _all_results_cache
-        for path in paths:
-            _all_results_cache = [v for v in _all_results_cache if v[0] != str(path)]
+        paths_to_remove = {str(p) for p in paths}
+        _all_results_cache = [v for v in _all_results_cache if v[0] not in paths_to_remove]
 
         _apply_filter()
         update_status(f"Excluded {len(paths)} file(s).")
