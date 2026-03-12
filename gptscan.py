@@ -3599,24 +3599,43 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     root.bind('<Escape>', lambda event: cancel_scan())
     select_file_btn = ttk.Button(input_frame, text="File...", command=browse_file_click)
-    select_file_btn.grid(row=0, column=2, sticky="e", padx=(5, 0))
+    select_file_btn.grid(row=0, column=2, sticky="e", padx=(5, 0), ipady=5)
     bind_hover_message(select_file_btn, "Select a single script file to scan.")
 
     select_dir_btn = ttk.Button(input_frame, text="Folder...", command=browse_dir_click)
-    select_dir_btn.grid(row=0, column=3, sticky="e", padx=(5, 0))
+    select_dir_btn.grid(row=0, column=3, sticky="e", padx=(5, 0), ipady=5)
     bind_hover_message(select_dir_btn, "Select a directory to scan.")
 
     select_clipboard_btn = ttk.Button(input_frame, text="Clipboard", command=scan_clipboard_click)
-    select_clipboard_btn.grid(row=0, column=4, sticky="e", padx=(5, 0))
+    select_clipboard_btn.grid(row=0, column=4, sticky="e", padx=(5, 0), ipady=5)
     bind_hover_message(select_clipboard_btn, "Scan code currently in your clipboard.")
 
     # --- Settings Container ---
     settings_frame = ttk.Frame(root)
     settings_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
+    # --- Actions Frame ---
+    actions_frame = ttk.LabelFrame(settings_frame, text="Control", padding=10)
+    actions_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
+
+    primary_actions = ttk.Frame(actions_frame)
+    primary_actions.pack(side=tk.TOP, fill=tk.X)
+
+    scan_button = ttk.Button(primary_actions, text="Scan Now", command=button_click, style='Primary.TButton', default='active')
+    scan_button.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=2, padx=(0, 2), ipady=5)
+    bind_hover_message(scan_button, "Start the scan.")
+
+    cancel_button = ttk.Button(primary_actions, text="Cancel", command=cancel_scan, state="disabled")
+    cancel_button.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=2, padx=(2, 0), ipady=5)
+    bind_hover_message(cancel_button, "Stop the current scan.")
+
+    copy_cmd_button = ttk.Button(actions_frame, text="Copy CLI Command", command=copy_cli_command)
+    copy_cmd_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
+    bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
+
     # --- Options Frame ---
     options_frame = ttk.LabelFrame(settings_frame, text="Scan Options", padding=10)
-    options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
+    options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=5)
 
     gpt_var = tk.BooleanVar(value=Config.use_ai_analysis)
 
@@ -3712,22 +3731,6 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         Config.model_name = model_var.get()
 
     model_var.trace_add("write", on_model_change)
-
-    # --- Actions Frame ---
-    actions_frame = ttk.LabelFrame(settings_frame, text="Control", padding=10)
-    actions_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(10, 0))
-
-    scan_button = ttk.Button(actions_frame, text="Scan Now", command=button_click, style='Primary.TButton', default='active')
-    scan_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
-    bind_hover_message(scan_button, "Start the scan.")
-
-    cancel_button = ttk.Button(actions_frame, text="Cancel", command=cancel_scan, state="disabled")
-    cancel_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
-    bind_hover_message(cancel_button, "Stop the current scan.")
-
-    copy_cmd_button = ttk.Button(actions_frame, text="Copy CLI Command", command=copy_cli_command)
-    copy_cmd_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
-    bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
 
     if Config.extensions_missing:
         default_exts = ', '.join(sorted(Config.extensions_set)) if Config.extensions_set else 'none'
