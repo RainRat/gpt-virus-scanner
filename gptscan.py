@@ -1185,6 +1185,11 @@ def rescan_selected() -> None:
     scan_thread.start()
 
 
+def _clean_snippet_for_ai(snippet: str) -> str:
+    """Preprocess a code snippet by stripping whitespace and removing empty lines."""
+    return ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+
+
 def analyze_selected_with_ai(event: Optional[tk.Event] = None) -> None:
     """Perform AI analysis for the currently selected items in the Treeview."""
     global current_cancel_event
@@ -1206,7 +1211,7 @@ def analyze_selected_with_ai(event: Optional[tk.Event] = None) -> None:
         if values:
             path = values[0]
             snippet = values[5]
-            cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+            cleaned_snippet = _clean_snippet_for_ai(snippet)
 
             gpt_requests.append({
                 "path": path,
@@ -1567,7 +1572,7 @@ def scan_files(
         if maxconf >= 0:
             percent = f"{maxconf:.0%}"
             snippet = ''.join(map(chr, max_window_bytes)).strip()
-            cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+            cleaned_snippet = _clean_snippet_for_ai(snippet)
 
             if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
                 gpt_requests.append(
