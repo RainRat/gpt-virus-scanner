@@ -138,6 +138,9 @@ python gptscan.py ./my_scripts --cli --use-gpt --provider ollama --model llama3.
 # Save results to a JSON file
 python gptscan.py ./my_scripts --cli -o results.json --exclude "tests/*"
 
+# Scan a remote script via URL
+python gptscan.py https://example.com/script.sh --cli
+
 # Convert an existing JSON report to an HTML report
 python gptscan.py --cli --import results.json -o report.html
 ```
