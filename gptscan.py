@@ -13,6 +13,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 import webbrowser
 from collections import deque
 import tkinter.scrolledtext as scrolledtext
@@ -43,6 +44,7 @@ scan_button: Optional[ttk.Button] = None
 cancel_button: Optional[ttk.Button] = None
 view_button: Optional[ttk.Button] = None
 rescan_button: Optional[ttk.Button] = None
+open_button: Optional[ttk.Button] = None
 analyze_button: Optional[ttk.Button] = None
 exclude_button: Optional[ttk.Button] = None
 reveal_button: Optional[ttk.Button] = None
@@ -73,6 +75,29 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
                 return file.read().splitlines()
     except (FileNotFoundError, PermissionError):
         return [] if mode == 'multi_line' else ''
+
+
+def fetch_url_content(url: str, timeout: int = 10, max_size: int = 5 * 1024 * 1024) -> bytes:
+    """Fetches content from a URL with safety limits.
+
+    Args:
+        url: The URL to fetch.
+        timeout: Connection timeout in seconds.
+        max_size: Maximum download size in bytes.
+
+    Returns:
+        The content as bytes.
+
+    Raises:
+        ValueError: If the response is too large or invalid.
+        urllib.error.URLError: If the fetch fails.
+    """
+    with urllib.request.urlopen(url, timeout=timeout) as response:
+        content_length = response.getheader('Content-Length')
+        if content_length and int(content_length) > max_size:
+            raise ValueError(f"Content too large ({format_bytes(int(content_length))})")
+
+        return response.read(max_size)
 
 
 class Config:
@@ -230,7 +255,7 @@ class Config:
 
         Returns:
             True if scan_all_files is enabled, or if the file matches a known extension,
-            has a script shebang, or was explicitly requested.
+            has a script starting line (like #!/bin/bash), or was explicitly requested.
         """
         if is_explicit or cls.scan_all_files:
             return True
@@ -239,14 +264,14 @@ class Config:
         if extension in cls.extensions_set:
             return True
 
-        # Check shebang for files without recognized extension
+        # Check for a script starting line (like #!/bin/bash) for files without a recognized extension
         try:
-            # Avoid checking very large files for shebangs if they aren't scripts
+            # Avoid checking very large files for script starting lines if they are not scripts
             # but usually reading just the first line is safe.
             with open(file_path, 'rb') as f:
                 header = f.read(2)
                 if header == b'#!':
-                    # It has a shebang! Read the rest of the first line.
+                    # It has a script starting line! Read the rest of the first line.
                     first_line = f.readline(126).decode('utf-8', errors='ignore').lower()
                     # Common interpreters for supported or similar script types
                     interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell']
@@ -1013,7 +1038,7 @@ def set_scanning_state(is_scanning: bool) -> None:
 
     # Disable all footer buttons during a scan
     footer_buttons = [
-        view_button, rescan_button, analyze_button, exclude_button,
+        view_button, rescan_button, open_button, analyze_button, exclude_button,
         reveal_button, import_button, export_button, clear_button
     ]
     for btn in footer_buttons:
@@ -1185,6 +1210,11 @@ def rescan_selected() -> None:
     scan_thread.start()
 
 
+def _clean_snippet_for_ai(snippet: str) -> str:
+    """Preprocess a code snippet by stripping whitespace and removing empty lines."""
+    return ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+
+
 def analyze_selected_with_ai(event: Optional[tk.Event] = None) -> None:
     """Perform AI analysis for the currently selected items in the Treeview."""
     global current_cancel_event
@@ -1206,7 +1236,7 @@ def analyze_selected_with_ai(event: Optional[tk.Event] = None) -> None:
         if values:
             path = values[0]
             snippet = values[5]
-            cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+            cleaned_snippet = _clean_snippet_for_ai(snippet)
 
             gpt_requests.append({
                 "path": path,
@@ -1537,12 +1567,15 @@ def scan_files(
 
     # Identify which files were explicitly passed as targets
     if isinstance(scan_targets, (str, Path)):
-        explicit_targets = {Path(scan_targets)}
-    else:
-        explicit_targets = {Path(t) for t in scan_targets}
+        scan_targets = [scan_targets]
+
+    url_targets = [str(t) for t in scan_targets if str(t).startswith(('http://', 'https://'))]
+    local_targets = [t for t in scan_targets if str(t) not in url_targets]
+
+    explicit_targets = {Path(t) for t in local_targets}
     explicit_files = {f for f in explicit_targets if f.is_file()}
 
-    file_list = collect_files(scan_targets)
+    file_list = collect_files(local_targets)
 
     if exclude_patterns:
         file_list = [
@@ -1551,11 +1584,39 @@ def scan_files(
         ]
 
     extra_snippets = extra_snippets or []
-    total_progress = len(file_list) + len(extra_snippets)
+    num_urls = len(url_targets)
+    total_progress = len(file_list) + len(extra_snippets) + 2 * num_urls
     progress_count = 0
     total_bytes_scanned = 0
     actual_files_scanned = 0
     start_time = time.perf_counter()
+
+    # Process URL targets (Phase 1: Fetching)
+    for url in url_targets:
+        if cancel_event.is_set():
+            break
+        progress_count += 1
+        yield ('progress', (progress_count, total_progress, f"Fetching: {url}"))
+        try:
+            content = fetch_url_content(url)
+            extra_snippets.append((f"[URL] {url}", content))
+        except Exception as e:
+            # If fetch fails, we yield the error now and account for both phases
+            yield (
+                'result',
+                (
+                    url,
+                    'Fetch Error',
+                    '',
+                    '',
+                    '',
+                    f"Could not download script: {e}",
+                    '-',
+                )
+            )
+            # Increment again to account for the skipped Phase 2 (Scanning)
+            progress_count += 1
+
     yield ('progress', (progress_count, total_progress, "Collecting files..."))
 
     gpt_requests: List[Dict[str, Any]] = []
@@ -1567,7 +1628,7 @@ def scan_files(
         if maxconf >= 0:
             percent = f"{maxconf:.0%}"
             snippet = ''.join(map(chr, max_window_bytes)).strip()
-            cleaned_snippet = ''.join([s for s in snippet.strip().splitlines(True) if s.strip()])
+            cleaned_snippet = _clean_snippet_for_ai(snippet)
 
             if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
                 gpt_requests.append(
@@ -1593,11 +1654,11 @@ def scan_files(
                     )
                 )
 
-    for index, file_path in enumerate(file_list):
+    for file_path in file_list:
         if cancel_event.is_set():
             break
 
-        progress_count = index + 1
+        progress_count += 1
         yield ('progress', (progress_count, total_progress, f"Scanning: {file_path.name}"))
 
         is_explicit = file_path in explicit_files
@@ -3523,7 +3584,7 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
     has_selection = bool(tree.selection())
 
     # Buttons that depend on having one or more items selected
-    dependent_buttons = [view_button, rescan_button, exclude_button, reveal_button]
+    dependent_buttons = [view_button, open_button, rescan_button, exclude_button, reveal_button]
     for btn in dependent_buttons:
         if btn:
             btn.config(state="normal" if has_selection else "disabled")
@@ -3662,7 +3723,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, analyze_button, exclude_button, reveal_button, import_button, export_button, clear_button, default_font_measure
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, import_button, export_button, clear_button, default_font_measure
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -3766,7 +3827,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     scan_all_var = tk.BooleanVar(value=Config.scan_all_files)
     scan_all_checkbox = ttk.Checkbutton(options_frame, text="Scan all files", variable=scan_all_var)
     scan_all_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
-    bind_hover_message(scan_all_checkbox, "Scan all files regardless of their extension or whether they contain a script shebang.")
+    bind_hover_message(scan_all_checkbox, "Scan all files regardless of their extension or whether they contain a script starting line (like #!/bin/bash).")
 
     all_var = tk.BooleanVar(value=Config.show_all_files)
 
@@ -3966,34 +4027,38 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     view_button.grid(row=0, column=1, padx=2, ipady=5)
     bind_hover_message(view_button, "Show full analysis and code for the selected result.")
 
+    open_button = ttk.Button(footer_frame, text="Open", command=open_file)
+    open_button.grid(row=0, column=2, padx=2, ipady=5)
+    bind_hover_message(open_button, "Open the selected file in its default application. (Shift+Enter)")
+
     rescan_button = ttk.Button(footer_frame, text="Rescan", command=rescan_selected)
-    rescan_button.grid(row=0, column=2, padx=2, ipady=5)
+    rescan_button.grid(row=0, column=3, padx=2, ipady=5)
     bind_hover_message(rescan_button, "Re-scan the currently selected items.")
 
     analyze_button = ttk.Button(footer_frame, text="Analyze", command=analyze_selected_with_ai)
-    analyze_button.grid(row=0, column=3, padx=2, ipady=5)
+    analyze_button.grid(row=0, column=4, padx=2, ipady=5)
     bind_hover_message(analyze_button, "Use AI to analyze the currently selected items.")
 
     exclude_button = ttk.Button(footer_frame, text="Exclude", command=exclude_selected)
-    exclude_button.grid(row=0, column=4, padx=2, ipady=5)
+    exclude_button.grid(row=0, column=5, padx=2, ipady=5)
     bind_hover_message(exclude_button, "Exclude the selected items from future scans.")
 
     reveal_button = ttk.Button(footer_frame, text="Reveal", command=show_in_folder)
-    reveal_button.grid(row=0, column=5, padx=2, ipady=5)
+    reveal_button.grid(row=0, column=6, padx=2, ipady=5)
     bind_hover_message(reveal_button, "Reveal the selected file in the system file manager.")
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=6, sticky="ns", padx=5)
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=7, sticky="ns", padx=5)
 
     import_button = ttk.Button(footer_frame, text="Import", command=import_results)
-    import_button.grid(row=0, column=7, padx=2, ipady=5)
+    import_button.grid(row=0, column=8, padx=2, ipady=5)
     bind_hover_message(import_button, "Load results from a JSON or CSV file.")
 
     export_button = ttk.Button(footer_frame, text="Export", command=export_results)
-    export_button.grid(row=0, column=8, padx=2, ipady=5)
+    export_button.grid(row=0, column=9, padx=2, ipady=5)
     bind_hover_message(export_button, "Save results to CSV, HTML, JSON, or SARIF.")
 
     clear_button = ttk.Button(footer_frame, text="Clear", command=clear_results)
-    clear_button.grid(row=0, column=9, padx=(2, 0), ipady=5)
+    clear_button.grid(row=0, column=10, padx=(2, 0), ipady=5)
     bind_hover_message(clear_button, "Clear all results from the list.")
 
     # --- Context Menu ---
@@ -4081,7 +4146,8 @@ def main():
                "  python gptscan.py ./my_scripts --cli --use-gpt\n"
                "  python gptscan.py ./my_script.py --cli --json\n"
                "  python gptscan.py --git-changes --cli --fail-threshold 50\n"
-               "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n\n"
+               "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n"
+               "  python gptscan.py https://example.com/script.sh --cli\n\n"
                "Note: Always run the script from inside its own folder so it can find its required data files (like scripts.h5).",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
