@@ -93,7 +93,7 @@ Run `python gptscan.py` to open the GUI.
 *   **Clipboard:** Scan code currently in your clipboard.
 *   **Filter results:** Search findings by path, confidence, notes, or code snippets.
 *   **Deep Scan:** Check the entire file. By default, the scanner only checks the first and last 1024 bytes to save time.
-*   **Scan all files:** Scan all files regardless of their extension or whether they contain a script shebang.
+*   **Scan all files:** Scan all files regardless of their extension or whether they contain a script starting line (like #!/bin/bash).
 *   **Minimum Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
 *   **Show all files:** See every scanned file, even safe ones.
 *   **Use AI Analysis:** Enable detailed reports for suspicious findings.
@@ -153,7 +153,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--threshold [0-100], -t [0-100]`: The lowest threat score to report (default: 50).
 *   `--fail-threshold [0-100]`: Exit with an error if any file meets this threat level.
 *   `--git-changes`: Only scan files that have changed in Git.
-*   `--all-files`: Scan all files regardless of their extension or whether they contain a script shebang.
+*   `--all-files`: Scan all files regardless of their extension or whether they contain a script starting line (like #!/bin/bash).
 *   `--exclude [patterns], -e [patterns]`: Skip files matching these patterns.
 *   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
 *   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF). Use `-` to read from standard input.

@@ -230,7 +230,7 @@ class Config:
 
         Returns:
             True if scan_all_files is enabled, or if the file matches a known extension,
-            has a script shebang, or was explicitly requested.
+            has a script starting line (like #!/bin/bash), or was explicitly requested.
         """
         if is_explicit or cls.scan_all_files:
             return True
@@ -239,14 +239,14 @@ class Config:
         if extension in cls.extensions_set:
             return True
 
-        # Check shebang for files without recognized extension
+        # Check for a script starting line (like #!/bin/bash) for files without a recognized extension
         try:
-            # Avoid checking very large files for shebangs if they aren't scripts
+            # Avoid checking very large files for script starting lines if they are not scripts
             # but usually reading just the first line is safe.
             with open(file_path, 'rb') as f:
                 header = f.read(2)
                 if header == b'#!':
-                    # It has a shebang! Read the rest of the first line.
+                    # It has a script starting line! Read the rest of the first line.
                     first_line = f.readline(126).decode('utf-8', errors='ignore').lower()
                     # Common interpreters for supported or similar script types
                     interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell']
@@ -3766,7 +3766,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     scan_all_var = tk.BooleanVar(value=Config.scan_all_files)
     scan_all_checkbox = ttk.Checkbutton(options_frame, text="Scan all files", variable=scan_all_var)
     scan_all_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
-    bind_hover_message(scan_all_checkbox, "Scan all files regardless of their extension or whether they contain a script shebang.")
+    bind_hover_message(scan_all_checkbox, "Scan all files regardless of their extension or whether they contain a script starting line (like #!/bin/bash).")
 
     all_var = tk.BooleanVar(value=Config.show_all_files)
 
