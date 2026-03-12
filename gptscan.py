@@ -13,6 +13,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 import webbrowser
 from collections import deque
 import tkinter.scrolledtext as scrolledtext
@@ -73,6 +74,29 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
                 return file.read().splitlines()
     except (FileNotFoundError, PermissionError):
         return [] if mode == 'multi_line' else ''
+
+
+def fetch_url_content(url: str, timeout: int = 10, max_size: int = 5 * 1024 * 1024) -> bytes:
+    """Fetches content from a URL with safety limits.
+
+    Args:
+        url: The URL to fetch.
+        timeout: Connection timeout in seconds.
+        max_size: Maximum download size in bytes.
+
+    Returns:
+        The content as bytes.
+
+    Raises:
+        ValueError: If the response is too large or invalid.
+        urllib.error.URLError: If the fetch fails.
+    """
+    with urllib.request.urlopen(url, timeout=timeout) as response:
+        content_length = response.getheader('Content-Length')
+        if content_length and int(content_length) > max_size:
+            raise ValueError(f"Content too large ({format_bytes(int(content_length))})")
+
+        return response.read(max_size)
 
 
 class Config:
@@ -1537,12 +1561,15 @@ def scan_files(
 
     # Identify which files were explicitly passed as targets
     if isinstance(scan_targets, (str, Path)):
-        explicit_targets = {Path(scan_targets)}
-    else:
-        explicit_targets = {Path(t) for t in scan_targets}
+        scan_targets = [scan_targets]
+
+    url_targets = [str(t) for t in scan_targets if str(t).startswith(('http://', 'https://'))]
+    local_targets = [t for t in scan_targets if str(t) not in url_targets]
+
+    explicit_targets = {Path(t) for t in local_targets}
     explicit_files = {f for f in explicit_targets if f.is_file()}
 
-    file_list = collect_files(scan_targets)
+    file_list = collect_files(local_targets)
 
     if exclude_patterns:
         file_list = [
@@ -1551,11 +1578,39 @@ def scan_files(
         ]
 
     extra_snippets = extra_snippets or []
-    total_progress = len(file_list) + len(extra_snippets)
+    num_urls = len(url_targets)
+    total_progress = len(file_list) + len(extra_snippets) + 2 * num_urls
     progress_count = 0
     total_bytes_scanned = 0
     actual_files_scanned = 0
     start_time = time.perf_counter()
+
+    # Process URL targets (Phase 1: Fetching)
+    for url in url_targets:
+        if cancel_event.is_set():
+            break
+        progress_count += 1
+        yield ('progress', (progress_count, total_progress, f"Fetching: {url}"))
+        try:
+            content = fetch_url_content(url)
+            extra_snippets.append((f"[URL] {url}", content))
+        except Exception as e:
+            # If fetch fails, we yield the error now and account for both phases
+            yield (
+                'result',
+                (
+                    url,
+                    'Fetch Error',
+                    '',
+                    '',
+                    '',
+                    f"Could not download script: {e}",
+                    '-',
+                )
+            )
+            # Increment again to account for the skipped Phase 2 (Scanning)
+            progress_count += 1
+
     yield ('progress', (progress_count, total_progress, "Collecting files..."))
 
     gpt_requests: List[Dict[str, Any]] = []
@@ -1593,11 +1648,11 @@ def scan_files(
                     )
                 )
 
-    for index, file_path in enumerate(file_list):
+    for file_path in file_list:
         if cancel_event.is_set():
             break
 
-        progress_count = index + 1
+        progress_count += 1
         yield ('progress', (progress_count, total_progress, f"Scanning: {file_path.name}"))
 
         is_explicit = file_path in explicit_files
@@ -4081,7 +4136,8 @@ def main():
                "  python gptscan.py ./my_scripts --cli --use-gpt\n"
                "  python gptscan.py ./my_script.py --cli --json\n"
                "  python gptscan.py --git-changes --cli --fail-threshold 50\n"
-               "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n\n"
+               "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n"
+               "  python gptscan.py https://example.com/script.sh --cli\n\n"
                "Note: Always run the script from inside its own folder so it can find its required data files (like scripts.h5).",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
