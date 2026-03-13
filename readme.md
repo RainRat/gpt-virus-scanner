@@ -22,38 +22,41 @@ Scan a folder and save a JSON report:
 python gptscan.py ./my_scripts --cli -o report.json
 ```
 
-Scan a code snippet from standard input:
+Scan a code snippet from terminal input (piped):
 ```bash
 echo "print('hello')" | python gptscan.py --cli --stdin
 ```
 
 ## Installation
 
-Follow these steps to get the scanner running:
+### Prerequisites
+*   **Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet because of model compatibility.
+*   **Tkinter (Linux only):** If you are on Linux, you may need to install the Tkinter library (for example: `sudo apt-get install python3-tk`).
 
-1.  **Download the code:** Clone this repository or download the zip file. Ensure `gptscan.py`, `scripts.h5`, `task.txt`, and `extensions.txt` are in the same folder.
-    *   **Note:** Always run the script from inside its own folder so it can find the required files.
-2.  **Install Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet because of model compatibility.
-3.  **Install requirements:** Open your terminal and run:
+### Installation Steps
+1.  **Download the code:** Clone this repository or download the zip file.
+2.  **Check for required files:** Ensure `gptscan.py`, `scripts.h5`, `task.txt`, and `extensions.txt` are all in the same folder.
+    *   **Note:** Always run the scanner from inside its own folder so it can find these files.
+3.  **Install dependencies:** Open your terminal and run:
     ```bash
     pip install "tensorflow<2.16" openai
     ```
-    *Linux users:* You may also need to install Tkinter (for example: `sudo apt-get install python3-tk`).
 
 ## AI Service Setup
 
-To use the "AI Analysis" feature, you must first set up an AI provider and then enable the feature in the scanner. Your code is only sent to an AI service if you choose to enable this option.
+To use the **AI Analysis** feature, you must set up an AI provider and then enable the feature in the scanner. Your code is only sent to an AI service if you choose to enable this option.
 
 ### Step 1: Set up a Provider
 
-#### OpenAI or OpenRouter (Cloud-based)
+#### Cloud-based (OpenAI or OpenRouter)
+These services process your code in the cloud and require an API key.
 1.  **Get an API key:** Sign up for [OpenAI](https://openai.com/) or [OpenRouter](https://openrouter.ai/).
 2.  **Add your key:** You have two options:
     *   Create a file named `apikey.txt` in the scanner folder and paste your key on the first line.
     *   Set the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable in your terminal.
 
-#### Ollama (Local AI)
-*Note: Ollama runs on your own computer and does not require an API key.*
+#### Local AI (Ollama)
+Ollama runs entirely on your own computer. It is private and **does not require an API key**.
 1.  **Install Ollama:** Download and install [Ollama](https://ollama.com/).
 2.  **Download a model:** Run `ollama pull llama3.2` (or your preferred model) in your terminal.
 3.  **Run Ollama:** Ensure the Ollama app is running before you start the scanner.
@@ -129,7 +132,7 @@ Run scans from your terminal using the `--cli` flag.
 # Basic scan with AI analysis
 python gptscan.py ./my_scripts --cli --use-gpt
 
-# Scan a code snippet from standard input
+# Scan a code snippet from terminal input (piped)
 echo "print('hello')" | python gptscan.py --cli --stdin
 
 # Scan using Ollama (local AI)
@@ -147,7 +150,7 @@ python gptscan.py --cli --import results.json -o report.html
 
 **Common Options:**
 *   `--cli`: Run in command-line mode.
-*   `--stdin`: Read a code snippet from standard input to scan.
+*   `--stdin`: Read a code snippet from terminal input (piped) to scan.
 *   `--deep`: Scan the entire file.
 *   `--dry-run`: Show which files would be scanned without analyzing them.
 *   `--show-all`: List all files, even safe ones.
@@ -159,7 +162,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--all-files`: Scan all files regardless of their extension or whether they contain a script starting line (like #!/bin/bash).
 *   `--exclude [patterns], -e [patterns]`: Skip files matching these patterns.
 *   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
-*   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF). Use `-` to read from standard input.
+*   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF). Use `-` to read from terminal input (piped).
 *   `--markdown`: Save the report in Markdown format.
 
 ## Advanced: Training
