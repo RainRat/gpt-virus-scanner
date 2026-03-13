@@ -13,7 +13,7 @@ def mock_gui(monkeypatch):
 def test_manage_exclusions_load(mock_gui, monkeypatch):
     monkeypatch.setattr(gptscan.Config, 'ignore_patterns', ['pattern1', 'pattern2'])
 
-    with patch('tkinter.Toplevel') as mock_toplevel:
+    with patch('gptscan.tk.Toplevel') as mock_toplevel:
         mock_win = MagicMock()
         mock_toplevel.return_value = mock_win
 
