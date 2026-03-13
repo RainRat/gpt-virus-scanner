@@ -11,10 +11,12 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
 import threading
 import time
 import urllib.request
 import webbrowser
+import zipfile
 from collections import deque
 import tkinter.scrolledtext as scrolledtext
 from functools import partial
@@ -246,12 +248,14 @@ class Config:
         cls.load_cache()
 
     @classmethod
-    def is_supported_file(cls, file_path: Path, is_explicit: bool = False) -> bool:
+    def is_supported_file(cls, file_path: Union[Path, str], is_explicit: bool = False, is_member: bool = False, content: Optional[bytes] = None) -> bool:
         """Check if a file should be scanned based on extension, content, explicit request, or scan_all_files setting.
 
         Args:
-            file_path: The path to the file to check.
+            file_path: The path to the file to check (Path object or string).
             is_explicit: Whether the file was specifically requested by the user.
+            is_member: Whether the file is a member of an archive.
+            content: Optional content bytes for in-memory files (like archive members).
 
         Returns:
             True if scan_all_files is enabled, or if the file matches a known extension,
@@ -260,25 +264,41 @@ class Config:
         if is_explicit or cls.scan_all_files:
             return True
 
-        extension = file_path.suffix.lower()
+        path_str = str(file_path).lower()
+        # Check archive extensions
+        if not is_member and (path_str.endswith('.zip') or path_str.endswith('.tar') or path_str.endswith('.tar.gz')):
+            return True
+
+        if isinstance(file_path, Path):
+            extension = file_path.suffix.lower()
+        else:
+            extension = os.path.splitext(str(file_path))[1].lower()
+
         if extension in cls.extensions_set:
             return True
 
         # Check for a script starting line (like #!/bin/bash) for files without a recognized extension
         try:
-            # Avoid checking very large files for script starting lines if they are not scripts
-            # but usually reading just the first line is safe.
-            with open(file_path, 'rb') as f:
-                header = f.read(2)
+            if content is not None:
+                header = content[:2]
                 if header == b'#!':
-                    # It has a script starting line! Read the rest of the first line.
-                    first_line = f.readline(126).decode('utf-8', errors='ignore').lower()
-                    # Common interpreters for supported or similar script types
+                    # Decode first line from provided content
+                    first_line = content.split(b'\n', 1)[0][:128].decode('utf-8', errors='ignore').lower()
                     interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell']
                     escaped_interpreters = [re.escape(i) for i in interpreters]
                     pattern = r'(?:/|\s|^)(?:' + '|'.join(escaped_interpreters) + r')\d*\b'
                     if re.search(pattern, first_line):
                         return True
+            elif isinstance(file_path, Path) and file_path.is_file():
+                with open(file_path, 'rb') as f:
+                    header = f.read(2)
+                    if header == b'#!':
+                        first_line = f.readline(126).decode('utf-8', errors='ignore').lower()
+                        interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell']
+                        escaped_interpreters = [re.escape(i) for i in interpreters]
+                        pattern = r'(?:/|\s|^)(?:' + '|'.join(escaped_interpreters) + r')\d*\b'
+                        if re.search(pattern, first_line):
+                            return True
         except (OSError, UnicodeDecodeError):
             pass
 
@@ -1583,7 +1603,41 @@ def scan_files(
             if not any(f.match(p) or any(parent.match(p) for parent in f.parents) for p in exclude_patterns)
         ]
 
-    extra_snippets = extra_snippets or []
+    # Expand archives into extra_snippets
+    extra_snippets = list(extra_snippets) if extra_snippets else []
+    non_archive_files = []
+    for f_path in file_list:
+        path_s = str(f_path).lower()
+        if path_s.endswith(('.zip', '.tar', '.tar.gz')):
+            try:
+                if path_s.endswith('.zip'):
+                    with zipfile.ZipFile(f_path, 'r') as z:
+                        for info in z.infolist():
+                            if info.is_dir() or info.file_size > 10 * 1024 * 1024:
+                                continue
+                            with z.open(info) as f_mem:
+                                header = f_mem.read(256)
+                                if Config.is_supported_file(info.filename, is_member=True, content=header):
+                                    f_mem.seek(0)
+                                    extra_snippets.append((f"{str(f_path)}[{info.filename}]", f_mem.read()))
+                else: # tar or tar.gz
+                    mode = 'r:gz' if path_s.endswith('.gz') else 'r'
+                    with tarfile.open(f_path, mode) as t:
+                        for member in t.getmembers():
+                            if not member.isfile() or member.size > 10 * 1024 * 1024:
+                                continue
+                            f_mem = t.extractfile(member)
+                            if f_mem:
+                                header = f_mem.read(256)
+                                if Config.is_supported_file(member.name, is_member=True, content=header):
+                                    f_mem.seek(0)
+                                    extra_snippets.append((f"{str(f_path)}[{member.name}]", f_mem.read()))
+            except Exception:
+                non_archive_files.append(f_path)
+        else:
+            non_archive_files.append(f_path)
+    file_list = non_archive_files
+
     num_urls = len(url_targets)
     total_progress = len(file_list) + len(extra_snippets) + 2 * num_urls
     progress_count = 0
@@ -4141,7 +4195,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan script files for malicious code using AI.",
+        description="Scan script files and archives (ZIP/TAR) for malicious code using AI.",
         epilog="Examples:\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n"
                "  python gptscan.py ./my_script.py --cli --json\n"
