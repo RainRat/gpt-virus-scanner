@@ -238,8 +238,9 @@ class Config:
         cls.ignore_patterns = []
         if loaded_ignores:
             cls.ignore_patterns = [
-                line.strip() for line in loaded_ignores
+                line.strip().split('#')[0].strip() for line in loaded_ignores
                 if line.strip() and not line.strip().startswith('#')
+                and line.strip().split('#')[0].strip()
             ]
 
         cls.load_settings()
@@ -1277,16 +1278,55 @@ def add_to_ignore_file(patterns: Union[str, List[str]]) -> None:
         # Move pointer to the beginning to read existing patterns
         f.seek(0)
         content = f.read()
-        existing_patterns = {line.strip() for line in content.splitlines() if line.strip()}
+        # Existing patterns without inline comments
+        existing_patterns = {
+            line.strip().split('#')[0].strip() for line in content.splitlines()
+            if line.strip() and not line.strip().startswith('#')
+        }
 
         # Ensure file ends with newline if not empty
         if content and not content.endswith('\n'):
             f.write('\n')
 
         for pattern in patterns:
-            if pattern and pattern not in existing_patterns:
+            clean_pattern = pattern.split('#')[0].strip()
+            if clean_pattern and clean_pattern not in existing_patterns:
                 f.write(f"{pattern}\n")
-                existing_patterns.add(pattern)
+                existing_patterns.add(clean_pattern)
+                if clean_pattern not in Config.ignore_patterns:
+                    Config.ignore_patterns.append(clean_pattern)
+
+
+def remove_from_ignore_file(patterns: Iterable[str]) -> None:
+    """Remove one or more patterns from the .gptscanignore file.
+
+    Args:
+        patterns: An iterable of pattern strings to remove.
+    """
+    patterns_to_remove = set(patterns)
+    ignore_file = Path('.gptscanignore')
+    if ignore_file.exists():
+        with open(ignore_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        with open(ignore_file, 'w', encoding='utf-8') as f:
+            for line in lines:
+                # Extract the actual pattern part if there's a comment
+                stripped = line.strip()
+                if not stripped:
+                    f.write(line)
+                    continue
+                if stripped.startswith('#'):
+                    f.write(line)
+                    continue
+
+                pattern_part = stripped.split('#')[0].strip()
+                if pattern_part not in patterns_to_remove:
+                    f.write(line)
+
+    for p in patterns_to_remove:
+        if p in Config.ignore_patterns:
+            Config.ignore_patterns.remove(p)
 
 
 def exclude_paths(paths: List[str], confirm: bool = True) -> bool:
@@ -1442,23 +1482,7 @@ def manage_exclusions() -> None:
             return
 
         try:
-            ignore_file = Path('.gptscanignore')
-            if ignore_file.exists():
-                with open(ignore_file, 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
-
-                with open(ignore_file, 'w', encoding='utf-8') as f:
-                    for line in lines:
-                        # Extract the actual pattern part if there's a comment
-                        stripped = line.strip()
-                        pattern_part = stripped.split('#')[0].strip()
-                        if pattern_part not in patterns_to_remove:
-                            f.write(line)
-
-            for p in patterns_to_remove:
-                if p in Config.ignore_patterns:
-                    Config.ignore_patterns.remove(p)
-
+            remove_from_ignore_file(patterns_to_remove)
             refresh_list()
             _apply_filter()
         except Exception as e:
