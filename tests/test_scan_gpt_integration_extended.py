@@ -61,9 +61,8 @@ def test_scan_files_gpt_processing_flow(mock_gpt_env, monkeypatch):
 
     res2 = next(r for r in gpt_results if "test2.py" in r[0])
     path2, own2, admin2, user2, gpt2, snip2, line2 = res2
-    assert admin2 == "JSON Parse Error"
-    assert gpt2 == "JSON Parse Error"
-
+    assert admin2 == "AI response error"
+    assert gpt2 == "AI response error"
 def test_scan_files_gpt_rate_limit_notifier(mock_gpt_env, monkeypatch):
     async def mock_handle(snippet, task, rate_limiter, semaphore, wait_callback=None):
         if wait_callback:
