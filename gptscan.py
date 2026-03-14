@@ -53,6 +53,19 @@ reveal_button: Optional[ttk.Button] = None
 import_button: Optional[ttk.Button] = None
 export_button: Optional[ttk.Button] = None
 clear_button: Optional[ttk.Button] = None
+select_file_btn: Optional[ttk.Button] = None
+select_dir_btn: Optional[ttk.Button] = None
+select_clipboard_btn: Optional[ttk.Button] = None
+copy_cmd_button: Optional[ttk.Button] = None
+git_checkbox: Optional[ttk.Checkbutton] = None
+deep_checkbox: Optional[ttk.Checkbutton] = None
+scan_all_checkbox: Optional[ttk.Checkbutton] = None
+dry_checkbox: Optional[ttk.Checkbutton] = None
+gpt_checkbox: Optional[ttk.Checkbutton] = None
+all_checkbox: Optional[ttk.Checkbutton] = None
+threshold_spin: Optional[ttk.Spinbox] = None
+provider_combo: Optional[ttk.Combobox] = None
+model_combo: Optional[ttk.Combobox] = None
 context_menu: Optional[tk.Menu] = None
 _all_results_cache: List[Tuple[Any, ...]] = []
 _last_scan_summary: str = ""
@@ -448,6 +461,22 @@ def browse_dir_click() -> None:
     """Handle the directory selection dialog and populate the textbox."""
     folder_selected = filedialog.askdirectory()
     _set_scan_target(folder_selected)
+
+
+def toggle_ai_controls() -> None:
+    """Enable or disable AI analysis controls based on current settings and scan state."""
+    enabled = gpt_var.get() if gpt_var else False
+    is_scanning = current_cancel_event is not None
+
+    if provider_combo and model_combo:
+        if enabled and not is_scanning:
+            provider_combo.config(state="readonly")
+            model_combo.config(state="normal")
+        else:
+            provider_combo.config(state="disabled")
+            model_combo.config(state="disabled")
+
+    update_tree_columns()
 
 
 def browse_file_click() -> None:
@@ -1039,9 +1068,24 @@ def _auto_select_best_result() -> None:
 def set_scanning_state(is_scanning: bool) -> None:
     """Enable or disable controls based on scanning state."""
 
-    if scan_button and cancel_button:
-        scan_button.config(state="disabled" if is_scanning else "normal")
+    if scan_button:
+        scan_button.config(
+            text="Scanning..." if is_scanning else "Scan Now",
+            state="disabled" if is_scanning else "normal"
+        )
+    if cancel_button:
         cancel_button.config(state="normal" if is_scanning else "disabled")
+
+    # Disable/Enable configuration widgets during scan
+    config_widgets = [
+        textbox, select_file_btn, select_dir_btn, select_clipboard_btn,
+        git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox,
+        gpt_checkbox, provider_combo, model_combo, copy_cmd_button,
+        all_checkbox, threshold_spin
+    ]
+    for widget in config_widgets:
+        if widget:
+            widget.config(state="disabled" if is_scanning else "normal")
 
     # Disable all footer buttons during a scan
     footer_buttons = [
@@ -1051,6 +1095,9 @@ def set_scanning_state(is_scanning: bool) -> None:
     for btn in footer_buttons:
         if btn:
             btn.config(state="disabled" if is_scanning else "normal")
+
+    # Ensure AI-specific controls are correctly toggled based on gpt_var and scan state
+    toggle_ai_controls()
 
     if not is_scanning:
         # Re-evaluate selection-dependent buttons when scan ends
@@ -3791,7 +3838,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, import_button, export_button, clear_button, default_font_measure
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, import_button, export_button, clear_button, default_font_measure, select_file_btn, select_dir_btn, select_clipboard_btn, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, all_checkbox, threshold_spin
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -3907,16 +3954,6 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     # --- Provider Frame ---
     provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis", padding=10)
     provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
-
-    def toggle_ai_controls():
-        enabled = gpt_var.get()
-        if enabled:
-            provider_combo.config(state="readonly")
-            model_combo.config(state="normal")
-        else:
-            provider_combo.config(state="disabled")
-            model_combo.config(state="disabled")
-        update_tree_columns()
 
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
     gpt_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
