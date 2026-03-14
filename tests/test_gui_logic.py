@@ -73,12 +73,12 @@ def test_set_scanning_state_updates_buttons(monkeypatch):
 
     # Test scanning=True
     gptscan.set_scanning_state(True)
-    mock_scan_button.config.assert_called_with(state="disabled")
+    mock_scan_button.config.assert_called_with(text="Scanning...", state="disabled")
     mock_cancel_button.config.assert_called_with(state="normal")
 
     # Test scanning=False
     gptscan.set_scanning_state(False)
-    mock_scan_button.config.assert_called_with(state="normal")
+    mock_scan_button.config.assert_called_with(text="Scan Now", state="normal")
     mock_cancel_button.config.assert_called_with(state="disabled")
 
 def test_finish_scan_state_resets_state(monkeypatch):
@@ -103,7 +103,7 @@ def test_finish_scan_state_resets_state(monkeypatch):
     # because it avoids overwriting a possible "Scan cancelled" status set by _consume_scan_events.
     mock_status_label.config.assert_not_called()
     assert gptscan.current_cancel_event is None
-    mock_scan_button.config.assert_called_with(state="normal")
+    mock_scan_button.config.assert_called_with(text="Scan Now", state="normal")
     mock_cancel_button.config.assert_called_with(state="disabled")
 
 def test_cancel_scan_triggers_event(monkeypatch):
@@ -211,7 +211,7 @@ def test_button_click_starts_scan(monkeypatch):
     # Assert
     mock_status_label.config.assert_called_with(text="Starting scan...")
     assert gptscan.current_cancel_event is not None
-    mock_scan_button.config.assert_called_with(state="disabled")
+    mock_scan_button.config.assert_called_with(text="Scanning...", state="disabled")
 
     # Check thread creation
     mock_thread_cls.assert_called_once()
