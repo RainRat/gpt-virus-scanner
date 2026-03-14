@@ -7,7 +7,7 @@ GPT Virus Scanner uses AI to find malicious code in script files.
 *   **Local Scan:** A fast, built-in model checks files on your computer.
 *   **AI Analysis:** If a file looks suspicious, the tool can send it to an AI service (like OpenAI) for a detailed report.
 
-**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and PowerShell) but does not analyze compiled programs or compressed files (like .zip).
+**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and PowerShell), Jupyter Notebooks (.ipynb), and archives (.zip, .tar), but does not analyze compiled programs.
 
 ## Quick Start
 
@@ -69,8 +69,9 @@ Once your provider is ready, you must enable the feature when you run a scan:
 
 ## Supported Files
 
-The scanner finds scripts in two ways:
-*   **By file type:** It recognizes over 70 common script types (like `.py`, `.js`, `.sh`, and `.ps1`) using the included `extensions.txt` file.
+The scanner finds scripts in three ways:
+*   **By file type:** It recognizes common script types (like `.py`, `.js`, `.sh`, and `.ps1`) and Jupyter Notebooks (`.ipynb`) using the included `extensions.txt` file.
+*   **By archive content:** It can inspect scripts hidden inside `.zip`, `.tar`, and `.tar.gz` files.
 *   **By the first line of the file:** If a file does not have an extension, the tool checks the very first line to identify the script type (for example, a line starting with `#!/bin/bash`).
 
 ## Configuration
