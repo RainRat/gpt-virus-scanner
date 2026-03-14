@@ -70,3 +70,4 @@
 .xml
 .yaml
 .yml
+.ipynb

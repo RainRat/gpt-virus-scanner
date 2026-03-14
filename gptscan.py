@@ -144,7 +144,7 @@ class Config:
     scan_all_files: bool = False
     use_ai_analysis: bool = False
 
-    DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1']
+    DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1', '.ipynb']
 
     apikey_missing_message = (
         "No API key found. AI analysis with OpenAI or OpenRouter is disabled, but local scans and Ollama still work."
@@ -1693,6 +1693,21 @@ def scan_files(
                                 if Config.is_supported_file(member.name, is_member=True, content=header):
                                     f_mem.seek(0)
                                     extra_snippets.append((f"{str(f_path)}[{member.name}]", f_mem.read()))
+            except Exception:
+                non_archive_files.append(f_path)
+        elif path_s.endswith('.ipynb'):
+            try:
+                with open(f_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    notebook = json.load(f)
+                    cells = notebook.get('cells', [])
+                    cell_count = 0
+                    for cell in cells:
+                        if cell.get('cell_type') == 'code':
+                            source = cell.get('source', [])
+                            code = "".join(source) if isinstance(source, list) else str(source)
+                            if code.strip():
+                                cell_count += 1
+                                extra_snippets.append((f"{str(f_path)} [Cell {cell_count}]", code.encode('utf-8')))
             except Exception:
                 non_archive_files.append(f_path)
         else:
