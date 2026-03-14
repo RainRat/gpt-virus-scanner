@@ -250,56 +250,40 @@ class Config:
 
     @classmethod
     def is_supported_file(cls, file_path: Union[Path, str], is_explicit: bool = False, is_member: bool = False, content: Optional[bytes] = None) -> bool:
-        """Check if a file should be scanned based on extension, content, explicit request, or scan_all_files setting.
-
-        Args:
-            file_path: The path to the file to check (Path object or string).
-            is_explicit: Whether the file was specifically requested by the user.
-            is_member: Whether the file is a member of an archive.
-            content: Optional content bytes for in-memory files (like archive members).
-
-        Returns:
-            True if scan_all_files is enabled, or if the file matches a known extension,
-            has a script starting line (like #!/bin/bash), or was explicitly requested.
-        """
+        """Check if a file should be scanned based on extension, content, explicit request, or scan_all_files setting."""
         if is_explicit or cls.scan_all_files:
             return True
 
+        # Normalize file_path to string for consistent extension checking,
+        # but keep Path objects for file-system operations.
         path_str = str(file_path).lower()
         # Check archive extensions
         if not is_member and (path_str.endswith('.zip') or path_str.endswith('.tar') or path_str.endswith('.tar.gz')):
             return True
 
-        if isinstance(file_path, Path):
-            extension = file_path.suffix.lower()
-        else:
-            extension = os.path.splitext(str(file_path))[1].lower()
-
+        extension = os.path.splitext(path_str)[1]
         if extension in cls.extensions_set:
             return True
 
+        file_path = Path(file_path)
+
         # Check for a script starting line (like #!/bin/bash) for files without a recognized extension
         try:
+            first_line = None
             if content is not None:
-                header = content[:2]
-                if header == b'#!':
-                    # Decode first line from provided content
+                if content.startswith(b'#!'):
                     first_line = content.split(b'\n', 1)[0][:128].decode('utf-8', errors='ignore').lower()
-                    interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell']
-                    escaped_interpreters = [re.escape(i) for i in interpreters]
-                    pattern = r'(?:/|\s|^)(?:' + '|'.join(escaped_interpreters) + r')\d*\b'
-                    if re.search(pattern, first_line):
-                        return True
-            elif isinstance(file_path, Path) and file_path.is_file():
+            elif file_path.is_file():
                 with open(file_path, 'rb') as f:
-                    header = f.read(2)
-                    if header == b'#!':
+                    if f.read(2) == b'#!':
                         first_line = f.readline(126).decode('utf-8', errors='ignore').lower()
-                        interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell']
-                        escaped_interpreters = [re.escape(i) for i in interpreters]
-                        pattern = r'(?:/|\s|^)(?:' + '|'.join(escaped_interpreters) + r')\d*\b'
-                        if re.search(pattern, first_line):
-                            return True
+
+            if first_line:
+                interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell']
+                escaped_interpreters = [re.escape(i) for i in interpreters]
+                pattern = r'(?:/|\s|^)(?:' + '|'.join(escaped_interpreters) + r')\d*\b'
+                if re.search(pattern, first_line):
+                    return True
         except (OSError, UnicodeDecodeError):
             pass
 
