@@ -318,7 +318,7 @@ default_font_measure: Optional[Callable[[str], int]] = None
 
 
 def get_model() -> Any:
-    """Lazily load and cache the TensorFlow model per process."""
+    """Load the detection model when it is first needed and keep it in memory."""
 
     global _model_cache, _tf_module
     if _model_cache is not None:
@@ -334,7 +334,7 @@ def get_model() -> Any:
 
 
 def get_async_openai_client() -> Any:
-    """Lazily instantiate and reuse the asynchronous OpenAI client."""
+    """Create the AI service connection when it is first needed and reuse it."""
 
     global _async_openai_client
 
@@ -398,7 +398,7 @@ def configure_progress(max_value: int) -> None:
 
 
 def enqueue_ui_update(func: Callable, *args: Any, **kwargs: Any) -> None:
-    """Queue a UI update to be processed on the main thread.
+    """Add a task to the queue so the main window can update safely.
 
     Parameters
     ----------
@@ -1517,7 +1517,11 @@ def manage_exclusions() -> None:
 
 
 def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
-    """Yield file chunks for scanning."""
+    """Yield file chunks for scanning.
+
+    Balance speed and thoroughness by checking the beginning and end of files
+    where script headers and malicious payloads are usually found.
+    """
     if maxlen is None:
         maxlen = Config.MAXLEN
 
@@ -1915,9 +1919,9 @@ def scan_files(
             yield ('progress', (progress_count, total_progress, f"AI Analysis: {os.path.basename(request['path'])}"))
 
             if json_data is None:
-                admin_desc = 'JSON Parse Error'
-                enduser_desc = 'JSON Parse Error'
-                chatgpt_conf_percent = 'JSON Parse Error'
+                admin_desc = 'AI response error'
+                enduser_desc = 'AI response error'
+                chatgpt_conf_percent = 'AI response error'
             else:
                 admin_desc = json_data["administrator"]
                 enduser_desc = json_data["end-user"]
@@ -2477,7 +2481,7 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
 
 
 def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None) -> int:
-    """Run scans and stream results to stdout or a file.
+    """Run scans and stream results to the terminal or a file.
 
     Parameters
     ----------
@@ -2531,7 +2535,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 event_gen = import_results_from_content_generator(content)
             except Exception as e:
                 def error_gen():
-                    yield ('progress', (0, 1, f"Error reading from stdin: {e}"))
+                    yield ('progress', (0, 1, f"Error reading from terminal input: {e}"))
                 event_gen = error_gen()
         else:
             event_gen = import_results_generator(import_file)
@@ -4288,12 +4292,12 @@ def main():
     scan_group.add_argument(
         '--stdin',
         action='store_true',
-        help='Read a code snippet from standard input to scan.'
+        help='Read a code snippet from terminal input (piped) to scan.'
     )
     scan_group.add_argument(
         '--import-results', '--import',
         type=str,
-        help='Import and process results from a previous scan (JSON, CSV, or SARIF). Use "-" to read from standard input.'
+        help='Import and process results from a previous scan (JSON, CSV, or SARIF). Use "-" to read from terminal input (piped).'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
@@ -4429,7 +4433,7 @@ def main():
                 if stdin_content:
                     extra_snippets.append(("[Stdin]", stdin_content))
             except Exception as e:
-                print(f"Error reading from stdin: {e}", file=sys.stderr)
+                print(f"Error reading from terminal input: {e}", file=sys.stderr)
 
         threats = run_cli(
             scan_targets,
