@@ -285,7 +285,7 @@ class Config:
             first_line = None
             if content is not None:
                 if content.startswith(b'#!'):
-                    first_line = content.split(b'\n', 1)[0][:128].decode('utf-8', errors='ignore').lower()
+                    first_line = content[2:].split(b'\n', 1)[0][:126].decode('utf-8', errors='ignore').lower()
             elif file_path.is_file():
                 with open(file_path, 'rb') as f:
                     if f.read(2) == b'#!':
