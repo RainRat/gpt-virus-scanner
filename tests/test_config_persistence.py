@@ -132,3 +132,33 @@ def test_load_settings_partial_data(temp_settings_file):
     assert Config.last_path == "/partial"
     assert Config.THRESHOLD == 99
     assert Config.deep_scan is True
+
+def test_load_settings_type_safety(temp_settings_file):
+    settings = {
+        "threshold": "85",
+        "recent_paths": [1, 2, "three"],
+        "use_ai_analysis": "True"
+    }
+    with open(temp_settings_file, "w") as f:
+        json.dump(settings, f)
+
+    Config.THRESHOLD = 50
+    Config.recent_paths = []
+
+    Config.load_settings()
+
+    assert Config.THRESHOLD == 85
+    assert isinstance(Config.THRESHOLD, int)
+    assert Config.recent_paths == ["1", "2", "three"]
+    assert all(isinstance(p, str) for p in Config.recent_paths)
+
+def test_load_settings_invalid_threshold_fallback(temp_settings_file):
+    settings = {
+        "threshold": "not a number"
+    }
+    with open(temp_settings_file, "w") as f:
+        json.dump(settings, f)
+
+    Config.THRESHOLD = 42
+    Config.load_settings()
+    assert Config.THRESHOLD == 42 # Should remain unchanged
