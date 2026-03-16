@@ -55,6 +55,7 @@ export_button: Optional[ttk.Button] = None
 clear_button: Optional[ttk.Button] = None
 select_file_btn: Optional[ttk.Button] = None
 select_dir_btn: Optional[ttk.Button] = None
+select_url_btn: Optional[ttk.Button] = None
 select_clipboard_btn: Optional[ttk.Button] = None
 copy_cmd_button: Optional[ttk.Button] = None
 git_checkbox: Optional[ttk.Checkbutton] = None
@@ -461,6 +462,13 @@ def browse_dir_click() -> None:
     """Handle the directory selection dialog and populate the textbox."""
     folder_selected = filedialog.askdirectory()
     _set_scan_target(folder_selected)
+
+
+def select_url_click() -> None:
+    """Handle the URL input dialog and populate the textbox."""
+    url_selected = simpledialog.askstring("Scan URL", "Enter a script URL to scan (http/https):")
+    if url_selected:
+        _set_scan_target(url_selected.strip())
 
 
 def toggle_ai_controls() -> None:
@@ -1078,7 +1086,7 @@ def set_scanning_state(is_scanning: bool) -> None:
 
     # Disable/Enable configuration widgets during scan
     config_widgets = [
-        textbox, select_file_btn, select_dir_btn, select_clipboard_btn,
+        textbox, select_file_btn, select_dir_btn, select_url_btn, select_clipboard_btn,
         git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox,
         gpt_checkbox, provider_combo, model_combo, copy_cmd_button,
         all_checkbox, threshold_spin
@@ -3853,7 +3861,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, import_button, export_button, clear_button, default_font_measure, select_file_btn, select_dir_btn, select_clipboard_btn, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, all_checkbox, threshold_spin
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, import_button, export_button, clear_button, default_font_measure, select_file_btn, select_dir_btn, select_url_btn, select_clipboard_btn, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, all_checkbox, threshold_spin
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -3911,8 +3919,12 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     select_dir_btn.grid(row=0, column=3, sticky="e", padx=(5, 0), ipady=5)
     bind_hover_message(select_dir_btn, "Select a directory to scan.")
 
+    select_url_btn = ttk.Button(input_frame, text="URL...", command=select_url_click)
+    select_url_btn.grid(row=0, column=4, sticky="e", padx=(5, 0), ipady=5)
+    bind_hover_message(select_url_btn, "Scan a script from a remote URL.")
+
     select_clipboard_btn = ttk.Button(input_frame, text="Clipboard", command=scan_clipboard_click)
-    select_clipboard_btn.grid(row=0, column=4, sticky="e", padx=(5, 0), ipady=5)
+    select_clipboard_btn.grid(row=0, column=5, sticky="e", padx=(5, 0), ipady=5)
     bind_hover_message(select_clipboard_btn, "Scan code currently in your clipboard.")
 
     # --- Settings Container ---
