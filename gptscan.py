@@ -3931,28 +3931,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     settings_frame = ttk.Frame(root)
     settings_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
-    # --- Actions Frame ---
-    actions_frame = ttk.LabelFrame(settings_frame, text="Control", padding=10)
-    actions_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
-
-    primary_actions = ttk.Frame(actions_frame)
-    primary_actions.pack(side=tk.TOP, fill=tk.X)
-
-    scan_button = ttk.Button(primary_actions, text="Scan Now", command=button_click, style='Primary.TButton', default='active')
-    scan_button.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=2, padx=(0, 2), ipady=5)
-    bind_hover_message(scan_button, "Start the scan.")
-
-    cancel_button = ttk.Button(primary_actions, text="Cancel", command=cancel_scan, state="disabled")
-    cancel_button.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=2, padx=(2, 0), ipady=5)
-    bind_hover_message(cancel_button, "Stop the current scan.")
-
-    copy_cmd_button = ttk.Button(actions_frame, text="Copy CLI Command", command=copy_cli_command)
-    copy_cmd_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
-    bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
-
     # --- Options Frame ---
     options_frame = ttk.LabelFrame(settings_frame, text="Scan Options", padding=10)
-    options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=5)
+    options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
 
     gpt_var = tk.BooleanVar(value=Config.use_ai_analysis)
 
@@ -3980,7 +3961,26 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # --- Provider Frame ---
     provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis", padding=10)
-    provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
+    provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+
+    # --- Actions Frame ---
+    actions_frame = ttk.LabelFrame(settings_frame, text="Actions", padding=10)
+    actions_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(5, 0))
+
+    primary_actions = ttk.Frame(actions_frame)
+    primary_actions.pack(side=tk.TOP, fill=tk.X)
+
+    scan_button = ttk.Button(primary_actions, text="Scan Now", command=button_click, style='Primary.TButton', default='active')
+    scan_button.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=2, padx=(0, 2), ipady=5)
+    bind_hover_message(scan_button, "Start the scan.")
+
+    cancel_button = ttk.Button(primary_actions, text="Cancel", command=cancel_scan, state="disabled")
+    cancel_button.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=2, padx=(2, 0), ipady=5)
+    bind_hover_message(cancel_button, "Stop the current scan.")
+
+    copy_cmd_button = ttk.Button(actions_frame, text="Copy CLI Command", command=copy_cli_command)
+    copy_cmd_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
+    bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
 
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
     gpt_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
