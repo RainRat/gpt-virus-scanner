@@ -133,7 +133,7 @@ def test_button_click_validation_failure(monkeypatch):
 
     gptscan.button_click()
 
-    mock_msgbox.showerror.assert_called_with("Scan Error", "Please select a file or folder to scan.")
+    mock_msgbox.showerror.assert_called_with("Missing Selection", "Please select a file or folder to scan.")
 
 def test_button_click_missing_model(monkeypatch):
     mock_textbox = MagicMock()
@@ -156,7 +156,7 @@ def test_button_click_missing_model(monkeypatch):
 
     gptscan.button_click()
 
-    mock_msgbox.showerror.assert_called_with("Scan Error", "Model file scripts.h5 not found.")
+    mock_msgbox.showerror.assert_called_with("Model Not Found", "The scanner cannot find 'scripts.h5'. This file is required to run local scans.")
 
 def test_button_click_starts_scan(monkeypatch):
     # Setup

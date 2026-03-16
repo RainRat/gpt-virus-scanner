@@ -148,13 +148,13 @@ class Config:
     DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1', '.ipynb']
 
     apikey_missing_message = (
-        "No API key found. AI analysis with OpenAI or OpenRouter is disabled, but local scans and Ollama still work."
+        "No API key found. You cannot use OpenAI or OpenRouter, but local scans and Ollama still work."
     )
     task_missing_message = (
-        "The 'task.txt' file is missing. AI analysis will be skipped."
+        "The 'task.txt' file is missing. The scanner will not use AI analysis."
     )
     extensions_missing_message = (
-        f"The 'extensions.txt' file is missing. Using default types: {', '.join(DEFAULT_EXTENSIONS)}"
+        f"The 'extensions.txt' file is missing. The scanner will use these default types: {', '.join(DEFAULT_EXTENSIONS)}"
     )
 
     @classmethod
@@ -1186,7 +1186,7 @@ def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_
 
     scan_path = textbox.get()
     if not scan_path:
-        messagebox.showerror("Scan Error", "Please select a file or folder to scan.")
+        messagebox.showerror("Missing Selection", "Please select a file or folder to scan.")
         return
 
     scan_targets: Union[str, List[str]] = scan_path
@@ -1198,7 +1198,7 @@ def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_
         scan_targets = git_files
 
     if not dry_var.get() and not os.path.exists('scripts.h5'):
-        messagebox.showerror("Scan Error", "Model file scripts.h5 not found.")
+        messagebox.showerror("Model Not Found", "The scanner cannot find 'scripts.h5'. This file is required to run local scans.")
         return
 
     Config.last_path = scan_path
@@ -3895,7 +3895,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     menubar.add_cascade(label="File", menu=file_menu)
 
     help_menu = tk.Menu(menubar, tearoff=0)
-    help_menu.add_command(label="About", command=lambda: messagebox.showinfo("About", f"GPT Virus Scanner v{Config.VERSION}\nA security tool for scanning scripts using AI."))
+    help_menu.add_command(label="About", command=lambda: messagebox.showinfo("About", f"GPT Virus Scanner v{Config.VERSION}\nThis tool uses AI to find malicious code in your scripts."))
     menubar.add_cascade(label="Help", menu=help_menu)
     root.config(menu=menubar)
 
@@ -3996,8 +3996,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     if not Config.GPT_ENABLED:
         gpt_var.set(False)
         gpt_checkbox.config(state="disabled")
-        messagebox.showwarning("AI Analysis Disabled",
-                                       "task.txt not found. AI Analysis is disabled.")
+        messagebox.showwarning("AI Disabled",
+                                       "The scanner cannot find 'task.txt'. You cannot use AI analysis.")
 
     settings_row = ttk.Frame(provider_frame)
     settings_row.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
