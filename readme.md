@@ -69,10 +69,11 @@ Once your provider is ready, you must enable the feature when you run a scan:
 
 ## Supported Files
 
-The scanner finds scripts in three ways:
+The scanner finds scripts in four ways:
 *   **By file type:** It recognizes common script types (like `.py`, `.js`, `.sh`, and `.ps1`) and Jupyter Notebooks (`.ipynb`) using the included `extensions.txt` file.
 *   **By archive content:** It can inspect scripts hidden inside `.zip`, `.tar`, and `.tar.gz` files.
 *   **By the first line of the file:** If a file does not have an extension, the tool checks the very first line to identify the script type (for example, a line starting with `#!/bin/bash`).
+*   **Remote scripts (via URL):** It can download and scan scripts directly from the web using HTTP or HTTPS links.
 
 ## Configuration
 
