@@ -203,8 +203,13 @@ class Config:
                 cls.use_ai_analysis = settings.get("use_ai_analysis", cls.use_ai_analysis)
                 cls.provider = settings.get("provider", cls.provider)
                 cls.model_name = settings.get("model_name", cls.model_name)
-                cls.THRESHOLD = settings.get("threshold", cls.THRESHOLD)
-                cls.recent_paths = settings.get("recent_paths", cls.recent_paths)
+                try:
+                    cls.THRESHOLD = int(settings.get("threshold", cls.THRESHOLD))
+                except (ValueError, TypeError):
+                    pass
+                recent = settings.get("recent_paths")
+                if isinstance(recent, list):
+                    cls.recent_paths = [str(p) for p in recent]
         except Exception as e:
             print(f"Warning: Could not load settings: {e}", file=sys.stderr)
 
