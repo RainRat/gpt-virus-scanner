@@ -1661,9 +1661,11 @@ def scan_files(
             prediction = modelscript.predict(tf_data, batch_size=1, steps=1)[0][0]
             return float(prediction), bytes(padded_data)
 
-    # Identify which files were explicitly passed as targets
+    # Identify which files were explicitly passed as targets and deduplicate them
     if isinstance(scan_targets, (str, Path)):
         scan_targets = [scan_targets]
+
+    scan_targets = list(dict.fromkeys(scan_targets))
 
     url_targets = [str(t) for t in scan_targets if str(t).startswith(('http://', 'https://'))]
     local_targets = [t for t in scan_targets if str(t) not in url_targets]
