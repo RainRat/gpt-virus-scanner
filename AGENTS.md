@@ -1,11 +1,11 @@
 # Agent Guide for GPT Virus Scanner
 
 ## Project Overview
-This project is a hybrid security tool that combines a local TensorFlow/Keras deep learning model with the OpenAI API to classify scripts and text files as malicious or benign. It features a Tkinter GUI.
+This project is a security tool that uses both local and cloud-based analysis. It combines a local TensorFlow/Keras deep learning model with the OpenAI API to identify scripts and text files as harmful or safe. It features a Tkinter GUI.
 
 ## Architecture
 1.  **GUI:** `gptscan.py` uses `tkinter` and `ttk`. It displays a Treeview of scanned files.
-2.  **Input:** The user selects a directory. The app recursively finds files matching extensions in `extensions.txt`.
+2.  **Input:** The user selects a directory. The app finds files in the folder and all its subfolders matching extensions in `extensions.txt`.
 3.  **Stage 1 (Local Filter):**
     * Files are read in chunks.
     * A pre-trained Keras model (`scripts.h5`) analyzes 1024-byte windows.
@@ -15,10 +15,10 @@ This project is a hybrid security tool that combines a local TensorFlow/Keras de
     * The API uses the prompt in `task.txt` to return a JSON assessment (Administrator description, End-user description, Threat Level).
 
 ## Environment Setup
-* **Python Version:** 3.8+ recommended.
+* **Python Version:** 3.9, 3.10, or 3.11 required.
 * **Dependencies:**
     * `tensorflow` (Heavy dependency, ensure compatibility with your local CUDA/CPU setup).
-    * `openai` (v1.0+ syntax used, including `AsyncOpenAI`).
+    * `openai` (v1.0+ code style used, including `AsyncOpenAI`).
     * `tkinter` (Usually included with Python, but may need separate install on Linux).
 * **Files Required for Execution:**
     * `scripts.h5`: The trained model (binary).
@@ -27,15 +27,15 @@ This project is a hybrid security tool that combines a local TensorFlow/Keras de
     * `extensions.txt`: (Optional) List of file extensions to scan.
 
 ## Code Conventions
-* **Formatting:** The current codebase is loosely formatted. New contributions should aim for PEP8 compliance.
-* **Error Handling:** GUI operations should not crash the main thread. Use `try/except` blocks liberally when dealing with file I/O and API calls.
-* **Threading:** Scanning operations run on a background thread to keep the UI responsive. UI updates are marshaled back to the main thread via a queue.
+* **Formatting:** The current codebase is loosely formatted. New contributions should aim for PEP8 style rules.
+* **Error Handling:** GUI operations should not crash the main thread. Use `try/except` blocks wherever necessary when dealing with file I/O and API calls.
+* **Threading:** Scanning operations run on a background thread to keep the UI responsive. UI updates are sent back to the main thread via a queue.
 
 ## Critical Notes for Agents
 * **Security:** Do not commit `apikey.txt` or real API keys to version control.
 * Always run `pytest` from the repository root before submitting changes, unless it is a documentation-only change. Try to fix any test failures, even if you don't think you caused them.
 * Update or add unit tests alongside code changes when behaviour changes.
-* You may do moderate refactoring if needed (ie. expose some code as a function in order to test it specifically)
+* You may do minor refactoring if needed (ie. expose some code as a function in order to test it specifically)
 * The scripts.h5 file:
     * Was trained on an older version of Tensorflow
     * Was trained in 1024-byte chunks
