@@ -1556,10 +1556,10 @@ def manage_exclusions() -> None:
         except Exception as e:
             messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
 
-    ttk.Button(btn_frame, text="Add Pattern...", command=add_pattern).pack(side=tk.LEFT, padx=(0, 5))
-    ttk.Button(btn_frame, text="Add Folder...", command=add_folder).pack(side=tk.LEFT, padx=5)
-    ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5)
-    ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT)
+    ttk.Button(btn_frame, text="Add Pattern...", command=add_pattern).pack(side=tk.LEFT, padx=(0, 5), ipady=5)
+    ttk.Button(btn_frame, text="Add Folder...", command=add_folder).pack(side=tk.LEFT, padx=5, ipady=5)
+    ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5, ipady=5)
+    ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT, ipady=5)
 
 
 def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
@@ -3147,8 +3147,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     details_win = tk.Toplevel(root)
     details_win.title(f"Result Details - {os.path.basename(path)}")
-    details_win.geometry("700x650")
-    details_win.minsize(500, 450)
+    details_win.geometry("1100x650")
+    details_win.minsize(800, 450)
 
     # Make it modal-ish but not blocking
     details_win.transient(root)
@@ -3170,8 +3170,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         root.clipboard_append(path_entry.get())
         messagebox.showinfo("Copied", "File path copied to clipboard.")
 
-    ttk.Button(header_frame, text="Copy Path", width=12, command=copy_path_btn).grid(row=0, column=2, padx=2)
-    ttk.Button(header_frame, text="Show in Folder", width=15, command=lambda: show_in_folder(path_entry.get())).grid(row=0, column=3, padx=2)
+    ttk.Button(header_frame, text="Copy Path", width=12, command=copy_path_btn).grid(row=0, column=2, padx=2, ipady=5)
+    ttk.Button(header_frame, text="Reveal", width=15, command=lambda: show_in_folder(path_entry.get())).grid(row=0, column=3, padx=2, ipady=5)
 
     conf_frame = ttk.Frame(header_frame)
     conf_frame.grid(row=1, column=0, columnspan=4, sticky="w", pady=(5, 0))
@@ -3352,20 +3352,20 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             tree.see(new_item_id)
             refresh_content(new_item_id)
 
-    ttk.Button(btn_frame, text="Open File", command=lambda: open_file(path_entry.get())).pack(side=tk.LEFT, padx=5)
-    ttk.Button(btn_frame, text="Exclude", command=on_exclude).pack(side=tk.LEFT, padx=5)
-    ttk.Button(btn_frame, text="Copy Analysis", command=copy_analysis).pack(side=tk.LEFT, padx=5)
-    ttk.Button(btn_frame, text="VirusTotal", command=lambda: check_virustotal(path_entry.get())).pack(side=tk.LEFT, padx=5)
+    ttk.Button(btn_frame, text="Open", width=10, command=lambda: open_file(path_entry.get())).pack(side=tk.LEFT, padx=5, ipady=5)
+    ttk.Button(btn_frame, text="Exclude", width=10, command=on_exclude).pack(side=tk.LEFT, padx=5, ipady=5)
+    ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis).pack(side=tk.LEFT, padx=5, ipady=5)
+    ttk.Button(btn_frame, text="VirusTotal", width=12, command=lambda: check_virustotal(path_entry.get())).pack(side=tk.LEFT, padx=5, ipady=5)
 
-    source_toggle_btn = ttk.Button(btn_frame, text="Show Full Source", command=toggle_source)
-    source_toggle_btn.pack(side=tk.LEFT, padx=5)
+    source_toggle_btn = ttk.Button(btn_frame, text="Show Full Source", width=18, command=toggle_source)
+    source_toggle_btn.pack(side=tk.LEFT, padx=5, ipady=5)
 
-    analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", command=on_analyze_now)
-    analyze_btn.pack(side=tk.LEFT, padx=5)
+    analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", width=18, command=on_analyze_now)
+    analyze_btn.pack(side=tk.LEFT, padx=5, ipady=5)
     if not Config.GPT_ENABLED:
         analyze_btn.config(state='disabled')
 
-    ttk.Button(btn_frame, text="Close", command=details_win.destroy).pack(side=tk.RIGHT, padx=5)
+    ttk.Button(btn_frame, text="Close", command=details_win.destroy).pack(side=tk.RIGHT, padx=5, ipady=5)
 
     # Navigation buttons
     nav_frame = ttk.Frame(main_frame)
@@ -3478,13 +3478,13 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         except ValueError: pass
 
     prev_btn = ttk.Button(nav_frame, text="< Previous", command=on_prev)
-    prev_btn.pack(side=tk.LEFT, padx=5)
+    prev_btn.pack(side=tk.LEFT, padx=5, ipady=5)
 
     count_label = ttk.Label(nav_frame, text="")
     count_label.pack(side=tk.LEFT, padx=10)
 
     next_btn = ttk.Button(nav_frame, text="Next >", command=on_next)
-    next_btn.pack(side=tk.LEFT, padx=5)
+    next_btn.pack(side=tk.LEFT, padx=5, ipady=5)
     details_win.bind('<Left>', lambda e: on_prev())
     details_win.bind('<Right>', lambda e: on_next())
     details_win.bind('<Delete>', lambda e: on_exclude())
@@ -4075,7 +4075,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         _apply_filter()
 
     clear_filter_btn = ttk.Button(filter_frame, text="Clear", width=8, command=clear_filter)
-    clear_filter_btn.grid(row=0, column=2, padx=(5, 0))
+    clear_filter_btn.grid(row=0, column=2, padx=(5, 0), ipady=5)
     bind_hover_message(clear_filter_btn, "Clear the filter.")
 
     ttk.Separator(filter_frame, orient=tk.VERTICAL).grid(row=0, column=3, sticky="ns", padx=10)
@@ -4166,7 +4166,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     view_button.grid(row=0, column=1, padx=2, ipady=5)
     bind_hover_message(view_button, "Show full analysis and code for the selected result.")
 
-    analyze_button = ttk.Button(footer_frame, text="Analyze", command=analyze_selected_with_ai)
+    analyze_button = ttk.Button(footer_frame, text="Analyze with AI", command=analyze_selected_with_ai)
     analyze_button.grid(row=0, column=2, padx=2, ipady=5)
     bind_hover_message(analyze_button, "Use AI to analyze the currently selected items.")
 
@@ -4217,8 +4217,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu.add_separator()
     context_menu.add_command(label="Select All", command=select_all_items)
     context_menu.add_separator()
-    context_menu.add_command(label="Open File", command=open_file)
-    context_menu.add_command(label="Show in Folder", command=show_in_folder)
+    context_menu.add_command(label="Open", command=open_file)
+    context_menu.add_command(label="Reveal", command=show_in_folder)
     context_menu.add_separator()
     context_menu.add_command(label="Copy File Path", command=copy_path)
     context_menu.add_command(label="Copy SHA256", command=copy_sha256)
