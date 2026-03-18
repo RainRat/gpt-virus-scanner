@@ -67,6 +67,7 @@ all_checkbox: Optional[ttk.Checkbutton] = None
 threshold_spin: Optional[ttk.Spinbox] = None
 provider_combo: Optional[ttk.Combobox] = None
 model_combo: Optional[ttk.Combobox] = None
+api_entry: Optional[ttk.Entry] = None
 context_menu: Optional[tk.Menu] = None
 _all_results_cache: List[Tuple[Any, ...]] = []
 _last_scan_summary: str = ""
@@ -178,6 +179,7 @@ class Config:
             "use_ai_analysis": cls.use_ai_analysis,
             "provider": cls.provider,
             "model_name": cls.model_name,
+            "api_base": cls.api_base,
             "threshold": cls.THRESHOLD,
             "recent_paths": cls.recent_paths,
         }
@@ -203,6 +205,7 @@ class Config:
                 cls.use_ai_analysis = settings.get("use_ai_analysis", cls.use_ai_analysis)
                 cls.provider = settings.get("provider", cls.provider)
                 cls.model_name = settings.get("model_name", cls.model_name)
+                cls.api_base = settings.get("api_base", cls.api_base)
                 threshold = settings.get("threshold", cls.THRESHOLD)
                 try:
                     cls.THRESHOLD = int(threshold)
@@ -483,13 +486,15 @@ def toggle_ai_controls() -> None:
     enabled = gpt_var.get() if gpt_var else False
     is_scanning = current_cancel_event is not None
 
-    if provider_combo and model_combo:
+    if provider_combo and model_combo and api_entry:
         if enabled and not is_scanning:
             provider_combo.config(state="readonly")
             model_combo.config(state="normal")
+            api_entry.config(state="normal")
         else:
             provider_combo.config(state="disabled")
             model_combo.config(state="disabled")
+            api_entry.config(state="disabled")
 
     update_tree_columns()
 
@@ -1019,6 +1024,11 @@ def update_tree_row(item_id: str, values: Tuple[Any, ...]) -> None:
     # Update cache
     for i, old_vals in enumerate(_all_results_cache):
         if old_vals[0] == values[0]:
+            # Match line number (index 6) if available to ensure the correct entry
+            # is updated when a file has multiple findings.
+            if len(old_vals) > 6 and len(values) > 6:
+                if str(old_vals[6]) != str(values[6]):
+                    continue
             _all_results_cache[i] = values
             break
 
@@ -1095,7 +1105,7 @@ def set_scanning_state(is_scanning: bool) -> None:
     config_widgets = [
         textbox, select_file_btn, select_dir_btn, select_url_btn, select_clipboard_btn,
         git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox,
-        gpt_checkbox, provider_combo, model_combo, copy_cmd_button,
+        gpt_checkbox, provider_combo, model_combo, api_entry, copy_cmd_button,
         all_checkbox, threshold_spin
     ]
     for widget in config_widgets:
@@ -3952,7 +3962,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, import_button, export_button, clear_button, default_font_measure, select_file_btn, select_dir_btn, select_url_btn, select_clipboard_btn, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, all_checkbox, threshold_spin
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, import_button, export_button, clear_button, default_font_measure, select_file_btn, select_dir_btn, select_url_btn, select_clipboard_btn, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_entry, all_checkbox, threshold_spin
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -4095,6 +4105,25 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     model_var = tk.StringVar(value=Config.model_name)
     model_combo = ttk.Combobox(settings_row, textvariable=model_var, width=20)
     model_combo.pack(side=tk.LEFT, padx=5)
+
+    api_row = ttk.Frame(provider_frame)
+    api_row.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
+
+    ttk.Label(api_row, text="API Base URL:").pack(side=tk.LEFT)
+    api_entry = ttk.Entry(api_row)
+    api_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+    bind_hover_message(api_entry, "Set a custom URL for the AI service (e.g., http://localhost:11434/v1 for Ollama).")
+
+    api_base_var = tk.StringVar(value=Config.api_base or "")
+    api_entry.config(textvariable=api_base_var)
+
+    def on_api_base_change(*args):
+        val = api_base_var.get().strip()
+        Config.api_base = val if val else None
+        global _async_openai_client
+        _async_openai_client = None
+
+    api_base_var.trace_add("write", on_api_base_change)
 
     toggle_ai_controls()
 
