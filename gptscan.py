@@ -1019,6 +1019,11 @@ def update_tree_row(item_id: str, values: Tuple[Any, ...]) -> None:
     # Update cache
     for i, old_vals in enumerate(_all_results_cache):
         if old_vals[0] == values[0]:
+            # Match line number (index 6) if available to ensure the correct entry
+            # is updated when a file has multiple findings.
+            if len(old_vals) > 6 and len(values) > 6:
+                if str(old_vals[6]) != str(values[6]):
+                    continue
             _all_results_cache[i] = values
             break
 
