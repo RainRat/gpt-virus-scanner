@@ -8,11 +8,13 @@ def mock_gui_ai(monkeypatch):
     mock_gpt_var = MagicMock()
     mock_provider_combo = MagicMock()
     mock_model_combo = MagicMock()
+    mock_api_entry = MagicMock()
     mock_update_tree_columns = MagicMock()
 
     monkeypatch.setattr(gptscan, "gpt_var", mock_gpt_var)
     monkeypatch.setattr(gptscan, "provider_combo", mock_provider_combo)
     monkeypatch.setattr(gptscan, "model_combo", mock_model_combo)
+    monkeypatch.setattr(gptscan, "api_entry", mock_api_entry)
     monkeypatch.setattr(gptscan, "update_tree_columns", mock_update_tree_columns)
     monkeypatch.setattr(gptscan, "current_cancel_event", None)
 
@@ -20,6 +22,7 @@ def mock_gui_ai(monkeypatch):
         "gpt_var": mock_gpt_var,
         "provider_combo": mock_provider_combo,
         "model_combo": mock_model_combo,
+        "api_entry": mock_api_entry,
         "update_tree_columns": mock_update_tree_columns
     }
 
@@ -32,6 +35,7 @@ def test_toggle_ai_controls_enabled_no_scan(mock_gui_ai, monkeypatch):
 
     mock_gui_ai["provider_combo"].config.assert_called_with(state="readonly")
     mock_gui_ai["model_combo"].config.assert_called_with(state="normal")
+    mock_gui_ai["api_entry"].config.assert_called_with(state="normal")
     mock_gui_ai["update_tree_columns"].assert_called_once()
 
 def test_toggle_ai_controls_disabled_no_scan(mock_gui_ai, monkeypatch):
@@ -43,6 +47,7 @@ def test_toggle_ai_controls_disabled_no_scan(mock_gui_ai, monkeypatch):
 
     mock_gui_ai["provider_combo"].config.assert_called_with(state="disabled")
     mock_gui_ai["model_combo"].config.assert_called_with(state="disabled")
+    mock_gui_ai["api_entry"].config.assert_called_with(state="disabled")
     mock_gui_ai["update_tree_columns"].assert_called_once()
 
 def test_toggle_ai_controls_enabled_during_scan(mock_gui_ai, monkeypatch):
@@ -54,6 +59,7 @@ def test_toggle_ai_controls_enabled_during_scan(mock_gui_ai, monkeypatch):
 
     mock_gui_ai["provider_combo"].config.assert_called_with(state="disabled")
     mock_gui_ai["model_combo"].config.assert_called_with(state="disabled")
+    mock_gui_ai["api_entry"].config.assert_called_with(state="disabled")
     mock_gui_ai["update_tree_columns"].assert_called_once()
 
 def test_toggle_ai_controls_disabled_during_scan(mock_gui_ai, monkeypatch):
@@ -65,6 +71,7 @@ def test_toggle_ai_controls_disabled_during_scan(mock_gui_ai, monkeypatch):
 
     mock_gui_ai["provider_combo"].config.assert_called_with(state="disabled")
     mock_gui_ai["model_combo"].config.assert_called_with(state="disabled")
+    mock_gui_ai["api_entry"].config.assert_called_with(state="disabled")
     mock_gui_ai["update_tree_columns"].assert_called_once()
 
 def test_toggle_ai_controls_no_widgets(monkeypatch):
@@ -74,6 +81,7 @@ def test_toggle_ai_controls_no_widgets(monkeypatch):
     monkeypatch.setattr(gptscan, "gpt_var", mock_gpt_var)
     monkeypatch.setattr(gptscan, "provider_combo", None)
     monkeypatch.setattr(gptscan, "model_combo", None)
+    monkeypatch.setattr(gptscan, "api_entry", None)
 
     mock_update_tree_columns = MagicMock()
     monkeypatch.setattr(gptscan, "update_tree_columns", mock_update_tree_columns)
@@ -87,8 +95,10 @@ def test_toggle_ai_controls_no_gpt_var(monkeypatch):
     monkeypatch.setattr(gptscan, "gpt_var", None)
     mock_provider_combo = MagicMock()
     mock_model_combo = MagicMock()
+    mock_api_entry = MagicMock()
     monkeypatch.setattr(gptscan, "provider_combo", mock_provider_combo)
     monkeypatch.setattr(gptscan, "model_combo", mock_model_combo)
+    monkeypatch.setattr(gptscan, "api_entry", mock_api_entry)
     monkeypatch.setattr(gptscan, "current_cancel_event", None)
 
     mock_update_tree_columns = MagicMock()
@@ -99,4 +109,5 @@ def test_toggle_ai_controls_no_gpt_var(monkeypatch):
     # Should default to disabled since enabled = False
     mock_provider_combo.config.assert_called_with(state="disabled")
     mock_model_combo.config.assert_called_with(state="disabled")
+    mock_api_entry.config.assert_called_with(state="disabled")
     mock_update_tree_columns.assert_called_once()
