@@ -3293,57 +3293,63 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     showing_full_source = False
 
-    def toggle_source():
+    def load_display_code(path, line, snippet, silent_fallback=False):
+        """Load and display either the snippet or full source code."""
         nonlocal showing_full_source
-        vals = _get_item_raw_values(current_item_id)
-        if not vals:
-            return
-        path = vals[0]
-        line = vals[6] if len(vals) > 6 and vals[6] != "-" else 1
-        snippet = vals[5]
-
-        if not showing_full_source:
+        if showing_full_source:
             if path.startswith("["):
-                messagebox.showinfo("Full Source", "Full source is not available for virtual files or clipboard content.")
-                return
+                if not silent_fallback:
+                    messagebox.showinfo("Full Source", "Full source is not available for virtual files or clipboard content.")
+            elif not os.path.exists(path):
+                if not silent_fallback:
+                    messagebox.showerror("Error", f"File not found: {path}")
+            else:
+                try:
+                    file_size = os.path.getsize(path)
+                    if file_size > 2 * 1024 * 1024: # 2MB limit
+                        if not messagebox.askyesno("Large File", f"The file is {format_bytes(file_size)}. Loading it might be slow. Continue?"):
+                            raise ValueError("Cancelled")
 
-            if not os.path.exists(path):
-                messagebox.showerror("Error", f"File not found: {path}")
-                return
+                    with open(path, 'r', encoding='utf-8', errors='replace') as f:
+                        content = f.read()
 
-            try:
-                file_size = os.path.getsize(path)
-                if file_size > 2 * 1024 * 1024: # 2MB limit
-                    if not messagebox.askyesno("Large File", f"The file is {format_bytes(file_size)}. Loading it might be slow. Continue?"):
-                        return
+                    snippet_text.config(state='normal')
+                    snippet_text.delete('1.0', tk.END)
+                    snippet_text.insert(tk.END, content)
 
-                with open(path, 'r', encoding='utf-8', errors='replace') as f:
-                    content = f.read()
+                    # Highlight and scroll to line
+                    if str(line).isdigit():
+                        line_idx = f"{line}.0"
+                        snippet_text.tag_add("highlight", line_idx, f"{line}.end")
+                        snippet_text.see(line_idx)
 
-                snippet_text.config(state='normal')
-                snippet_text.delete('1.0', tk.END)
-                snippet_text.insert(tk.END, content)
+                    snippet_text.config(state='disabled')
+                    source_toggle_btn.config(text="Show Snippet")
+                    snippet_frame.config(text="Full Source")
+                    return
+                except Exception as e:
+                    if not silent_fallback and str(e) != "Cancelled":
+                        messagebox.showerror("Error", f"Could not read file: {e}")
 
-                # Highlight and scroll to line
-                if str(line).isdigit():
-                    line_idx = f"{line}.0"
-                    snippet_text.tag_add("highlight", line_idx, f"{line}.end")
-                    snippet_text.see(line_idx)
+        # Default to snippet view
+        snippet_text.config(state='normal')
+        snippet_text.delete('1.0', tk.END)
+        snippet_text.insert(tk.END, snippet)
+        snippet_text.config(state='disabled')
+        showing_full_source = False
+        source_toggle_btn.config(text="Show Full Source")
+        snippet_frame.config(text="Code Snippet")
 
-                snippet_text.config(state='disabled')
-                showing_full_source = True
-                source_toggle_btn.config(text="Show Snippet")
-                snippet_frame.config(text="Full Source")
-            except Exception as e:
-                messagebox.showerror("Error", f"Could not read file: {e}")
-        else:
-            snippet_text.config(state='normal')
-            snippet_text.delete('1.0', tk.END)
-            snippet_text.insert(tk.END, snippet)
-            snippet_text.config(state='disabled')
-            showing_full_source = False
-            source_toggle_btn.config(text="Show Full Source")
-            snippet_frame.config(text="Code Snippet")
+    def toggle_source():
+        """Toggle between snippet and full source view."""
+        nonlocal showing_full_source
+        showing_full_source = not showing_full_source
+        vals = _get_item_raw_values(current_item_id)
+        if vals:
+            path = vals[0]
+            line = vals[6] if len(vals) > 6 and vals[6] != "-" else 1
+            snippet = vals[5]
+            load_display_code(path, line, snippet)
 
     # Footer buttons
     btn_frame = ttk.Frame(main_frame)
@@ -3529,15 +3535,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         else:
             analysis_frame.pack_forget()
 
-        nonlocal showing_full_source
-        showing_full_source = False
-        source_toggle_btn.config(text="Show Full Source")
-        snippet_frame.config(text="Code Snippet")
-
-        snippet_text.config(state='normal')
-        snippet_text.delete('1.0', tk.END)
-        snippet_text.insert(tk.END, snippet)
-        snippet_text.config(state='disabled')
+        load_display_code(path, line, snippet, silent_fallback=True)
 
     def on_prev():
         all_visible = tree.get_children()

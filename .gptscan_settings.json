@@ -11,7 +11,8 @@
     "recent_paths": [
         "/some/path",
         "/some/repo",
-        "/new/path",
-        "/old/path"
+        "1",
+        "2",
+        "three"
     ]
 }

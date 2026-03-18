@@ -28,6 +28,10 @@ def mock_view_details_env(monkeypatch):
     mock_toplevel = MagicMock()
     monkeypatch.setattr(gptscan.tk, 'Toplevel', MagicMock(return_value=mock_toplevel))
 
+    # Mock Entry
+    mock_entry = MagicMock()
+    monkeypatch.setattr(gptscan.ttk, 'Entry', MagicMock(return_value=mock_entry))
+
     # Mock tk.Label for risk_badge
     mock_label = MagicMock()
     monkeypatch.setattr(gptscan.tk, 'Label', MagicMock(return_value=mock_label))
@@ -200,7 +204,8 @@ def test_toggle_source_virtual_file(mock_view_details_env):
     toggle_cmd()
 
     mock_msgbox.showinfo.assert_called_with("Full Source", "Full source is not available for virtual files or clipboard content.")
-    mock_st.insert.assert_not_called()
+    # In the refactored version, load_display_code falls back to snippet view, which calls insert
+    mock_st.insert.assert_called_with(ANY, "snippet")
 
 def test_toggle_source_missing_file(mock_view_details_env, monkeypatch):
     captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
@@ -228,7 +233,8 @@ def test_toggle_source_large_file_cancel(mock_view_details_env, monkeypatch):
     toggle_cmd()
 
     mock_msgbox.askyesno.assert_called()
-    mock_st.insert.assert_not_called()
+    # In the refactored version, load_display_code falls back to snippet view, which calls insert
+    mock_st.insert.assert_called_with(ANY, "snippet")
 
 def test_toggle_source_read_error(mock_view_details_env, monkeypatch):
     captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
@@ -337,3 +343,35 @@ def test_view_details_analyze_now(mock_view_details_env, monkeypatch):
     contents = [call[0][1] for call in calls]
     assert "New Admin Info" in contents
     assert "New User Info" in contents
+
+def test_view_details_persistent_full_source(mock_view_details_env, monkeypatch):
+    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
+
+    # Setup 2 items
+    raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
+    mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
+    raw2 = ["file2.py", "20%", "", "", "", "snippet2", 1]
+    mock_tree._item_values["item2"] = ["file2.py", "20%", "", "", "", "snippet2", 1, json.dumps(raw2)]
+
+    mock_tree.get_children.return_value = ["item1", "item2"]
+    monkeypatch.setattr(os.path, "exists", lambda x: True)
+    monkeypatch.setattr(os.path, "getsize", lambda x: 100)
+
+    gptscan.view_details(item_id="item1")
+
+    toggle_cmd = captured["btn_Show Full Source"][1]
+
+    # Toggle to full source
+    with patch("builtins.open", mock_open(read_data="full content 1")):
+        toggle_cmd()
+
+    assert "full content 1" in [call[0][1] for call in mock_st.insert.call_args_list]
+    mock_st.insert.reset_mock()
+
+    # Move to next item
+    next_cmd = captured["btn_Next >"][1]
+    with patch("builtins.open", mock_open(read_data="full content 2")):
+        next_cmd()
+
+    # Verify that it automatically loaded full source for item 2
+    assert "full content 2" in [call[0][1] for call in mock_st.insert.call_args_list]
