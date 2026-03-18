@@ -1,5 +1,5 @@
 {
-    "last_path": "/some/path",
+    "last_path": "",
     "deep_scan": false,
     "git_changes_only": false,
     "show_all_files": false,
@@ -7,11 +7,7 @@
     "use_ai_analysis": false,
     "provider": "openai",
     "model_name": "gpt-4o",
+    "api_base": null,
     "threshold": 50,
-    "recent_paths": [
-        "/some/path",
-        "/some/repo",
-        "/new/path",
-        "/old/path"
-    ]
+    "recent_paths": []
 }
