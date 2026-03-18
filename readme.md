@@ -95,7 +95,7 @@ You can customize the scanner using these files in the same folder:
 Run `python gptscan.py` to open the GUI.
 
 *   **Select File/Folder:** Choose what you want to scan. If you select a folder, the tool scans all files inside it and its subfolders. The path input is a dropdown that remembers your last 10 scan locations.
-*   **URL:** Scan a script directly from a remote URL (HTTP/HTTPS).
+*   **URL:** Scan a script or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Clipboard:** Scan code currently in your clipboard.
 *   **Filter results:** Search findings by path, confidence, notes, or code snippets.
 *   **Deep Scan:** Check the entire file. By default, the scanner only checks the first and last 1024 bytes to save time.
@@ -104,8 +104,12 @@ Run `python gptscan.py` to open the GUI.
 *   **Show all files:** See every scanned file, even safe ones.
 *   **Use AI Analysis:** Enable detailed reports for suspicious findings.
 *   **Batch AI Analysis:** Select multiple findings and analyze them all at once using the "Analyze with AI" button or right-click menu.
+*   **VirusTotal:** Look up a file's signature on VirusTotal to see other security reports.
+*   **Open / Reveal:** Open the selected file or show its location in your folder.
+*   **Manage Exclusions:** View and edit your `.gptscanignore` file to skip specific patterns.
+*   **Copy CLI Command:** Copy the command-line equivalent of your current settings.
 *   **Import/Export:** Save or load results.
-    *   **Import:** Supports CSV, JSON, JSONL, NDJSON, and SARIF formats.
+    *   **Import:** Supports CSV, JSON, JSONL, NDJSON, and SARIF formats. You can also import results directly from your clipboard.
     *   **Export:** Supports CSV, JSON, HTML, SARIF, and Markdown formats.
 
 **Shortcuts:**

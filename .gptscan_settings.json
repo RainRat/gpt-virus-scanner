@@ -10,8 +10,6 @@
     "threshold": 50,
     "recent_paths": [
         "/some/path",
-        "/some/repo",
-        "/new/path",
-        "/old/path"
+        "/some/repo"
     ]
 }
