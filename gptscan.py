@@ -4467,7 +4467,7 @@ def main():
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
-    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Use AI to create detailed reports for suspicious files. Note: This requires an API key for OpenAI and OpenRouter.')
+    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Use AI to create detailed reports for suspicious files. Note: This requires an API key for OpenAI and OpenRouter, but not for Ollama.')
     ai_group.add_argument(
         '--provider',
         type=str,
