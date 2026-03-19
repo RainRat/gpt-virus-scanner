@@ -3264,8 +3264,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         root.clipboard_append(path_entry.get())
         messagebox.showinfo("Copied", "File path copied to clipboard.")
 
-    ttk.Button(header_frame, text="Copy Path", width=12, command=copy_path_btn).grid(row=0, column=2, padx=2, ipady=5)
-    ttk.Button(header_frame, text="Reveal", width=15, command=lambda: show_in_folder(path_entry.get())).grid(row=0, column=3, padx=2, ipady=5)
+    copy_path_header_btn = ttk.Button(header_frame, text="Copy Path", width=12, command=copy_path_btn)
+    copy_path_header_btn.grid(row=0, column=2, padx=(2, 5), ipady=5)
+    bind_hover_message(copy_path_header_btn, "Copy the full file path to the clipboard.")
 
     conf_frame = ttk.Frame(header_frame)
     conf_frame.grid(row=1, column=0, columnspan=4, sticky="w", pady=(5, 0))
@@ -3370,6 +3371,10 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             messagebox.showwarning("AI Disabled", "AI Analysis is disabled (task.txt not found or API key missing).")
             return
 
+        if current_cancel_event is not None:
+            messagebox.showwarning("Scan in Progress", "Please wait for the current scan to finish.")
+            return
+
         analyze_btn.config(state='disabled', text="Analyzing...")
 
         def run_thread(target_id):
@@ -3452,20 +3457,85 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             tree.see(new_item_id)
             refresh_content(new_item_id)
 
-    ttk.Button(btn_frame, text="Open", width=10, command=lambda: open_file(path_entry.get())).pack(side=tk.LEFT, padx=5, ipady=5)
-    ttk.Button(btn_frame, text="Exclude", width=10, command=on_exclude).pack(side=tk.LEFT, padx=5, ipady=5)
-    ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis).pack(side=tk.LEFT, padx=5, ipady=5)
-    ttk.Button(btn_frame, text="VirusTotal", width=12, command=lambda: check_virustotal(path_entry.get())).pack(side=tk.LEFT, padx=5, ipady=5)
+    def on_rescan():
+        """Re-scan the current file and refresh the details view."""
+        global current_cancel_event
+        if current_cancel_event is not None:
+            messagebox.showwarning("Scan in Progress", "Please wait for the current scan to finish.")
+            return
 
-    source_toggle_btn = ttk.Button(btn_frame, text="Show Full Source", width=18, command=toggle_source)
-    source_toggle_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+        path = path_entry.get()
+        if path.startswith("["):
+            messagebox.showinfo("Rescan", "Rescan is not available for virtual files or clipboard content.")
+            return
 
+        current_cancel_event = threading.Event()
+        set_scanning_state(True)
+        update_status(f"Rescanning {os.path.basename(path)}...")
+
+        settings = {
+            'deep': deep_var.get() if deep_var else False,
+            'gpt': gpt_var.get() if gpt_var else False,
+            'dry': dry_var.get() if dry_var else False,
+        }
+
+        def run_thread():
+            try:
+                run_rescan([path], {path: current_item_id}, settings, current_cancel_event)
+                enqueue_ui_update(refresh_content, current_item_id)
+            finally:
+                enqueue_ui_update(lambda: set_scanning_state(False))
+
+        threading.Thread(target=run_thread, daemon=True).start()
+
+    # Analysis Group
     analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", width=18, command=on_analyze_now)
     analyze_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(analyze_btn, "Request AI analysis for the current code snippet.")
     if not Config.GPT_ENABLED:
         analyze_btn.config(state='disabled')
 
-    ttk.Button(btn_frame, text="Close", command=details_win.destroy).pack(side=tk.RIGHT, padx=5, ipady=5)
+    copy_analysis_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
+    copy_analysis_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(copy_analysis_btn, "Copy the detailed analysis and snippet to the clipboard.")
+
+    vt_btn = ttk.Button(btn_frame, text="VirusTotal", width=12, command=lambda: check_virustotal(path_entry.get()))
+    vt_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(vt_btn, "Check the file on VirusTotal. (Requires Internet)")
+
+    ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
+
+    # Files Group
+    open_btn = ttk.Button(btn_frame, text="Open", width=10, command=lambda: open_file(path_entry.get()))
+    open_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(open_btn, "Open the file in its default application.")
+
+    reveal_btn = ttk.Button(btn_frame, text="Reveal", width=10, command=lambda: show_in_folder(path_entry.get()))
+    reveal_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(reveal_btn, "Reveal the file in the system file manager.")
+
+    ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
+
+    # Exclusions Group
+    rescan_btn = ttk.Button(btn_frame, text="Rescan", width=10, command=on_rescan)
+    rescan_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(rescan_btn, "Re-scan the current file and update its confidence scores.")
+
+    exclude_btn = ttk.Button(btn_frame, text="Exclude", width=10, command=on_exclude)
+    exclude_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(exclude_btn, "Exclude this file from future scans.")
+
+    ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
+
+    # View Group
+    source_toggle_btn = ttk.Button(btn_frame, text="Show Full Source", width=18, command=toggle_source)
+    source_toggle_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(source_toggle_btn, "Toggle between the suspicious snippet and the full source file.")
+
+    # System Group
+    close_btn = ttk.Button(btn_frame, text="Close", width=10, command=details_win.destroy)
+    close_btn.pack(side=tk.RIGHT, padx=5, ipady=5)
+    bind_hover_message(close_btn, "Close this details window.")
 
     # Navigation buttons
     nav_frame = ttk.Frame(main_frame)
@@ -3571,12 +3641,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     prev_btn = ttk.Button(nav_frame, text="< Previous", command=on_prev)
     prev_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(prev_btn, "Go to the previous scan result. (Left Arrow)")
 
     count_label = ttk.Label(nav_frame, text="")
     count_label.pack(side=tk.LEFT, padx=10)
 
     next_btn = ttk.Button(nav_frame, text="Next >", command=on_next)
     next_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(next_btn, "Go to the next scan result. (Right Arrow)")
     details_win.bind('<Left>', lambda e: on_prev())
     details_win.bind('<Right>', lambda e: on_next())
     details_win.bind('<Delete>', lambda e: on_exclude())
