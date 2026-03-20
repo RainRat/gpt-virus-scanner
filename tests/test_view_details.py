@@ -375,3 +375,63 @@ def test_view_details_persistent_full_source(mock_view_details_env, monkeypatch)
 
     # Verify that it automatically loaded full source for item 2
     assert "full content 2" in [call[0][1] for call in mock_st.insert.call_args_list]
+
+def test_view_details_rescan(mock_view_details_env, monkeypatch):
+    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py", own_conf="50%", snippet="old snippet")
+
+    rescan_cmd = captured["btn_Rescan"][1]
+    rescan_btn_mock = captured["btn_Rescan"][0]
+
+    # Mock run_rescan to simulate a successful rescan
+    def mock_run_rescan(paths, item_map, settings, cancel_event):
+        # In a real scenario, this would update the tree row
+        # and then call finish_scan_state
+        target_id = item_map[paths[0]]
+        new_vals = ["test.py", "100%", "New Admin", "New User", "99%", "new snippet", 1]
+        gptscan.update_tree_row(target_id, tuple(new_vals))
+        gptscan.finish_scan_state(1, 1)
+
+    monkeypatch.setattr(gptscan, "run_rescan", mock_run_rescan)
+
+    # We need to mock threading.Thread to run the target synchronously
+    def mock_thread_start(self):
+        self._target(*self._args, **self._kwargs)
+    monkeypatch.setattr(gptscan.threading.Thread, "start", mock_thread_start)
+
+    # We need to process the UI queue
+    def mock_enqueue(func, *args, **kwargs):
+        func(*args, **kwargs)
+    monkeypatch.setattr(gptscan, "enqueue_ui_update", mock_enqueue)
+
+    mock_update_tree = MagicMock()
+    def side_effect(item_id, values):
+        # Update our mock state so refresh_content sees the new data
+        mock_tree._item_values[item_id] = values
+    mock_update_tree.side_effect = side_effect
+    monkeypatch.setattr(gptscan, "update_tree_row", mock_update_tree)
+
+    # Reset mock_st.insert to verify updates
+    mock_st.insert.reset_mock()
+
+    rescan_cmd()
+
+    # Verify run_rescan was called
+    # (Actually it was called via the mock_thread_start which called on_rescan's run_thread)
+
+    # Verify update_tree_row was called with new data
+    mock_update_tree.assert_called()
+
+    # Verify state was reset
+    assert gptscan.current_cancel_event is None
+
+    # Verify refresh_content updated the view with new data
+    calls = mock_st.insert.call_args_list
+    contents = [call[0][1] for call in calls]
+    assert "new snippet" in contents
+    assert "New Admin" in contents
+    assert "New User" in contents
+
+    # Verify button states were toggled
+    rescan_btn_mock.config.assert_any_call(state='disabled', text='Rescanning...')
+    rescan_btn_mock.config.assert_any_call(state='normal', text='Rescan')

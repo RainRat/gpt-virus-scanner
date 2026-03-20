@@ -3264,8 +3264,13 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         root.clipboard_append(path_entry.get())
         messagebox.showinfo("Copied", "File path copied to clipboard.")
 
-    ttk.Button(header_frame, text="Copy Path", width=12, command=copy_path_btn).grid(row=0, column=2, padx=2, ipady=5)
-    ttk.Button(header_frame, text="Reveal", width=15, command=lambda: show_in_folder(path_entry.get())).grid(row=0, column=3, padx=2, ipady=5)
+    path_copy_btn = ttk.Button(header_frame, text="Copy Path", width=12, command=copy_path_btn)
+    path_copy_btn.grid(row=0, column=2, padx=2, ipady=5)
+    bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.")
+
+    path_reveal_btn = ttk.Button(header_frame, text="Reveal", width=15, command=lambda: show_in_folder(path_entry.get()))
+    path_reveal_btn.grid(row=0, column=3, padx=2, ipady=5)
+    bind_hover_message(path_reveal_btn, "Show this file in the system file manager.")
 
     conf_frame = ttk.Frame(header_frame)
     conf_frame.grid(row=1, column=0, columnspan=4, sticky="w", pady=(5, 0))
@@ -3361,11 +3366,49 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             snippet = vals[5]
             load_display_code(path, line, snippet)
 
+    def on_rescan():
+        """Re-scan the current file."""
+        global current_cancel_event
+        if current_cancel_event is not None:
+            return
+
+        vals = _get_item_raw_values(current_item_id)
+        if not vals:
+            return
+        path = vals[0]
+
+        current_cancel_event = threading.Event()
+        set_scanning_state(True)
+        rescan_btn.config(state='disabled', text="Rescanning...")
+
+        def run_thread(target_id, target_path):
+            try:
+                settings = {
+                    'deep': deep_var.get() if deep_var else False,
+                    'gpt': gpt_var.get() if gpt_var else False,
+                    'dry': dry_var.get() if dry_var else False,
+                }
+
+                run_rescan([target_path], {target_path: target_id}, settings, current_cancel_event)
+
+                if current_item_id == target_id:
+                    enqueue_ui_update(refresh_content, target_id)
+            except Exception as e:
+                enqueue_ui_update(messagebox.showerror, "Error", f"An unexpected error occurred: {e}")
+                enqueue_ui_update(finish_scan_state)
+            finally:
+                enqueue_ui_update(lambda: rescan_btn.config(state='normal', text="Rescan"))
+
+        threading.Thread(target=run_thread, args=(current_item_id, path), daemon=True).start()
+
     # Footer buttons
     btn_frame = ttk.Frame(main_frame)
     btn_frame.pack(fill=tk.X, pady=(10, 0))
 
     def on_analyze_now():
+        if current_cancel_event is not None:
+            return
+
         if not Config.GPT_ENABLED:
             messagebox.showwarning("AI Disabled", "AI Analysis is disabled (task.txt not found or API key missing).")
             return
@@ -3452,20 +3495,45 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             tree.see(new_item_id)
             refresh_content(new_item_id)
 
-    ttk.Button(btn_frame, text="Open", width=10, command=lambda: open_file(path_entry.get())).pack(side=tk.LEFT, padx=5, ipady=5)
-    ttk.Button(btn_frame, text="Exclude", width=10, command=on_exclude).pack(side=tk.LEFT, padx=5, ipady=5)
-    ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis).pack(side=tk.LEFT, padx=5, ipady=5)
-    ttk.Button(btn_frame, text="VirusTotal", width=12, command=lambda: check_virustotal(path_entry.get())).pack(side=tk.LEFT, padx=5, ipady=5)
-
-    source_toggle_btn = ttk.Button(btn_frame, text="Show Full Source", width=18, command=toggle_source)
-    source_toggle_btn.pack(side=tk.LEFT, padx=5, ipady=5)
-
     analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", width=18, command=on_analyze_now)
     analyze_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(analyze_btn, "Use AI to analyze this code snippet.")
     if not Config.GPT_ENABLED:
         analyze_btn.config(state='disabled')
 
-    ttk.Button(btn_frame, text="Close", command=details_win.destroy).pack(side=tk.RIGHT, padx=5, ipady=5)
+    vt_btn = ttk.Button(btn_frame, text="VirusTotal", width=12, command=lambda: check_virustotal(path_entry.get()))
+    vt_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(vt_btn, "Check this file's hash on VirusTotal.")
+
+    copy_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
+    copy_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard.")
+
+    ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
+
+    open_btn = ttk.Button(btn_frame, text="Open", width=10, command=lambda: open_file(path_entry.get()))
+    open_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(open_btn, "Open this file in the default application. (Shift+Enter)")
+
+    ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
+
+    rescan_btn = ttk.Button(btn_frame, text="Rescan", width=10, command=on_rescan)
+    rescan_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(rescan_btn, "Re-scan this file with current settings. (F5 or R)")
+
+    exclude_btn = ttk.Button(btn_frame, text="Exclude", width=10, command=on_exclude)
+    exclude_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(exclude_btn, "Exclude this file from future scans. (Delete)")
+
+    ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
+
+    source_toggle_btn = ttk.Button(btn_frame, text="Show Full Source", width=18, command=toggle_source)
+    source_toggle_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(source_toggle_btn, "Toggle between the suspicious snippet and the full file content.")
+
+    close_btn = ttk.Button(btn_frame, text="Close", command=details_win.destroy)
+    close_btn.pack(side=tk.RIGHT, padx=5, ipady=5)
+    bind_hover_message(close_btn, "Close this window. (Esc)")
 
     # Navigation buttons
     nav_frame = ttk.Frame(main_frame)
@@ -3476,6 +3544,15 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         current_item_id = new_id
         vals = _get_item_raw_values(new_id)
         if not vals: return
+
+        # Ensure buttons reflect current scanning state
+        is_scanning = current_cancel_event is not None
+        rescan_btn.config(state='disabled' if is_scanning else 'normal')
+        analyze_btn.config(state='disabled' if is_scanning or not Config.GPT_ENABLED else 'normal')
+        exclude_btn.config(state='disabled' if is_scanning else 'normal')
+        open_btn.config(state='disabled' if is_scanning else 'normal')
+        vt_btn.config(state='disabled' if is_scanning else 'normal')
+
         # vals: (path, own_conf, admin, user, gpt_conf, snippet, line)
         path, own_conf, admin, user, gpt_conf, snippet = vals[:6]
         line = vals[6] if len(vals) > 6 else "-"
@@ -3571,16 +3648,23 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     prev_btn = ttk.Button(nav_frame, text="< Previous", command=on_prev)
     prev_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(prev_btn, "View the previous scan result. (Left Arrow)")
 
     count_label = ttk.Label(nav_frame, text="")
     count_label.pack(side=tk.LEFT, padx=10)
 
     next_btn = ttk.Button(nav_frame, text="Next >", command=on_next)
     next_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    bind_hover_message(next_btn, "View the next scan result. (Right Arrow)")
+
     details_win.bind('<Left>', lambda e: on_prev())
     details_win.bind('<Right>', lambda e: on_next())
     details_win.bind('<Delete>', lambda e: on_exclude())
     details_win.bind('<Escape>', lambda e: details_win.destroy())
+    details_win.bind('<Shift-Return>', lambda e: open_file(path_entry.get()))
+    details_win.bind('<F5>', lambda e: on_rescan())
+    details_win.bind('r', lambda e: on_rescan())
+    details_win.bind('R', lambda e: on_rescan())
     refresh_content(current_item_id)
 
 
