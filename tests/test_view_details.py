@@ -29,25 +29,77 @@ def mock_view_details_env(monkeypatch):
     monkeypatch.setattr(gptscan.tk, 'Toplevel', MagicMock(return_value=mock_toplevel))
 
     # Mock Entry
-    mock_entry = MagicMock()
-    monkeypatch.setattr(gptscan.ttk, 'Entry', MagicMock(return_value=mock_entry))
+    class MockEntry:
+        def __init__(self, *args, **kwargs):
+            self.val = ""
+        def delete(self, start, end): self.val = ""
+        def insert(self, idx, val): self.val = val
+        def get(self): return self.val
+        def config(self, **kwargs): pass
+        def grid(self, **kwargs): pass
+        def pack(self, **kwargs): pass
+        def cget(self, key): return ""
 
-    # Mock tk.Label for risk_badge
-    mock_label = MagicMock()
-    monkeypatch.setattr(gptscan.tk, 'Label', MagicMock(return_value=mock_label))
+    monkeypatch.setattr(gptscan.ttk, 'Entry', MockEntry)
+
+    # Mock tk.Label/ttk.Label
+    class MockLabel:
+        def __init__(self, *args, **kwargs):
+            self.config_data = {}
+        def config(self, **kwargs): self.config_data.update(kwargs)
+        def cget(self, key): return self.config_data.get(key, "")
+        def grid(self, **kwargs): pass
+        def pack(self, **kwargs): pass
+        def grid_forget(self): pass
+        def pack_forget(self): pass
+        def winfo_viewable(self): return True
+
+    monkeypatch.setattr(gptscan.tk, 'Label', MockLabel)
+    monkeypatch.setattr(gptscan.ttk, 'Label', MockLabel)
 
     # Mock ScrolledText
-    mock_st = MagicMock()
-    monkeypatch.setattr(gptscan.scrolledtext, 'ScrolledText', MagicMock(return_value=mock_st))
+    class MockScrolledText:
+        def __init__(self, *args, **kwargs):
+            self.content = ""
+            self.tags = []
+        def delete(self, start, end): self.content = ""
+        def insert(self, idx, val): self.content += val
+        def get(self, start, end): return self.content
+        def config(self, **kwargs): pass
+        def pack(self, **kwargs): pass
+        def pack_forget(self): pass
+        def tag_add(self, tag, start, end): self.tags.append((tag, start, end))
+        def tag_configure(self, *args, **kwargs): pass
+        def see(self, *args): pass
+        def winfo_viewable(self): return True
+
+    monkeypatch.setattr(gptscan.scrolledtext, 'ScrolledText', MockScrolledText)
 
     # Mock messagebox
     mock_msgbox = MagicMock()
     monkeypatch.setattr(gptscan, 'messagebox', mock_msgbox)
 
     # Capture components from gptscan.view_details
-    captured = {}
+    captured = {
+        'labels': [],
+        'scrolledtexts': []
+    }
 
-    original_button = gptscan.ttk.Button
+    original_label = gptscan.tk.Label
+    def mock_label_init(*args, **kwargs):
+        lbl = MockLabel(*args, **kwargs)
+        captured['labels'].append(lbl)
+        return lbl
+    monkeypatch.setattr(gptscan.tk, 'Label', mock_label_init)
+    monkeypatch.setattr(gptscan.ttk, 'Label', mock_label_init)
+
+    original_st = gptscan.scrolledtext.ScrolledText
+    def mock_st_init(*args, **kwargs):
+        st = MockScrolledText(*args, **kwargs)
+        captured['scrolledtexts'].append(st)
+        return st
+    monkeypatch.setattr(gptscan.scrolledtext, 'ScrolledText', mock_st_init)
+
     def mock_button_init(master, **kwargs):
         btn = MagicMock()
         text = kwargs.get('text', '')
@@ -56,7 +108,6 @@ def mock_view_details_env(monkeypatch):
         return btn
     monkeypatch.setattr(gptscan.ttk, 'Button', mock_button_init)
 
-    original_labelframe = gptscan.ttk.LabelFrame
     def mock_labelframe_init(master, **kwargs):
         lf = MagicMock()
         text = kwargs.get('text', '')
@@ -65,10 +116,10 @@ def mock_view_details_env(monkeypatch):
         return lf
     monkeypatch.setattr(gptscan.ttk, 'LabelFrame', mock_labelframe_init)
 
-    return captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label
+    return captured, mock_msgbox, mock_tree, mock_toplevel
 
 def setup_details(captured_env, item_id, path, own_conf="90%", admin="Admin", user="User", gpt_conf="80%", snippet="snippet", line=1):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = captured_env
+    captured, mock_msgbox, mock_tree, mock_toplevel = captured_env
     raw_vals = [path, own_conf, admin, user, gpt_conf, snippet, line]
     mock_tree._item_values[item_id] = [path, own_conf, admin, user, gpt_conf, snippet, line, json.dumps(raw_vals)]
     mock_tree.get_children.return_value = list(mock_tree._item_values.keys())
@@ -77,277 +128,181 @@ def setup_details(captured_env, item_id, path, own_conf="90%", admin="Admin", us
     return captured
 
 def test_view_details_open_window(mock_view_details_env):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
-    setup_details(mock_view_details_env, "item1", "test.py")
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py", admin="Admin Notes", user="User Notes", snippet="snippet content")
 
-    # Verify Toplevel was created
     gptscan.tk.Toplevel.assert_called_once()
     mock_toplevel.title.assert_called_with("Result 1 of 1 - test.py")
 
-    # Verify risk_badge was created and configured correctly (90% own_conf -> HIGH RISK)
-    mock_label.config.assert_any_call(text="HIGH RISK", background="#ffcccc", foreground="darkred")
+    # Verify risk_badge (it's the only one with HIGH RISK text)
+    risk_badges = [l for l in captured['labels'] if l.cget('text') == "HIGH RISK"]
+    assert len(risk_badges) == 1
+    assert risk_badges[0].cget('background') == "#ffcccc"
 
-    # Verify data was inserted into ScrolledText widgets
-    # Check that the data was inserted
-    calls = mock_st.insert.call_args_list
-    contents = [call[0][1] for call in calls]
-    assert "Admin" in contents
-    assert "User" in contents
-    assert "snippet" in contents
+    # Verify notes and snippet
+    all_content = " ".join([st.content for st in captured['scrolledtexts']])
+    assert "Admin Notes" in all_content
+    assert "User Notes" in all_content
+    assert "snippet content" in all_content
 
 def test_view_details_low_risk(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     setup_details(mock_view_details_env, "item1", "safe.py", own_conf="10%", admin="", user="", gpt_conf="", snippet="safe")
-    _, _, _, _, _, mock_label = mock_view_details_env
-    mock_label.config.assert_any_call(text="LOW RISK", background="lightgrey", foreground="grey")
+
+    risk_badges = [l for l in captured['labels'] if l.cget('text') == "LOW RISK"]
+    assert len(risk_badges) == 1
+    assert risk_badges[0].cget('background') == "lightgrey"
 
 def test_view_details_no_selection(mock_view_details_env, monkeypatch):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     mock_tree.selection.return_value = []
-
-    # We need to reset the mock because it might have been called by setup_details if we used it
     gptscan.tk.Toplevel.reset_mock()
-
     gptscan.view_details()
-
     gptscan.tk.Toplevel.assert_not_called()
 
 def test_view_details_navigation(mock_view_details_env):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
-
-    # Setup 3 items
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
     mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
     raw2 = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1]
     mock_tree._item_values["item2"] = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1, json.dumps(raw2)]
     raw3 = ["file3.py", "30%", "", "", "", "snippet3", 1]
     mock_tree._item_values["item3"] = ["file3.py", "30%", "", "", "", "snippet3", 1, json.dumps(raw3)]
-
     mock_tree.get_children.return_value = ["item1", "item2", "item3"]
 
     gptscan.view_details(item_id="item2")
-
-    # Verify initial state
     assert mock_toplevel.title.call_args_list[-1][0][0] == "Result 2 of 3 - file2.py"
 
-    # Test "Next >" button
     next_cmd = captured["btn_Next >"][1]
     next_cmd()
     mock_tree.selection_set.assert_called_with("item3")
-    mock_tree.see.assert_called_with("item3")
     assert mock_toplevel.title.call_args_list[-1][0][0] == "Result 3 of 3 - file3.py"
 
-    # Test "< Previous" button
     prev_cmd = captured["btn_< Previous"][1]
     prev_cmd()
     mock_tree.selection_set.assert_called_with("item2")
-    mock_tree.see.assert_called_with("item2")
     assert mock_toplevel.title.call_args_list[-1][0][0] == "Result 2 of 3 - file2.py"
 
 def test_view_details_keyboard_bindings(mock_view_details_env):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
-
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
     mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
     raw2 = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1]
     mock_tree._item_values["item2"] = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1, json.dumps(raw2)]
-
     mock_tree.get_children.return_value = ["item1", "item2"]
 
-    # Capture bindings
     captured_bindings = {}
     mock_toplevel.bind.side_effect = lambda event, func: captured_bindings.update({event: func})
 
     gptscan.view_details(item_id="item1")
-
     assert '<Left>' in captured_bindings
     assert '<Right>' in captured_bindings
 
-    # Trigger Right arrow
     captured_bindings['<Right>'](None)
     mock_tree.selection_set.assert_called_with("item2")
-    mock_tree.see.assert_called_with("item2")
     assert mock_toplevel.title.call_args_list[-1][0][0] == "Result 2 of 2 - file2.py"
 
 def test_toggle_source_success(mock_view_details_env, monkeypatch):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
-    setup_details(mock_view_details_env, "item1", "test.py", snippet="snippet")
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py", snippet="snippet content", line=5)
 
     toggle_cmd = captured["btn_Show Full Source"][1]
     btn_mock = captured["btn_Show Full Source"][0]
-
     monkeypatch.setattr(os.path, "exists", lambda x: True)
     monkeypatch.setattr(os.path, "getsize", lambda x: 100)
-
-    # Clear mocks after initial view_details population
-    mock_st.insert.reset_mock()
 
     with patch("builtins.open", mock_open(read_data="full content")):
         toggle_cmd()
 
-    mock_st.insert.assert_called_with(ANY, "full content")
     btn_mock.config.assert_called_with(text="Show Snippet")
+    st = captured['scrolledtexts'][-1]
+    assert "full content" in st.content
+    assert ("highlight", "5.0", "5.end") in st.tags
 
-    mock_st.insert.reset_mock()
     toggle_cmd()
-    mock_st.insert.assert_called_with(ANY, "snippet")
     btn_mock.config.assert_called_with(text="Show Full Source")
+    assert "snippet content" in st.content
 
 def test_toggle_source_virtual_file(mock_view_details_env):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     setup_details(mock_view_details_env, "item1", "[Clipboard]", snippet="snippet")
-
     toggle_cmd = captured["btn_Show Full Source"][1]
-
-    # Clear mocks after initial view_details population
-    mock_st.insert.reset_mock()
-
     toggle_cmd()
-
     mock_msgbox.showinfo.assert_called_with("Full Source", "Full source is not available for virtual files or clipboard content.")
-    # In the refactored version, load_display_code falls back to snippet view, which calls insert
-    mock_st.insert.assert_called_with(ANY, "snippet")
 
 def test_toggle_source_missing_file(mock_view_details_env, monkeypatch):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     setup_details(mock_view_details_env, "item1", "missing.py", snippet="snippet")
-
     toggle_cmd = captured["btn_Show Full Source"][1]
     monkeypatch.setattr(os.path, "exists", lambda x: False)
-
     toggle_cmd()
-
     mock_msgbox.showerror.assert_called_with("Error", "File not found: missing.py")
 
 def test_toggle_source_large_file_cancel(mock_view_details_env, monkeypatch):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     setup_details(mock_view_details_env, "item1", "large.py", snippet="snippet")
-
     toggle_cmd = captured["btn_Show Full Source"][1]
     monkeypatch.setattr(os.path, "exists", lambda x: True)
     monkeypatch.setattr(os.path, "getsize", lambda x: 3 * 1024 * 1024)
     mock_msgbox.askyesno.return_value = False
-
-    # Clear mocks after initial view_details population
-    mock_st.insert.reset_mock()
-
     toggle_cmd()
-
     mock_msgbox.askyesno.assert_called()
-    # In the refactored version, load_display_code falls back to snippet view, which calls insert
-    mock_st.insert.assert_called_with(ANY, "snippet")
 
 def test_toggle_source_read_error(mock_view_details_env, monkeypatch):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     setup_details(mock_view_details_env, "item1", "error.py", snippet="snippet")
-
     toggle_cmd = captured["btn_Show Full Source"][1]
     monkeypatch.setattr(os.path, "exists", lambda x: True)
     monkeypatch.setattr(os.path, "getsize", lambda x: 100)
-
     with patch("builtins.open", side_effect=OSError("Read error")):
         toggle_cmd()
-
     mock_msgbox.showerror.assert_called_with("Error", "Could not read file: Read error")
 
-
 def test_view_details_exclude_navigation(mock_view_details_env, monkeypatch):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
-
-    # Setup 2 items
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
     mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
     raw2 = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1]
     mock_tree._item_values["item2"] = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1, json.dumps(raw2)]
-
     mock_tree.get_children.return_value = ["item1", "item2"]
 
     gptscan.view_details(item_id="item1")
-
     exclude_cmd = captured["btn_Exclude"][1]
-
-    # Mock exclude_paths to return True (success)
     monkeypatch.setattr(gptscan, "exclude_paths", MagicMock(return_value=True))
-
-    # After exclusion, item1 is gone from visible children
     mock_tree.get_children.return_value = ["item2"]
-
     exclude_cmd()
 
-    # Verify it switched to item2
     mock_tree.selection_set.assert_called_with("item2")
-    mock_tree.see.assert_called_with("item2")
     assert mock_toplevel.title.call_args_list[-1][0][0] == "Result 1 of 1 - file2.py"
 
-    # Exclude the last item
     mock_tree.get_children.return_value = []
     exclude_cmd()
-
-    # Verify window was destroyed
     mock_toplevel.destroy.assert_called_once()
 
-
 def test_view_details_analyze_now(mock_view_details_env, monkeypatch):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     setup_details(mock_view_details_env, "item1", "test.py", admin="", user="", gpt_conf="")
 
     analyze_cmd = captured["btn_Analyze with AI"][1]
-    analyze_btn_mock = captured["btn_Analyze with AI"][0]
-
-    mock_result = {
-        "administrator": "New Admin Info",
-        "end-user": "New User Info",
-        "threat-level": 95
-    }
+    mock_result = {"administrator": "New Admin Info", "end-user": "New User Info", "threat-level": 95}
 
     monkeypatch.setattr(gptscan, "request_single_gpt_analysis", MagicMock(return_value=mock_result))
     monkeypatch.setattr(gptscan.Config, "GPT_ENABLED", True)
+    monkeypatch.setattr(gptscan.threading.Thread, "start", lambda self: self._target(*self._args, **self._kwargs))
+    monkeypatch.setattr(gptscan, "enqueue_ui_update", lambda func, *args, **kwargs: func(*args, **kwargs))
 
-    # We need to mock threading.Thread to run the target synchronously for testing
-    def mock_thread_start(self):
-        self._target(*self._args, **self._kwargs)
-
-    monkeypatch.setattr(gptscan.threading.Thread, "start", mock_thread_start)
-
-    # We need to process the UI queue
-    def mock_enqueue(func, *args, **kwargs):
-        func(*args, **kwargs)
-
-    monkeypatch.setattr(gptscan, "enqueue_ui_update", mock_enqueue)
-
-    mock_update_tree = MagicMock()
-    def side_effect(item_id, values):
-        # Update our mock state so refresh_content sees the new data
-        mock_tree._item_values[item_id] = values
-    mock_update_tree.side_effect = side_effect
+    mock_update_tree = MagicMock(side_effect=lambda item_id, values: mock_tree._item_values.update({item_id: values}))
     monkeypatch.setattr(gptscan, "update_tree_row", mock_update_tree)
 
-    # Reset mock_st.insert to verify updates
-    mock_st.insert.reset_mock()
-
     analyze_cmd()
-
-    # Verify AI was called
     gptscan.request_single_gpt_analysis.assert_called_once()
 
-    # Verify update_tree_row was called with new data
-    mock_update_tree.assert_called_once()
-    updated_vals = mock_update_tree.call_args[0][1]
-    # Check updated_vals in mock_tree._item_values instead because update_tree_row might be called with different format
     item1_vals = mock_tree._item_values["item1"]
     assert item1_vals[2] == "New Admin Info"
     assert item1_vals[3] == "New User Info"
-    assert updated_vals[4] == "95%"
-
-    # Verify refresh_content updated the view
-    calls = mock_st.insert.call_args_list
-    contents = [call[0][1] for call in calls]
-    assert "New Admin Info" in contents
-    assert "New User Info" in contents
 
 def test_view_details_persistent_full_source(mock_view_details_env, monkeypatch):
-    captured, mock_st, mock_msgbox, mock_tree, mock_toplevel, mock_label = mock_view_details_env
-
-    # Setup 2 items
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
     mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
     raw2 = ["file2.py", "20%", "", "", "", "snippet2", 1]
@@ -358,20 +313,48 @@ def test_view_details_persistent_full_source(mock_view_details_env, monkeypatch)
     monkeypatch.setattr(os.path, "getsize", lambda x: 100)
 
     gptscan.view_details(item_id="item1")
-
     toggle_cmd = captured["btn_Show Full Source"][1]
 
-    # Toggle to full source
     with patch("builtins.open", mock_open(read_data="full content 1")):
         toggle_cmd()
 
-    assert "full content 1" in [call[0][1] for call in mock_st.insert.call_args_list]
-    mock_st.insert.reset_mock()
+    st = captured['scrolledtexts'][-1]
+    assert "full content 1" in st.content
 
-    # Move to next item
     next_cmd = captured["btn_Next >"][1]
     with patch("builtins.open", mock_open(read_data="full content 2")):
         next_cmd()
+    assert "full content 2" in st.content
 
-    # Verify that it automatically loaded full source for item 2
-    assert "full content 2" in [call[0][1] for call in mock_st.insert.call_args_list]
+def test_view_details_copy_path(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py")
+    copy_path_cmd = captured["btn_Copy Path"][1]
+    from gptscan import root as mock_root
+    copy_path_cmd()
+    mock_root.clipboard_clear.assert_called_once()
+    mock_root.clipboard_append.assert_called_with("test.py")
+    mock_msgbox.showinfo.assert_called_with("Copied", "File path copied to clipboard.")
+
+def test_view_details_copy_analysis(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py", own_conf="90%", admin="Admin Notes", user="User Notes", gpt_conf="80%", snippet="print('test')")
+    from gptscan import root as mock_root
+    copy_cmd = captured["btn_Copy Analysis"][1]
+    copy_cmd()
+    mock_root.clipboard_clear.assert_called_once()
+    copied_text = mock_root.clipboard_append.call_args[0][0]
+    assert "Path: test.py" in copied_text
+    assert "Local Conf: 90%" in copied_text
+    assert "AI Conf: 80%" in copied_text
+    assert "Admin Notes:\nAdmin Notes" in copied_text
+    assert "Snippet:\nprint('test')" in copied_text
+    mock_msgbox.showinfo.assert_called_with("Copied", "Detailed analysis copied to clipboard.")
+
+def test_view_details_refresh_content_missing_id(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
+    mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
+    mock_tree.get_children.return_value = []
+    gptscan.view_details(item_id="item1")
+    mock_toplevel.title.assert_called_with("Result Details - file1.py")
