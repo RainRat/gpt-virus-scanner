@@ -358,3 +358,39 @@ def test_view_details_refresh_content_missing_id(mock_view_details_env):
     mock_tree.get_children.return_value = []
     gptscan.view_details(item_id="item1")
     mock_toplevel.title.assert_called_with("Result Details - file1.py")
+
+def test_view_details_rescan(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py", own_conf="50%", snippet="old snippet")
+
+    rescan_cmd = captured["btn_Rescan"][1]
+    rescan_btn_mock = captured["btn_Rescan"][0]
+
+    # Mock run_rescan to simulate a successful rescan
+    def mock_run_rescan(paths, item_map, settings, cancel_event):
+        target_id = item_map[paths[0]]
+        new_vals = ["test.py", "100%", "New Admin", "New User", "99%", "new snippet", 1]
+        gptscan.update_tree_row(target_id, tuple(new_vals))
+        gptscan.finish_scan_state(1, 1)
+
+    monkeypatch.setattr(gptscan, "run_rescan", mock_run_rescan)
+    monkeypatch.setattr(gptscan.threading.Thread, "start", lambda self: self._target(*self._args, **self._kwargs))
+    monkeypatch.setattr(gptscan, "enqueue_ui_update", lambda func, *args, **kwargs: func(*args, **kwargs))
+
+    mock_update_tree = MagicMock(side_effect=lambda item_id, values: mock_tree._item_values.update({item_id: values}))
+    monkeypatch.setattr(gptscan, "update_tree_row", mock_update_tree)
+
+    rescan_cmd()
+
+    mock_update_tree.assert_called()
+    assert gptscan.current_cancel_event is None
+
+    # Verify content was updated in scrolledtexts
+    all_content = " ".join([st.content for st in captured['scrolledtexts']])
+    assert "new snippet" in all_content
+    assert "New Admin" in all_content
+    assert "New User" in all_content
+
+    # Verify button states were toggled
+    rescan_btn_mock.config.assert_any_call(state='disabled', text='Rescanning...')
+    rescan_btn_mock.config.assert_any_call(state='normal', text='Rescan')
