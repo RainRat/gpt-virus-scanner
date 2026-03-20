@@ -1806,7 +1806,7 @@ def scan_files(
     extra_snippets = processed_snippets
 
     num_urls = len(url_targets)
-    total_progress = len(file_list) + len(extra_snippets) + 2 * num_urls
+    total_progress = len(file_list) + len(extra_snippets) + num_urls
     progress_count = 0
     total_bytes_scanned = 0
     actual_files_scanned = 0
@@ -1853,8 +1853,6 @@ def scan_files(
                     '-',
                 )
             )
-            # Increment again to account for the skipped Phase 2 (Scanning)
-            progress_count += 1
 
     yield ('progress', (progress_count, total_progress, "Collecting files..."))
 
