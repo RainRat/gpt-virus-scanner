@@ -157,20 +157,30 @@ python gptscan.py --cli --import results.json -o report.html
 
 **Common Options:**
 *   `--cli`: Run in command-line mode.
-*   `--stdin`: Read a code snippet from terminal input (piped) to scan.
-*   `--deep`: Scan the entire file.
+*   `--stdin`: Scan a code snippet from terminal input.
+*   `--deep`: Scan the entire file instead of just the start and end.
 *   `--dry-run`: Show which files would be scanned without analyzing them.
-*   `--show-all`: List all files, even safe ones.
-*   `--use-gpt`: Enable AI Analysis for suspicious code.
-*   `--output [file], -o [file]`: Save results to a file. The format is chosen based on the extension (.json, .csv, .html, .sarif, .md).
-*   `--threshold [0-100], -t [0-100]`: The lowest threat score to report (default: 50).
+*   `--show-all`: Show all files, including safe ones.
+*   `--use-gpt`: Use AI Analysis for suspicious code.
+*   `--provider [name]`: Select the AI service provider (`openai`, `openrouter`, or `ollama`).
+*   `--model [name]`: Set the AI model (for example: `gpt-4o`, `llama3.2`).
+*   `--api-base [url]`: Set a custom URL for the AI service.
+*   `--rate-limit [number]`: Limit AI requests per minute (default: 60).
+*   `--clear-cache`: Clear the AI analysis cache.
+*   `--output [file], -o [file]`: Save results to a file. The format depends on the extension (.json, .csv, .html, .sarif, .md).
+*   `--threshold [0-100], -t [0-100]`: Set the minimum threat score to report (default: 50).
 *   `--fail-threshold [0-100]`: Exit with an error if any file meets this threat level.
 *   `--git-changes`: Only scan files that have changed in Git.
-*   `--all-files`: Scan all files regardless of their extension or whether they contain a script starting line (like #!/bin/bash).
-*   `--exclude [patterns], -e [patterns]`: Skip files matching these patterns.
+*   `--all-files`: Scan all files, even if they lack a script extension or a script starting line (like `#!/bin/bash`).
+*   `--exclude [patterns], -e [patterns]`: Skip files that match these patterns.
+*   `--file-list [file]`: Scan a list of files from a text file.
 *   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
-*   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF). Use `-` to read from terminal input (piped).
-*   `--markdown`: Save the report in Markdown format.
+*   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF). Use `-` for terminal input.
+*   `--json`: Save or show results in JSON format (one object per line).
+*   `--csv`: Save or show results in CSV format.
+*   `--sarif`: Save results in SARIF format for security tools.
+*   `--html`: Create an HTML report.
+*   `--markdown`: Create a Markdown report.
 
 ## Advanced: Training
 
