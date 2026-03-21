@@ -48,6 +48,7 @@ def test_on_analyze_now_ui_flow(monkeypatch):
     gptscan._all_results_cache = []
 
     # 1. Setup Config and basic UI mocks
+    monkeypatch.setattr(gptscan, "current_cancel_event", None)
     monkeypatch.setattr(gptscan.Config, "GPT_ENABLED", True)
     monkeypatch.setattr(gptscan, "root", MagicMock())
 
