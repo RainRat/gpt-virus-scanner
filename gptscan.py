@@ -3326,7 +3326,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         if showing_full_source:
             if path.startswith("["):
                 if not silent_fallback:
-                    messagebox.showinfo("Full Source", "Full source is not available for virtual files or clipboard content.")
+                    messagebox.showinfo("Full Source", "Full source is not available for files inside archives, web links, or clipboard content.")
             elif not os.path.exists(path):
                 if not silent_fallback:
                     messagebox.showerror("Error", f"File not found: {path}")

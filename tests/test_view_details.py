@@ -228,7 +228,7 @@ def test_toggle_source_virtual_file(mock_view_details_env):
     setup_details(mock_view_details_env, "item1", "[Clipboard]", snippet="snippet")
     toggle_cmd = captured["btn_Show Full Source"][1]
     toggle_cmd()
-    mock_msgbox.showinfo.assert_called_with("Full Source", "Full source is not available for virtual files or clipboard content.")
+    mock_msgbox.showinfo.assert_called_with("Full Source", "Full source is not available for files inside archives, web links, or clipboard content.")
 
 def test_toggle_source_missing_file(mock_view_details_env, monkeypatch):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
