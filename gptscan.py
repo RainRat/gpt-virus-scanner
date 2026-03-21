@@ -1645,7 +1645,20 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 4. Fallback: yield as a single snippet if it's a supported file type
+    # 4. Check for Markdown code blocks
+    if check_name.lower().endswith('.md'):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            # Match fenced code blocks (triple backticks)
+            blocks = re.findall(r'```(?:\w+)?\s*\n?(.*?)\s*```', text, re.DOTALL)
+            for i, block in enumerate(blocks, 1):
+                if block.strip():
+                    yield (f"{name} [Block {i}]", block.encode('utf-8'))
+            return
+        except Exception:
+            pass
+
+    # 5. Fallback: yield as a single snippet if it's a supported file type
     # If scan_all_files is True, we always yield. Otherwise check extension/shebang.
     if Config.is_supported_file(check_name, content=content, is_member=(depth > 0)):
         yield name, content
@@ -1789,7 +1802,7 @@ def scan_files(
         is_explicit = f_path in explicit_files
         path_s = str(f_path).lower()
         # Check if it's a known container by extension or by content
-        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb')):
+        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md')):
             try:
                 with open(f_path, 'rb') as f:
                     full_content = f.read()

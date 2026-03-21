@@ -43,6 +43,9 @@ def test_request_single_gpt_analysis_error(monkeypatch):
 
 def test_on_analyze_now_ui_flow(monkeypatch):
     """Test the 'Analyze with AI' button flow in the details window."""
+    # 0. Reset global state
+    monkeypatch.setattr(gptscan, 'current_cancel_event', None)
+
     # 1. Setup Config and basic UI mocks
     monkeypatch.setattr(gptscan.Config, "GPT_ENABLED", True)
     monkeypatch.setattr(gptscan, "root", MagicMock())
