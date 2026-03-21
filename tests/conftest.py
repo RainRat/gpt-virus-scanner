@@ -1,4 +1,5 @@
 import sys
+import pytest
 from unittest.mock import MagicMock
 
 # Create a mock object for tkinter
@@ -50,3 +51,10 @@ mock_ttk.Frame = MockFrame
 sys.modules['tkinter.ttk'] = mock_ttk
 sys.modules['tkinter.messagebox'] = MagicMock()
 sys.modules['tkinter.scrolledtext'] = MagicMock()
+
+@pytest.fixture(autouse=True)
+def reset_globals():
+    import gptscan
+    gptscan.current_cancel_event = None
+    gptscan._all_results_cache = []
+    yield

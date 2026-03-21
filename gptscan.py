@@ -303,7 +303,7 @@ class Config:
                         first_line = f.readline(126).decode('utf-8', errors='ignore').lower()
 
             if first_line:
-                interpreters = ['python', 'node', 'javascript', 'bash', 'sh', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell']
+                interpreters = ['python', 'node', 'nodejs', 'javascript', 'bash', 'sh', 'ash', 'dash', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell', 'lua', 'osascript', 'ipython']
                 escaped_interpreters = [re.escape(i) for i in interpreters]
                 pattern = r'(?:/|\s|^)(?:' + '|'.join(escaped_interpreters) + r')\d*\b'
                 if re.search(pattern, first_line):

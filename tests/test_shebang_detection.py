@@ -70,6 +70,31 @@ def test_is_supported_file_shebang(tmp_path):
         f11.write_bytes(b"#!/usr/bin/mysh\n")
         assert Config.is_supported_file(f11) is False
 
+        # New interpreters
+        f12 = tmp_path / "lua_script"
+        f12.write_bytes(b"#!/usr/bin/lua\n")
+        assert Config.is_supported_file(f12) is True
+
+        f13 = tmp_path / "nodejs_script"
+        f13.write_bytes(b"#!/usr/bin/nodejs\n")
+        assert Config.is_supported_file(f13) is True
+
+        f14 = tmp_path / "ipython_script"
+        f14.write_bytes(b"#!/usr/bin/ipython\n")
+        assert Config.is_supported_file(f14) is True
+
+        f15 = tmp_path / "ash_script"
+        f15.write_bytes(b"#!/bin/ash\n")
+        assert Config.is_supported_file(f15) is True
+
+        f16 = tmp_path / "dash_script"
+        f16.write_bytes(b"#!/bin/dash\n")
+        assert Config.is_supported_file(f16) is True
+
+        f17 = tmp_path / "osascript_script"
+        f17.write_bytes(b"#!/usr/bin/osascript\n")
+        assert Config.is_supported_file(f17) is True
+
     finally:
         Config.extensions_set = original_exts
 
