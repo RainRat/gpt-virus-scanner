@@ -57,4 +57,20 @@ def reset_globals():
     import gptscan
     gptscan.current_cancel_event = None
     gptscan._all_results_cache = []
+    gptscan._model_cache = None
+    gptscan._async_openai_client = None
     yield
+
+@pytest.fixture
+def mock_tf_env(monkeypatch):
+    import gptscan
+    mock_model = MagicMock()
+    mock_model.predict.return_value = [[0.5]]
+    monkeypatch.setattr(gptscan, "get_model", lambda: mock_model)
+
+    mock_tf = MagicMock()
+    mock_tf.constant = lambda x: x
+    mock_tf.expand_dims = lambda x, axis: x
+    monkeypatch.setattr(gptscan, "_tf_module", mock_tf)
+
+    return mock_model
