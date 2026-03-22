@@ -14,7 +14,7 @@ GPT Virus Scanner uses AI to find malicious code in script files.
 ### Use the Windowed App (GUI)
 1. Run the script: `python gptscan.py`
 2. Select a folder to scan. The tool will also scan all subfolders.
-3. Click **Scan now**.
+3. Click **Scan Now**.
 
 ### Use the Terminal (CLI)
 Scan a folder and save a JSON report:
@@ -64,7 +64,7 @@ Ollama runs entirely on your own computer. It is private and **does not require 
 ### Step 2: Enable AI Analysis
 
 Once your provider is ready, you must enable the feature when you run a scan:
-*   **In the App Window:** Check the **Use AI Analysis** box before clicking **Scan now**.
+*   **In the App Window:** Check the **Use AI Analysis** box before clicking **Scan Now**.
 *   **In the Terminal:** Use the `--use-gpt` flag (for example: `python gptscan.py ./my_scripts --cli --use-gpt`).
 
 ## Supported Files
@@ -94,23 +94,50 @@ You can customize the scanner using these files in the same folder:
 
 Run `python gptscan.py` to open the GUI.
 
-*   **Select File/Folder:** Choose what you want to scan. If you select a folder, the tool scans all files inside it and its subfolders. The path input is a dropdown that remembers your last 10 scan locations.
-*   **URL:** Scan a script or archive (.zip, .tar, .tar.gz) directly from a web link.
+#### Scan Input
+*   **Path to scan:** Type a path or choose from the dropdown. It remembers your last 10 locations.
+*   **File...:** Select a single file to scan.
+*   **Folder...:** Select a whole directory to scan.
+*   **URL...:** Scan a script or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Clipboard:** Scan code currently in your clipboard.
-*   **Filter results:** Search findings by path, confidence, notes, or code snippets.
-*   **Deep Scan:** Check the entire file. By default, the scanner only checks the first and last 1024 bytes to save time.
-*   **Scan all files:** Scan all files regardless of their extension or whether they contain a script starting line (like #!/bin/bash).
-*   **Minimum Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
-*   **Show all files:** See every scanned file, even safe ones.
+
+#### Scan Options
+*   **Git changes only:** Only scan files that are modified or untracked in your Git repository.
+*   **Deep scan:** Scan the whole file. Normally, the scanner only checks the start and end to save time.
+*   **Scan all files:** Scan every file, even those without common script extensions.
+*   **Dry Run:** Simulate the scan without actually analyzing any files.
+
+#### AI Analysis
 *   **Use AI Analysis:** Enable detailed reports for suspicious findings.
-*   **Batch AI Analysis:** Select multiple findings and analyze them all at once using the "Analyze with AI" button or right-click menu.
-*   **VirusTotal:** Look up a file's signature on VirusTotal to see other security reports.
-*   **Open / Reveal:** Open the selected file or show its location in your folder.
-*   **Manage Exclusions:** View and edit your `.gptscanignore` file to skip specific patterns.
-*   **Copy CLI Command:** Copy the command-line equivalent of your current settings.
-*   **Import/Export:** Save or load results.
-    *   **Import:** Supports CSV, JSON, JSONL, NDJSON, and SARIF formats. You can also import results directly from your clipboard.
-    *   **Export:** Supports CSV, JSON, HTML, SARIF, and Markdown formats.
+*   **Provider:** Choose between OpenAI, OpenRouter, or Ollama (local).
+*   **Model:** Select the specific AI model to use (e.g., gpt-4o or llama3.2).
+*   **API Base URL:** Set a custom address for your AI service.
+
+#### Results and Filtering
+*   **Filter:** Search the results list by path, confidence, notes, or code snippet.
+*   **Clear:** Clear the current filter text.
+*   **Min. Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
+*   **Show all files:** See every scanned file, even safe ones.
+
+#### Actions
+*   **Scan Now:** Start the scanning process.
+*   **Cancel:** Stop the active scan.
+*   **Copy CLI Command:** Copy the command-line version of your current settings.
+
+#### Footer Actions
+*   **View:** Open a detailed view of the selected finding.
+*   **Analyze with AI:** Request an AI report for the selected item(s).
+*   **VirusTotal:** Look up the file's signature on VirusTotal.
+*   **Open / Reveal:** Open the file or show its location in your file manager.
+*   **Rescan:** Re-scan the selected file(s).
+*   **Exclude:** Add the selected file(s) to your `.gptscanignore` file.
+*   **Import / Export:** Load or save scan results in various formats (CSV, JSON, SARIF, HTML, Markdown).
+*   **Clear:** Clear all results from the list.
+
+#### File Menu
+*   **Manage Exclusions...:** View and edit your excluded file patterns.
+*   **Clear AI Cache:** Delete saved AI analysis results.
+*   **Clear Path History:** Wipe the list of recently scanned folders.
 
 **Shortcuts:**
 *   **Ctrl+A / Cmd+A:** Select all results.
