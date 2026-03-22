@@ -1196,12 +1196,12 @@ def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_
     clear_results()
 
     scan_path = textbox.get()
-    if not scan_path:
+    if not scan_path and not extra_snippets:
         messagebox.showerror("Missing Selection", "Please select a file or folder to scan.")
         return
 
-    scan_targets: Union[str, List[str]] = scan_path
-    if git_var.get():
+    scan_targets: Union[str, List[str]] = scan_path if scan_path else []
+    if scan_path and git_var.get():
         git_files = get_git_changed_files(scan_path)
         if not git_files:
             messagebox.showinfo("Git Scan", "No git changes detected in the selected directory.")
@@ -1212,15 +1212,16 @@ def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_
         messagebox.showerror("Model Not Found", "The scanner cannot find 'scripts.h5'. This file is required to run local scans.")
         return
 
-    Config.last_path = scan_path
-    if scan_path and (not Config.recent_paths or Config.recent_paths[0] != scan_path):
-        if scan_path in Config.recent_paths:
-            Config.recent_paths.remove(scan_path)
-        Config.recent_paths.insert(0, scan_path)
-        Config.recent_paths = Config.recent_paths[:10]
-        if textbox:
-            textbox['values'] = Config.recent_paths
-    Config.save_settings()
+    if scan_path:
+        Config.last_path = scan_path
+        if not Config.recent_paths or Config.recent_paths[0] != scan_path:
+            if scan_path in Config.recent_paths:
+                Config.recent_paths.remove(scan_path)
+            Config.recent_paths.insert(0, scan_path)
+            Config.recent_paths = Config.recent_paths[:10]
+            if textbox:
+                textbox['values'] = Config.recent_paths
+        Config.save_settings()
 
     current_cancel_event = threading.Event()
     set_scanning_state(True)
