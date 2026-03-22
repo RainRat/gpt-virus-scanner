@@ -3271,21 +3271,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     path_entry.grid(row=0, column=1, sticky="ew", padx=5)
     header_frame.columnconfigure(1, weight=1)
 
-    def copy_path_btn():
-        root.clipboard_clear()
-        root.clipboard_append(path_entry.get())
-        messagebox.showinfo("Copied", "File path copied to clipboard.")
-
-    path_copy_btn = ttk.Button(header_frame, text="Copy Path", width=12, command=copy_path_btn)
-    path_copy_btn.grid(row=0, column=2, padx=2, ipady=5)
-    bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.")
-
-    path_reveal_btn = ttk.Button(header_frame, text="Reveal", width=15, command=lambda: show_in_folder(path_entry.get()))
-    path_reveal_btn.grid(row=0, column=3, padx=2, ipady=5)
-    bind_hover_message(path_reveal_btn, "Show this file in the system file manager.")
-
     conf_frame = ttk.Frame(header_frame)
-    conf_frame.grid(row=1, column=0, columnspan=4, sticky="w", pady=(5, 0))
+    conf_frame.grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
 
     ttk.Label(conf_frame, text="Local Confidence:").grid(row=0, column=0, sticky="w")
     own_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
@@ -3417,6 +3404,11 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     btn_frame = ttk.Frame(main_frame)
     btn_frame.pack(fill=tk.X, pady=(10, 0))
 
+    def copy_path_details():
+        root.clipboard_clear()
+        root.clipboard_append(path_entry.get())
+        messagebox.showinfo("Copied", "File path copied to clipboard.")
+
     def on_analyze_now():
         if current_cancel_event is not None:
             return
@@ -3477,6 +3469,12 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         root.clipboard_append(text)
         messagebox.showinfo("Copied", "Detailed analysis copied to clipboard.")
 
+    def copy_code():
+        code = snippet_text.get("1.0", tk.END).strip()
+        root.clipboard_clear()
+        root.clipboard_append(code)
+        messagebox.showinfo("Copied", "Code copied to clipboard.")
+
     def on_exclude():
         """Exclude current file and move to next."""
         nonlocal current_item_id
@@ -3507,42 +3505,59 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             tree.see(new_item_id)
             refresh_content(new_item_id)
 
+    # Group: Analysis
     analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", width=18, command=on_analyze_now)
-    analyze_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    analyze_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(analyze_btn, "Use AI to analyze this code snippet.")
     if not Config.GPT_ENABLED:
         analyze_btn.config(state='disabled')
 
     vt_btn = ttk.Button(btn_frame, text="VirusTotal", width=12, command=lambda: check_virustotal(path_entry.get()))
-    vt_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    vt_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(vt_btn, "Check this file's hash on VirusTotal.")
 
     copy_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
-    copy_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard.")
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
+    # Group: Files
     open_btn = ttk.Button(btn_frame, text="Open", width=10, command=lambda: open_file(path_entry.get()))
-    open_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    open_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(open_btn, "Open this file in the default application. (Shift+Enter)")
+
+    reveal_btn = ttk.Button(btn_frame, text="Reveal", width=10, command=lambda: show_in_folder(path_entry.get()))
+    reveal_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(reveal_btn, "Show this file in the system file manager.")
+
+    path_copy_btn = ttk.Button(btn_frame, text="Copy Path", width=12, command=copy_path_details)
+    path_copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.")
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
+    # Group: Exclusions
     rescan_btn = ttk.Button(btn_frame, text="Rescan", width=10, command=on_rescan)
-    rescan_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    rescan_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(rescan_btn, "Re-scan this file with current settings. (F5 or R)")
 
     exclude_btn = ttk.Button(btn_frame, text="Exclude", width=10, command=on_exclude)
-    exclude_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    exclude_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(exclude_btn, "Exclude this file from future scans. (Delete)")
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
+    # Group: View
+    copy_code_btn = ttk.Button(btn_frame, text="Copy Code", width=12, command=copy_code)
+    copy_code_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(copy_code_btn, "Copy the displayed code to the clipboard. (Ctrl+S)")
+
     source_toggle_btn = ttk.Button(btn_frame, text="Show Full Source", width=18, command=toggle_source)
-    source_toggle_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    source_toggle_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(source_toggle_btn, "Toggle between the suspicious snippet and the full file content.")
 
+    # Group: System
     close_btn = ttk.Button(btn_frame, text="Close", command=details_win.destroy)
     close_btn.pack(side=tk.RIGHT, padx=5, ipady=5)
     bind_hover_message(close_btn, "Close this window. (Esc)")
@@ -3674,6 +3689,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Delete>', lambda e: on_exclude())
     details_win.bind('<Escape>', lambda e: details_win.destroy())
     details_win.bind('<Shift-Return>', lambda e: open_file(path_entry.get()))
+    details_win.bind('<Control-s>', lambda e: copy_code())
+    details_win.bind('<Command-s>', lambda e: copy_code())
     details_win.bind('<F5>', lambda e: on_rescan())
     details_win.bind('r', lambda e: on_rescan())
     details_win.bind('R', lambda e: on_rescan())
