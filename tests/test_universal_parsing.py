@@ -7,23 +7,6 @@ from unittest.mock import MagicMock, patch
 import gptscan
 from gptscan import unpack_content, scan_files, Config
 
-@pytest.fixture
-def mock_tf_env(monkeypatch):
-    """Setup mock TensorFlow and Model to avoid actual loading."""
-    mock_model = MagicMock()
-    mock_model.predict.return_value = [[0.5]] # 50%
-    monkeypatch.setattr(gptscan, "get_model", lambda: mock_model)
-
-    mock_tf = MagicMock()
-    mock_tf.constant = lambda x: x
-    mock_tf.expand_dims = lambda x, axis: x
-    monkeypatch.setattr(gptscan, "_tf_module", mock_tf)
-
-    # Mock collect_files to return empty list by default
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
-
-    return mock_model
-
 def test_unpack_zip_in_memory():
     """Test that unpack_content correctly expands a ZIP buffer."""
     zip_buffer = io.BytesIO()
@@ -72,8 +55,9 @@ def test_unpack_nested_archives():
     assert results[0][0] == "outer.zip[nested.zip][inner.py]"
     assert results[0][1] == b"print('inner')"
 
-def test_scan_files_url_zip_expansion(mock_tf_env):
+def test_scan_files_url_zip_expansion(mock_tf_env, monkeypatch):
     """Test that a ZIP fetched via URL is expanded and scanned."""
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
     url = "https://example.com/scripts.zip"
 
     zip_buffer = io.BytesIO()
@@ -99,8 +83,9 @@ def test_scan_files_url_zip_expansion(mock_tf_env):
     # Should find malicious.py inside the ZIP
     assert any("scripts.zip[malicious.py]" in r[0] for r in results)
 
-def test_scan_files_clipboard_ipynb_expansion(mock_tf_env):
+def test_scan_files_clipboard_ipynb_expansion(mock_tf_env, monkeypatch):
     """Test that a Notebook in extra_snippets (clipboard) is expanded."""
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
     nb_data = {
         "cells": [{"cell_type": "code", "source": ["print('clipboard cell')"]}]
     }

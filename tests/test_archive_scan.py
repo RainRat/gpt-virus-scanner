@@ -8,28 +8,9 @@ from unittest.mock import MagicMock, patch
 import gptscan
 from gptscan import scan_files, Config
 
-@pytest.fixture
-def mock_tf_env(monkeypatch):
-    """Setup mock TensorFlow and Model to avoid actual loading."""
-    mock_model = MagicMock()
-    # Return 0.9 (90%) for anything containing 'malicious', 0.1 otherwise
-    def mock_predict(tf_data, **kwargs):
-        # tf_data is a tensor, we can't easily check it here without more mocks
-        # But we know the filler is ASCII 13
-        return [[0.9]]
-
-    mock_model.predict.side_effect = mock_predict
-    monkeypatch.setattr(gptscan, "get_model", lambda: mock_model)
-
-    mock_tf = MagicMock()
-    mock_tf.constant = lambda x: x
-    mock_tf.expand_dims = lambda x, axis: x
-    monkeypatch.setattr(gptscan, "_tf_module", mock_tf)
-
-    return mock_model
-
 def test_zip_scanning(mock_tf_env, tmp_path):
     """Test that scripts inside a ZIP file are detected and scanned."""
+    mock_tf_env.predict.return_value = [[0.9]]
     zip_path = tmp_path / "test.zip"
     script_content = b"print('malicious zip')"
 
@@ -54,6 +35,7 @@ def test_zip_scanning(mock_tf_env, tmp_path):
 
 def test_tar_scanning(mock_tf_env, tmp_path):
     """Test that scripts inside a TAR file are detected and scanned."""
+    mock_tf_env.predict.return_value = [[0.9]]
     tar_path = tmp_path / "test.tar"
     script_content = b"#!/bin/bash\necho 'malicious tar'"
 

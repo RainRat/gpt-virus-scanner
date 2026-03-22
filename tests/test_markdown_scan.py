@@ -4,26 +4,9 @@ from unittest.mock import MagicMock
 import gptscan
 from gptscan import scan_files, Config
 
-@pytest.fixture
-def mock_tf_env(monkeypatch):
-    """Setup mock TensorFlow and Model to avoid actual loading."""
-    mock_model = MagicMock()
-    # Return 0.9 (90%) for anything containing 'malicious', 0.1 otherwise
-    def mock_predict(tf_data, **kwargs):
-        return [[0.9]]
-
-    mock_model.predict.side_effect = mock_predict
-    monkeypatch.setattr(gptscan, "get_model", lambda: mock_model)
-
-    mock_tf = MagicMock()
-    mock_tf.constant = lambda x: x
-    mock_tf.expand_dims = lambda x, axis: x
-    monkeypatch.setattr(gptscan, "_tf_module", mock_tf)
-
-    return mock_model
-
 def test_markdown_code_block_extraction(mock_tf_env, tmp_path):
     """Test that scripts inside Markdown code blocks are detected and scanned."""
+    mock_tf_env.predict.side_effect = lambda tf_data, **kwargs: [[0.9]]
     md_path = tmp_path / "README.md"
     md_content = b"""
 # Project README

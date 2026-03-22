@@ -4,25 +4,9 @@ from unittest.mock import MagicMock, patch
 import gptscan
 from gptscan import scan_files, Config, scan_clipboard_click
 
-@pytest.fixture
-def mock_tf_env(monkeypatch):
-    """Setup mock TensorFlow and Model to avoid actual loading."""
-    mock_model = MagicMock()
-    mock_model.predict.return_value = [[0.5]] # 50%
-    monkeypatch.setattr(gptscan, "get_model", lambda: mock_model)
-
-    mock_tf = MagicMock()
-    mock_tf.constant = lambda x: x
-    mock_tf.expand_dims = lambda x, axis: x
-    monkeypatch.setattr(gptscan, "_tf_module", mock_tf)
-
-    # Mock collect_files to return empty list by default
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
-
-    return mock_model
-
-def test_scan_files_extra_snippets_basic(mock_tf_env):
+def test_scan_files_extra_snippets_basic(mock_tf_env, monkeypatch):
     """Test that extra_snippets are correctly processed by scan_files."""
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
     snippet_content = b"print('hello world')"
     extra_snippets = [("[Clipboard]", snippet_content)]
 
@@ -43,8 +27,9 @@ def test_scan_files_extra_snippets_basic(mock_tf_env):
     assert own_conf == "50%"
     assert "print('hello world')" in snippet
 
-def test_scan_files_boundary_threshold(mock_tf_env):
+def test_scan_files_boundary_threshold(mock_tf_env, monkeypatch):
     """Verify that a snippet exactly at the threshold is yielded (inclusive check)."""
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
     mock_tf_env.predict.return_value = [[0.5]] # Exactly 50%
     Config.THRESHOLD = 50
 
@@ -63,8 +48,9 @@ def test_scan_files_boundary_threshold(mock_tf_env):
     assert len(results) == 1
     assert results[0][1] == "50%"
 
-def test_scan_files_below_threshold_ignored(mock_tf_env):
+def test_scan_files_below_threshold_ignored(mock_tf_env, monkeypatch):
     """Verify that a snippet below the threshold is ignored when show_all=False."""
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
     mock_tf_env.predict.return_value = [[0.49]] # 49%
     Config.THRESHOLD = 50
 
@@ -84,6 +70,7 @@ def test_scan_files_below_threshold_ignored(mock_tf_env):
 
 def test_scan_files_extra_snippets_gpt_trigger(mock_tf_env, monkeypatch):
     """Test that extra_snippets can trigger GPT analysis."""
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
     mock_tf_env.predict.return_value = [[0.9]]
     Config.THRESHOLD = 50
     Config.GPT_ENABLED = True

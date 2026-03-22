@@ -4,23 +4,6 @@ from unittest.mock import MagicMock, patch
 import gptscan
 from gptscan import scan_files, Config, fetch_url_content
 
-@pytest.fixture
-def mock_tf_env(monkeypatch):
-    """Setup mock TensorFlow and Model to avoid actual loading."""
-    mock_model = MagicMock()
-    mock_model.predict.return_value = [[0.5]] # 50%
-    monkeypatch.setattr(gptscan, "get_model", lambda: mock_model)
-
-    mock_tf = MagicMock()
-    mock_tf.constant = lambda x: x
-    mock_tf.expand_dims = lambda x, axis: x
-    monkeypatch.setattr(gptscan, "_tf_module", mock_tf)
-
-    # Mock collect_files to return empty list by default
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
-
-    return mock_model
-
 def test_fetch_url_content_success():
     """Test successful URL content fetching."""
     mock_response = MagicMock()
@@ -42,8 +25,9 @@ def test_fetch_url_content_too_large():
         with pytest.raises(ValueError, match="Content too large"):
             fetch_url_content("http://example.com/large.sh")
 
-def test_scan_files_with_url_target(mock_tf_env):
+def test_scan_files_with_url_target(mock_tf_env, monkeypatch):
     """Test that URLs in scan_targets are fetched and scanned."""
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
     url = "https://example.com/malicious.py"
     mock_content = b"print('malicious')"
 
@@ -69,8 +53,9 @@ def test_scan_files_with_url_target(mock_tf_env):
     assert own_conf == "50%"
     assert "print('malicious')" in snippet
 
-def test_scan_files_url_fetch_error(mock_tf_env):
+def test_scan_files_url_fetch_error(mock_tf_env, monkeypatch):
     """Test handling of URL fetch errors during scan."""
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
     url = "https://example.com/missing.sh"
 
     with patch("urllib.request.urlopen", side_effect=Exception("404 Not Found")):
