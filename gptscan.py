@@ -4515,12 +4515,17 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan script files and archives (ZIP/TAR) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, and web links for malicious code using AI.",
         epilog="Examples:\n"
-               "  python gptscan.py ./my_scripts --cli --use-gpt\n"
-               "  python gptscan.py ./my_script.py --cli --json\n"
-               "  python gptscan.py --git-changes --cli --fail-threshold 50\n"
-               "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n"
+               "  # Scan a folder using AI analysis\n"
+               "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
+               "  # Scan a single file and save as JSON\n"
+               "  python gptscan.py ./my_script.py --cli --json\n\n"
+               "  # Scan only changed files in Git and fail if threats are found\n"
+               "  python gptscan.py --git-changes --cli --fail-threshold 50\n\n"
+               "  # Scan a snippet sent from another command\n"
+               "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n\n"
+               "  # Scan a remote script directly from a web link\n"
                "  python gptscan.py https://example.com/script.sh --cli\n\n"
                "Note: Always run the script from inside its own folder so it can find its required data files (like scripts.h5).",
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -4545,7 +4550,7 @@ def main():
     scan_group.add_argument(
         '-e', '--exclude',
         nargs='*',
-        help='Skip files matching these patterns (e.g., "node_modules/*"). Patterns in .gptscanignore are also skipped.'
+        help='Ignore files or folders that match these patterns (for example: "node_modules/*").'
     )
     scan_group.add_argument(
         '--file-list',
@@ -4571,21 +4576,21 @@ def main():
         '--threshold', '-t',
         type=int,
         default=50,
-        help='The lowest threat score to report (0-100). The default is 50.'
+        help='Show only files with a threat score at or above this number (0-100). The default is 50.'
     )
     scan_group.add_argument(
         '--stdin',
         action='store_true',
-        help='Read a code snippet from terminal input (piped) to scan.'
+        help='Scan a code snippet sent from another command in the terminal.'
     )
     scan_group.add_argument(
         '--import-results', '--import',
         type=str,
-        help='Import and process results from a previous scan (JSON, CSV, or SARIF). Use "-" to read from terminal input (piped).'
+        help='Import results from a previous scan (JSON, CSV, or SARIF). Use "-" to read from the terminal.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
-    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Use AI to create detailed reports for suspicious files. Note: This requires an API key for OpenAI and OpenRouter, but not for Ollama.')
+    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Enable detailed AI reports for suspicious files. Cloud providers (OpenAI, OpenRouter) need an API key; local Ollama does not.')
     ai_group.add_argument(
         '--provider',
         type=str,
