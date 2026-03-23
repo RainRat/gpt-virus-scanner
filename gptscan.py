@@ -95,13 +95,13 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
         return [] if mode == 'multi_line' else ''
 
 
-def fetch_url_content(url: str, timeout: int = 10, max_size: int = 5 * 1024 * 1024) -> bytes:
+def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = None) -> bytes:
     """Fetches content from a URL with safety limits.
 
     Args:
         url: The URL to fetch.
         timeout: Connection timeout in seconds.
-        max_size: Maximum download size in bytes.
+        max_size: Maximum download size in bytes. Defaults to Config.MAX_FILE_SIZE.
 
     Returns:
         The content as bytes.
@@ -110,6 +110,9 @@ def fetch_url_content(url: str, timeout: int = 10, max_size: int = 5 * 1024 * 10
         ValueError: If the response is too large or invalid.
         urllib.error.URLError: If the fetch fails.
     """
+    if max_size is None:
+        max_size = Config.MAX_FILE_SIZE
+
     with urllib.request.urlopen(url, timeout=timeout) as response:
         content_length = response.getheader('Content-Length')
         if content_length and int(content_length) > max_size:
@@ -128,6 +131,8 @@ class Config:
     MAX_RETRIES = 3
     RATE_LIMIT_PER_MINUTE = 60
     MAX_CONCURRENT_REQUESTS = 5
+    MAX_FILE_SIZE = 10 * 1024 * 1024
+    MAX_SOURCE_VIEW_SIZE = 2 * 1024 * 1024
     gpt_cache: Dict[str, Dict[str, Any]] = {}
     apikey: str = load_file('apikey.txt')
     taskdesc: str = load_file('task.txt')
@@ -182,6 +187,8 @@ class Config:
             "model_name": cls.model_name,
             "api_base": cls.api_base,
             "threshold": cls.THRESHOLD,
+            "max_file_size": cls.MAX_FILE_SIZE,
+            "max_source_view_size": cls.MAX_SOURCE_VIEW_SIZE,
             "recent_paths": cls.recent_paths,
         }
         try:
@@ -210,6 +217,18 @@ class Config:
                 threshold = settings.get("threshold", cls.THRESHOLD)
                 try:
                     cls.THRESHOLD = int(threshold)
+                except (ValueError, TypeError):
+                    pass
+
+                max_file_size = settings.get("max_file_size", cls.MAX_FILE_SIZE)
+                try:
+                    cls.MAX_FILE_SIZE = int(max_file_size)
+                except (ValueError, TypeError):
+                    pass
+
+                max_source_view_size = settings.get("max_source_view_size", cls.MAX_SOURCE_VIEW_SIZE)
+                try:
+                    cls.MAX_SOURCE_VIEW_SIZE = int(max_source_view_size)
                 except (ValueError, TypeError):
                     pass
 
@@ -825,6 +844,52 @@ def parse_percent(val: str, default: float = -1.0) -> float:
         return float(text.strip('%'))
     except ValueError:
         return default
+
+
+def parse_size_string(size_str: str) -> int:
+    """Convert a human-readable size string (e.g., "10MB", "500KB") to bytes.
+
+    Args:
+        size_str: The size string to parse.
+
+    Returns:
+        The size in bytes as an integer.
+
+    Raises:
+        ValueError: If the string format is invalid.
+    """
+    if not size_str:
+        raise ValueError("Size string is empty")
+
+    match = re.match(r'^(\d+(?:\.\d+)?)\s*([a-zA-Z]*)$', size_str.strip())
+    if not match:
+        raise ValueError(f"Invalid size format: {size_str}")
+
+    value_str, unit = match.groups()
+    value = float(value_str)
+    unit = unit.upper()
+
+    units = {
+        '': 1,
+        'B': 1,
+        'K': 1024,
+        'KB': 1024,
+        'KIB': 1024,
+        'M': 1024 * 1024,
+        'MB': 1024 * 1024,
+        'MIB': 1024 * 1024,
+        'G': 1024 * 1024 * 1024,
+        'GB': 1024 * 1024 * 1024,
+        'GIB': 1024 * 1024 * 1024,
+        'T': 1024 * 1024 * 1024 * 1024,
+        'TB': 1024 * 1024 * 1024 * 1024,
+        'TIB': 1024 * 1024 * 1024 * 1024,
+    }
+
+    if unit not in units:
+        raise ValueError(f"Unknown unit: {unit}")
+
+    return int(value * units[unit])
 
 
 def format_bytes(num: float) -> str:
@@ -1606,7 +1671,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             buffer = io.BytesIO(content)
             with zipfile.ZipFile(buffer) as z:
                 for info in z.infolist():
-                    if info.is_dir() or info.file_size > 10 * 1024 * 1024:
+                    if info.is_dir() or info.file_size > Config.MAX_FILE_SIZE:
                         continue
                     with z.open(info) as f:
                         member_content = f.read()
@@ -1628,7 +1693,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             buffer = io.BytesIO(content)
             with tarfile.open(fileobj=buffer) as t:
                 for member in t.getmembers():
-                    if not member.isfile() or member.size > 10 * 1024 * 1024:
+                    if not member.isfile() or member.size > Config.MAX_FILE_SIZE:
                         continue
                     f = t.extractfile(member)
                     if f:
@@ -1945,6 +2010,22 @@ def scan_files(
 
             if file_size is not None:
                 total_bytes_scanned += file_size
+
+            # Check file size limit (skip if not explicitly requested)
+            if not is_explicit and file_size is not None and file_size > Config.MAX_FILE_SIZE:
+                yield (
+                    'result',
+                    (
+                        str(file_path),
+                        'Large File',
+                        '',
+                        '',
+                        '',
+                        f"Skipped: File exceeds maximum size ({format_bytes(Config.MAX_FILE_SIZE)})",
+                        '-',
+                    )
+                )
+                continue
 
             if dry_run:
                 yield (
@@ -3330,7 +3411,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             else:
                 try:
                     file_size = os.path.getsize(path)
-                    if file_size > 2 * 1024 * 1024: # 2MB limit
+                    if file_size > Config.MAX_SOURCE_VIEW_SIZE:
                         if not messagebox.askyesno("Large File", f"The file is {format_bytes(file_size)}. Loading it might be slow. Continue?"):
                             raise ValueError("Cancelled")
 
@@ -4181,6 +4262,24 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     dry_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
+    size_frame = ttk.Frame(options_frame)
+    size_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
+    ttk.Label(size_frame, text="Max File Size (MB):").pack(side=tk.LEFT)
+
+    def on_max_size_change():
+        try:
+            val = float(max_size_spin.get())
+            Config.MAX_FILE_SIZE = int(val * 1024 * 1024)
+        except ValueError:
+            pass
+
+    max_size_spin = ttk.Spinbox(size_frame, from_=1, to=1024, width=5, command=on_max_size_change)
+    max_size_spin.delete(0, tk.END)
+    max_size_spin.insert(0, str(int(Config.MAX_FILE_SIZE / (1024 * 1024))))
+    max_size_spin.pack(side=tk.LEFT, padx=5)
+    max_size_spin.bind('<KeyRelease>', lambda e: on_max_size_change())
+    bind_hover_message(max_size_spin, "Skip files larger than this size (in Megabytes).")
+
     # --- Provider Frame ---
     provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis", padding=10)
     provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
@@ -4597,6 +4696,11 @@ def main():
         type=str,
         help='Import results from a previous scan (JSON, CSV, or SARIF). Use "-" to read from the terminal.'
     )
+    scan_group.add_argument(
+        '--max-size',
+        type=str,
+        help='The maximum file size to scan (e.g., "10MB", "500KB").'
+    )
 
     ai_group = parser.add_argument_group("AI Analysis")
     ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Enable detailed AI reports for suspicious files. Cloud providers (OpenAI, OpenRouter) need an API key; local Ollama does not.')
@@ -4664,6 +4768,12 @@ def main():
 
     if args.all_files:
         Config.scan_all_files = True
+
+    if args.max_size:
+        try:
+            Config.MAX_FILE_SIZE = parse_size_string(args.max_size)
+        except ValueError as e:
+            parser.error(f"Invalid --max-size: {e}")
 
     Config.THRESHOLD = args.threshold
 

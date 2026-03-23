@@ -9,6 +9,8 @@
     "model_name": "gpt-4o",
     "api_base": null,
     "threshold": 50,
+    "max_file_size": 10485760,
+    "max_source_view_size": 2097152,
     "recent_paths": [
         "/some/path",
         "/some/repo",
