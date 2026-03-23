@@ -2593,10 +2593,10 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         conf_str = gpt_conf or own_conf
         analysis_parts = []
         if admin:
-            admin_clean = admin.replace("|", "\\|")
+            admin_clean = admin.replace("|", "\\|").replace("\n", "<br>")
             analysis_parts.append(f"**Admin:** {admin_clean}")
         if user:
-            user_clean = user.replace("|", "\\|")
+            user_clean = user.replace("|", "\\|").replace("\n", "<br>")
             analysis_parts.append(f"**User:** {user_clean}")
         analysis = "<br>".join(analysis_parts)
 
