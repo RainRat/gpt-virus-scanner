@@ -59,7 +59,20 @@ def reset_globals():
     gptscan._all_results_cache = []
     gptscan._model_cache = None
     gptscan._async_openai_client = None
+
+    # Save original Config state
+    orig_exts = gptscan.Config.extensions_set.copy()
+    orig_threshold = gptscan.Config.THRESHOLD
+    orig_max_file_size = gptscan.Config.MAX_FILE_SIZE
+    orig_max_source_view_size = gptscan.Config.MAX_SOURCE_VIEW_SIZE
+
     yield
+
+    # Restore original Config state
+    gptscan.Config.extensions_set = orig_exts
+    gptscan.Config.THRESHOLD = orig_threshold
+    gptscan.Config.MAX_FILE_SIZE = orig_max_file_size
+    gptscan.Config.MAX_SOURCE_VIEW_SIZE = orig_max_source_view_size
 
 @pytest.fixture
 def mock_tf_env(monkeypatch):

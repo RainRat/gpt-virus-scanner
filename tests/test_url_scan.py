@@ -18,7 +18,8 @@ def test_fetch_url_content_success():
 def test_fetch_url_content_too_large():
     """Test that fetch_url_content raises ValueError for large content."""
     mock_response = MagicMock()
-    mock_response.getheader.return_value = str(10 * 1024 * 1024) # 10MB
+    # Use a value larger than the default Config.MAX_FILE_SIZE (10MB)
+    mock_response.getheader.return_value = str(11 * 1024 * 1024)
     mock_response.__enter__.return_value = mock_response
 
     with patch("urllib.request.urlopen", return_value=mock_response):

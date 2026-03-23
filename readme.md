@@ -106,6 +106,7 @@ Run `python gptscan.py` to open the GUI.
 *   **Deep scan:** Scan the whole file. Normally, the scanner only checks the start and end to save time.
 *   **Scan all files:** Scan every file, even those without common script extensions.
 *   **Dry Run:** Simulate the scan without actually analyzing any files.
+*   **Max File Size (MB):** Skip files larger than this size.
 
 #### AI Analysis
 *   **Use AI Analysis:** Enable detailed reports for suspicious findings.
@@ -203,6 +204,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--file-list [file]`: Scan a list of files from a text file.
 *   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
 *   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF). Use `-` for terminal input.
+*   `--max-size [value]`: Set the maximum file size to scan (e.g., `10MB`, `500KB`).
 *   `--json`: Save or show results in JSON format (one object per line).
 *   `--csv`: Save or show results in CSV format.
 *   `--sarif`: Save results in SARIF format for security tools.
