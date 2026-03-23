@@ -673,30 +673,39 @@ def request_single_gpt_analysis(snippet: str) -> Optional[Dict[str, Any]]:
 
 
 def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Callable[[str], int]] = None) -> Any:
-    """Wrap strings based on the available column width."""
+    """Wrap strings based on the available column width while preserving indentation."""
     if not isinstance(val, str):
         return val
 
     measure = measure or tkinter.font.Font(font='TkDefaultFont').measure
-    words = val.split()
-    if not words:
+    original_lines = val.splitlines()
+    if not original_lines:
         return val
 
-    lines: List[List[str]] = [[]]
-    for word in words:
-        current_line = lines[-1]
-        if not current_line:
-            current_line.append(word)
-        else:
-            # Check if adding this word would exceed the width
-            test_line = ' '.join(current_line + [word])
-            if measure(test_line) < (width - pad):
-                current_line.append(word)
-            else:
-                # Start a new line
-                lines.append([word])
+    wrapped_lines = []
+    for line in original_lines:
+        # Preserve leading whitespace
+        indent = re.match(r'^(\s*)', line).group(1)
+        content = line[len(indent):]
+        words = content.split()
 
-    return '\n'.join([' '.join(line) for line in lines])
+        if not words:
+            wrapped_lines.append(indent)
+            continue
+
+        current_line_words = []
+        for word in words:
+            test_line = indent + ' '.join(current_line_words + [word])
+            if not current_line_words or measure(test_line) < (width - pad):
+                current_line_words.append(word)
+            else:
+                wrapped_lines.append(indent + ' '.join(current_line_words))
+                current_line_words = [word]
+
+        if current_line_words:
+            wrapped_lines.append(indent + ' '.join(current_line_words))
+
+    return '\n'.join(wrapped_lines)
 
 
 def get_wrapped_values(tree: ttk.Treeview, values: Iterable[Any], measure: Optional[Callable[[str], int]] = None, col_widths: Optional[List[int]] = None) -> List[Any]:
