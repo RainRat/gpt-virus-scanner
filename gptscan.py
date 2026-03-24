@@ -4216,7 +4216,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Escape>', lambda event: cancel_scan())
     select_file_btn = ttk.Button(input_frame, text="File...", command=browse_file_click)
     select_file_btn.grid(row=0, column=2, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_file_btn, "Select a single script file to scan.")
+    bind_hover_message(select_file_btn, "Select a single script or Markdown file to scan.")
 
     select_dir_btn = ttk.Button(input_frame, text="Folder...", command=browse_dir_click)
     select_dir_btn.grid(row=0, column=3, sticky="e", padx=(5, 0), ipady=5)
@@ -4224,7 +4224,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     select_url_btn = ttk.Button(input_frame, text="URL...", command=select_url_click)
     select_url_btn.grid(row=0, column=4, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_url_btn, "Scan a script from a remote URL.")
+    bind_hover_message(select_url_btn, "Scan a script, Markdown file, or archive from a remote URL.")
 
     select_clipboard_btn = ttk.Button(input_frame, text="Clipboard", command=scan_clipboard_click)
     select_clipboard_btn.grid(row=0, column=5, sticky="e", padx=(5, 0), ipady=5)
@@ -4623,7 +4623,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, and web links for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, Markdown files, and web links for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
