@@ -334,7 +334,10 @@ def test_view_details_copy_path(mock_view_details_env):
     copy_path_cmd()
     mock_root.clipboard_clear.assert_called_once()
     mock_root.clipboard_append.assert_called_with("test.py")
-    mock_msgbox.showinfo.assert_called_with("Copied", "File path copied to clipboard.")
+    # Verified feedback via status bar
+    # status_bar is the first label created in view_details
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "File path copied to clipboard."
 
 def test_view_details_copy_analysis(mock_view_details_env):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
@@ -349,7 +352,10 @@ def test_view_details_copy_analysis(mock_view_details_env):
     assert "AI Conf: 80%" in copied_text
     assert "Admin Notes:\nAdmin Notes" in copied_text
     assert "Snippet:\nprint('test')" in copied_text
-    mock_msgbox.showinfo.assert_called_with("Copied", "Detailed analysis copied to clipboard.")
+    # Verified feedback via status bar
+    # status_bar is the first label created in view_details
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "Detailed analysis copied to clipboard."
 
 def test_view_details_refresh_content_missing_id(mock_view_details_env):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env

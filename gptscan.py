@@ -459,21 +459,29 @@ def process_ui_queue() -> None:
         root.after(50, process_ui_queue)
 
 
-def bind_hover_message(widget: tk.Widget, message: str) -> None:
+def bind_hover_message(widget: tk.Widget, message: str, label: Optional[ttk.Label] = None) -> None:
     """Bind mouse enter/leave events to update the status label."""
+    target_label = label or status_label
+    if not target_label:
+        return
+
     # Store the previous message to restore it later
     previous_message: List[str] = ["Ready"]
 
     def on_enter(event):
         if current_cancel_event is None:
             # Save current text, defaulting to Ready if empty
-            current_text = status_label.cget("text")
+            current_text = target_label.cget("text")
             previous_message[0] = current_text if current_text else "Ready"
-            update_status(message)
+            target_label.config(text=message)
+            if root:
+                root.update_idletasks()
 
     def on_leave(event):
         if current_cancel_event is None:
-            update_status(previous_message[0])
+            target_label.config(text=previous_message[0])
+            if root:
+                root.update_idletasks()
 
     widget.bind("<Enter>", on_enter)
     widget.bind("<Leave>", on_leave)
@@ -3353,6 +3361,16 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     main_frame = ttk.Frame(details_win, padding=10)
     main_frame.pack(fill=tk.BOTH, expand=True)
 
+    # Local Status Bar
+    status_bar = ttk.Label(main_frame, text="Ready", relief=tk.SUNKEN, anchor=tk.W)
+    status_bar.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
+
+    def set_local_status(message: str, temporary: bool = False):
+        """Update the local status bar with an optional timeout."""
+        status_bar.config(text=message)
+        if temporary:
+            details_win.after(3000, lambda: status_bar.config(text="Ready"))
+
     # Header: Path and Confidence
     header_frame = ttk.Frame(main_frame)
     header_frame.pack(fill=tk.X, pady=(0, 5))
@@ -3498,7 +3516,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     def copy_path_details():
         root.clipboard_clear()
         root.clipboard_append(path_entry.get())
-        messagebox.showinfo("Copied", "File path copied to clipboard.")
+        set_local_status("File path copied to clipboard.", temporary=True)
 
     def on_analyze_now():
         if current_cancel_event is not None:
@@ -3558,13 +3576,13 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         text += f"\nSnippet:\n{snippet_text.get('1.0', tk.END).strip()}"
         root.clipboard_clear()
         root.clipboard_append(text)
-        messagebox.showinfo("Copied", "Detailed analysis copied to clipboard.")
+        set_local_status("Detailed analysis copied to clipboard.", temporary=True)
 
     def copy_code():
         code = snippet_text.get("1.0", tk.END).strip()
         root.clipboard_clear()
         root.clipboard_append(code)
-        messagebox.showinfo("Copied", "Code copied to clipboard.")
+        set_local_status("Code copied to clipboard.", temporary=True)
 
     def on_exclude():
         """Exclude current file and move to next."""
@@ -3599,59 +3617,59 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     # Group: Analysis
     analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", width=18, command=on_analyze_now)
     analyze_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(analyze_btn, "Use AI to analyze this code snippet.")
+    bind_hover_message(analyze_btn, "Use AI to analyze this code snippet.", label=status_bar)
     if not Config.GPT_ENABLED:
         analyze_btn.config(state='disabled')
 
     vt_btn = ttk.Button(btn_frame, text="VirusTotal", width=12, command=lambda: check_virustotal(path_entry.get()))
     vt_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(vt_btn, "Check this file's hash on VirusTotal.")
+    bind_hover_message(vt_btn, "Check this file's hash on VirusTotal.", label=status_bar)
 
     copy_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
     copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard.")
+    bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard.", label=status_bar)
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
     # Group: Files
     open_btn = ttk.Button(btn_frame, text="Open", width=10, command=lambda: open_file(path_entry.get()))
     open_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(open_btn, "Open this file in the default application. (Shift+Enter)")
+    bind_hover_message(open_btn, "Open this file in the default application. (Shift+Enter)", label=status_bar)
 
     reveal_btn = ttk.Button(btn_frame, text="Reveal", width=10, command=lambda: show_in_folder(path_entry.get()))
     reveal_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(reveal_btn, "Show this file in the system file manager.")
+    bind_hover_message(reveal_btn, "Show this file in the system file manager.", label=status_bar)
 
     path_copy_btn = ttk.Button(btn_frame, text="Copy Path", width=12, command=copy_path_details)
     path_copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.")
+    bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.", label=status_bar)
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
     # Group: Exclusions
     rescan_btn = ttk.Button(btn_frame, text="Rescan", width=10, command=on_rescan)
     rescan_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(rescan_btn, "Re-scan this file with current settings. (F5 or R)")
+    bind_hover_message(rescan_btn, "Re-scan this file with current settings. (F5 or R)", label=status_bar)
 
     exclude_btn = ttk.Button(btn_frame, text="Exclude", width=10, command=on_exclude)
     exclude_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(exclude_btn, "Exclude this file from future scans. (Delete)")
+    bind_hover_message(exclude_btn, "Exclude this file from future scans. (Delete)", label=status_bar)
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
     # Group: View
     copy_code_btn = ttk.Button(btn_frame, text="Copy Code", width=12, command=copy_code)
     copy_code_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(copy_code_btn, "Copy the displayed code to the clipboard. (Ctrl+S)")
+    bind_hover_message(copy_code_btn, "Copy the displayed code to the clipboard. (Ctrl+S)", label=status_bar)
 
     source_toggle_btn = ttk.Button(btn_frame, text="Show Full Source", width=18, command=toggle_source)
     source_toggle_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(source_toggle_btn, "Toggle between the suspicious snippet and the full file content.")
+    bind_hover_message(source_toggle_btn, "Toggle between the suspicious snippet and the full file content.", label=status_bar)
 
     # Group: System
     close_btn = ttk.Button(btn_frame, text="Close", command=details_win.destroy)
     close_btn.pack(side=tk.RIGHT, padx=5, ipady=5)
-    bind_hover_message(close_btn, "Close this window. (Esc)")
+    bind_hover_message(close_btn, "Close this window. (Esc)", label=status_bar)
 
     # Navigation buttons
     nav_frame = ttk.Frame(main_frame)
@@ -3766,14 +3784,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     prev_btn = ttk.Button(nav_frame, text="< Previous", command=on_prev)
     prev_btn.pack(side=tk.LEFT, padx=5, ipady=5)
-    bind_hover_message(prev_btn, "View the previous scan result. (Left Arrow)")
+    bind_hover_message(prev_btn, "View the previous scan result. (Left Arrow)", label=status_bar)
 
     count_label = ttk.Label(nav_frame, text="")
     count_label.pack(side=tk.LEFT, padx=10)
 
     next_btn = ttk.Button(nav_frame, text="Next >", command=on_next)
     next_btn.pack(side=tk.LEFT, padx=5, ipady=5)
-    bind_hover_message(next_btn, "View the next scan result. (Right Arrow)")
+    bind_hover_message(next_btn, "View the next scan result. (Right Arrow)", label=status_bar)
 
     details_win.bind('<Left>', lambda e: on_prev())
     details_win.bind('<Right>', lambda e: on_next())
