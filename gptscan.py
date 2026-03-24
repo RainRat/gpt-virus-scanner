@@ -747,8 +747,12 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
         col_widths = [tree.column(cid)['width'] for cid in tree['columns']]
 
         for iid in tree.get_children():
-            values = tree.item(iid)['values']
-            new_vals = get_wrapped_values(tree, values, measure=measure, col_widths=col_widths)
+            raw_values = _get_item_raw_values(iid)
+            if not raw_values:
+                continue
+
+            new_vals = get_wrapped_values(tree, raw_values, measure=measure, col_widths=col_widths)
+            new_vals.append(json.dumps(raw_values[:7]))
             tree.item(iid, values=new_vals)
 
 

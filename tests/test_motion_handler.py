@@ -32,11 +32,16 @@ def test_motion_handler_updates_children(monkeypatch):
     # Mock adjust_newlines to return a predictable value
     monkeypatch.setattr(gptscan, "adjust_newlines", lambda text, width, measure=None: f"wrapped_{text}")
 
+    # Mock _get_item_raw_values
+    monkeypatch.setattr(gptscan, "_get_item_raw_values", lambda iid: ["long text that should wrap", "short"])
+
     # Call motion_handler with event=None
     gptscan.motion_handler(mock_tree, None)
 
-    # Verify tree.item(iid, values=...) was called with wrapped values
-    mock_tree.item.assert_called_with("iid1", values=["wrapped_long text that should wrap", "wrapped_short"])
+    # Verify tree.item(iid, values=...) was called with wrapped values and the hidden json cache
+    import json
+    expected_values = ["wrapped_long text that should wrap", "wrapped_short", json.dumps(["long text that should wrap", "short"])]
+    mock_tree.item.assert_called_with("iid1", values=expected_values)
 
 def test_motion_handler_ignores_non_separator_events():
     mock_tree = MagicMock()
