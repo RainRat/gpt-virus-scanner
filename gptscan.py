@@ -174,6 +174,16 @@ class Config:
                 cls.extensions_set.add(clean_ext if clean_ext.startswith('.') else f".{clean_ext}")
 
     @classmethod
+    def save_extensions(cls) -> None:
+        """Save current extensions to the extensions.txt file."""
+        try:
+            with open('extensions.txt', 'w', encoding='utf-8') as f:
+                for ext in sorted(cls.extensions_set):
+                    f.write(f"{ext}\n")
+        except Exception as e:
+            print(f"Warning: Could not save extensions: {e}", file=sys.stderr)
+
+    @classmethod
     def save_settings(cls) -> None:
         """Save persistent GUI settings to a JSON file."""
         settings = {
@@ -1645,6 +1655,91 @@ def manage_exclusions() -> None:
     ttk.Button(btn_frame, text="Add Pattern...", command=add_pattern).pack(side=tk.LEFT, padx=(0, 5), ipady=5)
     ttk.Button(btn_frame, text="Add Folder...", command=add_folder).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5, ipady=5)
+    ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT, ipady=5)
+
+
+def manage_extensions() -> None:
+    """Open a dialog to manage scanned file extensions (extensions.txt)."""
+    if not root:
+        return
+
+    manage_win = tk.Toplevel(root)
+    manage_win.title("Manage Extensions")
+    manage_win.geometry("500x400")
+    manage_win.minsize(400, 300)
+    manage_win.transient(root)
+    manage_win.grab_set()
+
+    main_frame = ttk.Frame(manage_win, padding=10)
+    main_frame.pack(fill=tk.BOTH, expand=True)
+
+    ttk.Label(main_frame, text="Scanned extensions (from extensions.txt):", font=('TkDefaultFont', 9, 'bold')).pack(anchor="w", pady=(0, 5))
+
+    list_frame = ttk.Frame(main_frame)
+    list_frame.pack(fill=tk.BOTH, expand=True)
+
+    ext_listbox = tk.Listbox(list_frame, selectmode=tk.EXTENDED)
+    ext_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=ext_listbox.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    ext_listbox.config(yscrollcommand=scrollbar.set)
+
+    def refresh_list():
+        ext_listbox.delete(0, tk.END)
+        for ext in sorted(Config.extensions_set):
+            ext_listbox.insert(tk.END, ext)
+
+    refresh_list()
+
+    btn_frame = ttk.Frame(main_frame, padding=(0, 10, 0, 0))
+    btn_frame.pack(fill=tk.X)
+
+    def add_extension():
+        ext = simpledialog.askstring("Add Extension", "Enter a file extension (e.g., .py, .js):", parent=manage_win)
+        if ext:
+            ext = ext.strip().lower()
+            if not ext.startswith('.'):
+                ext = f".{ext}"
+            if ext and ext not in Config.extensions_set:
+                try:
+                    Config.extensions_set.add(ext)
+                    Config.save_extensions()
+                    refresh_list()
+                except Exception as e:
+                    messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
+
+    def remove_selected():
+        selection = ext_listbox.curselection()
+        if not selection:
+            return
+
+        exts_to_remove = {ext_listbox.get(i) for i in selection}
+        if not messagebox.askyesno("Confirm Removal", f"Remove {len(exts_to_remove)} extension(s)?", parent=manage_win):
+            return
+
+        try:
+            for ext in exts_to_remove:
+                Config.extensions_set.discard(ext)
+            Config.save_extensions()
+            refresh_list()
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
+
+    def reset_defaults():
+        if not messagebox.askyesno("Confirm Reset", "Reset extensions to default list?", parent=manage_win):
+            return
+
+        try:
+            Config.set_extensions(Config.DEFAULT_EXTENSIONS)
+            Config.save_extensions()
+            refresh_list()
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not reset extensions: {e}", parent=manage_win)
+
+    ttk.Button(btn_frame, text="Add...", command=add_extension).pack(side=tk.LEFT, padx=(0, 5), ipady=5)
+    ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5, ipady=5)
+    ttk.Button(btn_frame, text="Reset to Defaults", command=reset_defaults).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT, ipady=5)
 
 
@@ -4181,6 +4276,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     file_menu.add_command(label="Import from Clipboard", command=import_from_clipboard)
     file_menu.add_command(label="Export Results...", command=export_results)
     file_menu.add_command(label="Manage Exclusions...", command=manage_exclusions)
+    file_menu.add_command(label="Manage Extensions...", command=manage_extensions)
     file_menu.add_command(label="Copy as CLI Command", command=copy_cli_command)
     file_menu.add_separator()
     file_menu.add_command(label="Clear Results", command=clear_results)
