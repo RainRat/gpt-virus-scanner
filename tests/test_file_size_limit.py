@@ -3,13 +3,41 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 import gptscan
 
-def test_parse_size_string():
-    assert gptscan.parse_size_string("10MB") == 10 * 1024 * 1024
-    assert gptscan.parse_size_string("500KB") == 500 * 1024
-    assert gptscan.parse_size_string("1G") == 1024 * 1024 * 1024
+def test_parse_size_string_comprehensive():
+    # All confirmed units
+    assert gptscan.parse_size_string("1B") == 1
+    assert gptscan.parse_size_string("1K") == 1024
+    assert gptscan.parse_size_string("1KB") == 1024
+    assert gptscan.parse_size_string("1KIB") == 1024
+    assert gptscan.parse_size_string("1M") == 1024**2
+    assert gptscan.parse_size_string("1MB") == 1024**2
+    assert gptscan.parse_size_string("1MIB") == 1024**2
+    assert gptscan.parse_size_string("1G") == 1024**3
+    assert gptscan.parse_size_string("1GB") == 1024**3
+    assert gptscan.parse_size_string("1GIB") == 1024**3
+    assert gptscan.parse_size_string("1T") == 1024**4
+    assert gptscan.parse_size_string("1TB") == 1024**4
+    assert gptscan.parse_size_string("1TIB") == 1024**4
+
+    # Case insensitivity and whitespace
+    assert gptscan.parse_size_string("10mb") == 10 * 1024**2
+    assert gptscan.parse_size_string(" 10 MB ") == 10 * 1024**2
+
+    # Decimals
+    assert gptscan.parse_size_string("1.5MB") == int(1.5 * 1024**2)
+
+    # Bare numbers
     assert gptscan.parse_size_string("100") == 100
-    with pytest.raises(ValueError):
+
+    # Error cases
+    with pytest.raises(ValueError, match="Size string is empty"):
+        gptscan.parse_size_string("")
+
+    with pytest.raises(ValueError, match="Invalid size format"):
         gptscan.parse_size_string("invalid")
+
+    with pytest.raises(ValueError, match="Unknown unit: XB"):
+        gptscan.parse_size_string("10XB")
 
 def test_fetch_url_content_size_limit():
     with patch("urllib.request.urlopen") as mock_url:
