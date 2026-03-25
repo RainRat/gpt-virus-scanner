@@ -7,7 +7,7 @@ GPT Virus Scanner uses AI to find malicious code in script files.
 *   **Local Scan:** A fast, built-in model checks files on your computer.
 *   **AI Analysis:** If a file looks suspicious, the tool can send it to an AI service (like OpenAI) for a detailed report.
 
-**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and PowerShell), Jupyter Notebooks (.ipynb), and archives (.zip, .tar), but does not analyze compiled programs.
+**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and PowerShell), Jupyter Notebooks (.ipynb), Markdown files (.md), and archives (.zip, .tar), but does not analyze compiled programs.
 
 ## Quick Start
 
@@ -22,7 +22,7 @@ Scan a folder and save a JSON report:
 python gptscan.py ./my_scripts --cli -o report.json
 ```
 
-Scan a code snippet from terminal input (piped):
+Scan a code snippet sent from another command in the terminal:
 ```bash
 echo "print('hello')" | python gptscan.py --cli --stdin
 ```
@@ -72,6 +72,7 @@ Once your provider is ready, you must enable the feature when you run a scan:
 The scanner finds scripts in four ways:
 *   **By file type:** It recognizes common script types (like `.py`, `.js`, `.sh`, and `.ps1`) and Jupyter Notebooks (`.ipynb`) using the included `extensions.txt` file.
 *   **By archive content:** It can inspect scripts hidden inside `.zip`, `.tar`, and `.tar.gz` files.
+*   **By Markdown blocks:** It extracts and scans code snippets from triple-backtick blocks in Markdown (`.md`) files.
 *   **By the first line of the file:** If a file does not have an extension, the tool checks the very first line to identify the script type (for example, a line starting with `#!/bin/bash`).
 *   **Remote scripts (via URL):** It can download and scan scripts directly from the web using HTTP or HTTPS links.
 
@@ -98,7 +99,7 @@ Run `python gptscan.py` to open the GUI.
 *   **Path to scan:** Type a path or choose from the dropdown. It remembers your last 10 locations.
 *   **File...:** Select a single file to scan.
 *   **Folder...:** Select a whole directory to scan.
-*   **URL...:** Scan a script or archive (.zip, .tar, .tar.gz) directly from a web link.
+*   **URL...:** Scan a script, Markdown file, or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Clipboard:** Scan code currently in your clipboard.
 
 #### Scan Options
@@ -167,7 +168,7 @@ Run scans from your terminal using the `--cli` flag.
 # Basic scan with AI analysis
 python gptscan.py ./my_scripts --cli --use-gpt
 
-# Scan a code snippet from terminal input (piped)
+# Scan a code snippet sent from another command in the terminal
 echo "print('hello')" | python gptscan.py --cli --stdin
 
 # Scan using Ollama (local AI)
