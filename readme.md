@@ -141,23 +141,29 @@ Run `python gptscan.py` to open the GUI.
 *   **Clear AI Cache:** Delete saved AI analysis results.
 *   **Clear Path History:** Wipe the list of recently scanned folders.
 
-**Shortcuts:**
+#### Shortcuts
+
+**Navigation & Selection**
+*   **Double-click / Enter / Space:** View detailed analysis and code.
 *   **Ctrl+A / Cmd+A:** Select all results.
 *   **Ctrl+F / Cmd+F:** Focus the search filter.
-*   **Ctrl+C / Cmd+C:** Copy path(s) of selected result(s).
-*   **Ctrl+Shift+C / Cmd+Shift+C:** Copy selected result(s) as a Markdown table.
-*   **Ctrl+G / Cmd+G:** Analyze selected result(s) with AI.
-*   **Ctrl+H / Cmd+H:** Copy SHA256 hash(es) of selected result(s).
-*   **Ctrl+J / Cmd+J:** Copy selected result(s) as JSON.
-*   **Ctrl+S / Cmd+S:** Copy code snippet(s) of selected result(s).
-*   **Ctrl+V / Cmd+V:** Import results from clipboard.
+*   **Esc:** Cancel the active scan.
+
+**Result Actions**
+*   **Shift+Enter:** Open selected file.
 *   **Ctrl+Return / Cmd+Return:** Reveal selected file in folder.
 *   **F5 / R:** Rescan selected files.
-*   **Double-click / Enter / Space:** View detailed analysis and code.
-*   **Shift+Enter:** Open selected file.
-*   **Ctrl+Shift+E / Cmd+Shift+E:** Copy the current scan settings as a CLI command.
+*   **Ctrl+G / Cmd+G:** Analyze selected result(s) with AI.
 *   **Delete:** Exclude selected results from future scans.
-*   **Esc:** Cancel the active scan.
+
+**Copy, Export & Import**
+*   **Ctrl+C / Cmd+C:** Copy path(s) of selected result(s).
+*   **Ctrl+S / Cmd+S:** Copy code snippet(s) of selected result(s).
+*   **Ctrl+H / Cmd+H:** Copy SHA256 hash(es) of selected result(s).
+*   **Ctrl+J / Cmd+J:** Copy selected result(s) as JSON.
+*   **Ctrl+Shift+C / Cmd+Shift+C:** Copy selected result(s) as a Markdown table.
+*   **Ctrl+V / Cmd+V:** Import results from clipboard.
+*   **Ctrl+Shift+E / Cmd+Shift+E:** Copy the current scan settings as a CLI command.
 
 ### Using the Command Line (CLI)
 
