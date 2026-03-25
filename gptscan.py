@@ -1841,7 +1841,20 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 5. Fallback: yield as a single snippet if it's a supported file type
+    # 5. Check for HTML script tags
+    if check_name.lower().endswith(('.html', '.htm', '.xhtml')):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            # Match <script> blocks
+            scripts = re.findall(r'<script\b[^>]*>(.*?)</script>', text, re.DOTALL | re.IGNORECASE)
+            for i, script in enumerate(scripts, 1):
+                if script.strip():
+                    yield (f"{name} [Script {i}]", script.encode('utf-8'))
+            return
+        except Exception:
+            pass
+
+    # 6. Fallback: yield as a single snippet if it's a supported file type
     # If scan_all_files is True, we always yield. Otherwise check extension/shebang.
     if Config.is_supported_file(check_name, content=content, is_member=(depth > 0)):
         yield name, content
@@ -1985,7 +1998,7 @@ def scan_files(
         is_explicit = f_path in explicit_files
         path_s = str(f_path).lower()
         # Check if it's a known container by extension or by content
-        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md')):
+        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml')):
             try:
                 with open(f_path, 'rb') as f:
                     full_content = f.read()
@@ -4729,7 +4742,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, Markdown files, and web links for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, Markdown files, HTML files, and web links for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
