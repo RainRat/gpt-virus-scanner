@@ -23,10 +23,12 @@ def test_view_details_copy_code(mock_view_details_env):
     from gptscan import root as mock_root
     copy_code_cmd()
 
-    # Verify clipboard and message box
+    # Verify clipboard and status bar feedback
     mock_root.clipboard_clear.assert_called()
     mock_root.clipboard_append.assert_called_with("print('hello')")
-    mock_msgbox.showinfo.assert_called_with("Copied", "Code copied to clipboard.")
+    # Verified feedback via status bar (it's the first label created in view_details)
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "Code copied to clipboard."
 
 def test_view_details_copy_path_moved(mock_view_details_env):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
