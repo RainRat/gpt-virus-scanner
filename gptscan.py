@@ -3470,17 +3470,20 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         if temporary:
             details_win.after(3000, lambda: status_bar.config(text="Ready"))
 
-    # Header: Path and Confidence
+    # Header: Navigation and Info
     header_frame = ttk.Frame(main_frame)
     header_frame.pack(fill=tk.X, pady=(0, 5))
 
-    ttk.Label(header_frame, text="File Path:", font=('TkDefaultFont', 9, 'bold')).grid(row=0, column=0, sticky="w")
+    nav_header = ttk.Frame(header_frame)
+    nav_header.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+
+    ttk.Label(header_frame, text="File Path:", font=('TkDefaultFont', 9, 'bold')).grid(row=1, column=0, sticky="w")
     path_entry = ttk.Entry(header_frame)
-    path_entry.grid(row=0, column=1, sticky="ew", padx=5)
+    path_entry.grid(row=1, column=1, sticky="ew", padx=5)
     header_frame.columnconfigure(1, weight=1)
 
     conf_frame = ttk.Frame(header_frame)
-    conf_frame.grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
+    conf_frame.grid(row=2, column=0, columnspan=2, sticky="w", pady=(5, 0))
 
     ttk.Label(conf_frame, text="Local Confidence:").grid(row=0, column=0, sticky="w")
     own_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
@@ -3770,10 +3773,6 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     close_btn.pack(side=tk.RIGHT, padx=5, ipady=5)
     bind_hover_message(close_btn, "Close this window. (Esc)", label=status_bar)
 
-    # Navigation buttons
-    nav_frame = ttk.Frame(main_frame)
-    nav_frame.pack(fill=tk.X, pady=(10, 0))
-
     def refresh_content(new_id):
         nonlocal current_item_id
         current_item_id = new_id
@@ -3881,15 +3880,15 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
                 refresh_content(new_id)
         except ValueError: pass
 
-    prev_btn = ttk.Button(nav_frame, text="< Previous", command=on_prev)
-    prev_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    prev_btn = ttk.Button(nav_header, text="< Previous", command=on_prev)
+    prev_btn.pack(side=tk.LEFT, ipady=2)
     bind_hover_message(prev_btn, "View the previous scan result. (Left Arrow)", label=status_bar)
 
-    count_label = ttk.Label(nav_frame, text="")
-    count_label.pack(side=tk.LEFT, padx=10)
+    count_label = ttk.Label(nav_header, text="", font=('TkDefaultFont', 9, 'bold'))
+    count_label.pack(side=tk.LEFT, padx=20)
 
-    next_btn = ttk.Button(nav_frame, text="Next >", command=on_next)
-    next_btn.pack(side=tk.LEFT, padx=5, ipady=5)
+    next_btn = ttk.Button(nav_header, text="Next >", command=on_next)
+    next_btn.pack(side=tk.LEFT, ipady=2)
     bind_hover_message(next_btn, "View the next scan result. (Right Arrow)", label=status_bar)
 
     details_win.bind('<Left>', lambda e: on_prev())
