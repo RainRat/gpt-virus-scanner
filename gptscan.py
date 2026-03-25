@@ -4152,14 +4152,8 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
         analyze_button.config(state="normal" if has_selection and ai_available else "disabled")
 
 
-def get_cli_command() -> str:
-    """Generate a CLI command equivalent to the current GUI settings.
-
-    Returns
-    -------
-    str
-        A string representing the `python gptscan.py ...` command.
-    """
+def copy_cli_command(event: Optional[tk.Event] = None) -> None:
+    """Copy the equivalent CLI command to the system clipboard."""
     cmd_parts = ["python", "gptscan.py"]
 
     # Target path
@@ -4195,12 +4189,7 @@ def get_cli_command() -> str:
         if Config.api_base:
             cmd_parts.extend(["--api-base", Config.api_base])
 
-    return " ".join(cmd_parts)
-
-
-def copy_cli_command(event: Optional[tk.Event] = None) -> None:
-    """Copy the equivalent CLI command to the system clipboard."""
-    cmd = get_cli_command()
+    cmd = " ".join(cmd_parts)
     if root:
         root.clipboard_clear()
         root.clipboard_append(cmd)
