@@ -3,6 +3,7 @@ import json
 import zipfile
 import tarfile
 import pytest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 import gptscan
 from gptscan import unpack_content, scan_files, Config
@@ -20,6 +21,75 @@ def test_unpack_zip_in_memory():
     assert len(results) == 1
     assert results[0][0] == "test.zip[test.py]"
     assert results[0][1] == b"print('hello')"
+
+def test_unpack_tar_in_memory():
+    """Test that unpack_content correctly expands a TAR buffer."""
+    tar_buffer = io.BytesIO()
+    script_content = b"print('tar')"
+
+    with tarfile.open(fileobj=tar_buffer, mode='w') as t:
+        info = tarfile.TarInfo("test.py")
+        info.size = len(script_content)
+        t.addfile(info, io.BytesIO(script_content))
+
+        info2 = tarfile.TarInfo("other.txt")
+        info2.size = 5
+        t.addfile(info2, io.BytesIO(b"other"))
+
+    tar_content = tar_buffer.getvalue()
+    results = list(unpack_content("test.tar", tar_content))
+
+    assert len(results) == 1
+    assert results[0][0] == "test.tar[test.py]"
+    assert results[0][1] == b"print('tar')"
+
+def test_unpack_tgz_in_memory():
+    """Test that unpack_content correctly expands a TAR.GZ buffer via magic bytes."""
+    tgz_buffer = io.BytesIO()
+    script_content = b"print('tgz')"
+
+    with tarfile.open(fileobj=tgz_buffer, mode='w:gz') as t:
+        info = tarfile.TarInfo("test.py")
+        info.size = len(script_content)
+        t.addfile(info, io.BytesIO(script_content))
+
+    tgz_content = tgz_buffer.getvalue()
+    # TGZ doesn't have the TAR magic bytes at offset 257 in the compressed stream
+    # but starts with GZIP magic bytes b'\x1f\x8b'
+    results = list(unpack_content("test.tar.gz", tgz_content))
+
+    assert len(results) == 1
+    assert results[0][0] == "test.tar.gz[test.py]"
+    assert results[0][1] == b"print('tgz')"
+
+def test_unpack_markdown_blocks():
+    """Test that unpack_content correctly extracts code blocks from Markdown."""
+    md_content = b"""
+# My Markdown
+```python
+print('block 1')
+```
+Some text.
+```bash
+echo 'block 2'
+```
+"""
+    results = list(unpack_content("readme.md", md_content))
+
+    assert len(results) == 2
+    assert results[0][0] == "readme.md [Block 1]"
+    assert b"print('block 1')" in results[0][1]
+    assert results[1][0] == "readme.md [Block 2]"
+    assert b"echo 'block 2'" in results[1][1]
+
+def test_is_supported_file_with_content():
+    """Test that is_supported_file correctly uses the provided content for shebang detection."""
+    content = b"#!/usr/bin/python\nprint('hi')"
+    # Even with a non-script extension, it should return True because of the content shebang
+    assert Config.is_supported_file("test.txt", content=content) is True
+
+    # Without content, it would be False
+    assert Config.is_supported_file("test.txt") is False
 
 def test_unpack_ipynb_in_memory():
     """Test that unpack_content correctly parses a Notebook buffer."""
