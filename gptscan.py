@@ -3414,22 +3414,17 @@ def _get_item_raw_values(item_id: str) -> Optional[List[Any]]:
     return [str(v).replace('\n', ' ') for v in values[:7]]
 
 
-def _get_selected_row_values() -> Optional[List[Any]]:
-    """Retrieve raw values from the currently selected Treeview row."""
-    if not tree:
-        return None
-    selection = tree.selection()
-    if not selection:
-        return None
-    return _get_item_raw_values(selection[0])
-
-
 def _resolve_file_path(event_or_path: Union[tk.Event, str, None], verify: bool = True) -> Optional[str]:
     """Retrieve and optionally verify a file path from an event or direct argument."""
     if isinstance(event_or_path, str):
         file_path = event_or_path
     else:
-        values = _get_selected_row_values()
+        if not tree:
+            return None
+        selection = tree.selection()
+        if not selection:
+            return None
+        values = _get_item_raw_values(selection[0])
         if not values:
             return None
         file_path = str(values[0])

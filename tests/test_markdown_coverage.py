@@ -140,10 +140,6 @@ def test_copy_as_markdown_no_selection(monkeypatch):
     # Should just return
     gptscan.copy_as_markdown()
 
-def test_get_selected_row_values_no_tree(monkeypatch):
-    """Test _get_selected_row_values when tree is None (covers line 1829)."""
-    monkeypatch.setattr(gptscan, 'tree', None, raising=False)
-    assert gptscan._get_selected_row_values() is None
 
 def test_export_results_sarif(monkeypatch, tmp_path):
     """Test export_results with .sarif extension (covers lines 1720-1722)."""
