@@ -54,7 +54,8 @@ def test_copy_cli_command_basic(mock_gui_vars):
         mock_root.clipboard_append.assert_called_once_with("python gptscan.py /test/path --cli")
 
 def test_copy_cli_command_with_spaces_in_path(mock_gui_vars):
-    mock_gui_vars['textbox'].get.return_value = "/path with spaces/script.py"
+    # In the new multi-target version, paths with spaces must be quoted in the textbox
+    mock_gui_vars['textbox'].get.return_value = "'/path with spaces/script.py'"
     with patch('gptscan.root', MagicMock()) as mock_root, \
          patch('gptscan.update_status'):
         gptscan.copy_cli_command()

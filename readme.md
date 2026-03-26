@@ -97,8 +97,8 @@ You can customize the scanner using these files in the same folder:
 Run `python gptscan.py` to open the GUI.
 
 #### Scan Input
-*   **Path to scan:** Type a path or choose from the dropdown. It remembers your last 10 locations.
-*   **File...:** Select a single file to scan.
+*   **Path to scan:** Type one or more paths (files or folders) separated by spaces or choose from the dropdown. It remembers your last 10 locations.
+*   **File...:** Select one or more files to scan.
 *   **Folder...:** Select a whole directory to scan.
 *   **URL...:** Scan a script, Markdown file, or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Clipboard:** Scan code currently in your clipboard.

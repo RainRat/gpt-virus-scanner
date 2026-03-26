@@ -80,5 +80,5 @@ def test_button_click_with_git_changes_no_changes(monkeypatch):
 
     # Assert
     mock_get_git.assert_called_once_with("/some/repo")
-    mock_msgbox.showinfo.assert_called_once_with("Git Scan", "No git changes detected in the selected directory.")
+    mock_msgbox.showinfo.assert_called_once_with("Git Scan", "No git changes detected in the selected locations.")
     mock_thread.assert_not_called()
