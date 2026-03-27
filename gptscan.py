@@ -3434,7 +3434,7 @@ def _resolve_file_path(event_or_path: Union[tk.Event, str, None], verify: bool =
             return None
         file_path = str(values[0])
 
-    if verify and not file_path.startswith("[") and not os.path.exists(file_path):
+    if verify and not file_path.startswith("[") and not file_path.startswith(("http://", "https://")) and not os.path.exists(file_path):
         messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
         return None
     return file_path
