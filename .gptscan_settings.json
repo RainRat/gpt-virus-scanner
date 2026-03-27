@@ -1,5 +1,5 @@
 {
-    "last_path": "/some/path",
+    "last_path": "dir1 dir2",
     "deep_scan": false,
     "git_changes_only": false,
     "show_all_files": false,
@@ -12,6 +12,8 @@
     "max_file_size": 10485760,
     "max_source_view_size": 2097152,
     "recent_paths": [
+        "dir1 dir2",
+        "'/path one' '/path two'",
         "/some/path",
         "/some/repo",
         "1",

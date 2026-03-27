@@ -497,13 +497,20 @@ def bind_hover_message(widget: tk.Widget, message: str, label: Optional[ttk.Labe
     widget.bind("<Leave>", on_leave)
 
 
-def _set_scan_target(path: str) -> None:
+def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
     """Update the scan target textbox and set focus to the scan button."""
-    if path and textbox:
-        textbox.delete(0, tk.END)
-        textbox.insert(0, path)
-        if scan_button:
-            scan_button.focus_set()
+    if not path or not textbox:
+        return
+
+    if isinstance(path, str):
+        target = shlex.quote(path)
+    else:
+        target = shlex.join(path)
+
+    textbox.delete(0, tk.END)
+    textbox.insert(0, target)
+    if scan_button:
+        scan_button.focus_set()
 
 
 def browse_dir_click() -> None:
@@ -544,11 +551,12 @@ def browse_file_click() -> None:
         ("Script files", ";".join([f"*{e}" for e in ext_list])),
         ("All files", "*.*")
     ]
-    file_selected = filedialog.askopenfilename(
-        title="Select File to Scan",
+    files_selected = filedialog.askopenfilenames(
+        title="Select File(s) to Scan",
         filetypes=file_types
     )
-    _set_scan_target(file_selected)
+    if files_selected:
+        _set_scan_target(files_selected)
 
 
 class AsyncRateLimiter:
@@ -1296,13 +1304,23 @@ def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_
         messagebox.showerror("Missing Selection", "Please select a file or folder to scan.")
         return
 
-    scan_targets: Union[str, List[str]] = scan_path if scan_path else []
-    if scan_path and git_var.get():
-        git_files = get_git_changed_files(scan_path)
-        if not git_files:
-            messagebox.showinfo("Git Scan", "No git changes detected in the selected directory.")
+    try:
+        scan_targets = shlex.split(scan_path) if scan_path else []
+    except ValueError as e:
+        messagebox.showerror("Input Error", f"Invalid input format: {e}")
+        return
+
+    if scan_targets and git_var.get():
+        all_git_files = []
+        for target in scan_targets:
+            git_files = get_git_changed_files(target)
+            if git_files:
+                all_git_files.extend(git_files)
+
+        if not all_git_files:
+            messagebox.showinfo("Git Scan", "No git changes detected in the selected targets.")
             return
-        scan_targets = git_files
+        scan_targets = all_git_files
 
     if not dry_var.get() and not os.path.exists('scripts.h5'):
         messagebox.showerror("Model Not Found", "The scanner cannot find 'scripts.h5'. This file is required to run local scans.")
@@ -4169,9 +4187,18 @@ def copy_cli_command(event: Optional[tk.Event] = None) -> None:
     cmd_parts = ["python", "gptscan.py"]
 
     # Target path
-    target = textbox.get() if textbox else Config.last_path
-    if target:
-        cmd_parts.append(shlex.quote(target))
+    target_str = textbox.get() if textbox else Config.last_path
+    if target_str:
+        try:
+            targets = shlex.split(target_str)
+            if targets:
+                for t in targets:
+                    cmd_parts.append(shlex.quote(t))
+            else:
+                cmd_parts.append(shlex.quote(target_str))
+        except ValueError:
+            # Fallback to single quote if splitting fails
+            cmd_parts.append(shlex.quote(target_str))
 
     cmd_parts.append("--cli")
 
@@ -4335,7 +4362,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Escape>', lambda event: cancel_scan())
     select_file_btn = ttk.Button(input_frame, text="File...", command=browse_file_click)
     select_file_btn.grid(row=0, column=2, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_file_btn, "Select a single script or Markdown file to scan.")
+    bind_hover_message(select_file_btn, "Select one or more scripts or Markdown files to scan.")
 
     select_dir_btn = ttk.Button(input_frame, text="Folder...", command=browse_dir_click)
     select_dir_btn.grid(row=0, column=3, sticky="e", padx=(5, 0), ipady=5)
@@ -4343,7 +4370,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     select_url_btn = ttk.Button(input_frame, text="URL...", command=select_url_click)
     select_url_btn.grid(row=0, column=4, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_url_btn, "Scan a script, Markdown file, or archive from a remote URL.")
+    bind_hover_message(select_url_btn, "Scan a script, Markdown file, or archive from a remote URL. You can enter multiple targets separated by spaces.")
 
     select_clipboard_btn = ttk.Button(input_frame, text="Clipboard", command=scan_clipboard_click)
     select_clipboard_btn.grid(row=0, column=5, sticky="e", padx=(5, 0), ipady=5)

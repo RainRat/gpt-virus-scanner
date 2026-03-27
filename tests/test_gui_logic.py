@@ -44,7 +44,7 @@ def test_browse_file_click_cancels(monkeypatch):
     monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
     monkeypatch.setattr(gptscan, 'scan_button', MagicMock(), raising=False)
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, 'askopenfilename', lambda **kwargs: '')
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'askopenfilenames', lambda **kwargs: ())
 
     gptscan.browse_file_click()
 
@@ -56,7 +56,7 @@ def test_browse_file_click_selects_file(monkeypatch):
     mock_scan_button = MagicMock()
     monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, 'askopenfilename', lambda **kwargs: '/path/to/file.py')
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'askopenfilenames', lambda **kwargs: ('/path/to/file.py',))
 
     gptscan.browse_file_click()
 
@@ -220,7 +220,7 @@ def test_button_click_starts_scan(monkeypatch):
     assert kwargs['target'] == gptscan.run_scan
 
     args = kwargs['args']
-    assert args[0] == "/some/path"
+    assert args[0] == ["/some/path"]
     assert args[1] is True # deep
     assert args[2] is False # all
     assert args[3] is True # gpt
