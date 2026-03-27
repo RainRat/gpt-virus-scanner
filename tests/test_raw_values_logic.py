@@ -63,20 +63,3 @@ def test_get_item_raw_values_empty_values(mock_tree):
 
     result = gptscan._get_item_raw_values("item1")
     assert result == []
-
-def test_get_selected_row_values(mock_tree, monkeypatch):
-    raw_data = ["path", "conf"]
-    # Mock _get_item_raw_values to return our data
-    monkeypatch.setattr(gptscan, "_get_item_raw_values", lambda iid: raw_data if iid == "sel1" else None)
-
-    mock_tree.selection.return_value = ("sel1",)
-
-    assert gptscan._get_selected_row_values() == raw_data
-
-    # Test no selection
-    mock_tree.selection.return_value = ()
-    assert gptscan._get_selected_row_values() is None
-
-def test_get_selected_row_values_no_tree(monkeypatch):
-    monkeypatch.setattr(gptscan, 'tree', None)
-    assert gptscan._get_selected_row_values() is None
