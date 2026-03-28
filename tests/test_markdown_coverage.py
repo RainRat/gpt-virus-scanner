@@ -140,7 +140,10 @@ def test_copy_as_markdown_no_selection(monkeypatch):
     # Should just return
     gptscan.copy_as_markdown()
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/refactor-config-loading-17044044247501522186
 def test_export_results_sarif(monkeypatch, tmp_path):
     """Test export_results with .sarif extension (covers lines 1720-1722)."""
     mock_tree = MagicMock()

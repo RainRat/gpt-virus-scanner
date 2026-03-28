@@ -63,4 +63,7 @@ def test_get_item_raw_values_empty_values(mock_tree):
 
     result = gptscan._get_item_raw_values("item1")
     assert result == []
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/refactor-config-loading-17044044247501522186

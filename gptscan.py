@@ -154,6 +154,15 @@ class Config:
 
     DEFAULT_EXTENSIONS = ['.py', '.js', '.bat', '.ps1', '.ipynb']
 
+    @staticmethod
+    def _get_setting_int(settings: Dict[str, Any], key: str, default: int) -> int:
+        """Extract an integer setting with fallback to default on error."""
+        val = settings.get(key, default)
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return default
+
     apikey_missing_message = (
         "No API key found. You cannot use OpenAI or OpenRouter, but local scans and Ollama still work."
     )
@@ -224,23 +233,9 @@ class Config:
                 cls.provider = settings.get("provider", cls.provider)
                 cls.model_name = settings.get("model_name", cls.model_name)
                 cls.api_base = settings.get("api_base", cls.api_base)
-                threshold = settings.get("threshold", cls.THRESHOLD)
-                try:
-                    cls.THRESHOLD = int(threshold)
-                except (ValueError, TypeError):
-                    pass
-
-                max_file_size = settings.get("max_file_size", cls.MAX_FILE_SIZE)
-                try:
-                    cls.MAX_FILE_SIZE = int(max_file_size)
-                except (ValueError, TypeError):
-                    pass
-
-                max_source_view_size = settings.get("max_source_view_size", cls.MAX_SOURCE_VIEW_SIZE)
-                try:
-                    cls.MAX_SOURCE_VIEW_SIZE = int(max_source_view_size)
-                except (ValueError, TypeError):
-                    pass
+                cls.THRESHOLD = cls._get_setting_int(settings, "threshold", cls.THRESHOLD)
+                cls.MAX_FILE_SIZE = cls._get_setting_int(settings, "max_file_size", cls.MAX_FILE_SIZE)
+                cls.MAX_SOURCE_VIEW_SIZE = cls._get_setting_int(settings, "max_source_view_size", cls.MAX_SOURCE_VIEW_SIZE)
 
                 recent = settings.get("recent_paths", cls.recent_paths)
                 if isinstance(recent, list):
