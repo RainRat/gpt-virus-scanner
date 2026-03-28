@@ -492,19 +492,34 @@ def bind_hover_message(widget: tk.Widget, message: str, label: Optional[ttk.Labe
     widget.bind("<Leave>", on_leave)
 
 
-def _set_scan_target(path: str) -> None:
-    """Update the scan target textbox and set focus to the scan button."""
-    if path and textbox:
-        textbox.delete(0, tk.END)
-        textbox.insert(0, path)
-        if scan_button:
-            scan_button.focus_set()
+def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
+    """Update the scan target textbox and set focus to the scan button.
+
+    Args:
+        path: A single path string, or an iterable of path strings.
+    """
+    if not path or not textbox:
+        return
+
+    # Handle multiple paths or a single path string
+    if isinstance(path, (list, tuple)):
+        # Join multiple targets with appropriate quoting
+        formatted_path = shlex.join(path)
+    else:
+        # For a single path, use quote if it's not a list, for safety
+        formatted_path = shlex.quote(str(path))
+
+    textbox.delete(0, tk.END)
+    textbox.insert(0, formatted_path)
+    if scan_button:
+        scan_button.focus_set()
 
 
 def browse_dir_click() -> None:
     """Handle the directory selection dialog and populate the textbox."""
     folder_selected = filedialog.askdirectory()
-    _set_scan_target(folder_selected)
+    if folder_selected:
+        _set_scan_target(folder_selected)
 
 
 def select_url_click() -> None:
@@ -539,11 +554,12 @@ def browse_file_click() -> None:
         ("Script files", ";".join([f"*{e}" for e in ext_list])),
         ("All files", "*.*")
     ]
-    file_selected = filedialog.askopenfilename(
-        title="Select File to Scan",
+    files_selected = filedialog.askopenfilenames(
+        title="Select File(s) to Scan",
         filetypes=file_types
     )
-    _set_scan_target(file_selected)
+    if files_selected:
+        _set_scan_target(files_selected)
 
 
 class AsyncRateLimiter:
@@ -1291,13 +1307,22 @@ def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_
         messagebox.showerror("Missing Selection", "Please select a file or folder to scan.")
         return
 
-    scan_targets: Union[str, List[str]] = scan_path if scan_path else []
-    if scan_path and git_var.get():
-        git_files = get_git_changed_files(scan_path)
-        if not git_files:
+    try:
+        # Use shlex.split to support multi-target selection with quoting
+        scan_targets = shlex.split(scan_path) if scan_path else []
+    except ValueError as e:
+        messagebox.showerror("Selection Error", f"Malformed path selection: {e}")
+        return
+
+    if scan_targets and git_var.get():
+        all_git_files = []
+        for target in scan_targets:
+            all_git_files.extend(get_git_changed_files(target))
+
+        if not all_git_files:
             messagebox.showinfo("Git Scan", "No git changes detected in the selected directory.")
             return
-        scan_targets = git_files
+        scan_targets = all_git_files
 
     if not dry_var.get() and not os.path.exists('scripts.h5'):
         messagebox.showerror("Model Not Found", "The scanner cannot find 'scripts.h5'. This file is required to run local scans.")
@@ -4158,10 +4183,17 @@ def copy_cli_command(event: Optional[tk.Event] = None) -> None:
     """Copy the equivalent CLI command to the system clipboard."""
     cmd_parts = ["python", "gptscan.py"]
 
-    # Target path
-    target = textbox.get() if textbox else Config.last_path
-    if target:
-        cmd_parts.append(shlex.quote(target))
+    # Target path(s)
+    raw_target = textbox.get() if textbox else Config.last_path
+    if raw_target:
+        try:
+            # Parse possible multiple targets from the GUI textbox
+            targets = shlex.split(raw_target)
+            for t in targets:
+                cmd_parts.append(shlex.quote(t))
+        except ValueError:
+            # Fallback to quoting the raw string if parsing fails
+            cmd_parts.append(shlex.quote(raw_target))
 
     cmd_parts.append("--cli")
 
@@ -4325,7 +4357,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Escape>', lambda event: cancel_scan())
     select_file_btn = ttk.Button(input_frame, text="File...", command=browse_file_click)
     select_file_btn.grid(row=0, column=2, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_file_btn, "Select a single script or Markdown file to scan.")
+    bind_hover_message(select_file_btn, "Select one or more script or Markdown files to scan.")
 
     select_dir_btn = ttk.Button(input_frame, text="Folder...", command=browse_dir_click)
     select_dir_btn.grid(row=0, column=3, sticky="e", padx=(5, 0), ipady=5)
@@ -4333,7 +4365,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     select_url_btn = ttk.Button(input_frame, text="URL...", command=select_url_click)
     select_url_btn.grid(row=0, column=4, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_url_btn, "Scan a script, Markdown file, or archive from a remote URL.")
+    bind_hover_message(select_url_btn, "Scan a script, Markdown file, or archive from a remote URL. Multiple targets can be entered manually in the textbox.")
 
     select_clipboard_btn = ttk.Button(input_frame, text="Clipboard", command=scan_clipboard_click)
     select_clipboard_btn.grid(row=0, column=5, sticky="e", padx=(5, 0), ipady=5)
@@ -4904,12 +4936,16 @@ def main():
                     scan_targets.append(line)
 
         if args.git_changes:
-            # Use the specified target as the git root, or current directory if none.
-            git_root = scan_target or "."
-            git_files = get_git_changed_files(git_root)
+            # Use specified targets as git roots, or current directory if none.
+            git_roots = scan_targets if scan_targets else ["."]
+            git_files = []
+            for root_dir in git_roots:
+                git_files.extend(get_git_changed_files(root_dir))
+
             if not git_files:
-                print(f"No git changes detected or '{git_root}' is not a git repository.", file=sys.stderr)
-            scan_targets.extend(git_files)
+                print("No git changes detected in provided targets.", file=sys.stderr)
+            # Scan only changed files
+            scan_targets = git_files
 
         if not scan_targets and not args.git_changes:
             # Default to current directory if no targets provided and NOT using git-changes
