@@ -204,7 +204,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--rate-limit [number]`: Limit AI requests per minute (default: 60).
 *   `--clear-cache`: Clear the AI analysis cache.
 *   `--output [file], -o [file]`: Save results to a file. The format depends on the extension (.json, .csv, .html, .sarif, .md).
-*   `--threshold [0-100], -t [0-100]`: Set the minimum threat score to report (default: 50).
+*   `--threshold [0-100], -t [0-100]`: Set the minimum threat level to report (default: 50).
 *   `--fail-threshold [0-100]`: Exit with an error if any file meets this threat level.
 *   `--git-changes`: Only scan files that have changed in Git.
 *   `--all-files`: Scan all files, even if they lack a script extension or a script starting line (like `#!/bin/bash`).

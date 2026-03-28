@@ -4568,7 +4568,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     threshold_spin.insert(0, str(Config.THRESHOLD))
     threshold_spin.grid(row=0, column=5, sticky="w", padx=5)
     threshold_spin.bind('<KeyRelease>', lambda e: on_threshold_change())
-    bind_hover_message(threshold_spin, "Files with a threat score lower than this will be ignored.")
+    bind_hover_message(threshold_spin, "Files with a threat level lower than this will be ignored.")
 
     all_checkbox = ttk.Checkbutton(filter_frame, text="Show all files", variable=all_var, command=_apply_filter)
     all_checkbox.grid(row=0, column=6, sticky="w", padx=(5, 0))
@@ -4819,13 +4819,13 @@ def main():
     scan_group.add_argument(
         '--fail-threshold',
         type=int,
-        help='Exit with an error if any file has a threat score at or above this number (0-100).'
+        help='Exit with an error if any file has a threat level at or above this number (0-100).'
     )
     scan_group.add_argument(
         '--threshold', '-t',
         type=int,
         default=50,
-        help='Show only files with a threat score at or above this number (0-100). The default is 50.'
+        help='Show only files with a threat level at or above this number (0-100). The default is 50.'
     )
     scan_group.add_argument(
         '--stdin',
