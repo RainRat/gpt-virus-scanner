@@ -69,7 +69,7 @@ Once your provider is ready, you must enable the feature when you run a scan:
 
 ## Supported Files
 
-The scanner finds scripts in four ways:
+The scanner finds scripts in several ways:
 *   **By file type:** It recognizes common script types (like `.py`, `.js`, `.sh`, and `.ps1`) and Jupyter Notebooks (`.ipynb`) using the included `extensions.txt` file.
 *   **By archive content:** It can inspect scripts hidden inside `.zip`, `.tar`, and `.tar.gz` files.
 *   **By Markdown blocks:** It extracts and scans code snippets from triple-backtick blocks in Markdown (`.md`) files.
