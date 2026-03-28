@@ -43,7 +43,7 @@ training:
   mode: "train"             # Default mode: 'train' or 'predict'
 
 prediction:
-  threshold: 0.5            # Threat score (0.0 to 1.0) required to flag a file
+  threshold: 0.5            # Threat level (0.0 to 1.0) required to flag a file
 
 weights:
   positive_sample_weight: 1.0 # Importance of malicious examples during training
@@ -181,8 +181,8 @@ python train.py --config config.yml \
 - `{model_name}_best_hp.yml` - The best settings found during training.
 
 **Prediction mode produces:**
-- Copies of suspicious files (those with high threat scores) to your output folder.
-- Terminal output showing each filename and its threat score.
+- Copies of suspicious files (those with high threat levels) to your output folder.
+- Terminal output showing each filename and its threat level.
 
 ## How It Works
 
@@ -203,7 +203,7 @@ python train.py --config config.yml \
 
 1. **Loads the Model:** The script loads your trained model.
 2. **Scans New Files:** It looks at all files in your input folder.
-3. **Assigns Scores:** It calculates how likely each file is to be malicious.
+3. **Assigns Scores:** It calculates the threat level of each file.
 4. **Filters Results:** Any file that crosses your "threat" threshold is copied to the output folder for you to review.
 
 ## Automatic Setting Optimization

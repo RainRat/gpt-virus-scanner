@@ -204,7 +204,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--rate-limit [number]`: Limit AI requests per minute (default: 60).
 *   `--clear-cache`: Clear the AI analysis cache.
 *   `--output [file], -o [file]`: Save results to a file. The format depends on the extension (.json, .csv, .html, .sarif, .md).
-*   `--threshold [0-100], -t [0-100]`: Set the minimum threat score to report (default: 50).
+*   `--threshold [0-100], -t [0-100]`: Set the minimum threat level to report (default: 50).
 *   `--fail-threshold [0-100]`: Exit with an error if any file meets this threat level.
 *   `--git-changes`: Only scan files that have changed in Git.
 *   `--all-files`: Scan all files, even if they lack a script extension or a script starting line (like `#!/bin/bash`).
@@ -212,7 +212,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--file-list [file]`: Scan a list of files from a text file.
 *   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
 *   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF). Use `-` for terminal input.
-*   `--max-size [value]`: Set the maximum file size to scan (e.g., `10MB`, `500KB`).
+*   `--max-size [value]`: Set the maximum file size to scan (e.g., `10MB`, `500KB`). The default is 10MB.
 *   `--json`: Save or show results in JSON format (one object per line).
 *   `--csv`: Save or show results in CSV format.
 *   `--sarif`: Save results in SARIF format for security tools.
