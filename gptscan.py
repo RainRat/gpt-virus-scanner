@@ -4356,28 +4356,28 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     git_var = tk.BooleanVar(value=Config.git_changes_only)
     git_checkbox = ttk.Checkbutton(options_frame, text="Git changes only", variable=git_var)
-    git_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
+    git_checkbox.grid(row=0, column=0, sticky='w', padx=10, pady=2)
     bind_hover_message(git_checkbox, "Only scan files that have been modified or are untracked in Git.")
 
     deep_var = tk.BooleanVar(value=Config.deep_scan)
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
-    deep_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
+    deep_checkbox.grid(row=0, column=1, sticky='w', padx=10, pady=2)
     bind_hover_message(deep_checkbox, "Scan the whole file. This is slower but more thorough. Normally, the scanner only checks the beginning and end.")
 
     scan_all_var = tk.BooleanVar(value=Config.scan_all_files)
     scan_all_checkbox = ttk.Checkbutton(options_frame, text="Scan all files", variable=scan_all_var)
-    scan_all_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
+    scan_all_checkbox.grid(row=1, column=0, sticky='w', padx=10, pady=2)
     bind_hover_message(scan_all_checkbox, "Scan all files regardless of their extension or whether they contain a script starting line (like #!/bin/bash).")
 
     all_var = tk.BooleanVar(value=Config.show_all_files)
 
     dry_var = tk.BooleanVar()
     dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
-    dry_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
+    dry_checkbox.grid(row=1, column=1, sticky='w', padx=10, pady=2)
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
     size_frame = ttk.Frame(options_frame)
-    size_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
+    size_frame.grid(row=2, column=0, columnspan=2, sticky='w', padx=10, pady=2)
     ttk.Label(size_frame, text="Max File Size (MB):").pack(side=tk.LEFT)
 
     def on_max_size_change():
