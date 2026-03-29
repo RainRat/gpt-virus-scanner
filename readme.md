@@ -75,7 +75,7 @@ The scanner finds scripts in several ways:
 *   **By Markdown blocks:** It extracts and scans code snippets from triple-backtick blocks in Markdown (`.md`) files.
 *   **By HTML script tags:** It extracts and scans inline code from `<script>` tags in HTML files (`.html`, `.htm`, `.xhtml`).
 *   **By the first line of the file:** If a file does not have an extension, the tool checks the very first line to identify the script type (for example, a line starting with `#!/bin/bash`).
-*   **Remote scripts (via URL):** It can download and scan scripts directly from the web using HTTP or HTTPS links.
+*   **Remote scripts (via URL):** It can download and scan scripts directly from the web using HTTP or HTTPS links. GitHub, GitLab, and Gist links are automatically resolved to their raw content or repository archives.
 
 ## Configuration
 

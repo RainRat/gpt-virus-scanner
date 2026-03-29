@@ -74,6 +74,64 @@ _all_results_cache: List[Tuple[Any, ...]] = []
 _last_scan_summary: str = ""
 
 
+def resolve_remote_url(url: str) -> str:
+    """Resolve GitHub/GitLab repository or blob URLs to their raw content or archive.
+
+    Args:
+        url: The original URL to resolve.
+
+    Returns:
+        A resolved URL pointing to raw content or a downloadable archive.
+    """
+    url = url.strip()
+    if not url.startswith(('http://', 'https://')):
+        return url
+
+    # Remove trailing slashes and common fragments
+    url = re.sub(r'/$', '', url)
+    url = re.sub(r'#.*$', '', url)
+
+    # 1. GitHub Blob -> Raw
+    # Example: https://github.com/user/repo/blob/main/script.py -> https://raw.githubusercontent.com/user/repo/main/script.py
+    gh_blob_match = re.match(r'https?://(?:www\.)?github\.com/([^/]+)/([^/]+)/blob/(.+)', url, re.IGNORECASE)
+    if gh_blob_match:
+        user, repo, path = gh_blob_match.groups()
+        return f"https://raw.githubusercontent.com/{user}/{repo}/{path}"
+
+    # 2. GitHub Gist -> Raw
+    # Example: https://gist.github.com/user/id -> https://gist.github.com/user/id/raw
+    gist_match = re.match(r'https?://gist\.github\.com/([^/]+)/([a-f0-9]+)$', url, re.IGNORECASE)
+    if gist_match:
+        return f"{url}/raw"
+
+    # 3. GitHub Repo -> ZIP Archive
+    # Example: https://github.com/user/repo -> https://github.com/user/repo/archive/HEAD.zip
+    gh_repo_match = re.match(r'https?://(?:www\.)?github\.com/([^/]+)/([^/]+)$', url, re.IGNORECASE)
+    if gh_repo_match:
+        user, repo = gh_repo_match.groups()
+        if repo.lower() not in ('settings', 'pulls', 'issues', 'actions', 'projects', 'wiki', 'security', 'insights'):
+            return f"https://github.com/{user}/{repo}/archive/HEAD.zip"
+
+    # 4. GitLab Blob -> Raw
+    # Example: https://gitlab.com/user/repo/-/blob/main/script.py -> https://gitlab.com/user/repo/-/raw/main/script.py
+    gl_blob_match = re.match(r'(https?://(?:www\.)?gitlab\.com/[^/]+/[^/]+)/-/blob/(.+)', url, re.IGNORECASE)
+    if gl_blob_match:
+        base, path = gl_blob_match.groups()
+        return f"{base}/-/raw/{path}"
+
+    # 5. GitLab Repo -> ZIP Archive
+    # Example: https://gitlab.com/user/repo -> https://gitlab.com/user/repo/-/archive/main/repo-main.zip
+    # Note: GitLab is trickier as the default branch varies. We'll try a common pattern.
+    gl_repo_match = re.match(r'https?://(?:www\.)?gitlab\.com/([^/]+)/([^/]+)$', url, re.IGNORECASE)
+    if gl_repo_match:
+        user, repo = gl_repo_match.groups()
+        # GitLab doesn't have a universal HEAD.zip, but we can try to guess or just return the URL
+        # For now, we'll just return the original URL for repos as guessing the branch is unreliable
+        pass
+
+    return url
+
+
 def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]:
     """Reads a file and returns its content.
 
@@ -96,7 +154,7 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
 
 
 def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = None) -> bytes:
-    """Fetches content from a URL with safety limits.
+    """Fetches content from a URL with safety limits. Automatically resolves GitHub/GitLab links.
 
     Args:
         url: The URL to fetch.
@@ -112,6 +170,9 @@ def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = Non
     """
     if max_size is None:
         max_size = Config.MAX_FILE_SIZE
+
+    # Resolve GitHub/GitLab URLs to raw content/archives
+    url = resolve_remote_url(url)
 
     with urllib.request.urlopen(url, timeout=timeout) as response:
         content_length = response.getheader('Content-Length')
@@ -4764,7 +4825,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, Markdown files, HTML files, and web links for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, Markdown files, HTML files, and web links (GitHub/GitLab/Gist) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
@@ -4774,8 +4835,8 @@ def main():
                "  python gptscan.py --git-changes --cli --fail-threshold 50\n\n"
                "  # Scan a snippet sent from another command\n"
                "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n\n"
-               "  # Scan a remote script directly from a web link\n"
-               "  python gptscan.py https://example.com/script.sh --cli\n\n"
+               "  # Scan a remote script or a GitHub repository directly from a web link\n"
+               "  python gptscan.py https://github.com/user/repo --cli\n\n"
                "Note: Always run the script from inside its own folder so it can find its required data files (like scripts.h5).",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )

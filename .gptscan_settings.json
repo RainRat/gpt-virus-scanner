@@ -1,22 +1,13 @@
 {
-    "last_path": "file1.py file2.js",
+    "last_path": "",
     "deep_scan": false,
     "git_changes_only": false,
     "show_all_files": false,
-    "scan_all_files": false,
-    "use_ai_analysis": false,
-    "provider": "openai",
-    "model_name": "gpt-4o",
-    "api_base": null,
+    "show_all_results": false,
+    "openai_api_key": "",
+    "model": "gpt-4o-mini",
     "threshold": 50,
     "max_file_size": 10485760,
     "max_source_view_size": 2097152,
-    "recent_paths": [
-        "file1.py file2.js",
-        "/some/path",
-        "/some/repo",
-        "1",
-        "2",
-        "three"
-    ]
+    "recent_paths": []
 }
