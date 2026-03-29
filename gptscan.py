@@ -2993,8 +2993,9 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 content = sys.stdin.read()
                 event_gen = import_results_from_content_generator(content)
             except Exception as e:
+                error_msg = str(e)
                 def error_gen():
-                    yield ('progress', (0, 1, f"Error reading from terminal input: {e}"))
+                    yield ('progress', (0, 1, f"Error reading from terminal input: {error_msg}"))
                 event_gen = error_gen()
         else:
             event_gen = import_results_generator(import_file)
