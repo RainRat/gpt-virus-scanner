@@ -3095,6 +3095,17 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     return threats_found
 
 
+REPORT_FIELD_MAPPING = {
+    "path": ["path", "File Path", "uri"],
+    "own_conf": ["own_conf", "Local Conf.", "local_conf"],
+    "admin_desc": ["admin_desc", "Admin Notes", "admin"],
+    "end-user_desc": ["end-user_desc", "User Notes", "user_desc"],
+    "gpt_conf": ["gpt_conf", "AI Conf.", "ai_conf"],
+    "snippet": ["snippet", "Snippet", "code"],
+    "line": ["line", "Line", "startLine"]
+}
+
+
 def standardize_result_dict(item: Any) -> Dict[str, Any]:
     """Map various report keys back to the standard internal format.
 
@@ -3104,22 +3115,12 @@ def standardize_result_dict(item: Any) -> Dict[str, Any]:
     Returns:
         A dictionary with standardized keys for internal use.
     """
-    mapping = {
-        "path": ["path", "File Path", "uri"],
-        "own_conf": ["own_conf", "Local Conf.", "local_conf"],
-        "admin_desc": ["admin_desc", "Admin Notes", "admin"],
-        "end-user_desc": ["end-user_desc", "User Notes", "end_user_desc", "user_desc"],
-        "gpt_conf": ["gpt_conf", "AI Conf.", "ai_conf"],
-        "snippet": ["snippet", "Snippet", "code"],
-        "line": ["line", "Line", "startLine"]
-    }
-
     if not isinstance(item, dict):
-        return {k: "" for k in mapping}
+        return {k: "" for k in REPORT_FIELD_MAPPING}
 
     return {
         key: next((str(item[alt]) if item[alt] is not None else "" for alt in alts if alt in item), "")
-        for key, alts in mapping.items()
+        for key, alts in REPORT_FIELD_MAPPING.items()
     }
 
 
