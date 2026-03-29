@@ -329,7 +329,7 @@ def test_view_details_persistent_full_source(mock_view_details_env, monkeypatch)
 def test_view_details_copy_path(mock_view_details_env):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     setup_details(mock_view_details_env, "item1", "test.py")
-    copy_path_cmd = captured["btn_Copy Path"][1]
+    copy_path_cmd = captured["btn_Copy"][1]
     from gptscan import root as mock_root
     copy_path_cmd()
     mock_root.clipboard_clear.assert_called_once()

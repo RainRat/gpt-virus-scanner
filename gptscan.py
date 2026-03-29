@@ -3710,6 +3710,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         root.clipboard_append(path_entry.get())
         set_local_status("File path copied to clipboard.", temporary=True)
 
+    path_copy_btn = ttk.Button(header_frame, text="Copy", width=8, command=copy_path_details)
+    path_copy_btn.grid(row=1, column=2, padx=2)
+    bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.", label=status_bar)
+
+    reveal_btn = ttk.Button(header_frame, text="Reveal", width=10, command=lambda: show_in_folder(path_entry.get()))
+    reveal_btn.grid(row=1, column=3, padx=2)
+    bind_hover_message(reveal_btn, "Show this file in the system file manager.", label=status_bar)
+
     def on_analyze_now():
         if current_cancel_event is not None:
             return
@@ -3828,14 +3836,6 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     open_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(open_btn, "Open this file in the default application. (Shift+Enter)", label=status_bar)
 
-    reveal_btn = ttk.Button(btn_frame, text="Reveal", width=10, command=lambda: show_in_folder(path_entry.get()))
-    reveal_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(reveal_btn, "Show this file in the system file manager.", label=status_bar)
-
-    path_copy_btn = ttk.Button(btn_frame, text="Copy Path", width=12, command=copy_path_details)
-    path_copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.", label=status_bar)
-
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
     # Group: Exclusions
@@ -3876,6 +3876,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         exclude_btn.config(state='disabled' if is_scanning else 'normal')
         open_btn.config(state='disabled' if is_scanning else 'normal')
         vt_btn.config(state='disabled' if is_scanning else 'normal')
+        path_copy_btn.config(state='disabled' if is_scanning else 'normal')
+        reveal_btn.config(state='disabled' if is_scanning else 'normal')
 
         # vals: (path, own_conf, admin, user, gpt_conf, snippet, line)
         path, own_conf, admin, user, gpt_conf, snippet = vals[:6]
