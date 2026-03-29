@@ -105,7 +105,7 @@ Run `python gptscan.py` to open the GUI.
 
 #### Scan Options
 *   **Git changes only:** Only scan files that are modified or untracked in your Git repository.
-*   **Deep scan:** Scan the whole file. Normally, the scanner only checks the start and end to save time.
+*   **Deep scan:** Scan the whole file. Normally, the scanner only checks the first and last 1 KB (1,024 bytes) of a file to save time.
 *   **Scan all files:** Scan every file, even those without common script extensions.
 *   **Dry Run:** Simulate the scan without actually analyzing any files.
 *   **Max File Size (MB):** Skip files larger than this size.
@@ -194,7 +194,7 @@ python gptscan.py --cli --import results.json -o report.html
 **Common Options:**
 *   `--cli`: Run in command-line mode.
 *   `--stdin`: Scan a code snippet from terminal input.
-*   `--deep`: Scan the entire file instead of just the start and end.
+*   `--deep`: Scan the entire file instead of just the first and last 1 KB (1,024 bytes).
 *   `--dry-run`: Show which files would be scanned without analyzing them.
 *   `--show-all`: Show all files, including safe ones.
 *   `--use-gpt`: Use AI Analysis for suspicious code.
