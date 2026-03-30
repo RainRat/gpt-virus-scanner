@@ -4509,8 +4509,11 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     copy_cmd_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
     bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
 
+    provider_frame.columnconfigure(1, weight=1)
+    provider_frame.columnconfigure(3, weight=1)
+
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
-    gpt_checkbox.pack(side=tk.TOP, anchor='w', padx=10, pady=2)
+    gpt_checkbox.grid(row=0, column=0, columnspan=4, sticky='w', padx=10, pady=(2, 10))
     bind_hover_message(gpt_checkbox, "Use AI to analyze suspicious code and explain what it does.")
 
     if not Config.GPT_ENABLED:
@@ -4519,25 +4522,19 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         messagebox.showwarning("AI Disabled",
                                        "The scanner cannot find 'task.txt'. You cannot use AI analysis.")
 
-    settings_row = ttk.Frame(provider_frame)
-    settings_row.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
-
-    ttk.Label(settings_row, text="Provider:").pack(side=tk.LEFT)
+    ttk.Label(provider_frame, text="Provider:").grid(row=1, column=0, sticky='w', padx=(10, 5), pady=2)
     provider_var = tk.StringVar(value=Config.provider)
-    provider_combo = ttk.Combobox(settings_row, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
-    provider_combo.pack(side=tk.LEFT, padx=(5, 15))
+    provider_combo = ttk.Combobox(provider_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
+    provider_combo.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
 
-    ttk.Label(settings_row, text="Model:").pack(side=tk.LEFT)
+    ttk.Label(provider_frame, text="Model:").grid(row=1, column=2, sticky='w', padx=(15, 5), pady=2)
     model_var = tk.StringVar(value=Config.model_name)
-    model_combo = ttk.Combobox(settings_row, textvariable=model_var, width=20)
-    model_combo.pack(side=tk.LEFT, padx=5)
+    model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
+    model_combo.grid(row=1, column=3, sticky='ew', padx=(5, 10), pady=2)
 
-    api_row = ttk.Frame(provider_frame)
-    api_row.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
-
-    ttk.Label(api_row, text="API Base URL:").pack(side=tk.LEFT)
-    api_entry = ttk.Entry(api_row)
-    api_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+    ttk.Label(provider_frame, text="API Base URL:").grid(row=2, column=0, sticky='w', padx=(10, 5), pady=2)
+    api_entry = ttk.Entry(provider_frame)
+    api_entry.grid(row=2, column=1, columnspan=3, sticky='ew', padx=(5, 10), pady=2)
     bind_hover_message(api_entry, "Set a custom URL for the AI service (e.g., http://localhost:11434/v1 for Ollama).")
 
     api_base_var = tk.StringVar(value=Config.api_base or "")
