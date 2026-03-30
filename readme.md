@@ -72,9 +72,10 @@ Once your provider is ready, you must enable the feature when you run a scan:
 The scanner finds scripts in several ways:
 *   **By file type:** It recognizes common script types (like `.py`, `.js`, `.sh`, and `.ps1`) and Jupyter Notebooks (`.ipynb`) using the included `extensions.txt` file.
 *   **By archive content:** It can inspect scripts hidden inside `.zip`, `.tar`, and `.tar.gz` files.
+*   **By Jupyter Notebook cells:** It extracts and scans individual code cells from `.ipynb` files.
 *   **By Markdown blocks:** It extracts and scans code snippets from triple-backtick blocks in Markdown (`.md`) files.
 *   **By HTML script tags:** It extracts and scans inline code from `<script>` tags in HTML files (`.html`, `.htm`, `.xhtml`).
-*   **By the first line of the file:** If a file does not have an extension, the tool checks the very first line to identify the script type (for example, a line starting with `#!/bin/bash`).
+*   **By the first line of the file:** If a file does not have an extension, the tool checks the first line for a "shebang" (like `#!/bin/bash`). It recognizes many interpreters, including Python, Node.js, Bash, Perl, Ruby, PHP, PowerShell, and Lua.
 *   **Remote scripts (via URL):** It can download and scan scripts directly from the web using HTTP or HTTPS links. GitHub, GitLab, and Gist links are automatically resolved to their raw content or repository archives.
 
 ## Configuration
@@ -134,7 +135,7 @@ Run `python gptscan.py` to open the GUI.
 *   **Open / Reveal:** Open the file or show its location in your file manager.
 *   **Rescan:** Re-scan the selected file(s).
 *   **Exclude:** Add the selected file(s) to your `.gptscanignore` file.
-*   **Import / Export:** Load or save scan results in various formats (CSV, JSON, SARIF, HTML, Markdown).
+*   **Import / Export:** Save results to many formats (CSV, JSON, SARIF, HTML, Markdown) or load them from a previous scan (supports JSON, CSV, and SARIF).
 *   **Clear:** Clear all results from the list.
 
 #### File Menu
@@ -193,6 +194,7 @@ python gptscan.py --cli --import results.json -o report.html
 
 **Common Options:**
 *   `--cli`: Run in command-line mode.
+*   `--path [path], -p [path]`: Specify the folder or file to scan.
 *   `--stdin`: Scan a code snippet from terminal input.
 *   `--deep`: Scan the entire file instead of just the first and last 1 KB (1,024 bytes).
 *   `--dry-run`: Show which files would be scanned without analyzing them.
@@ -213,7 +215,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
 *   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF). Use `-` for terminal input.
 *   `--max-size [value]`: Set the maximum file size to scan (e.g., `10MB`, `500KB`). The default is 10MB.
-*   `--json`: Save or show results in JSON format (one object per line).
+*   `--json, -j`: Save or show results in JSON format (one object per line).
 *   `--csv`: Save or show results in CSV format.
 *   `--sarif`: Save results in SARIF format for security tools.
 *   `--html`: Create an HTML report.
@@ -227,7 +229,7 @@ You can retrain the local scanner model to recognize new types of threats. For d
 
 *   **Tkinter not found:** On Linux, run `sudo apt-get install python3-tk`.
 *   **Model file missing:** Ensure `scripts.h5` is in the same folder as `gptscan.py`. This file is required for the scanner to function.
-*   **Extensions list missing:** Ensure `extensions.txt` exists in the same folder. This file is required to detect script files by their extension.
+*   **Extensions list missing:** Ensure `extensions.txt` exists in the same folder. If this file is missing, the scanner will use built-in defaults (`.py`, `.js`, `.bat`, `.ps1`, `.ipynb`).
 *   **AI Analysis disabled:** Ensure `task.txt` exists in the same folder. Detailed AI reports will not work without it.
 *   **AI Analysis results not showing:** Ensure you have checked the **Use AI Analysis** box (GUI) or added the `--use-gpt` flag (CLI). If you are using OpenAI or OpenRouter, double-check that your API key is correct in `apikey.txt` or your environment variables.
 
