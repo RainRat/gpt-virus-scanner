@@ -2675,6 +2675,79 @@ def run_batch_ai_analysis(
     _consume_scan_events(event_gen, cancel_event, "AI Analysis", batch_handler)
 
 
+def generate_console_report(results: List[Dict[str, Any]], use_color: bool = False) -> str:
+    """Generate a colorized, human-readable triage report for the console.
+
+    Args:
+        results: List of standardized result dictionaries.
+        use_color: Whether to use ANSI color codes.
+
+    Returns:
+        A formatted string report.
+    """
+    if not results:
+        return "No findings to report."
+
+    # ANSI Color Codes
+    RED = "\033[1;91m" if use_color else ""
+    YELLOW = "\033[1;93m" if use_color else ""
+    GRAY = "\033[0;90m" if use_color else ""
+    BOLD = "\033[1m" if use_color else ""
+    RESET = "\033[0m" if use_color else ""
+
+    lines = [f"{BOLD}--- GPT SCAN TRIAGE REPORT ---{RESET}", ""]
+
+    for i, r in enumerate(results, 1):
+        path = r.get("path", "unknown")
+        own_conf = r.get("own_conf", "0%")
+        gpt_conf = r.get("gpt_conf", "")
+        admin = r.get("admin_desc", "")
+        user = r.get("end-user_desc", "")
+        line_num = r.get("line", "-")
+        snippet = r.get("snippet", "")
+
+        conf_val = get_effective_confidence(own_conf, gpt_conf)
+        risk = get_risk_category(conf_val, Config.THRESHOLD)
+
+        if risk == 'high':
+            risk_label = f"{RED}HIGH RISK{RESET}"
+        elif risk == 'medium':
+            risk_label = f"{YELLOW}MEDIUM RISK{RESET}"
+        else:
+            risk_label = f"{GRAY}LOW RISK{RESET}"
+
+        lines.append(f"{BOLD}[{i}] {risk_label} - {path}{RESET}")
+        lines.append(f"    {BOLD}Confidence:{RESET} Local: {own_conf}" + (f", AI: {gpt_conf}" if gpt_conf else ""))
+        lines.append(f"    {BOLD}Location:{RESET}   Line {line_num}")
+
+        # Hash for VirusTotal
+        h = ""
+        if path.startswith("[") or not os.path.exists(path):
+            if snippet:
+                h = get_file_sha256(snippet.encode('utf-8'))
+        else:
+            h = get_file_sha256(path)
+
+        if h:
+            lines.append(f"    {BOLD}VirusTotal:{RESET} https://www.virustotal.com/gui/file/{h}")
+
+        if admin or user:
+            lines.append(f"    {BOLD}AI Analysis:{RESET}")
+            if admin:
+                lines.append(f"        {GRAY}Admin:{RESET} {admin}")
+            if user:
+                lines.append(f"        {GRAY}User:{RESET}  {user}")
+
+        # Snippet preview (first line or first 100 chars)
+        clean_snippet = snippet.strip().split('\n')[0]
+        if len(clean_snippet) > 80:
+            clean_snippet = clean_snippet[:77] + "..."
+        lines.append(f"    {BOLD}Snippet:{RESET}    {GRAY}{clean_snippet}{RESET}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Generate a SARIF log from the scan results.
 
@@ -3038,7 +3111,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             record = dict(zip(keys, data))
             if output_format == 'json':
                 print(json.dumps(record), file=out_stream)
-            elif output_format in ('sarif', 'html', 'markdown'):
+            elif output_format in ('sarif', 'html', 'markdown', 'report'):
                 result_buffer.append(record)
             else:
                 writer.writerow(data)
@@ -3089,6 +3162,16 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         print(generate_html(result_buffer), file=out_stream)
     elif output_format == 'markdown':
         print(generate_markdown(result_buffer), file=out_stream)
+    elif output_format == 'report':
+        # Sort results by effective confidence (highest first)
+        result_buffer.sort(
+            key=lambda x: get_effective_confidence(x.get('own_conf', '0%'), x.get('gpt_conf', '')),
+            reverse=True
+        )
+        # Use color only if the output stream is a terminal
+        use_color_output = out_stream.isatty() if hasattr(out_stream, 'isatty') else False
+        report = generate_console_report(result_buffer, use_color=use_color_output)
+        print(report, file=out_stream)
 
     if output_file:
         out_stream.close()
@@ -4945,6 +5028,7 @@ def main():
     output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format (a common format used by security tools).')
     output_group.add_argument('--html', action='store_true', help='Create an HTML report of the results.')
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report of the results.')
+    output_group.add_argument('--report', action='store_true', help='Output a human-friendly triage report to the console.')
 
     args = parser.parse_args()
 
@@ -5024,6 +5108,8 @@ def main():
             output_format = 'html'
         elif args.markdown:
             output_format = 'markdown'
+        elif args.report:
+            output_format = 'report'
         elif args.output:
             # Infer format from extension
             ext = Path(args.output).suffix.lower()

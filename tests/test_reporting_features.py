@@ -103,3 +103,42 @@ def test_cli_summary(capsys, monkeypatch):
 
     captured = capsys.readouterr()
     assert "Scan complete: 1 files scanned, 1 suspicious file found (1 high risk, 0 medium risk)." in captured.err
+
+
+def test_generate_console_report():
+    """Test the generation of the console triage report."""
+    results = [
+        {
+            "path": "suspicious.py",
+            "own_conf": "90%",
+            "admin_desc": "Admin note",
+            "end-user_desc": "User note",
+            "gpt_conf": "95%",
+            "snippet": "dangerous_code()",
+            "line": "10"
+        },
+        {
+            "path": "safe.py",
+            "own_conf": "10%",
+            "admin_desc": "",
+            "end-user_desc": "",
+            "gpt_conf": "",
+            "snippet": "print('ok')",
+            "line": "1"
+        }
+    ]
+
+    # Without color
+    report = gptscan.generate_console_report(results, use_color=False)
+    assert "--- GPT SCAN TRIAGE REPORT ---" in report
+    assert "[1] HIGH RISK - suspicious.py" in report
+    assert "Confidence: Local: 90%, AI: 95%" in report
+    assert "Admin: Admin note" in report
+    assert "User:  User note" in report
+    assert "VirusTotal: https://www.virustotal.com/gui/file/" in report
+    assert "[2] LOW RISK - safe.py" in report
+
+    # With color (check for ANSI codes)
+    report_color = gptscan.generate_console_report(results, use_color=True)
+    assert "\033[1;91mHIGH RISK\033[0m" in report_color
+    assert "\033[0;90mLOW RISK\033[0m" in report_color
