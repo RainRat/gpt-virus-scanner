@@ -218,6 +218,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--sarif`: Save results in SARIF format for security tools.
 *   `--html`: Create an HTML report.
 *   `--markdown`: Create a Markdown report.
+*   `--report`: Output a human-friendly triage report directly to the console, including VirusTotal links and sorted by threat level.
 
 ## Advanced: Training
 
