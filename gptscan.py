@@ -5021,11 +5021,11 @@ def main():
     output_group.add_argument('-a', '--show-all', action='store_true', help='Show all scanned files, including safe ones.')
     output_group.add_argument('-o', '--output', type=str, help='Save the scan results to a file. The tool chooses the format based on the file extension.')
     output_group.add_argument('-j', '--json', action='store_true', help='Output results in JSON format (one object per line).')
-    output_group.add_argument('--csv', action='store_true', help='Output results in CSV format (default).')
+    output_group.add_argument('--csv', action='store_true', help='Output results in CSV format (default when output is piped or redirected).')
     output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format (a common format used by security tools).')
     output_group.add_argument('--html', action='store_true', help='Create an HTML report of the results.')
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report of the results.')
-    output_group.add_argument('--report', action='store_true', help='Output a human-friendly triage report to the console.')
+    output_group.add_argument('--report', action='store_true', help='Output a human-friendly triage report to the console (default when outputting directly to a terminal).')
 
     args = parser.parse_args()
 
@@ -5094,7 +5094,7 @@ def main():
             # Default to current directory if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
-        output_format = 'csv'
+        output_format = 'report' if sys.stdout.isatty() else 'csv'
         if args.json:
             output_format = 'json'
         elif args.csv:
