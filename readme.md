@@ -143,7 +143,7 @@ Run `python gptscan.py` to open the GUI.
 *   **Open / Reveal:** Open the file or show its location in your file manager.
 *   **Rescan:** Re-scan the selected file(s).
 *   **Exclude:** Add the selected file(s) to your `.gptscanignore` file.
-*   **Import / Export:** Save results to many formats (CSV, JSON, SARIF, HTML, Markdown) or load them from a previous scan (supports JSON, CSV, and SARIF).
+*   **Import / Export:** Save results to many formats (CSV, JSON, SARIF, HTML, Markdown) or load them from a previous scan (supports JSON, CSV, SARIF, and Markdown).
 *   **Clear:** Clear all results from the list.
 
 #### File Menu
@@ -221,7 +221,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--exclude [patterns], -e [patterns]`: Skip files that match these patterns.
 *   `--file-list [file]`: Scan a list of files from a text file.
 *   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
-*   `--import [file]`: Load results from a previous scan (JSON, CSV, or SARIF). Use `-` for terminal input.
+*   `--import [file]`: Load results from a previous scan (JSON, CSV, SARIF, or Markdown). Use `-` for terminal input.
 *   `--max-size [value]`: Set the maximum file size to scan (e.g., `10MB`, `500KB`). The default is 10MB.
 *   `--json, -j`: Save or show results in JSON format (one object per line).
 *   `--csv`: Save or show results in CSV format.
