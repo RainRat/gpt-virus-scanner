@@ -3180,13 +3180,13 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
 
 REPORT_FIELD_MAPPING = {
-    "path": ["path", "File Path", "uri"],
-    "own_conf": ["own_conf", "Local Conf.", "local_conf"],
-    "admin_desc": ["admin_desc", "Admin Notes", "admin"],
-    "end-user_desc": ["end-user_desc", "User Notes", "user_desc"],
-    "gpt_conf": ["gpt_conf", "AI Conf.", "ai_conf"],
-    "snippet": ["snippet", "Snippet", "code"],
-    "line": ["line", "Line", "startLine"]
+    "path": ["path", "File Path", "uri", "Path"],
+    "own_conf": ["own_conf", "Local Conf.", "local_conf", "Confidence"],
+    "admin_desc": ["admin_desc", "Admin Notes", "admin", "Analysis"],
+    "end-user_desc": ["end-user_desc", "User Notes", "user_desc", "Analysis"],
+    "gpt_conf": ["gpt_conf", "AI Conf.", "ai_conf", "Confidence"],
+    "snippet": ["snippet", "Snippet", "code", "Snippet"],
+    "line": ["line", "Line", "startLine", "Line"]
 }
 
 
@@ -3226,7 +3226,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     if filename_hint:
         ext = os.path.splitext(filename_hint)[1].lower()
 
-    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv'):
+    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown'):
         raise ValueError(f"Unsupported file extension: {ext}")
 
     data_to_import = []
@@ -3276,6 +3276,42 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
         f = io.StringIO(content)
         reader = csv.DictReader(f)
         data_to_import = list(reader)
+    elif ext in ('.md', '.markdown') or '|' in content:
+        # Markdown table format
+        lines = content.splitlines()
+        headers = []
+        for idx, line in enumerate(lines):
+            if '|' in line and any(h in line for h in ['Path', 'Line', 'Confidence', 'Analysis', 'Snippet']):
+                headers = [h.strip() for h in line.strip('|').split('|')]
+                start_idx = idx + 2 # Skip header and separator
+                for row_line in lines[start_idx:]:
+                    if '|' not in row_line:
+                        continue
+                    # Split by | but ignore escaped \|
+                    cols = [c.strip() for c in re.split(r'(?<!\\)\|', row_line.strip('|'))]
+                    if len(cols) >= len(headers):
+                        item = dict(zip(headers, cols))
+
+                        # Specialized logic for Markdown Analysis and Snippet
+                        analysis = item.get('Analysis', '')
+                        if analysis:
+                            # Reconstruct Admin and User notes from Analysis column
+                            # Admin: ... <br> User: ...
+                            admin_match = re.search(r'\*\*Admin:\*\*\s*(.*?)(?:\s*<br>\s*\*\*User:\*\*|$)', analysis)
+                            user_match = re.search(r'\*\*User:\*\*\s*(.*)', analysis)
+
+                            item['admin_desc'] = admin_match.group(1).replace('<br>', '\n').replace('\\|', '|') if admin_match else ""
+                            item['end-user_desc'] = user_match.group(1).replace('<br>', '\n').replace('\\|', '|') if user_match else ""
+
+                        # Clean up Snippet (remove backticks)
+                        if 'Snippet' in item:
+                            item['Snippet'] = item['Snippet'].strip('`').replace('\\|', '|')
+
+                        if 'Path' in item:
+                            item['Path'] = item['Path'].replace('\\|', '|')
+
+                        data_to_import.append(item)
+                break
     else:
         # Last resort: try JSON parsing anyway
         try:
@@ -3404,10 +3440,11 @@ def import_results() -> None:
 
     file_path = filedialog.askopenfilename(
         filetypes=[
-            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif"),
+            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown"),
             ("JSON files", "*.json;*.jsonl;*.ndjson"),
             ("SARIF files", "*.sarif"),
             ("CSV files", "*.csv"),
+            ("Markdown files", "*.md;*.markdown"),
             ("All files", "*.*")
         ],
         title="Import Scan Results",
