@@ -84,7 +84,7 @@ def resolve_remote_url(url: str) -> str:
         A resolved URL pointing to raw content or a downloadable archive.
     """
     url = url.strip()
-    if not url.startswith(('http://', 'https://')):
+    if not url.lower().startswith(('http://', 'https://')):
         return url
 
     # Remove trailing slashes and common fragments
