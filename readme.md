@@ -67,6 +67,14 @@ Once your provider is ready, you must enable the feature when you run a scan:
 *   **In the App Window:** Check the **Use AI Analysis** box before clicking **Scan Now**.
 *   **In the Terminal:** Use the `--use-gpt` flag (for example: `python gptscan.py ./my_scripts --cli --use-gpt`).
 
+## Privacy and Security
+
+We value your privacy and the security of your code.
+
+*   **Local Scans:** When you run a standard scan, all analysis happens entirely on your own computer. No code is sent to any external service.
+*   **AI Analysis (Optional):** If you enable AI Analysis, the tool only sends a small **1 KB snippet** of suspicious code to the AI provider—not the entire file. This helps protect your intellectual property and sensitive data.
+*   **Ollama (Local AI):** If you use Ollama, all AI analysis stays on your computer. No data is sent to the cloud.
+
 ## Supported Files
 
 The scanner finds scripts in several ways:
