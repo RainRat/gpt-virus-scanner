@@ -4155,9 +4155,6 @@ def copy_sha256(event: Optional[tk.Event] = None) -> None:
 
 def check_virustotal(event_or_path: Union[tk.Event, str, None] = None) -> None:
     """Check selected files on VirusTotal (opens multiple tabs if needed)."""
-    if not tree:
-        return
-
     # List of (path, snippet_if_available)
     targets: List[Tuple[str, Optional[str]]] = []
 
