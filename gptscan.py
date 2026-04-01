@@ -1112,7 +1112,7 @@ def _matches_filter(values: Tuple[Any, ...]) -> bool:
     is_show_all = all_var.get() if all_var else False
     if not is_show_all:
         conf = get_effective_confidence(values[1], values[4])
-        if conf < Config.THRESHOLD:
+        if 0 <= conf < Config.THRESHOLD:
             return False
 
     if not filter_var:
