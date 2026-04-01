@@ -13,13 +13,18 @@ GPT Virus Scanner uses AI to find malicious code in script files.
 
 ### Use the Windowed App (GUI)
 1. Run the script: `python gptscan.py`
-2. Select a folder to scan. The tool will also scan all subfolders.
+2. Select a folder to scan. By default, it opens the last used folder or the current directory.
 3. Click **Scan Now**.
 
 ### Use the Terminal (CLI)
 Scan a folder and save a JSON report:
 ```bash
 python gptscan.py ./my_scripts --cli -o report.json
+```
+
+Scan multiple folders at once:
+```bash
+python gptscan.py ./folder1 ./folder2 --cli
 ```
 
 Scan a code snippet sent from another command in the terminal:
@@ -83,7 +88,7 @@ The scanner finds scripts in several ways:
 *   **By Jupyter Notebook cells:** It extracts and scans individual code cells from `.ipynb` files.
 *   **By Markdown blocks:** It extracts and scans code snippets from triple-backtick blocks in Markdown (`.md`) files.
 *   **By HTML script tags:** It extracts and scans inline code from `<script>` tags in HTML files (`.html`, `.htm`, `.xhtml`).
-*   **By the first line of the file:** If a file does not have an extension, the tool checks the first line for a "shebang" (like `#!/bin/bash`). It recognizes many interpreters, including Python, Node.js, Bash, Perl, Ruby, PHP, PowerShell, and Lua.
+*   **By the first line of the file:** If a file does not have an extension, the tool checks the first line for a "shebang" (like `#!/bin/bash`). It recognizes many interpreters, including Python, Node.js, Bash (including Ash, Dash, and Zsh), Perl, Ruby, PHP, PowerShell, Lua, osascript, and iPython.
 *   **Remote scripts (via URL):** It can download and scan scripts directly from the web using HTTP or HTTPS links. GitHub, GitLab, and Gist links are automatically resolved to their raw content or repository archives.
 
 ## Configuration
@@ -106,8 +111,8 @@ You can customize the scanner using these files in the same folder:
 Run `python gptscan.py` to open the GUI.
 
 #### Scan Input
-*   **Path to scan:** Type a path or choose from the dropdown. It remembers your last 10 locations.
-*   **File...:** Select a single file to scan.
+*   **Path to scan:** Type one or more paths (separated by spaces) or choose from the dropdown. It remembers your last 10 locations.
+*   **File...:** Select one or more files to scan.
 *   **Folder...:** Select a whole directory to scan.
 *   **URL...:** Scan a script, Markdown file, or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Clipboard:** Scan code currently in your clipboard.
@@ -184,6 +189,9 @@ Run scans from your terminal using the `--cli` flag.
 # Basic scan with AI analysis
 python gptscan.py ./my_scripts --cli --use-gpt
 
+# Scan multiple folders
+python gptscan.py ./folder1 ./folder2 --cli
+
 # Scan a code snippet sent from another command in the terminal
 echo "print('hello')" | python gptscan.py --cli --stdin
 
@@ -204,10 +212,10 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--cli`: Run in command-line mode.
 *   `--path [path], -p [path]`: Specify the folder or file to scan.
 *   `--stdin`: Scan a code snippet from terminal input.
-*   `--deep`: Scan the entire file instead of just the first and last 1 KB (1,024 bytes).
+*   `--deep, -d`: Scan the entire file instead of just the first and last 1 KB (1,024 bytes).
 *   `--dry-run`: Show which files would be scanned without analyzing them.
-*   `--show-all`: Show all files, including safe ones.
-*   `--use-gpt`: Use AI Analysis for suspicious code.
+*   `--show-all, -a`: Show all files, including safe ones.
+*   `--use-gpt, -g`: Use AI Analysis for suspicious code.
 *   `--provider [name]`: Select the AI service provider (`openai`, `openrouter`, or `ollama`).
 *   `--model [name]`: Set the AI model (for example: `gpt-4o`, `llama3.2`).
 *   `--api-base [url]`: Set a custom URL for the AI service.
@@ -227,8 +235,9 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--csv`: Save or show results in CSV format.
 *   `--sarif`: Save results in SARIF format for security tools.
 *   `--html`: Create an HTML report.
-*   `--markdown`: Create a Markdown report.
+*   `--markdown, --md`: Create a Markdown report.
 *   `--report`: Output a human-friendly triage report directly to the console, including VirusTotal links and sorted by threat level.
+*   `--version, -v`: Show the tool version and exit.
 
 ## Advanced: Training
 
