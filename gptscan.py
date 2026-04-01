@@ -2864,8 +2864,8 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
             <td>{html.escape(str(r.get("line", "-")))}</td>
             <td>{html.escape(gpt_conf or own_conf)}</td>
             <td>
-                <strong>Admin:</strong> {html.escape(admin)}<br>
-                <strong>User:</strong> {html.escape(user)}
+                <strong>Admin:</strong> {html.escape(admin).replace("\n", "<br>")}<br>
+                <strong>User:</strong> {html.escape(user).replace("\n", "<br>")}
             </td>
             <td><pre><code>{html.escape(snippet)}</code></pre></td>
         </tr>
@@ -2965,11 +2965,11 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         analysis = "<br>".join(analysis_parts)
 
         # Clean up snippet for markdown table (one line, escaped)
-        clean_snippet = snippet.replace("\n", " ").replace("|", "\\|")
+        clean_snippet = html.escape(snippet.replace("\n", " ").replace("|", "\\|"))
         if len(clean_snippet) > 100:
             clean_snippet = clean_snippet[:97] + "..."
 
-        lines.append(f"| {path} | {line} | {conf_str} | {analysis} | `{clean_snippet}` |")
+        lines.append(f"| {path} | {line} | {conf_str} | {analysis} | <code>{clean_snippet}</code> |")
 
     lines.append("")
     lines.append("## Detailed Findings")
@@ -3003,9 +3003,11 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         # Try to infer language from extension
         ext = os.path.splitext(path)[1].lower().lstrip('.')
         lang = ext if ext in ('py', 'js', 'bat', 'ps1', 'sh', 'rb', 'php', 'pl') else ''
-        lines.append(f"```{lang}")
+        # Use 4 backticks for fence if snippet contains triple backticks
+        fence = "````" if "```" in snippet else "```"
+        lines.append(f"{fence}{lang}")
         lines.append(snippet)
-        lines.append("```")
+        lines.append(f"{fence}")
         lines.append("")
         lines.append("---")
 
@@ -3303,9 +3305,15 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
                             item['admin_desc'] = admin_match.group(1).replace('<br>', '\n').replace('\\|', '|') if admin_match else ""
                             item['end-user_desc'] = user_match.group(1).replace('<br>', '\n').replace('\\|', '|') if user_match else ""
 
-                        # Clean up Snippet (remove backticks)
+                        # Clean up Snippet (remove backticks or <code> tags)
                         if 'Snippet' in item:
-                            item['Snippet'] = item['Snippet'].strip('`').replace('\\|', '|')
+                            raw_snippet = item['Snippet']
+                            if raw_snippet.startswith('<code>') and raw_snippet.endswith('</code>'):
+                                raw_snippet = raw_snippet[6:-7]
+                            else:
+                                raw_snippet = raw_snippet.strip('`')
+
+                            item['Snippet'] = html.unescape(raw_snippet).replace('\\|', '|')
 
                         if 'Path' in item:
                             item['Path'] = item['Path'].replace('\\|', '|')

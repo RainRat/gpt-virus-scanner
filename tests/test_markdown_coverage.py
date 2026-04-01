@@ -42,7 +42,7 @@ def test_generate_markdown_long_snippet():
     md = gptscan.generate_markdown(results)
     # The snippet in the table is truncated to 97 chars + ...
     expected_snippet = "A" * 97 + "..."
-    assert f"`{expected_snippet}`" in md
+    assert f"<code>{expected_snippet}</code>" in md
 
 def test_generate_markdown_escaping():
     """Test generate_markdown with special characters to ensure proper escaping."""
@@ -58,7 +58,8 @@ def test_generate_markdown_escaping():
     assert "test\\|file.py" in md
     assert "Admin\\|Note" in md
     assert "User\\|Note" in md
-    assert "`print('\\|')`" in md
+    # html.escape escapes single quotes to &#x27; and we also escape | to \|
+    assert "<code>print(&#x27;\\|&#x27;)</code>" in md
 
 def test_run_cli_markdown(monkeypatch, capsys):
     """Test run_cli with markdown output format (covers line 1547)."""
@@ -74,7 +75,8 @@ def test_run_cli_markdown(monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert "# GPT Scan Results" in captured.out
-    assert "| test.py | 1 | 95% | **Admin:** Admin<br>**User:** User | `print('hi')` |" in captured.out
+    # html.escape escapes single quotes to &#x27;
+    assert "| test.py | 1 | 95% | **Admin:** Admin<br>**User:** User | <code>print(&#x27;hi&#x27;)</code> |" in captured.out
 
 def test_export_results_markdown(monkeypatch, tmp_path):
     """Test export_results with .md extension (covers line 1725)."""
