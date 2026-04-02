@@ -3226,13 +3226,47 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     if filename_hint:
         ext = os.path.splitext(filename_hint)[1].lower()
 
-    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown'):
+    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown', '.html', '.htm', '.xhtml'):
         raise ValueError(f"Unsupported file extension: {ext}")
 
     data_to_import = []
 
     # Auto-detection logic
-    if content.startswith('[') or (ext in ('.json', '.jsonl', '.ndjson')):
+    if content.strip().startswith('<') or (ext in ('.html', '.htm', '.xhtml')):
+        # HTML report format
+        rows = re.findall(r'<tr\b[^>]*>(.*?)</tr>', content, re.DOTALL | re.IGNORECASE)
+        for row in rows:
+            # Skip rows containing headers
+            if '<th' in row.lower() or 'confidence' in row.lower():
+                continue
+
+            cells = re.findall(r'<td\b[^>]*>(.*?)</td>', row, re.DOTALL | re.IGNORECASE)
+            if len(cells) >= 5:
+                item = {
+                    "path": html.unescape(cells[0].strip()),
+                    "line": html.unescape(cells[1].strip()),
+                    "own_conf": html.unescape(cells[2].strip()),
+                }
+
+                # Analysis cell (index 3)
+                analysis = cells[3].strip()
+                admin_match = re.search(r'<strong>Admin:</strong>\s*(.*?)(?:\s*<br>\s*<strong>User:</strong>|$)', analysis, re.DOTALL | re.IGNORECASE)
+                user_match = re.search(r'<strong>User:</strong>\s*(.*)', analysis, re.DOTALL | re.IGNORECASE)
+
+                if admin_match:
+                    item["admin_desc"] = html.unescape(admin_match.group(1).strip())
+                if user_match:
+                    item["end-user_desc"] = html.unescape(user_match.group(1).strip())
+
+                # Snippet cell (index 4)
+                snippet_match = re.search(r'<pre><code>(.*?)</code></pre>', cells[4], re.DOTALL | re.IGNORECASE)
+                if snippet_match:
+                    item["snippet"] = html.unescape(snippet_match.group(1))
+                else:
+                    item["snippet"] = html.unescape(cells[4].strip())
+
+                data_to_import.append(item)
+    elif content.startswith('[') or (ext in ('.json', '.jsonl', '.ndjson')):
         if content.startswith('['):
             # Standard JSON list
             data_to_import = json.loads(content)
@@ -3440,11 +3474,12 @@ def import_results() -> None:
 
     file_path = filedialog.askopenfilename(
         filetypes=[
-            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown"),
+            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml"),
             ("JSON files", "*.json;*.jsonl;*.ndjson"),
             ("SARIF files", "*.sarif"),
             ("CSV files", "*.csv"),
             ("Markdown files", "*.md;*.markdown"),
+            ("HTML files", "*.html;*.htm;*.xhtml"),
             ("All files", "*.*")
         ],
         title="Import Scan Results",
@@ -5014,7 +5049,7 @@ def main():
     scan_group.add_argument(
         '--import-results', '--import',
         type=str,
-        help='Import results from a previous scan (JSON, CSV, or SARIF). Use "-" to read from the terminal.'
+        help='Import results from a previous scan (JSON, CSV, SARIF, Markdown, or HTML). Use "-" to read from the terminal.'
     )
     scan_group.add_argument(
         '--max-size',
