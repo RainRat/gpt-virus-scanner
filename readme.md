@@ -83,7 +83,7 @@ The scanner finds scripts in several ways:
 *   **By Jupyter Notebook cells:** It extracts and scans individual code cells from `.ipynb` files.
 *   **By Markdown blocks:** It extracts and scans code snippets from triple-backtick blocks in Markdown (`.md`) files.
 *   **By HTML script tags:** It extracts and scans inline code from `<script>` tags in HTML files (`.html`, `.htm`, `.xhtml`).
-*   **By the first line of the file:** If a file does not have an extension, the tool checks the first line for a "shebang" (like `#!/bin/bash`). It recognizes many interpreters, including Python, Node.js, Bash, Perl, Ruby, PHP, PowerShell, and Lua.
+*   **By the first line of the file:** If a file does not have an extension, the tool checks the first line for a "shebang" (like `#!/bin/bash`). It recognizes many interpreters, including Python, Node.js, Bash, Ash, Dash, Zsh, Perl, Ruby, PHP, PowerShell, Lua, osascript, and IPython.
 *   **Remote scripts (via URL):** It can download and scan scripts directly from the web using HTTP or HTTPS links. GitHub, GitLab, and Gist links are automatically resolved to their raw content or repository archives.
 
 ## Configuration
@@ -106,8 +106,8 @@ You can customize the scanner using these files in the same folder:
 Run `python gptscan.py` to open the GUI.
 
 #### Scan Input
-*   **Path to scan:** Type a path or choose from the dropdown. It remembers your last 10 locations.
-*   **File...:** Select a single file to scan.
+*   **Path to scan:** Type a folder path, a file path, or a web link. You can also scan multiple targets by separating them with spaces (e.g., `folder1/ file2.py https://example.com/script.sh`). It remembers your last 10 locations.
+*   **File...:** Select one or more files to scan.
 *   **Folder...:** Select a whole directory to scan.
 *   **URL...:** Scan a script, Markdown file, or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Clipboard:** Scan code currently in your clipboard.
@@ -198,6 +198,9 @@ python gptscan.py https://example.com/script.sh --cli
 
 # Convert an existing JSON report to an HTML report
 python gptscan.py --cli --import results.json -o report.html
+
+# Scan multiple targets at once
+python gptscan.py ./folder1 ./file2.py https://example.com/script.sh --cli
 ```
 
 **Common Options:**
