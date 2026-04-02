@@ -139,6 +139,7 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
         filename: The path to the file.
         mode: 'single_line' (default) returns the first line.
               'multi_line' returns all lines as a list.
+              'full' returns the entire file content.
 
     Returns:
         The file content, or an empty result if the file is missing.
@@ -149,8 +150,12 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
                 return file.readline().strip()
             elif mode == 'multi_line':
                 return file.read().splitlines()
+            elif mode == 'full':
+                return file.read().strip()
     except (FileNotFoundError, PermissionError):
-        return [] if mode == 'multi_line' else ''
+        if mode == 'multi_line':
+            return []
+        return ''
 
 
 def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = None) -> bytes:
@@ -196,7 +201,7 @@ class Config:
     MAX_SOURCE_VIEW_SIZE = 2 * 1024 * 1024
     gpt_cache: Dict[str, Dict[str, Any]] = {}
     apikey: str = load_file('apikey.txt')
-    taskdesc: str = load_file('task.txt')
+    taskdesc: str = load_file('task.txt', mode='full')
     GPT_ENABLED: bool = False
     extensions_set: set[str] = set()
     extensions_missing: bool = False
