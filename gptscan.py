@@ -3686,7 +3686,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     header_frame.pack(fill=tk.X, pady=(0, 5))
 
     nav_header = ttk.Frame(header_frame)
-    nav_header.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+    nav_header.grid(row=0, column=0, columnspan=5, sticky="ew", pady=(0, 10))
 
     ttk.Label(header_frame, text="File Path:", font=('TkDefaultFont', 9, 'bold')).grid(row=1, column=0, sticky="w")
     path_entry = ttk.Entry(header_frame)
@@ -3694,7 +3694,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     header_frame.columnconfigure(1, weight=1)
 
     conf_frame = ttk.Frame(header_frame)
-    conf_frame.grid(row=2, column=0, columnspan=2, sticky="w", pady=(5, 0))
+    conf_frame.grid(row=2, column=0, columnspan=5, sticky="w", pady=(5, 0))
 
     ttk.Label(conf_frame, text="Local Confidence:").grid(row=0, column=0, sticky="w")
     own_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
@@ -3839,6 +3839,10 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     reveal_btn.grid(row=1, column=3, padx=2)
     bind_hover_message(reveal_btn, "Show this file in the system file manager.", label=status_bar)
 
+    open_btn = ttk.Button(header_frame, text="Open", width=10, command=lambda: open_file(path_entry.get()))
+    open_btn.grid(row=1, column=4, padx=2)
+    bind_hover_message(open_btn, "Open this file in the default application. (Shift+Enter)", label=status_bar)
+
     def on_analyze_now():
         if current_cancel_event is not None:
             return
@@ -3949,13 +3953,6 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
     copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard.", label=status_bar)
-
-    ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
-
-    # Group: Files
-    open_btn = ttk.Button(btn_frame, text="Open", width=10, command=lambda: open_file(path_entry.get()))
-    open_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(open_btn, "Open this file in the default application. (Shift+Enter)", label=status_bar)
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
