@@ -899,7 +899,7 @@ def get_git_changed_files(path: str = ".") -> List[str]:
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         pass
 
-    return [os.path.join(toplevel, f) for f in files if os.path.exists(os.path.join(toplevel, f))]
+    return [p for f in files if os.path.exists(p := os.path.join(toplevel, f))]
 
 
 def collect_files(targets: Union[str, List[str]]) -> List[Path]:
