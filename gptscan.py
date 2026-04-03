@@ -372,8 +372,8 @@ class Config:
         # Normalize file_path to string for consistent extension checking,
         # but keep Path objects for file-system operations.
         path_str = str(file_path).lower()
-        # Check archive extensions
-        if not is_member and (path_str.endswith('.zip') or path_str.endswith('.tar') or path_str.endswith('.tar.gz')):
+        # Check archive and container extensions
+        if not is_member and (path_str.endswith('.zip') or path_str.endswith('.tar') or path_str.endswith('.tar.gz') or os.path.basename(path_str) == 'package.json'):
             return True
 
         extension = os.path.splitext(path_str)[1]
@@ -1844,7 +1844,7 @@ def manage_extensions() -> None:
 
 
 def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str] = None) -> Generator[Tuple[str, bytes], None, None]:
-    """Recursively unpack archives and notebooks into individual snippets.
+    """Recursively unpack archives, notebooks, and package.json files into individual snippets.
 
     Args:
         name: The display name or path of the content.
@@ -1899,7 +1899,21 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
     except Exception:
         pass
 
-    # 3. Check for Jupyter Notebook
+    # 3. Check for package.json
+    if os.path.basename(check_name).lower() == 'package.json':
+        try:
+            pkg = json.loads(content.decode('utf-8', errors='ignore'))
+            if isinstance(pkg, dict) and 'scripts' in pkg:
+                scripts = pkg['scripts']
+                if isinstance(scripts, dict):
+                    for script_name, command in scripts.items():
+                        if isinstance(command, str) and command.strip():
+                            yield (f"{name} [Script: {script_name}]", command.encode('utf-8'))
+                    return
+        except Exception:
+            pass
+
+    # 4. Check for Jupyter Notebook
     if check_name.lower().endswith('.ipynb') or (content.startswith(b'{') and b'"cells"' in content):
         try:
             notebook = json.loads(content.decode('utf-8', errors='ignore'))
@@ -1916,7 +1930,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 4. Check for Markdown code blocks
+    # 5. Check for Markdown code blocks
     if check_name.lower().endswith('.md'):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -1929,7 +1943,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 5. Check for HTML script tags
+    # 6. Check for HTML script tags
     if check_name.lower().endswith(('.html', '.htm', '.xhtml')):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -1942,7 +1956,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 6. Fallback: yield as a single snippet if it's a supported file type
+    # 7. Fallback: yield as a single snippet if it's a supported file type
     # If scan_all_files is True, we always yield. Otherwise check extension/shebang.
     if Config.is_supported_file(check_name, content=content, is_member=(depth > 0)):
         yield name, content
@@ -2086,7 +2100,7 @@ def scan_files(
         is_explicit = f_path in explicit_files
         path_s = str(f_path).lower()
         # Check if it's a known container by extension or by content
-        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml')):
+        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml')) or os.path.basename(path_s) == 'package.json':
             try:
                 with open(f_path, 'rb') as f:
                     full_content = f.read()
@@ -4988,7 +5002,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, Markdown files, HTML files, and web links (GitHub/GitLab/Gist) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package.json files, Markdown files, HTML files, and web links (GitHub/GitLab/Gist) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"

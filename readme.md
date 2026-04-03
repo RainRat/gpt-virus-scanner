@@ -83,9 +83,10 @@ We value your privacy and the security of your code.
 ## Supported Files
 
 The scanner finds scripts in several ways:
-*   **By file type:** It recognizes common script types (like `.py`, `.js`, `.sh`, and `.ps1`) and Jupyter Notebooks (`.ipynb`) using the included `extensions.txt` file.
+*   **By file type:** It recognizes common script types (like `.py`, `.js`, `.sh`, and `.ps1`), Jupyter Notebooks (`.ipynb`), and `package.json` files using the included `extensions.txt` file.
 *   **By archive content:** It can inspect scripts hidden inside `.zip`, `.tar`, and `.tar.gz` files.
 *   **By Jupyter Notebook cells:** It extracts and scans individual code cells from `.ipynb` files.
+*   **By package.json scripts:** It extracts and scans individual script commands from the `scripts` object in `package.json` files.
 *   **By Markdown blocks:** It extracts and scans code snippets from triple-backtick blocks in Markdown (`.md`) files.
 *   **By HTML script tags:** It extracts and scans inline code from `<script>` tags in HTML files (`.html`, `.htm`, `.xhtml`).
 *   **By the first line of the file:** If a file does not have an extension, the tool checks the first line for a "shebang" (like `#!/bin/bash`). It recognizes many interpreters, including Python, Node.js, Bash (including Ash, Dash, and Zsh), Perl, Ruby, PHP, PowerShell, Lua, osascript, and iPython.
