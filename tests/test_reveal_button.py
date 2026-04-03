@@ -15,9 +15,7 @@ def test_reveal_button_management(monkeypatch):
     monkeypatch.setattr(gptscan, 'rescan_button', MagicMock())
     monkeypatch.setattr(gptscan, 'analyze_button', MagicMock())
     monkeypatch.setattr(gptscan, 'exclude_button', MagicMock())
-    monkeypatch.setattr(gptscan, 'import_button', MagicMock())
-    monkeypatch.setattr(gptscan, 'export_button', MagicMock())
-    monkeypatch.setattr(gptscan, 'clear_button', MagicMock())
+    monkeypatch.setattr(gptscan, 'results_button', MagicMock())
     monkeypatch.setattr(gptscan, 'scan_button', MagicMock())
     monkeypatch.setattr(gptscan, 'cancel_button', MagicMock())
 
