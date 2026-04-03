@@ -4584,7 +4584,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Escape>', lambda event: cancel_scan())
     select_file_btn = ttk.Button(input_frame, text="File...", command=browse_file_click)
     select_file_btn.grid(row=0, column=2, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_file_btn, "Select one or more script or Markdown files to scan.")
+    bind_hover_message(select_file_btn, "Select one or more script, Notebook, HTML, or Markdown files to scan.")
 
     select_dir_btn = ttk.Button(input_frame, text="Folder...", command=browse_dir_click)
     select_dir_btn.grid(row=0, column=3, sticky="e", padx=(5, 0), ipady=5)
@@ -4592,7 +4592,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     select_url_btn = ttk.Button(input_frame, text="URL...", command=select_url_click)
     select_url_btn.grid(row=0, column=4, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_url_btn, "Scan a script, Markdown file, or archive from a remote URL. Multiple targets can be entered manually in the textbox.")
+    bind_hover_message(select_url_btn, "Scan a script, Notebook, HTML, Markdown file, or archive from a remote URL. Multiple targets can be entered manually in the textbox.")
 
     select_clipboard_btn = ttk.Button(input_frame, text="Clipboard", command=scan_clipboard_click)
     select_clipboard_btn.grid(row=0, column=5, sticky="e", padx=(5, 0), ipady=5)
@@ -4896,7 +4896,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     import_button = ttk.Button(footer_frame, text="Import", width=10, command=import_results)
     import_button.grid(row=0, column=11, padx=2, ipady=5)
-    bind_hover_message(import_button, "Load results from a JSON or CSV file.")
+    bind_hover_message(import_button, "Load results from a JSON, CSV, SARIF, Markdown, or HTML file.")
 
     export_button = ttk.Button(footer_frame, text="Export", width=10, command=export_results)
     export_button.grid(row=0, column=12, padx=2, ipady=5)
