@@ -132,7 +132,7 @@ def test_generate_console_report():
     report = gptscan.generate_console_report(results, use_color=False)
     assert "--- GPT SCAN TRIAGE REPORT ---" in report
     assert "[1] HIGH RISK - suspicious.py" in report
-    assert "Confidence: Local: 90%, AI: 95%" in report
+    assert "Threat Level: Local: 90%, AI: 95%" in report
     assert "Admin: Admin note" in report
     assert "User:  User note" in report
     assert "VirusTotal: https://www.virustotal.com/gui/file/" in report

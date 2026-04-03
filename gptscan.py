@@ -2724,7 +2724,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
         lines.append(f"{BOLD}[{i}] {risk_label} - {path}{RESET}")
-        lines.append(f"    {BOLD}Confidence:{RESET} Local: {own_conf}" + (f", AI: {gpt_conf}" if gpt_conf else ""))
+        lines.append(f"    {BOLD}Threat Level:{RESET} Local: {own_conf}" + (f", AI: {gpt_conf}" if gpt_conf else ""))
         lines.append(f"    {BOLD}Location:{RESET}   Line {line_num}")
 
         # Hash for VirusTotal
@@ -2909,7 +2909,7 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
             <tr>
                 <th style="width: 20%">Path</th>
                 <th style="width: 5%">Line</th>
-                <th style="width: 10%">Confidence</th>
+                <th style="width: 10%">Threat Level</th>
                 <th style="width: 25%">Analysis</th>
                 <th style="width: 40%">Snippet</th>
             </tr>
@@ -2948,7 +2948,7 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         "",
         "## Summary Table",
         "",
-        "| Path | Line | Confidence | Analysis | Snippet |",
+        "| Path | Line | Threat Level | Analysis | Snippet |",
         "| :--- | :--- | :--- | :--- | :--- |"
     ]
 
@@ -2993,9 +2993,9 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
 
         lines.append(f"### File: `{path}`")
         lines.append(f"- **Detected Line:** {line}")
-        lines.append(f"- **Local Confidence:** {own_conf}")
+        lines.append(f"- **Local Threat Level:** {own_conf}")
         if gpt_conf:
-            lines.append(f"- **AI Confidence:** {gpt_conf}")
+            lines.append(f"- **AI Threat Level:** {gpt_conf}")
         lines.append("")
 
         if admin or user:
@@ -3190,10 +3190,10 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
 REPORT_FIELD_MAPPING = {
     "path": ["path", "File Path", "uri", "Path"],
-    "own_conf": ["own_conf", "Local Conf.", "local_conf", "Confidence"],
+    "own_conf": ["own_conf", "Local Conf.", "local_conf", "Confidence", "Local Threat", "Threat Level"],
     "admin_desc": ["admin_desc", "Admin Notes", "admin", "Analysis"],
     "end-user_desc": ["end-user_desc", "User Notes", "user_desc", "Analysis"],
-    "gpt_conf": ["gpt_conf", "AI Conf.", "ai_conf", "Confidence"],
+    "gpt_conf": ["gpt_conf", "AI Conf.", "ai_conf", "Confidence", "AI Threat", "Threat Level"],
     "snippet": ["snippet", "Snippet", "code", "Snippet"],
     "line": ["line", "Line", "startLine", "Line"]
 }
@@ -3322,7 +3322,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
         lines = content.splitlines()
         headers = []
         for idx, line in enumerate(lines):
-            if '|' in line and any(h in line for h in ['Path', 'Line', 'Confidence', 'Analysis', 'Snippet']):
+            if '|' in line and any(h in line for h in ['Path', 'Line', 'Confidence', 'Threat Level', 'Analysis', 'Snippet']):
                 headers = [h.strip() for h in line.strip('|').split('|')]
                 start_idx = idx + 2 # Skip header and separator
                 for row_line in lines[start_idx:]:
@@ -3744,11 +3744,11 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     conf_frame = ttk.Frame(header_frame)
     conf_frame.grid(row=2, column=0, columnspan=5, sticky="w", pady=(5, 0))
 
-    ttk.Label(conf_frame, text="Local Confidence:").grid(row=0, column=0, sticky="w")
+    ttk.Label(conf_frame, text="Local Threat Level:").grid(row=0, column=0, sticky="w")
     own_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
     own_conf_label.grid(row=0, column=1, sticky="w", padx=(5, 20))
 
-    ai_conf_prefix = ttk.Label(conf_frame, text="AI Confidence:")
+    ai_conf_prefix = ttk.Label(conf_frame, text="AI Threat Level:")
     gpt_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
 
     ttk.Label(conf_frame, text="Detected Line:").grid(row=0, column=5, sticky="w", padx=(20, 5))
@@ -3938,9 +3938,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         path = path_entry.get()
         own_conf = own_conf_label.cget("text")
         gpt_conf = gpt_conf_label.cget("text")
-        text = f"Path: {path}\nLocal Conf: {own_conf}\n"
+        text = f"Path: {path}\nLocal Threat: {own_conf}\n"
         if gpt_conf:
-            text += f"AI Conf: {gpt_conf}\n"
+            text += f"AI Threat: {gpt_conf}\n"
         if analysis_frame.winfo_viewable():
             if admin_label.winfo_viewable():
                 text += f"\nAdmin Notes:\n{admin_text.get('1.0', tk.END).strip()}\n"
@@ -4766,7 +4766,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     filter_entry.grid(row=0, column=1, sticky="ew")
     filter_entry.bind('<KeyRelease>', _apply_filter)
     filter_entry.bind('<Return>', on_filter_return)
-    bind_hover_message(filter_entry, "Search results by any column (path, confidence, analysis, snippet).")
+    bind_hover_message(filter_entry, "Search results by any column (path, threat level, analysis, snippet).")
 
     def clear_filter():
         filter_var.set("")
@@ -4826,9 +4826,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.heading("#0", text="")
     tree.heading("path", text="File Path", command=lambda: sort_column(tree, "path", False))
     tree.heading("line", text="Line", command=lambda: sort_column(tree, "line", False))
-    tree.heading("own_conf", text="Local Conf.",
+    tree.heading("own_conf", text="Local Threat",
                  command=lambda: sort_column(tree, "own_conf", False))
-    tree.heading("gpt_conf", text="AI Conf.",
+    tree.heading("gpt_conf", text="AI Threat",
                  command=lambda: sort_column(tree, "gpt_conf", False))
     tree.heading("admin_desc", text="Admin Notes",
                  command=lambda: sort_column(tree, "admin_desc", False))
