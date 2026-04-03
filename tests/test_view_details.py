@@ -348,8 +348,8 @@ def test_view_details_copy_analysis(mock_view_details_env):
     mock_root.clipboard_clear.assert_called_once()
     copied_text = mock_root.clipboard_append.call_args[0][0]
     assert "Path: test.py" in copied_text
-    assert "Local Conf: 90%" in copied_text
-    assert "AI Conf: 80%" in copied_text
+    assert "Local Threat Level: 90%" in copied_text
+    assert "AI Threat Level: 80%" in copied_text
     assert "Admin Notes:\nAdmin Notes" in copied_text
     assert "Snippet:\nprint('test')" in copied_text
     # Verified feedback via status bar
