@@ -1929,7 +1929,21 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 5. Check for HTML script tags
+    # 5. Check for package.json scripts
+    if check_name.lower().endswith('package.json') or 'package.json]' in check_name.lower():
+        try:
+            pkg_data = json.loads(content.decode('utf-8', errors='ignore'))
+            if isinstance(pkg_data, dict) and 'scripts' in pkg_data:
+                scripts = pkg_data['scripts']
+                if isinstance(scripts, dict):
+                    for script_name, script_cmd in scripts.items():
+                        if isinstance(script_cmd, str) and script_cmd.strip():
+                            yield (f"{name} [Script: {script_name}]", script_cmd.encode('utf-8'))
+                return
+        except Exception:
+            pass
+
+    # 6. Check for HTML script tags
     if check_name.lower().endswith(('.html', '.htm', '.xhtml')):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -1942,7 +1956,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 6. Fallback: yield as a single snippet if it's a supported file type
+    # 7. Fallback: yield as a single snippet if it's a supported file type
     # If scan_all_files is True, we always yield. Otherwise check extension/shebang.
     if Config.is_supported_file(check_name, content=content, is_member=(depth > 0)):
         yield name, content
