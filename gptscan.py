@@ -2196,13 +2196,80 @@ def scan_files(
         yield ('progress', (progress_count, total_progress, f"Scanning: {file_path.name}"))
 
         is_explicit = file_path in explicit_files
-        if Config.is_supported_file(file_path, is_explicit=is_explicit):
-            actual_files_scanned += 1
-            try:
-                file_size = file_path.stat().st_size
-            except OSError as err:
-                file_size = None
-                if not dry_run:
+        actual_files_scanned += 1
+        try:
+            file_size = file_path.stat().st_size
+        except OSError as err:
+            file_size = None
+            if not dry_run:
+                yield (
+                    'result',
+                    (
+                        str(file_path),
+                        'Error',
+                        '',
+                        '',
+                        '',
+                        f"Error reading file metadata: {err}",
+                        '-',
+                    )
+                )
+
+        if file_size is not None:
+            total_bytes_scanned += file_size
+
+        # Check file size limit (skip if not explicitly requested)
+        if not is_explicit and file_size is not None and file_size > Config.MAX_FILE_SIZE:
+            yield (
+                'result',
+                (
+                    str(file_path),
+                    'Large File',
+                    '',
+                    '',
+                    '',
+                    f"Skipped: File exceeds maximum size ({format_bytes(Config.MAX_FILE_SIZE)})",
+                    '-',
+                )
+            )
+            continue
+
+        if dry_run:
+            yield (
+                'result',
+                (
+                    str(file_path),
+                    'Dry Run',
+                    '',
+                    '',
+                    '',
+                    f"(File would be scanned, size: {format_bytes(file_size) if file_size is not None else 'unknown'})",
+                    '-',
+                )
+            )
+        else:
+            print(file_path, file=sys.stderr)
+            if file_size is not None:
+                maxconf = -1.0
+                max_window_bytes = b""
+                max_offset = 0
+                error_message: Optional[str] = None
+
+                try:
+                    with open(file_path, 'rb') as f:
+                        for offset, window in iter_windows(f, file_size, deep_scan):
+                            if cancel_event.is_set():
+                                break
+                            print("Scanning at:", offset if offset > 0 else 0, file=sys.stderr)
+                            result, padded_bytes = predict_window(window)
+                            if result > maxconf:
+                                maxconf = result
+                                max_window_bytes = padded_bytes
+                                max_offset = offset
+                except OSError as err:
+                    error_message = f"Error reading file: {err}"
+
+                if error_message is not None:
                     yield (
                         'result',
                         (
@@ -2211,87 +2278,19 @@ def scan_files(
                             '',
                             '',
                             '',
-                            f"Error reading file metadata: {err}",
+                            error_message,
                             '-',
                         )
                     )
-
-            if file_size is not None:
-                total_bytes_scanned += file_size
-
-            # Check file size limit (skip if not explicitly requested)
-            if not is_explicit and file_size is not None and file_size > Config.MAX_FILE_SIZE:
-                yield (
-                    'result',
-                    (
-                        str(file_path),
-                        'Large File',
-                        '',
-                        '',
-                        '',
-                        f"Skipped: File exceeds maximum size ({format_bytes(Config.MAX_FILE_SIZE)})",
-                        '-',
-                    )
-                )
-                continue
-
-            if dry_run:
-                yield (
-                    'result',
-                    (
-                        str(file_path),
-                        'Dry Run',
-                        '',
-                        '',
-                        '',
-                        f"(File would be scanned, size: {format_bytes(file_size) if file_size is not None else 'unknown'})",
-                        '-',
-                    )
-                )
-            else:
-                print(file_path, file=sys.stderr)
-                if file_size is not None:
-                    maxconf = -1.0
-                    max_window_bytes = b""
-                    max_offset = 0
-                    error_message: Optional[str] = None
-
+                else:
+                    # Calculate line number
+                    line_num = 1
                     try:
                         with open(file_path, 'rb') as f:
-                            for offset, window in iter_windows(f, file_size, deep_scan):
-                                if cancel_event.is_set():
-                                    break
-                                print("Scanning at:", offset if offset > 0 else 0, file=sys.stderr)
-                                result, padded_bytes = predict_window(window)
-                                if result > maxconf:
-                                    maxconf = result
-                                    max_window_bytes = padded_bytes
-                                    max_offset = offset
-                    except OSError as err:
-                        error_message = f"Error reading file: {err}"
-
-                    if error_message is not None:
-                        yield (
-                            'result',
-                            (
-                                str(file_path),
-                                'Error',
-                                '',
-                                '',
-                                '',
-                                error_message,
-                                '-',
-                            )
-                        )
-                    else:
-                        # Calculate line number
-                        line_num = 1
-                        try:
-                            with open(file_path, 'rb') as f:
-                                line_num = f.read(max_offset).count(b'\n') + 1
-                        except Exception:
-                            pass
-                        yield from handle_scan_result(str(file_path), maxconf, max_window_bytes, line_num)
+                            line_num = f.read(max_offset).count(b'\n') + 1
+                    except Exception:
+                        pass
+                    yield from handle_scan_result(str(file_path), maxconf, max_window_bytes, line_num)
 
     for name, content in extra_snippets:
         if cancel_event.is_set():
