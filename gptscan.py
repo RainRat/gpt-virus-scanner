@@ -229,6 +229,23 @@ class Config:
         except (ValueError, TypeError):
             return default
 
+    @staticmethod
+    def _get_setting_bool(settings: Dict[str, Any], key: str, default: bool) -> bool:
+        """Extract a boolean setting with fallback to default on error."""
+        val = settings.get(key, default)
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, str):
+            val_lower = val.lower().strip()
+            if val_lower in ('true', '1', 'yes', 'on'):
+                return True
+            if val_lower in ('false', '0', 'no', 'off'):
+                return False
+        try:
+            return bool(int(val))
+        except (ValueError, TypeError):
+            return default
+
     apikey_missing_message = (
         "No API key found. You cannot use OpenAI or OpenRouter, but local scans and Ollama still work."
     )
@@ -291,11 +308,11 @@ class Config:
             with open(cls.SETTINGS_FILE, 'r', encoding='utf-8') as f:
                 settings = json.load(f)
                 cls.last_path = settings.get("last_path", cls.last_path)
-                cls.deep_scan = settings.get("deep_scan", cls.deep_scan)
-                cls.git_changes_only = settings.get("git_changes_only", cls.git_changes_only)
-                cls.show_all_files = settings.get("show_all_files", cls.show_all_files)
-                cls.scan_all_files = settings.get("scan_all_files", cls.scan_all_files)
-                cls.use_ai_analysis = settings.get("use_ai_analysis", cls.use_ai_analysis)
+                cls.deep_scan = cls._get_setting_bool(settings, "deep_scan", cls.deep_scan)
+                cls.git_changes_only = cls._get_setting_bool(settings, "git_changes_only", cls.git_changes_only)
+                cls.show_all_files = cls._get_setting_bool(settings, "show_all_files", cls.show_all_files)
+                cls.scan_all_files = cls._get_setting_bool(settings, "scan_all_files", cls.scan_all_files)
+                cls.use_ai_analysis = cls._get_setting_bool(settings, "use_ai_analysis", cls.use_ai_analysis)
                 cls.provider = settings.get("provider", cls.provider)
                 cls.model_name = settings.get("model_name", cls.model_name)
                 cls.api_base = settings.get("api_base", cls.api_base)
