@@ -9,9 +9,9 @@ This project is a security tool that uses both local and cloud-based analysis. I
 3.  **Stage 1 (Local Filter):**
     * Files are read in chunks.
     * A pre-trained Keras model (`scripts.h5`) analyzes 1024-byte windows.
-    * It produces a confidence score (`own_conf`).
+    * It produces a threat level (`own_conf`).
 4.  **Stage 2 (AI Analysis):**
-    * If the local confidence is high (> 50%) and the "Use AI Analysis" checkbox is checked, the suspicious snippet is sent to the AI provider.
+    * If the local threat level is high (> 50%) and the "Use AI Analysis" checkbox is checked, the suspicious snippet is sent to the AI provider.
     * The API uses the prompt in `task.txt` to return a JSON assessment (Administrator description, End-user description, Threat Level).
 
 ## Environment Setup

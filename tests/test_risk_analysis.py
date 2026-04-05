@@ -1,7 +1,7 @@
 import json
 import pytest
 from unittest.mock import MagicMock
-from gptscan import get_risk_category, get_effective_confidence, _prepare_tree_row, Config
+from gptscan import get_risk_category, get_effective_threat_level, _prepare_tree_row, Config
 
 @pytest.mark.parametrize("conf, threshold, expected", [
     (90.0, 50, 'high'),
@@ -37,8 +37,8 @@ def test_get_risk_category(conf, threshold, expected):
     ("75%", "Error", 75.0),     # Fallback when GPT is Error
     ("Error", "90%", 90.0),     # GPT prioritized even if local is Error
 ])
-def test_get_effective_confidence(own, gpt, expected):
-    assert get_effective_confidence(own, gpt) == expected
+def test_get_effective_threat_level(own, gpt, expected):
+    assert get_effective_threat_level(own, gpt) == expected
 
 def test_prepare_tree_row(monkeypatch):
     mock_tree = MagicMock()

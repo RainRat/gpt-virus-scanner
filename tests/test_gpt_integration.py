@@ -75,7 +75,7 @@ def test_handle_gpt_response_retries_after_invalid_json(monkeypatch):
 
 
 def test_scan_files_does_not_call_gpt_when_disabled(monkeypatch, tmp_path):
-    # Mock TensorFlow and the model to simulate a high-confidence scan result
+    # Mock TensorFlow and the model to simulate a high-threat level scan result
     mock_model = SimpleNamespace(predict=lambda *args, **kwargs: [[0.9]])
     mock_keras = SimpleNamespace(models=SimpleNamespace(load_model=lambda *args, **kwargs: mock_model))
 

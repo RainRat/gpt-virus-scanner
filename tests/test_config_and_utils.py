@@ -1,7 +1,7 @@
 import tkinter.font
 import pytest
 from unittest.mock import MagicMock
-from gptscan import Config, load_file, parse_percent, get_effective_confidence, adjust_newlines, sort_column
+from gptscan import Config, load_file, parse_percent, get_effective_threat_level, adjust_newlines, sort_column
 
 
 # --- Config Tests ---

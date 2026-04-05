@@ -1,5 +1,5 @@
 {
-    "last_path": "",
+    "last_path": "file1.py file2.js",
     "deep_scan": false,
     "git_changes_only": false,
     "show_all_files": false,
@@ -11,5 +11,12 @@
     "threshold": 50,
     "max_file_size": 10485760,
     "max_source_view_size": 2097152,
-    "recent_paths": []
+    "recent_paths": [
+        "file1.py file2.js",
+        "/some/path",
+        "/some/repo",
+        "1",
+        "2",
+        "three"
+    ]
 }

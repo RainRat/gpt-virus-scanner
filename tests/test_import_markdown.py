@@ -7,7 +7,7 @@ def test_import_markdown_table():
 
 ## Summary Table
 
-| Path | Line | Confidence | Analysis | Snippet |
+| Path | Line | Threat Level | Analysis | Snippet |
 | :--- | :--- | :--- | :--- | :--- |
 | script.py | 10 | 85% | **Admin:** Malicious code found <br> **User:** Potential threat | `print("malicious")` |
 | test.js | 5 | 40% | **Admin:** Safe script | `console.log("safe")` |
@@ -31,7 +31,7 @@ def test_import_markdown_table():
 
 def test_import_markdown_escaped_pipe():
     md_content = """
-| Path | Line | Confidence | Analysis | Snippet |
+| Path | Line | Threat Level | Analysis | Snippet |
 | :--- | :--- | :--- | :--- | :--- |
 | file\\|pipe.py | 1 | 50% | **Admin:** contains \\| pipe | `a \\| b` |
 """
@@ -43,7 +43,7 @@ def test_import_markdown_escaped_pipe():
 
 def test_import_markdown_no_extension_hint():
     md_content = """
-| Path | Line | Confidence | Analysis | Snippet |
+| Path | Line | Threat Level | Analysis | Snippet |
 | :--- | :--- | :--- | :--- | :--- |
 | script.py | 10 | 85% | **Admin:** Malicious | `code` |
 """

@@ -74,7 +74,7 @@ def test_run_rescan_updates_ui():
     ]
     with patch("gptscan.scan_files", return_value=mock_events), \
          patch("gptscan.enqueue_ui_update") as mock_enqueue, \
-         patch("gptscan.get_effective_confidence", return_value=80.0):
+         patch("gptscan.get_effective_threat_level", return_value=80.0):
 
         gptscan.run_rescan(paths, item_map, settings, cancel_event)
 
