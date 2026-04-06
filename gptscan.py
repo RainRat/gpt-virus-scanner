@@ -1084,8 +1084,8 @@ def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Opt
     return summary
 
 
-def get_effective_confidence(own_conf_str: Any, gpt_conf_str: Any) -> float:
-    """Calculate the effective confidence score, prioritizing GPT over local AI."""
+def get_effective_threat_level(own_conf_str: Any, gpt_conf_str: Any) -> float:
+    """Calculate the effective threat level, prioritizing GPT over local AI."""
     gpt_val = parse_percent(gpt_conf_str)
     if gpt_val >= 0:
         return gpt_val
@@ -1093,7 +1093,7 @@ def get_effective_confidence(own_conf_str: Any, gpt_conf_str: Any) -> float:
 
 
 def get_risk_category(conf: float, threshold: int) -> Optional[str]:
-    """Categorize a confidence score into 'high', 'medium', or None (no threat)."""
+    """Categorize a threat level into 'high', 'medium', or None (no threat)."""
     if conf < threshold:
         return None
     if conf >= 80:
@@ -1133,7 +1133,7 @@ def _matches_filter(values: Tuple[Any, ...]) -> bool:
     # Check threshold first unless "Show all files" is checked
     is_show_all = all_var.get() if all_var else False
     if not is_show_all:
-        conf = get_effective_confidence(values[1], values[4])
+        conf = get_effective_threat_level(values[1], values[4])
         # Only hide results with a valid percentage score below the threshold.
         # Special statuses (Error, Dry Run, etc.) result in -1.0 and stay visible.
         if 0 <= conf < Config.THRESHOLD:
@@ -1194,9 +1194,9 @@ def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ..
     wrapped_values = get_wrapped_values(tree, values[:7])
     wrapped_values.append(orig_json)
 
-    # Determine risk level based on confidence scores
+    # Determine risk level based on threat levels
     # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-    conf = get_effective_confidence(values[1], values[4])
+    conf = get_effective_threat_level(values[1], values[4])
     risk = get_risk_category(conf, Config.THRESHOLD)
 
     tag = f"{risk}-risk" if risk else ""
@@ -2048,7 +2048,7 @@ def scan_files(
     deep_scan : bool
         Whether to scan overlapping 1024-byte windows beyond the first block.
     show_all : bool
-        Whether to yield all scanned files regardless of confidence threshold.
+        Whether to yield all scanned files regardless of threat level threshold.
     use_gpt : bool
         Whether to request GPT analysis when the local model is confident.
     rate_limit : int
@@ -2576,7 +2576,7 @@ def _consume_scan_events(
                 if cancel_event.is_set():
                     continue
 
-                conf = get_effective_confidence(data[1], data[4])
+                conf = get_effective_threat_level(data[1], data[4])
                 
                 # Use fail_threshold for internal threat counting if lower than reporting threshold
                 effective_threshold = Config.THRESHOLD
@@ -2633,7 +2633,7 @@ def run_scan(
     deep_scan : bool
         Whether to evaluate all 1024-byte windows.
     show_all : bool
-        Whether to display all results regardless of confidence.
+        Whether to display all results regardless of threat level.
     use_gpt : bool
         Whether to enrich suspicious files with GPT output.
     rate_limit : int
@@ -2745,7 +2745,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         line_num = r.get("line", "-")
         snippet = r.get("snippet", "")
 
-        conf_val = get_effective_confidence(own_conf, gpt_conf)
+        conf_val = get_effective_threat_level(own_conf, gpt_conf)
         risk = get_risk_category(conf_val, Config.THRESHOLD)
 
         if risk == 'high':
@@ -2756,7 +2756,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
         lines.append(f"{BOLD}[{i}] {risk_label} - {path}{RESET}")
-        lines.append(f"    {BOLD}Confidence:{RESET} Local: {own_conf}" + (f", AI: {gpt_conf}" if gpt_conf else ""))
+        lines.append(f"    {BOLD}Threat Level:{RESET} Local: {own_conf}" + (f", AI: {gpt_conf}" if gpt_conf else ""))
         lines.append(f"    {BOLD}Location:{RESET}   Line {line_num}")
 
         # Hash for VirusTotal
@@ -2802,8 +2802,8 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     sarif_results = []
     for r in results:
-        # Convert confidence strings to levels
-        conf = get_effective_confidence(r.get("own_conf", ""), r.get("gpt_conf", ""))
+        # Convert threat level strings to levels
+        conf = get_effective_threat_level(r.get("own_conf", ""), r.get("gpt_conf", ""))
         risk = get_risk_category(conf, Config.THRESHOLD)
         if risk == 'high':
             level = "error"
@@ -2888,7 +2888,7 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
         user = r.get("end-user_desc", "")
         snippet = r.get("snippet", "")
 
-        conf_val = get_effective_confidence(own_conf, gpt_conf)
+        conf_val = get_effective_threat_level(own_conf, gpt_conf)
         risk = get_risk_category(conf_val, Config.THRESHOLD)
 
         row_class = ""
@@ -2944,7 +2944,7 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
             <tr>
                 <th style="width: 20%">Path</th>
                 <th style="width: 5%">Line</th>
-                <th style="width: 10%">Confidence</th>
+                <th style="width: 10%">Threat Level</th>
                 <th style="width: 25%">Analysis</th>
                 <th style="width: 40%">Snippet</th>
             </tr>
@@ -2983,7 +2983,7 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         "",
         "## Summary Table",
         "",
-        "| Path | Line | Confidence | Analysis | Snippet |",
+        "| Path | Line | Threat Level | Analysis | Snippet |",
         "| :--- | :--- | :--- | :--- | :--- |"
     ]
 
@@ -3028,9 +3028,9 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
 
         lines.append(f"### File: `{path}`")
         lines.append(f"- **Detected Line:** {line}")
-        lines.append(f"- **Local Confidence:** {own_conf}")
+        lines.append(f"- **Local Threat:** {own_conf}")
         if gpt_conf:
-            lines.append(f"- **AI Confidence:** {gpt_conf}")
+            lines.append(f"- **AI Threat:** {gpt_conf}")
         lines.append("")
 
         if admin or user:
@@ -3078,7 +3078,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     exclude_patterns : List[str], optional
         List of glob patterns to exclude from the scan.
     fail_threshold : int, optional
-        Confidence threshold to trigger a failure count.
+        Threat level threshold to trigger a failure count.
     output_file : str, optional
         Path to a file where results should be saved.
     extra_snippets : List[Tuple[str, bytes]], optional
@@ -3134,7 +3134,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     for event_type, data in event_gen:
         if event_type == 'result':
             # data format: (path, own_conf, admin, user, gpt_conf, snippet)
-            conf = get_effective_confidence(data[1], data[4])
+            conf = get_effective_threat_level(data[1], data[4])
 
             # Determine if this finding counts as a threat based on the threshold
             is_threat = False
@@ -3207,9 +3207,9 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     elif output_format == 'markdown':
         print(generate_markdown(result_buffer), file=out_stream)
     elif output_format == 'report':
-        # Sort results by effective confidence (highest first)
+        # Sort results by effective threat level (highest first)
         result_buffer.sort(
-            key=lambda x: get_effective_confidence(x.get('own_conf', '0%'), x.get('gpt_conf', '')),
+            key=lambda x: get_effective_threat_level(x.get('own_conf', '0%'), x.get('gpt_conf', '')),
             reverse=True
         )
         # Use color only if the output stream is a terminal
@@ -3225,10 +3225,10 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
 REPORT_FIELD_MAPPING = {
     "path": ["path", "File Path", "uri", "Path"],
-    "own_conf": ["own_conf", "Local Conf.", "local_conf", "Confidence"],
+    "own_conf": ["own_conf", "Local Threat", "Local Conf.", "local_conf", "Confidence"],
     "admin_desc": ["admin_desc", "Admin Notes", "admin", "Analysis"],
     "end-user_desc": ["end-user_desc", "User Notes", "user_desc", "Analysis"],
-    "gpt_conf": ["gpt_conf", "AI Conf.", "ai_conf", "Confidence"],
+    "gpt_conf": ["gpt_conf", "AI Threat", "AI Conf.", "ai_conf", "Confidence", "Threat Level"],
     "snippet": ["snippet", "Snippet", "code", "Snippet"],
     "line": ["line", "Line", "startLine", "Line"]
 }
@@ -3246,10 +3246,15 @@ def standardize_result_dict(item: Any) -> Dict[str, Any]:
     if not isinstance(item, dict):
         return {k: "" for k in REPORT_FIELD_MAPPING}
 
-    return {
+    res = {
         key: next((str(item[alt]) if item[alt] is not None else "" for alt in alts if alt in item), "")
         for key, alts in REPORT_FIELD_MAPPING.items()
     }
+    # Fallback: if own_conf is empty but gpt_conf has a value, they might be using a report
+    # where both mapped to 'Threat Level' (like in Markdown) or 'Confidence'.
+    if not res.get('own_conf') and res.get('gpt_conf'):
+        res['own_conf'] = res['gpt_conf']
+    return res
 
 
 def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -3286,7 +3291,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
 
             cells = re.findall(r'<td\b[^>]*>(.*?)</td>', row_content, re.DOTALL | re.IGNORECASE)
             if len(cells) >= 5:
-                # Path, Line, Confidence, Analysis, Snippet
+                # Path, Line, Threat Level, Analysis, Snippet
                 # Snippet is inside <pre><code>
                 snippet_cell = cells[4]
                 snippet_match = re.search(r'<pre><code>(.*?)</code></pre>', snippet_cell, re.DOTALL | re.IGNORECASE)
@@ -3357,7 +3362,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
         lines = content.splitlines()
         headers = []
         for idx, line in enumerate(lines):
-            if '|' in line and any(h in line for h in ['Path', 'Line', 'Confidence', 'Analysis', 'Snippet']):
+            if '|' in line and any(h in line for h in ['Path', 'Line', 'Threat Level', 'Analysis', 'Snippet']):
                 headers = [h.strip() for h in line.strip('|').split('|')]
                 start_idx = idx + 2 # Skip header and separator
                 for row_line in lines[start_idx:]:
@@ -3367,6 +3372,8 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
                     cols = [c.strip() for c in re.split(r'(?<!\\)\|', row_line.strip('|'))]
                     if len(cols) >= len(headers):
                         item = dict(zip(headers, cols))
+                        if 'Threat Level' in item:
+                            item['gpt_conf'] = item['Threat Level']
 
                         # Specialized logic for Markdown Analysis and Snippet
                         analysis = item.get('Analysis', '')
@@ -3779,11 +3786,11 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     conf_frame = ttk.Frame(header_frame)
     conf_frame.grid(row=2, column=0, columnspan=5, sticky="w", pady=(5, 0))
 
-    ttk.Label(conf_frame, text="Local Confidence:").grid(row=0, column=0, sticky="w")
+    ttk.Label(conf_frame, text="Local Threat:").grid(row=0, column=0, sticky="w")
     own_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
     own_conf_label.grid(row=0, column=1, sticky="w", padx=(5, 20))
 
-    ai_conf_prefix = ttk.Label(conf_frame, text="AI Confidence:")
+    ai_conf_prefix = ttk.Label(conf_frame, text="AI Threat:")
     gpt_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
 
     ttk.Label(conf_frame, text="Detected Line:").grid(row=0, column=5, sticky="w", padx=(20, 5))
@@ -3973,9 +3980,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         path = path_entry.get()
         own_conf = own_conf_label.cget("text")
         gpt_conf = gpt_conf_label.cget("text")
-        text = f"Path: {path}\nLocal Conf: {own_conf}\n"
+        text = f"Path: {path}\nLocal Threat: {own_conf}\n"
         if gpt_conf:
-            text += f"AI Conf: {gpt_conf}\n"
+            text += f"AI Threat: {gpt_conf}\n"
         if analysis_frame.winfo_viewable():
             if admin_label.winfo_viewable():
                 text += f"\nAdmin Notes:\n{admin_text.get('1.0', tk.END).strip()}\n"
@@ -4105,7 +4112,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         own_conf_label.config(text=own_conf)
         line_label.config(text=str(line))
 
-        conf = get_effective_confidence(own_conf, gpt_conf)
+        conf = get_effective_threat_level(own_conf, gpt_conf)
         risk = get_risk_category(conf, Config.THRESHOLD)
 
         if risk == 'high':
@@ -4801,7 +4808,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     filter_entry.grid(row=0, column=1, sticky="ew")
     filter_entry.bind('<KeyRelease>', _apply_filter)
     filter_entry.bind('<Return>', on_filter_return)
-    bind_hover_message(filter_entry, "Search results by any column (path, confidence, analysis, snippet).")
+    bind_hover_message(filter_entry, "Search results by any column (path, threat level, analysis, snippet).")
 
     def clear_filter():
         filter_var.set("")
@@ -4861,9 +4868,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.heading("#0", text="")
     tree.heading("path", text="File Path", command=lambda: sort_column(tree, "path", False))
     tree.heading("line", text="Line", command=lambda: sort_column(tree, "line", False))
-    tree.heading("own_conf", text="Local Conf.",
+    tree.heading("own_conf", text="Local Threat",
                  command=lambda: sort_column(tree, "own_conf", False))
-    tree.heading("gpt_conf", text="AI Conf.",
+    tree.heading("gpt_conf", text="AI Threat",
                  command=lambda: sort_column(tree, "gpt_conf", False))
     tree.heading("admin_desc", text="Admin Notes",
                  command=lambda: sort_column(tree, "admin_desc", False))

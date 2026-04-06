@@ -35,7 +35,7 @@ def test_update_tree_row_exists_no_longer_matches(mock_tree, monkeypatch):
     monkeypatch.setattr(gptscan, '_all_results_cache', [list(original_values)])
 
     mock_tree.exists.return_value = True
-    # No longer matches filter (e.g. confidence dropped below threshold)
+    # No longer matches filter (e.g. threat level dropped below threshold)
     monkeypatch.setattr(gptscan, '_matches_filter', lambda v: False)
 
     new_values = ("path1.py", "10%", "", "", "", "Safe Snippet")

@@ -453,7 +453,7 @@ class Predictor:
         self.data_loader = DataLoader(config)
     
     def predict(self, model_path: str, input_dir: Path, output_dir: Path):
-        """Run predictions on files and copy high-confidence results."""
+        """Run predictions on files and copy high-threat level results."""
         model = tf.keras.models.load_model(model_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         

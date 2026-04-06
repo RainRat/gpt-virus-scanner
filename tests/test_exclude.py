@@ -24,7 +24,7 @@ def test_scan_files_exclude_patterns(tmp_path):
         scan_gen = gptscan.scan_files(
             scan_targets=[str(tmp_path)],
             deep_scan=False,
-            show_all=True, # Show all so we see results even if low confidence
+            show_all=True, # Show all so we see results even if low threat level
             use_gpt=False,
             dry_run=True,
             exclude_patterns=["ignore/*"]

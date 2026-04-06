@@ -26,7 +26,7 @@ def test_scan_summary_gui(monkeypatch):
     mock_status_label.config.assert_called_with(text="Scan complete: 20 files scanned, 5 suspicious files found (2 high risk, 3 medium risk).")
 
 def test_treeview_highlighting(monkeypatch):
-    """Test that insert_tree_row applies the correct tags based on confidence."""
+    """Test that insert_tree_row applies the correct tags based on threat level."""
     monkeypatch.setattr(gptscan.Config, 'THRESHOLD', 50)
     mock_all_var = MagicMock()
     mock_all_var.get.return_value = True
@@ -132,7 +132,7 @@ def test_generate_console_report():
     report = gptscan.generate_console_report(results, use_color=False)
     assert "--- GPT SCAN TRIAGE REPORT ---" in report
     assert "[1] HIGH RISK - suspicious.py" in report
-    assert "Confidence: Local: 90%, AI: 95%" in report
+    assert "Threat Level: Local: 90%, AI: 95%" in report
     assert "Admin: Admin note" in report
     assert "User:  User note" in report
     assert "VirusTotal: https://www.virustotal.com/gui/file/" in report

@@ -11,7 +11,7 @@ import gptscan
 def mock_scan_dependencies(monkeypatch):
     """Mocks TensorFlow, Model, and file system for scan_files tests."""
 
-    # Mock model prediction to return low confidence (avoiding GPT calls)
+    # Mock model prediction to return low threat level (avoiding GPT calls)
     mock_predict = MagicMock(return_value=[[0.1]])
     mock_model = SimpleNamespace(predict=mock_predict)
 

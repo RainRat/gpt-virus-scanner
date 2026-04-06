@@ -98,8 +98,8 @@ def test_generate_sarif_results_mapping():
     assert props["gpt_conf"] == "99%"
     assert props["snippet"] == "import os; os.system('rm -rf /')"
 
-def test_generate_sarif_confidence_levels():
-    """Verify logic for mapping confidence percentages to SARIF levels."""
+def test_generate_sarif_threat_level_levels():
+    """Verify logic for mapping threat level percentages to SARIF levels."""
     # level mapping: >80 -> error, >50 -> warning, else -> note
     results = [
         {"path": "file1.py", "own_conf": "85%", "admin_desc": "High risk"},

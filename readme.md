@@ -132,7 +132,7 @@ Run `python gptscan.py` to open the GUI.
 *   **API Base URL:** Set a custom address for your AI service.
 
 #### Results and Filtering
-*   **Filter:** Search the results list by path, confidence, notes, or code snippet.
+*   **Filter:** Search the results list by path, threat level, notes, or code snippet.
 *   **Clear:** Clear the current filter text.
 *   **Min. Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
 *   **Show all files:** See every scanned file, even safe ones.
