@@ -486,7 +486,7 @@ def update_status(message: str) -> None:
 
 
 def update_progress(value: int) -> None:
-    """Update the progress bar to reflect current progress.
+    """Update the progress bar and window title to reflect current progress.
 
     Parameters
     ----------
@@ -495,11 +495,21 @@ def update_progress(value: int) -> None:
     """
     if progress_bar and root:
         progress_bar['value'] = value
+
+        # Update window title with percentage
+        try:
+            max_val = float(progress_bar['maximum'])
+            if max_val > 0:
+                percent = int((value / max_val) * 100)
+                root.title(f"[{percent}%] GPT Virus Scanner")
+        except (ValueError, TypeError, ZeroDivisionError):
+            pass
+
         root.update_idletasks()
 
 
 def configure_progress(max_value: int) -> None:
-    """Initialize progress bar values for a new scan.
+    """Initialize progress bar and window title for a new scan.
 
     Parameters
     ----------
@@ -509,6 +519,7 @@ def configure_progress(max_value: int) -> None:
     if progress_bar and root:
         progress_bar["maximum"] = max_value
         progress_bar["value"] = 0
+        root.title("[0%] GPT Virus Scanner")
         root.update_idletasks()
 
 
@@ -1298,6 +1309,9 @@ def _auto_select_best_result() -> None:
 
 def set_scanning_state(is_scanning: bool) -> None:
     """Enable or disable controls based on scanning state."""
+
+    if root and not is_scanning:
+        root.title("GPT Virus Scanner")
 
     if scan_button:
         scan_button.config(
