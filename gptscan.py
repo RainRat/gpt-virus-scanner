@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import glob
 import hashlib
 import html
 import io
@@ -918,28 +919,42 @@ def get_git_changed_files(path: str = ".") -> List[str]:
 
 
 def collect_files(targets: Union[str, List[str]]) -> List[Path]:
-    """Collect files from a single path or a list of paths (files or directories).
+    """Collect files from a single path or a list of paths (files, directories, or globs).
 
     Parameters
     ----------
     targets : Union[str, List[str]]
-        A single directory path or a list of file/directory paths.
+        A single directory path or a list of file/directory paths or glob patterns.
+        Multiple targets can be provided in a single space-separated string.
 
     Returns
     -------
     List[Path]
         A deduplicated list of files to scan.
     """
-    if isinstance(targets, str):
-        targets = [targets]
+    if isinstance(targets, (str, Path)):
+        try:
+            targets = shlex.split(str(targets))
+        except ValueError:
+            targets = [str(targets)]
 
     results: List[Path] = []
     for t in targets:
         p = Path(t)
-        if p.is_file():
-            results.append(p)
-        elif p.is_dir():
-            results.extend([f for f in p.rglob('*') if f.is_file()])
+        if p.exists():
+            if p.is_file():
+                results.append(p)
+            elif p.is_dir():
+                results.extend([f for f in p.rglob('*') if f.is_file()])
+        elif any(char in str(t) for char in ['*', '?', '[']):
+            # Try to expand as a glob pattern
+            expanded = glob.glob(str(t), recursive=True)
+            for path_str in expanded:
+                ep = Path(path_str)
+                if ep.is_file():
+                    results.append(ep)
+                elif ep.is_dir():
+                    results.extend([f for f in ep.rglob('*') if f.is_file()])
 
     # Use dict keys to remove duplicates while preserving insertion order.
     return list(dict.fromkeys(results))
@@ -2084,7 +2099,10 @@ def scan_files(
 
     # Identify which files were explicitly passed as targets and deduplicate them
     if isinstance(scan_targets, (str, Path)):
-        scan_targets = [scan_targets]
+        try:
+            scan_targets = shlex.split(str(scan_targets))
+        except ValueError:
+            scan_targets = [str(scan_targets)]
 
     scan_targets = list(dict.fromkeys(scan_targets))
 
@@ -4620,6 +4638,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     textbox.grid(row=0, column=1, sticky="ew", padx=5)
     textbox.bind('<Return>', lambda event: button_click())
     textbox.focus_set()
+    bind_hover_message(textbox, "Enter one or more files, folders, or glob patterns (e.g., src/**/*.py) to scan. Separate multiple targets with spaces.")
 
     root.bind('<Escape>', lambda event: cancel_scan())
     select_file_btn = ttk.Button(input_frame, text="File...", command=browse_file_click)
@@ -5042,11 +5061,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {Config.VERSION}')
-    parser.add_argument('target', nargs='?', help='The folder or file to scan.')
+    parser.add_argument('target', nargs='?', help='The folder, file, or glob pattern to scan (e.g., src/**/*.py).')
     parser.add_argument(
         'files',
         nargs='*',
-        help='More folders or files to scan.'
+        help='More folders, files, or glob patterns to scan.'
     )
 
     scan_group = parser.add_argument_group("Scan Options")
