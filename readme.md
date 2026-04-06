@@ -7,7 +7,7 @@ GPT Virus Scanner uses AI to find malicious code in script files.
 *   **Local Scan:** A fast, built-in model checks files on your computer.
 *   **AI Analysis:** If a file looks suspicious, the tool can send it to an AI service (like OpenAI) for a detailed report.
 
-**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and PowerShell), Jupyter Notebooks (.ipynb), Markdown files (.md), HTML files (.html, .htm), and archives (.zip, .tar), but does not analyze compiled programs.
+**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and PowerShell), Dockerfiles, CI/CD YAML files, Jupyter Notebooks (.ipynb), Markdown files (.md), HTML files (.html, .htm), and archives (.zip, .tar), but does not analyze compiled programs.
 
 ## Quick Start
 
@@ -85,6 +85,8 @@ We value your privacy and the security of your code.
 The scanner finds scripts in several ways:
 *   **By file type:** It recognizes common script types (like `.py`, `.js`, `.sh`, and `.ps1`) and Jupyter Notebooks (`.ipynb`) using the included `extensions.txt` file.
 *   **By archive content:** It can inspect scripts hidden inside `.zip`, `.tar`, and `.tar.gz` files.
+*   **By Dockerfile instructions:** It extracts and scans scripts from `RUN`, `CMD`, and `ENTRYPOINT` instructions in Dockerfiles.
+*   **By CI/CD YAML scripts:** It extracts and scans scripts from `run`, `script`, `before_script`, and `after_script` keys in YAML configuration files (e.g., GitHub Actions, GitLab CI).
 *   **By Jupyter Notebook cells:** It extracts and scans individual code cells from `.ipynb` files.
 *   **By package.json scripts:** It extracts and scans individual commands from the `scripts` object in `package.json` files.
 *   **By Markdown blocks:** It extracts and scans code snippets from triple-backtick blocks in Markdown (`.md`) files.

@@ -388,8 +388,9 @@ class Config:
         # Normalize file_path to string for consistent extension checking,
         # but keep Path objects for file-system operations.
         path_str = str(file_path).lower()
-        # Check archive extensions
-        if not is_member and (path_str.endswith(('.zip', '.tar', '.tar.gz', 'package.json'))):
+        # Check container/archive/CI types
+        basename = os.path.basename(path_str)
+        if not is_member and (path_str.endswith(('.zip', '.tar', '.tar.gz', 'package.json')) or 'dockerfile' in basename):
             return True
 
         extension = os.path.splitext(path_str)[1]
@@ -1988,7 +1989,73 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 7. Fallback: yield as a single snippet if it's a supported file type
+    # 7. Check for Dockerfile
+    if check_name.lower().endswith(('dockerfile', '.dockerfile')) or 'dockerfile' in os.path.basename(check_name).lower():
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            # Extract RUN, CMD, ENTRYPOINT. Handle line continuations with backslashes.
+            # Matches instruction + content until next instruction (capitalized word at start of line) or end of file.
+            instructions = re.finditer(r'^\s*(RUN|CMD|ENTRYPOINT)\s+(.*?)(?=\n\s*[A-Z]+\b|$)', text, re.MULTILINE | re.IGNORECASE | re.DOTALL)
+            for i, match in enumerate(instructions, 1):
+                instr_type = match.group(1).upper()
+                cmd = match.group(2).strip().replace('\\\n', '\n')
+                if cmd:
+                    yield (f"{name} [{instr_type} {i}]", cmd.encode('utf-8'))
+        except Exception:
+            pass
+
+    # 8. Check for YAML CI/CD scripts
+    if check_name.lower().endswith(('.yml', '.yaml')):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            # Search for specific script keys (run, script, etc.)
+            for key in ['run', 'script', 'before_script', 'after_script']:
+                # Find the key and capture the indentation level
+                key_pattern = rf'^(\s*){key}:\s*(.*)'
+                key_matches = list(re.finditer(key_pattern, text, re.MULTILINE))
+
+                for i, match in enumerate(key_matches, 1):
+                    indent = match.group(1)
+                    indent_len = len(indent)
+                    initial_val = match.group(2).strip()
+                    start_pos = match.end()
+
+                    # Capture subsequent lines that are more indented than the key
+                    lines = text[start_pos:].splitlines()
+                    block_lines = []
+                    for line in lines:
+                        if not line.strip():
+                            block_lines.append("")
+                            continue
+                        line_indent = re.match(r'^\s*', line).group(0)
+                        if len(line_indent) <= indent_len:
+                            break
+                        block_lines.append(line)
+
+                    # If initial_val is empty, the content must be in the block_lines
+                    content_to_parse = initial_val + "\n" + "\n".join(block_lines)
+                    content_to_parse = content_to_parse.strip()
+
+                    if content_to_parse.startswith(('-', '|', '>')):
+                        if content_to_parse.startswith('-'):
+                           # List style: extract each item
+                           items = re.findall(r'^\s*-\s+(.*)', content_to_parse, re.MULTILINE)
+                           for j, item in enumerate(items, 1):
+                               item_stripped = item.strip()
+                               if item_stripped:
+                                   yield (f"{name} [Script: {key} {i}.{j}]", item_stripped.encode('utf-8'))
+                        else:
+                           # Block scalar style: trim lines and yield as one
+                           content_lines = [l.strip() for l in block_lines if l.strip()]
+                           if content_lines:
+                               yield (f"{name} [Script: {key} {i}]", "\n".join(content_lines).encode('utf-8'))
+                    elif content_to_parse:
+                        # Single-line or multi-line plain command
+                        yield (f"{name} [Script: {key} {i}]", content_to_parse.encode('utf-8'))
+        except Exception:
+            pass
+
+    # 9. Fallback: yield as a single snippet if it's a supported file type
     # If scan_all_files is True, we always yield. Otherwise check extension/shebang.
     if Config.is_supported_file(check_name, content=content, is_member=(depth > 0)):
         yield name, content
@@ -2135,7 +2202,8 @@ def scan_files(
         is_explicit = f_path in explicit_files
         path_s = str(f_path).lower()
         # Check if it's a known container by extension or by content
-        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', 'package.json')):
+        basename = os.path.basename(path_s)
+        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', 'package.json', '.yml', '.yaml')) or 'dockerfile' in basename:
             try:
                 with open(f_path, 'rb') as f:
                     full_content = f.read()
@@ -5045,7 +5113,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package.json files, Markdown files, HTML files, and web links (GitHub/GitLab/Gist) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Dockerfiles, CI/CD YAML files, Jupyter Notebooks, package.json files, Markdown files, HTML files, and web links (GitHub/GitLab/Gist) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"

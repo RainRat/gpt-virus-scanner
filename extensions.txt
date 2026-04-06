@@ -12,6 +12,7 @@
 .coffee
 .csc
 .csh
+.dockerfile
 .erb
 .fe
 .fsx
@@ -22,6 +23,7 @@
 .html
 .inf
 .ini
+.ipynb
 .jl
 .js
 .jse
@@ -35,6 +37,7 @@
 .lwp
 .m4
 .mcdata
+.md
 .mht
 .mhtml
 .mrc
@@ -70,5 +73,4 @@
 .xml
 .yaml
 .yml
-.ipynb
-.md
+Dockerfile
