@@ -2865,14 +2865,17 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
         elif risk == 'medium':
             row_class = "medium-risk"
 
+        admin_html = html.escape(admin).replace("\n", "<br>")
+        user_html = html.escape(user).replace("\n", "<br>")
+
         rows.append(f"""
         <tr class="{row_class}">
             <td>{html.escape(path)}</td>
             <td>{html.escape(str(r.get("line", "-")))}</td>
             <td>{html.escape(gpt_conf or own_conf)}</td>
             <td>
-                <strong>Admin:</strong> {html.escape(admin).replace("\n", "<br>")}<br>
-                <strong>User:</strong> {html.escape(user).replace("\n", "<br>")}
+                <strong>Admin:</strong> {admin_html}<br>
+                <strong>User:</strong> {user_html}
             </td>
             <td><pre><code>{html.escape(snippet)}</code></pre></td>
         </tr>
