@@ -35,7 +35,7 @@ echo "print('hello')" | python gptscan.py --cli --stdin
 ## Installation
 
 ### Prerequisites
-*   **Python:** You need **Python 3.9 through 3.12**.
+*   **Python:** You need **Python 3.9, 3.10, or 3.11**.
 *   **Tkinter (Linux only):** If you are on Linux, you may need to install the Tkinter library (for example: `sudo apt-get install python3-tk`).
 
 ### Installation Steps
@@ -246,6 +246,7 @@ You can retrain the local scanner model to recognize new types of threats. For d
 
 ## Troubleshooting
 
+*   **Python 3.12+ incompatibility:** If you encounter errors installing TensorFlow or running the scanner on Python 3.12, please use Python 3.9, 3.10, or 3.11. The core scanner requires `tensorflow<2.16`, which is not available for Python 3.12.
 *   **Tkinter not found:** On Linux, run `sudo apt-get install python3-tk`.
 *   **Model file missing:** Ensure `scripts.h5` is in the same folder as `gptscan.py`. This file is required for the scanner to function.
 *   **Extensions list missing:** Ensure `extensions.txt` exists in the same folder. If this file is missing, the scanner will use built-in defaults (`.py`, `.js`, `.bat`, `.ps1`, `.ipynb`).
