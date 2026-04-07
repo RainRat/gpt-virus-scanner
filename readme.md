@@ -87,6 +87,8 @@ The scanner finds scripts in several ways:
 *   **By archive content:** It can inspect scripts hidden inside `.zip`, `.tar`, and `.tar.gz` files.
 *   **By Jupyter Notebook cells:** It extracts and scans individual code cells from `.ipynb` files.
 *   **By package.json scripts:** It extracts and scans individual commands from the `scripts` object in `package.json` files.
+*   **By Dockerfile instructions:** It extracts and scans shell commands from `RUN`, `CMD`, and `ENTRYPOINT` instructions in `Dockerfile`.
+*   **By Makefile recipes:** It extracts and scans shell commands from recipes in `Makefile`.
 *   **By Markdown blocks:** It extracts and scans code snippets from triple-backtick blocks in Markdown (`.md`) files.
 *   **By HTML script tags:** It extracts and scans inline code from `<script>` tags in HTML files (`.html`, `.htm`, `.xhtml`).
 *   **By the first line of the file:** If a file does not have an extension, the tool checks the first line for a "shebang" (like `#!/bin/bash`). It recognizes many interpreters, including Python, Node.js, Bash (including Ash, Dash, and Zsh), Perl, Ruby, PHP, PowerShell, Lua, osascript, and iPython.
@@ -115,7 +117,7 @@ Run `python gptscan.py` to open the GUI.
 *   **Path to scan:** Type one or more paths (separated by spaces) or choose from the dropdown. It remembers your last 10 locations.
 *   **File...:** Select one or more files to scan.
 *   **Folder...:** Select a whole directory to scan.
-*   **URL...:** Scan a script, Notebook, HTML, Markdown file, or archive (.zip, .tar, .tar.gz) directly from a web link.
+*   **URL...:** Scan a script, Notebook, HTML, Markdown, Dockerfile, Makefile, or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Clipboard:** Scan code currently in your clipboard.
 
 #### Scan Options
