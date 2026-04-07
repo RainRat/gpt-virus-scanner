@@ -15,7 +15,7 @@ This project is a security tool that uses both local and cloud-based analysis. I
     * The API uses the prompt in `task.txt` to return a JSON assessment (Administrator description, End-user description, Threat Level).
 
 ## Environment Setup
-* **Python Version:** 3.9 through 3.12 required.
+* **Python Version:** 3.9, 3.10, or 3.11 required. (3.12+ is not supported due to Keras model compatibility).
 * **Dependencies:**
     * `tensorflow` (Heavy dependency, ensure compatibility with your local CUDA/CPU setup).
     * `openai` (v1.0+ code style used, including `AsyncOpenAI`).
