@@ -183,7 +183,11 @@ def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = Non
         if content_length and int(content_length) > max_size:
             raise ValueError(f"Content too large ({format_bytes(int(content_length))})")
 
-        return response.read(max_size)
+        data = response.read(max_size + 1)
+        if len(data) > max_size:
+            raise ValueError(f"Content too large (exceeds {format_bytes(max_size)})")
+
+        return data
 
 
 class Config:
