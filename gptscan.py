@@ -388,8 +388,13 @@ class Config:
         # Normalize file_path to string for consistent extension checking,
         # but keep Path objects for file-system operations.
         path_str = str(file_path).lower()
-        # Check archive extensions
-        if not is_member and (path_str.endswith(('.zip', '.tar', '.tar.gz', 'package.json'))):
+        # Check archive and container extensions
+        is_container = path_str.endswith(('.zip', '.tar', '.tar.gz', 'package.json'))
+        if not is_container:
+            basename = os.path.basename(path_str)
+            is_container = basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
+
+        if not is_member and is_container:
             return True
 
         extension = os.path.splitext(path_str)[1]
@@ -1988,7 +1993,63 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 7. Fallback: yield as a single snippet if it's a supported file type
+    # 7. Check for Dockerfile
+    lowered_check = check_name.lower()
+    if 'dockerfile' in lowered_check and (os.path.basename(lowered_check) == 'dockerfile' or lowered_check.endswith('.dockerfile')):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            # Extract RUN, CMD, and ENTRYPOINT instructions with multi-line support
+            instructions = []
+            current_instr = []
+
+            for line in text.splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith('#'):
+                    continue
+
+                # Check for new instruction
+                instr_match = re.match(r'^\s*(?:RUN|CMD|ENTRYPOINT)\s+(.*)', line, re.IGNORECASE)
+                if instr_match:
+                    if current_instr:
+                        instructions.append(" ".join(current_instr))
+                    current_instr = [instr_match.group(1)]
+                elif current_instr:
+                    # Continuation of previous instruction if it ended with \
+                    if instructions and not current_instr: # Should not happen with current logic
+                         pass
+                    current_instr.append(line.strip())
+
+                # If line doesn't end with \, we've finished this instruction (if we were in one)
+                if current_instr and not line.rstrip().endswith('\\'):
+                    instructions.append(" ".join([c.rstrip('\\').strip() for c in current_instr]))
+                    current_instr = []
+
+            if current_instr:
+                instructions.append(" ".join([c.rstrip('\\').strip() for c in current_instr]))
+
+            if instructions:
+                for i, cmd in enumerate(instructions, 1):
+                    if cmd.strip():
+                        yield (f"{name} [Instruction {i}]", cmd.encode('utf-8'))
+                return
+        except Exception:
+            pass
+
+    # 8. Check for Makefile
+    if 'makefile' in lowered_check and (os.path.basename(lowered_check) == 'makefile' or lowered_check.endswith('.makefile')):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            # Extract recipes (lines starting with a tab)
+            recipes = re.findall(r'^\t(.*)', text, re.MULTILINE)
+            if recipes:
+                for i, recipe in enumerate(recipes, 1):
+                    if recipe.strip():
+                        yield (f"{name} [Recipe {i}]", recipe.encode('utf-8'))
+                return
+        except Exception:
+            pass
+
+    # 9. Fallback: yield as a single snippet if it's a supported file type
     # If scan_all_files is True, we always yield. Otherwise check extension/shebang.
     if Config.is_supported_file(check_name, content=content, is_member=(depth > 0)):
         yield name, content
@@ -2134,8 +2195,13 @@ def scan_files(
     for f_path in file_list:
         is_explicit = f_path in explicit_files
         path_s = str(f_path).lower()
-        # Check if it's a known container by extension or by content
-        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', 'package.json')):
+        # Check if it's a known container by extension, by content, or by filename
+        is_container = path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', 'package.json'))
+        if not is_container:
+            basename = os.path.basename(path_s)
+            is_container = basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
+
+        if is_container:
             try:
                 with open(f_path, 'rb') as f:
                     full_content = f.read()
