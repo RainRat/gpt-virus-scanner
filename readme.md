@@ -35,7 +35,7 @@ echo "print('hello')" | python gptscan.py --cli --stdin
 ## Installation
 
 ### Prerequisites
-*   **Python:** You need **Python 3.9 through 3.12**.
+*   **Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet because of model compatibility.
 *   **Tkinter (Linux only):** If you are on Linux, you may need to install the Tkinter library (for example: `sudo apt-get install python3-tk`).
 
 ### Installation Steps
