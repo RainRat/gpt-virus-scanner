@@ -7,7 +7,7 @@ GPT Virus Scanner uses AI to find malicious code in script files.
 *   **Local Scan:** A fast, built-in model checks files on your computer.
 *   **AI Analysis:** If a file looks suspicious, the tool can send it to an AI service (like OpenAI) for a detailed report.
 
-**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and PowerShell), Jupyter Notebooks (.ipynb), Markdown files (.md), HTML files (.html, .htm), and archives (.zip, .tar), but does not analyze compiled programs.
+**Note:** This tool is a prototype, not a commercial antivirus product. It scans scripts (like Python, JavaScript, and PowerShell), CI/CD workflows (GitHub Actions, GitLab CI), Jupyter Notebooks (.ipynb), Markdown files (.md), HTML files (.html, .htm), and archives (.zip, .tar), but does not analyze compiled programs.
 
 ## Quick Start
 
@@ -87,6 +87,7 @@ The scanner finds scripts in several ways:
 *   **By archive content:** It can inspect scripts hidden inside `.zip`, `.tar`, and `.tar.gz` files.
 *   **By Jupyter Notebook cells:** It extracts and scans individual code cells from `.ipynb` files.
 *   **By package.json scripts:** It extracts and scans individual commands from the `scripts` object in `package.json` files.
+*   **By CI/CD workflow scripts:** It extracts and scans `run`, `script`, and `command` blocks from YAML files (GitHub Actions, GitLab CI, etc.).
 *   **By Dockerfile instructions:** It extracts and scans `RUN`, `CMD`, and `ENTRYPOINT` instructions from Dockerfiles.
 *   **By Makefile recipes:** It extracts and scans recipes from Makefiles.
 *   **By Markdown blocks:** It extracts and scans code snippets from triple-backtick blocks in Markdown (`.md`) files.

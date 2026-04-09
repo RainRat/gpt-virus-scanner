@@ -393,7 +393,7 @@ class Config:
         # but keep Path objects for file-system operations.
         path_str = str(file_path).lower()
         # Check archive and container extensions
-        is_container = path_str.endswith(('.zip', '.tar', '.tar.gz', 'package.json'))
+        is_container = path_str.endswith(('.zip', '.tar', '.tar.gz', 'package.json', '.yml', '.yaml'))
         if not is_container:
             basename = os.path.basename(path_str)
             is_container = basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
@@ -2049,7 +2049,77 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 8. Check for Makefile
+    # 8. Check for CI/CD Workflows (YAML)
+    if lowered_check.endswith(('.yml', '.yaml')):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            snippets = []
+            script_keys = ['run', 'script', 'command', 'before_script', 'after_script']
+            # Match keys, optionally prefixed by a dash (common in YAML lists)
+            key_pattern = r'^\s*(?:-\s*)?(?:' + '|'.join(script_keys) + r'):\s*(.*)'
+            lines = text.splitlines()
+            i = 0
+            while i < len(lines):
+                line = lines[i]
+                match = re.match(key_pattern, line, re.IGNORECASE)
+                if match:
+                    first_line_val = match.group(1).strip()
+                    indent = len(line) - len(line.lstrip())
+
+                    if first_line_val in ('|', '>', '|-', '|+', '>-', '>+'):
+                        # Multi-line block
+                        block_lines = []
+                        i += 1
+                        while i < len(lines):
+                            if not lines[i].strip():
+                                block_lines.append("")
+                                i += 1
+                                continue
+                            current_indent = len(lines[i]) - len(lines[i].lstrip())
+                            if current_indent <= indent:
+                                break
+                            block_lines.append(lines[i])
+                            i += 1
+                        if block_lines:
+                            snippets.append("\n".join(block_lines))
+                        continue
+                    elif not first_line_val:
+                        # Potentially a list on the next lines
+                        list_items = []
+                        j = i + 1
+                        while j < len(lines):
+                            if not lines[j].strip():
+                                j += 1
+                                continue
+                            curr_indent = len(lines[j]) - len(lines[j].lstrip())
+                            if curr_indent <= indent:
+                                break
+                            list_match = re.match(r'^\s*-\s*(.*)', lines[j])
+                            if list_match:
+                                cmd = list_match.group(1).strip()
+                                if cmd:
+                                    list_items.append(cmd)
+                                j += 1
+                            else:
+                                break
+                        if list_items:
+                            snippets.append("\n".join(list_items))
+                            i = j
+                            continue
+                    elif first_line_val:
+                        # Single line command
+                        snippets.append(first_line_val)
+                i += 1
+
+            if snippets:
+                for idx, snippet in enumerate(snippets, 1):
+                    if snippet.strip():
+                        yield (f"{name} [Script {idx}]", snippet.encode('utf-8'))
+                return
+        except Exception:
+            pass
+
+    # 9. Check for Makefile
     if 'makefile' in lowered_check and (os.path.basename(lowered_check) == 'makefile' or lowered_check.endswith('.makefile')):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -2210,7 +2280,7 @@ def scan_files(
         is_explicit = f_path in explicit_files
         path_s = str(f_path).lower()
         # Check if it's a known container by extension, by content, or by filename
-        is_container = path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', 'package.json'))
+        is_container = path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', 'package.json', '.yml', '.yaml'))
         if not is_container:
             basename = os.path.basename(path_s)
             is_container = basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
@@ -5126,7 +5196,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package.json files, Markdown files, HTML files, and web links (GitHub/GitLab/Gist) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package.json files, CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, and web links (GitHub/GitLab/Gist) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
