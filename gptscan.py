@@ -2025,12 +2025,9 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 instr_match = re.match(r'^\s*(?:RUN|CMD|ENTRYPOINT)\s+(.*)', line, re.IGNORECASE)
                 if instr_match:
                     if current_instr:
-                        instructions.append(" ".join(current_instr))
+                        instructions.append(" ".join([c.rstrip('\\').strip() for c in current_instr]))
                     current_instr = [instr_match.group(1)]
                 elif current_instr:
-                    # Continuation of previous instruction if it ended with \
-                    if instructions and not current_instr: # Should not happen with current logic
-                         pass
                     current_instr.append(line.strip())
 
                 # If line doesn't end with \, we've finished this instruction (if we were in one)
