@@ -40,7 +40,9 @@ echo "print('hello')" | python gptscan.py --cli --stdin
 
 ### Installation Steps
 1.  **Download the code:** Clone this repository or download the zip file.
-2.  **Check for required files:** Ensure `gptscan.py`, `scripts.h5`, `task.txt`, and `extensions.txt` are all in the same folder.
+2.  **Check for required files:** Ensure the essential files are in the same folder.
+    *   **Essential:** You must have `gptscan.py` and `scripts.h5` (the detection model) to run the tool.
+    *   **Optional:** `task.txt` is only needed for AI analysis. `extensions.txt` is optional; if it is missing, the tool uses built-in defaults.
     *   **Note:** Always run the scanner from inside its own folder so it can find these files.
 3.  **Install dependencies:** Open your terminal and run:
     ```bash
