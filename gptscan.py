@@ -504,6 +504,13 @@ def update_progress(value: int) -> None:
     """
     if progress_bar and root:
         progress_bar['value'] = value
+        try:
+            total = float(progress_bar["maximum"])
+            if total > 0:
+                percent = int((value / total) * 100)
+                root.title(f"[{percent}%] GPT Virus Scanner")
+        except (ValueError, TypeError, tk.TclError):
+            pass
         root.update_idletasks()
 
 
@@ -518,6 +525,7 @@ def configure_progress(max_value: int) -> None:
     if progress_bar and root:
         progress_bar["maximum"] = max_value
         progress_bar["value"] = 0
+        root.title("[0%] GPT Virus Scanner")
         root.update_idletasks()
 
 
@@ -1340,6 +1348,8 @@ def set_scanning_state(is_scanning: bool) -> None:
     toggle_ai_controls()
 
     if not is_scanning:
+        if root:
+            root.title("GPT Virus Scanner")
         # Re-evaluate selection-dependent buttons when scan ends
         update_button_states()
 
