@@ -53,10 +53,7 @@ exclude_button: Optional[ttk.Button] = None
 reveal_button: Optional[ttk.Button] = None
 vt_button: Optional[ttk.Button] = None
 results_button: Optional[ttk.Menubutton] = None
-select_file_btn: Optional[ttk.Button] = None
-select_dir_btn: Optional[ttk.Button] = None
-select_url_btn: Optional[ttk.Button] = None
-select_clipboard_btn: Optional[ttk.Button] = None
+browse_button: Optional[ttk.Menubutton] = None
 copy_cmd_button: Optional[ttk.Button] = None
 git_checkbox: Optional[ttk.Checkbutton] = None
 deep_checkbox: Optional[ttk.Checkbutton] = None
@@ -1326,7 +1323,7 @@ def set_scanning_state(is_scanning: bool) -> None:
 
     # Disable/Enable configuration widgets during scan
     config_widgets = [
-        textbox, select_file_btn, select_dir_btn, select_url_btn, select_clipboard_btn,
+        textbox, browse_button,
         git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox,
         gpt_checkbox, provider_combo, model_combo, api_entry, copy_cmd_button,
         all_checkbox, threshold_spin
@@ -4666,7 +4663,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, default_font_measure, select_file_btn, select_dir_btn, select_url_btn, select_clipboard_btn, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_entry, all_checkbox, threshold_spin
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_entry, all_checkbox, threshold_spin
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -4718,21 +4715,16 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(textbox, "Enter one or more files, folders, or glob patterns (e.g., src/**/*.py) to scan. Separate multiple targets with spaces.")
 
     root.bind('<Escape>', lambda event: cancel_scan())
-    select_file_btn = ttk.Button(input_frame, text="File...", command=browse_file_click)
-    select_file_btn.grid(row=0, column=2, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_file_btn, "Select one or more script, Notebook, HTML, or Markdown files to scan.")
+    browse_button = ttk.Menubutton(input_frame, text="Browse", width=12)
+    browse_button.grid(row=0, column=2, sticky="e", padx=(5, 0), ipady=5)
+    bind_hover_message(browse_button, "Browse for scan targets (File, Folder, URL, or Clipboard).")
 
-    select_dir_btn = ttk.Button(input_frame, text="Folder...", command=browse_dir_click)
-    select_dir_btn.grid(row=0, column=3, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_dir_btn, "Select a directory to scan.")
-
-    select_url_btn = ttk.Button(input_frame, text="URL...", command=select_url_click)
-    select_url_btn.grid(row=0, column=4, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_url_btn, "Scan a script, Notebook, HTML, Markdown file, or archive from a remote URL. Multiple targets can be entered manually in the textbox.")
-
-    select_clipboard_btn = ttk.Button(input_frame, text="Clipboard", command=scan_clipboard_click)
-    select_clipboard_btn.grid(row=0, column=5, sticky="e", padx=(5, 0), ipady=5)
-    bind_hover_message(select_clipboard_btn, "Scan code currently in your clipboard.")
+    browse_menu = tk.Menu(browse_button, tearoff=0)
+    browse_menu.add_command(label="Select File(s)...", command=browse_file_click)
+    browse_menu.add_command(label="Select Folder...", command=browse_dir_click)
+    browse_menu.add_command(label="Scan URL...", command=select_url_click)
+    browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click)
+    browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
     settings_frame = ttk.Frame(root)
