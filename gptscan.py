@@ -1991,16 +1991,44 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 6. Check for HTML script tags
+    # 6. Check for HTML script tags and other embedded elements
     if check_name.lower().endswith(('.html', '.htm', '.xhtml')):
         try:
             text = content.decode('utf-8', errors='ignore')
-            # Match <script> blocks
+            extracted_any = False
+            
+            # 1. Match <script> blocks (yield individually as they can be large)
             scripts = re.findall(r'<script\b[^>]*>(.*?)</script>', text, re.DOTALL | re.IGNORECASE)
             for i, script in enumerate(scripts, 1):
                 if script.strip():
                     yield (f"{name} [Script {i}]", script.encode('utf-8'))
-            return
+                    extracted_any = True
+            
+            # 2. Match other embedded elements (bundle together as they are usually small)
+            embedded_patterns = [
+                r'<iframe\b[^>]*>.*?</iframe>',
+                r'<iframe\b[^>]*>',
+                r'<object\b[^>]*>.*?</object>',
+                r'<object\b[^>]*>',
+                r'<embed\b[^>]*>',
+                r'<applet\b[^>]*>.*?</applet>',
+                r'<applet\b[^>]*>'
+            ]
+            
+            embedded_elements = []
+            for pattern in embedded_patterns:
+                matches = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
+                for match in matches:
+                    if match.strip() and match not in embedded_elements:
+                        embedded_elements.append(match.strip())
+            
+            if embedded_elements:
+                bundle = "\n".join(embedded_elements)
+                yield (f"{name} [Embedded Elements]", bundle.encode('utf-8'))
+                extracted_any = True
+                
+            if extracted_any:
+                return
         except Exception:
             pass
 

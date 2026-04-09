@@ -49,12 +49,14 @@ def test_unpack_content_html_extraction():
     assert "console.log('Case insensitive');" in snippets[3][1].decode('utf-8')
 
 def test_unpack_content_html_no_scripts():
-    """Verify that HTML files with no scripts yield no snippets."""
+    """Verify that HTML files with no scripts or embedded elements yield the original file (fallback)."""
     html_content = "<html><body><h1>No Scripts</h1></body></html>"
     content_bytes = html_content.encode('utf-8')
 
     snippets = list(unpack_content("noscripts.html", content_bytes))
-    assert len(snippets) == 0
+    # It should fall back to yielding the original file because it's a supported extension
+    assert len(snippets) == 1
+    assert snippets[0] == ("noscripts.html", content_bytes)
 
 def test_unpack_content_xhtml_extraction():
     """Verify that <script> blocks are correctly extracted from XHTML files."""
@@ -67,3 +69,33 @@ def test_unpack_content_xhtml_extraction():
     assert len(snippets) == 1
     assert snippets[0][0] == "test.xhtml [Script 1]"
     assert b"alert('XHTML');" in snippets[0][1]
+
+def test_unpack_content_html_embedded_elements():
+    """Verify that iframes, objects, embeds, and applets are correctly extracted and bundled."""
+    html_content = """
+    <html>
+        <body>
+            <script>alert('script');</script>
+            <iframe src="http://malicious-iframe.com"></iframe>
+            <object data="malicious.swf"></object>
+            <embed src="malware.exe">
+            <applet code="Malicious.class"></applet>
+            <iframe src="no-closing-tag">
+        </body>
+    </html>
+    """
+    content_bytes = html_content.encode('utf-8')
+    snippets = list(unpack_content("test.html", content_bytes))
+
+    # Should have Script 1 and Embedded Elements
+    assert len(snippets) == 2
+    assert snippets[0][0] == "test.html [Script 1]"
+    assert snippets[1][0] == "test.html [Embedded Elements]"
+    
+    embedded_text = snippets[1][1].decode('utf-8')
+    assert '<iframe src="http://malicious-iframe.com"></iframe>' in embedded_text
+    assert '<object data="malicious.swf"></object>' in embedded_text
+    assert '<embed src="malware.exe">' in embedded_text
+    assert '<applet code="Malicious.class"></applet>' in embedded_text
+    assert '<iframe src="no-closing-tag">' in embedded_text
+
