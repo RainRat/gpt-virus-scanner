@@ -96,3 +96,25 @@ def test_fallback_still_works():
     # It should yield the whole file because of the shebang fallback in unpack_content (step 9)
     assert len(results) == 1
     assert results[0] == ("Dockerfile", content)
+
+def test_dockerfile_interrupted_instruction():
+    content = b"""
+RUN echo first \\
+RUN echo second
+"""
+    results = list(unpack_content("Dockerfile", content))
+    assert len(results) == 2
+    assert results[0][1] == b"echo first"
+    assert results[1][1] == b"echo second"
+
+def test_dockerfile_with_comments_and_newlines():
+    content = b"""
+RUN echo part1 \\
+    # some comment
+    part2 \\
+
+    part3
+"""
+    results = list(unpack_content("Dockerfile", content))
+    assert len(results) == 1
+    assert results[0][1] == b"echo part1 part2 part3"
