@@ -4187,6 +4187,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         root.clipboard_append(code)
         set_local_status("Code copied to clipboard.", temporary=True)
 
+    def copy_as_json_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            js = json.dumps(results[0], indent=2)
+            root.clipboard_clear()
+            root.clipboard_append(js)
+            set_local_status("Result copied as JSON.", temporary=True)
+
     def on_exclude():
         """Exclude current file and move to next."""
         nonlocal current_item_id
@@ -4231,6 +4239,10 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
     copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard.", label=status_bar)
+
+    copy_json_btn = ttk.Button(btn_frame, text="Copy JSON", width=12, command=copy_as_json_details)
+    copy_json_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(copy_json_btn, "Copy the current result as a JSON object. (Ctrl+J)", label=status_bar)
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
@@ -4386,6 +4398,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Shift-Return>', lambda e: open_file(path_entry.get()))
     details_win.bind('<Control-s>', lambda e: copy_code())
     details_win.bind('<Command-s>', lambda e: copy_code())
+    details_win.bind('<Control-j>', lambda e: copy_as_json_details())
+    details_win.bind('<Command-j>', lambda e: copy_as_json_details())
     details_win.bind('<F5>', lambda e: on_rescan())
     details_win.bind('r', lambda e: on_rescan())
     details_win.bind('R', lambda e: on_rescan())
