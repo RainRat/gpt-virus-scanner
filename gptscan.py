@@ -5229,16 +5229,16 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {Config.VERSION}')
-    parser.add_argument('target', nargs='?', help='The folder, file, or glob pattern to scan (e.g., src/**/*.py).')
+    parser.add_argument('target', nargs='?', help='The folder, file, glob pattern (e.g., src/**/*.py), or web link to scan.')
     parser.add_argument(
         'files',
         nargs='*',
-        help='More folders, files, or glob patterns to scan.'
+        help='Additional folders, files, glob patterns, or web links to scan.'
     )
 
     scan_group = parser.add_argument_group("Scan Options")
-    scan_group.add_argument('-p', '--path', type=str, help='An alternative way to specify the scan target.')
-    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. Normally, it only checks the start and end to save time.')
+    scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or web link to scan.')
+    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the entire file instead of just the first and last 1 KB (1,024 bytes).')
     scan_group.add_argument('--dry-run', action='store_true', help='Show which files would be scanned without analyzing them.')
     scan_group.add_argument(
         '--extensions',

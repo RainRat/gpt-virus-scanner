@@ -118,10 +118,11 @@ Run `python gptscan.py` to open the GUI.
 
 #### Scan Input
 *   **Path to scan:** Type one or more paths (separated by spaces) or choose from the dropdown. It remembers your last 10 locations.
-*   **File...:** Select one or more files to scan.
-*   **Folder...:** Select a whole directory to scan.
-*   **URL...:** Scan a script, Notebook, HTML, Markdown file, or archive (.zip, .tar, .tar.gz) directly from a web link.
-*   **Clipboard:** Scan code currently in your clipboard.
+*   **Browse:** Use this menu to select scan targets:
+    *   **Select File(s)...:** Choose one or more files to scan.
+    *   **Select Folder...:** Choose a whole directory to scan.
+    *   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, or archive (.zip, .tar, .tar.gz) directly from a web link.
+    *   **Scan Clipboard:** Scan code currently in your clipboard.
 
 #### Scan Options
 *   **Git changes only:** Only scan files that are modified or untracked in your Git repository.
@@ -129,6 +130,8 @@ Run `python gptscan.py` to open the GUI.
 *   **Scan all files:** Scan every file, even those without common script extensions.
 *   **Dry Run:** Simulate the scan without actually analyzing any files.
 *   **Max File Size (MB):** Skip files larger than this size.
+*   **Min. Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
+*   **Show all files:** See every scanned file, even safe ones.
 
 #### AI Analysis
 *   **Use AI Analysis:** Enable detailed reports for suspicious findings.
@@ -139,8 +142,6 @@ Run `python gptscan.py` to open the GUI.
 #### Results and Filtering
 *   **Filter:** Search the results list by path, threat level, notes, or code snippet.
 *   **Clear:** Clear the current filter text.
-*   **Min. Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
-*   **Show all files:** See every scanned file, even safe ones.
 
 #### Actions
 *   **Scan Now:** Start the scanning process.
@@ -154,8 +155,11 @@ Run `python gptscan.py` to open the GUI.
 *   **Open / Reveal:** Open the file or show its location in your file manager.
 *   **Rescan:** Re-scan the selected file(s).
 *   **Exclude:** Add the selected file(s) to your `.gptscanignore` file.
-*   **Import / Export:** Save results to many formats (CSV, JSON, SARIF, HTML, Markdown) or load them from a previous scan (supports JSON, CSV, SARIF, Markdown, and HTML).
-*   **Clear:** Clear all results from the list.
+*   **Results:** Use this menu to manage your scan data:
+    *   **Import Results...:** Load results from a previous scan (supports JSON, CSV, SARIF, Markdown, and HTML).
+    *   **Import from Clipboard:** Load results from data in your clipboard.
+    *   **Export Results...:** Save results to many formats (CSV, JSON, SARIF, HTML, Markdown).
+    *   **Clear Results:** Clear all results from the list.
 
 #### File Menu
 *   **Manage Exclusions...:** View and edit your excluded file patterns.
