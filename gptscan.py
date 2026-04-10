@@ -390,7 +390,7 @@ class Config:
         # but keep Path objects for file-system operations.
         path_str = str(file_path).lower()
         # Check archive and container extensions
-        is_container = path_str.endswith(('.zip', '.tar', '.tar.gz', 'package.json', '.yml', '.yaml'))
+        is_container = path_str.endswith(('.zip', '.tar', '.tar.gz', 'package.json', 'composer.json', 'deno.json', 'deno.jsonc', '.yml', '.yaml'))
         if not is_container:
             basename = os.path.basename(path_str)
             is_container = basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
@@ -1962,18 +1962,51 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 4. Check for package.json scripts
-    if check_name.lower().endswith('package.json'):
+    # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc)
+    lowered_check = check_name.lower()
+    if lowered_check.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc')):
         try:
-            pkg = json.loads(content.decode('utf-8', errors='ignore'))
-            if isinstance(pkg, dict) and 'scripts' in pkg:
-                scripts = pkg.get('scripts', {})
-                if isinstance(scripts, dict):
-                    for script_name, command in scripts.items():
-                        if isinstance(command, str) and command.strip():
-                            yield (f"{name} [Script: {script_name}]", command.encode('utf-8'))
+            text = content.decode('utf-8', errors='ignore')
+            if lowered_check.endswith('.jsonc'):
+                # Strip single-line and multi-line comments for JSONC support
+                # This regex strips /* ... */ comments and // ... comments while attempting to ignore
+                # // if it appears inside a double-quoted string (to avoid mangling URLs).
+                text = re.sub(
+                    r'(/\*.*?\*/)|("(?:\\.|[^"\\])*")|(//[^\n]*)',
+                    lambda m: m.group(2) if m.group(2) else " ",
+                    text,
+                    flags=re.DOTALL
+                )
+
+            manifest = json.loads(text)
+            if not isinstance(manifest, dict):
+                return
+
+            # Determine key and label based on manifest type
+            key = 'scripts'
+            label = 'Script'
+            if 'deno.json' in lowered_check:
+                key = 'tasks'
+                label = 'Task'
+
+            scripts = manifest.get(key, {})
+            if isinstance(scripts, dict):
+                yielded_any = False
+                for script_name, command in scripts.items():
+                    if isinstance(command, str):
+                        if command.strip():
+                            yield (f"{name} [{label}: {script_name}]", command.encode('utf-8'))
+                            yielded_any = True
+                    elif isinstance(command, list):
+                        # Support for array-based scripts (common in composer.json)
+                        for i, cmd in enumerate(command, 1):
+                            if isinstance(cmd, str) and cmd.strip():
+                                yield (f"{name} [{label}: {script_name} ({i})]", cmd.encode('utf-8'))
+                                yielded_any = True
+                if yielded_any:
                     return
-            # If it's a package.json but has no scripts, we don't want to scan it as a script
+
+            # If it's a manifest but has no scripts/tasks, we don't want to scan it as a whole file
             return
         except Exception:
             pass
@@ -5213,7 +5246,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package.json files, CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, and web links (GitHub/GitLab/Gist) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, and web links (GitHub/GitLab/Gist) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"

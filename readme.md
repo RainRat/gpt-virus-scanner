@@ -88,7 +88,7 @@ The scanner finds scripts in several ways:
 *   **By file type:** It recognizes common script types (like `.py`, `.js`, `.sh`, and `.ps1`) and Jupyter Notebooks (`.ipynb`) using the included `extensions.txt` file.
 *   **By archive content:** It can inspect scripts hidden inside `.zip`, `.tar`, and `.tar.gz` files.
 *   **By Jupyter Notebook cells:** It extracts and scans individual code cells from `.ipynb` files.
-*   **By package.json scripts:** It extracts and scans individual commands from the `scripts` object in `package.json` files.
+*   **By package manifest scripts:** It extracts and scans individual commands from the `scripts` or `tasks` object in `package.json`, `composer.json`, and `deno.json`/`deno.jsonc` files.
 *   **By CI/CD workflow scripts:** It extracts and scans `run`, `script`, and `command` blocks from YAML files (GitHub Actions, GitLab CI, etc.).
 *   **By Dockerfile instructions:** It extracts and scans `RUN`, `CMD`, and `ENTRYPOINT` instructions from Dockerfiles.
 *   **By Makefile recipes:** It extracts and scans recipes from Makefiles.
@@ -120,7 +120,7 @@ Run `python gptscan.py` to open the GUI.
 *   **Path to scan:** Type one or more paths (separated by spaces) or choose from the dropdown. It remembers your last 10 locations.
 *   **File...:** Select one or more files to scan.
 *   **Folder...:** Select a whole directory to scan.
-*   **URL...:** Scan a script, Notebook, HTML, Markdown file, or archive (.zip, .tar, .tar.gz) directly from a web link.
+*   **URL...:** Scan a script, Notebook, HTML, Markdown, manifest (package.json, etc.), or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Clipboard:** Scan code currently in your clipboard.
 
 #### Scan Options
