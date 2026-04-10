@@ -2041,6 +2041,10 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             instructions = []
             current_instr = []
 
+            def finalize_instr():
+                if current_instr:
+                    instructions.append(" ".join([c.rstrip('\\').strip() for c in current_instr]))
+
             for line in text.splitlines():
                 stripped = line.strip()
                 if not stripped or stripped.startswith('#'):
@@ -2049,19 +2053,17 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 # Check for new instruction
                 instr_match = re.match(r'^\s*(?:RUN|CMD|ENTRYPOINT)\s+(.*)', line, re.IGNORECASE)
                 if instr_match:
-                    if current_instr:
-                        instructions.append(" ".join([c.rstrip('\\').strip() for c in current_instr]))
+                    finalize_instr()
                     current_instr = [instr_match.group(1)]
                 elif current_instr:
                     current_instr.append(line.strip())
 
                 # If line doesn't end with \, we've finished this instruction (if we were in one)
                 if current_instr and not line.rstrip().endswith('\\'):
-                    instructions.append(" ".join([c.rstrip('\\').strip() for c in current_instr]))
+                    finalize_instr()
                     current_instr = []
 
-            if current_instr:
-                instructions.append(" ".join([c.rstrip('\\').strip() for c in current_instr]))
+            finalize_instr()
 
             if instructions:
                 for i, cmd in enumerate(instructions, 1):
