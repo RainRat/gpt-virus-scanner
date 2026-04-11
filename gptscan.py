@@ -380,24 +380,28 @@ class Config:
         cls.load_settings()
         cls.load_cache()
 
+    @staticmethod
+    def is_container(file_path: Union[Path, str]) -> bool:
+        """Check if a file is an archive or container format that can be unpacked."""
+        path_str = str(file_path).lower()
+        # Extensions and manifest files
+        if path_str.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', 'package.json', 'composer.json', 'deno.json', 'deno.jsonc', '.yml', '.yaml')):
+            return True
+
+        # Basenames
+        basename = os.path.basename(path_str)
+        return basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
+
     @classmethod
     def is_supported_file(cls, file_path: Union[Path, str], is_explicit: bool = False, is_member: bool = False, content: Optional[bytes] = None) -> bool:
         """Check if a file should be scanned based on extension, content, explicit request, or scan_all_files setting."""
         if is_explicit or cls.scan_all_files:
             return True
 
-        # Normalize file_path to string for consistent extension checking,
-        # but keep Path objects for file-system operations.
-        path_str = str(file_path).lower()
-        # Check archive and container extensions
-        is_container = path_str.endswith(('.zip', '.tar', '.tar.gz', 'package.json', 'composer.json', 'deno.json', 'deno.jsonc', '.yml', '.yaml'))
-        if not is_container:
-            basename = os.path.basename(path_str)
-            is_container = basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
-
-        if not is_member and is_container:
+        if not is_member and cls.is_container(file_path):
             return True
 
+        path_str = str(file_path).lower()
         extension = os.path.splitext(path_str)[1]
         if extension in cls.extensions_set:
             return True
@@ -2335,18 +2339,11 @@ def scan_files(
     non_unpacked_files = []
     for f_path in file_list:
         is_explicit = f_path in explicit_files
-        path_s = str(f_path).lower()
-        # Check if it's a known container by extension, by content, or by filename
-        is_container = path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', 'package.json', '.yml', '.yaml'))
-        if not is_container:
-            basename = os.path.basename(path_s)
-            is_container = basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
-
-        if is_container:
+        if Config.is_container(f_path):
             try:
                 with open(f_path, 'rb') as f:
                     full_content = f.read()
-                processed_snippets.extend(unpack_content(str(f_path), full_content, hint=path_s))
+                processed_snippets.extend(unpack_content(str(f_path), full_content, hint=str(f_path)))
             except Exception:
                 if Config.is_supported_file(f_path, is_explicit=is_explicit):
                     non_unpacked_files.append(f_path)
