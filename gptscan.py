@@ -2074,6 +2074,10 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             instructions = []
             current_instr = []
 
+            def finalize_instr():
+                if current_instr:
+                    instructions.append(" ".join([c.rstrip('\\').strip() for c in current_instr]))
+
             for line in text.splitlines():
                 stripped = line.strip()
                 if not stripped or stripped.startswith('#'):
@@ -2082,19 +2086,17 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 # Check for new instruction
                 instr_match = re.match(r'^\s*(?:RUN|CMD|ENTRYPOINT)\s+(.*)', line, re.IGNORECASE)
                 if instr_match:
-                    if current_instr:
-                        instructions.append(" ".join([c.rstrip('\\').strip() for c in current_instr]))
+                    finalize_instr()
                     current_instr = [instr_match.group(1)]
                 elif current_instr:
                     current_instr.append(line.strip())
 
                 # If line doesn't end with \, we've finished this instruction (if we were in one)
                 if current_instr and not line.rstrip().endswith('\\'):
-                    instructions.append(" ".join([c.rstrip('\\').strip() for c in current_instr]))
+                    finalize_instr()
                     current_instr = []
 
-            if current_instr:
-                instructions.append(" ".join([c.rstrip('\\').strip() for c in current_instr]))
+            finalize_instr()
 
             if instructions:
                 for i, cmd in enumerate(instructions, 1):
@@ -4220,6 +4222,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         root.clipboard_append(code)
         set_local_status("Code copied to clipboard.", temporary=True)
 
+    def copy_as_json_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            js = json.dumps(results[0], indent=2)
+            root.clipboard_clear()
+            root.clipboard_append(js)
+            set_local_status("Result copied as JSON.", temporary=True)
+
     def on_exclude():
         """Exclude current file and move to next."""
         nonlocal current_item_id
@@ -4264,6 +4274,10 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
     copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard.", label=status_bar)
+
+    copy_json_btn = ttk.Button(btn_frame, text="Copy JSON", width=12, command=copy_as_json_details)
+    copy_json_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(copy_json_btn, "Copy the current result as a JSON object. (Ctrl+J)", label=status_bar)
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
@@ -4419,6 +4433,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Shift-Return>', lambda e: open_file(path_entry.get()))
     details_win.bind('<Control-s>', lambda e: copy_code())
     details_win.bind('<Command-s>', lambda e: copy_code())
+    details_win.bind('<Control-j>', lambda e: copy_as_json_details())
+    details_win.bind('<Command-j>', lambda e: copy_as_json_details())
     details_win.bind('<F5>', lambda e: on_rescan())
     details_win.bind('r', lambda e: on_rescan())
     details_win.bind('R', lambda e: on_rescan())
@@ -5262,16 +5278,16 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {Config.VERSION}')
-    parser.add_argument('target', nargs='?', help='The folder, file, or glob pattern to scan (e.g., src/**/*.py).')
+    parser.add_argument('target', nargs='?', help='The folder, file, glob pattern (e.g., src/**/*.py), or web link to scan.')
     parser.add_argument(
         'files',
         nargs='*',
-        help='More folders, files, or glob patterns to scan.'
+        help='Additional folders, files, glob patterns, or web links to scan.'
     )
 
     scan_group = parser.add_argument_group("Scan Options")
-    scan_group.add_argument('-p', '--path', type=str, help='An alternative way to specify the scan target.')
-    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. Normally, it only checks the start and end to save time.')
+    scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or web link to scan.')
+    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the entire file instead of just the first and last 1 KB (1,024 bytes).')
     scan_group.add_argument('--dry-run', action='store_true', help='Show which files would be scanned without analyzing them.')
     scan_group.add_argument(
         '--extensions',
