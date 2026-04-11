@@ -130,8 +130,6 @@ Run `python gptscan.py` to open the GUI.
 *   **Scan all files:** Scan every file, even those without common script extensions.
 *   **Dry Run:** Simulate the scan without actually analyzing any files.
 *   **Max File Size (MB):** Skip files larger than this size.
-*   **Min. Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
-*   **Show all files:** See every scanned file, even safe ones.
 
 #### AI Analysis
 *   **Use AI Analysis:** Enable detailed reports for suspicious findings.
@@ -142,6 +140,8 @@ Run `python gptscan.py` to open the GUI.
 #### Results and Filtering
 *   **Filter:** Search the results list by path, threat level, notes, or code snippet.
 *   **Clear:** Clear the current filter text.
+*   **Min. Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
+*   **Show all files:** See every scanned file, even safe ones.
 
 #### Actions
 *   **Scan Now:** Start the scanning process.
