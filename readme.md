@@ -88,7 +88,7 @@ The scanner finds scripts in several ways:
 *   **By file type:** It recognizes common script types (like `.py`, `.js`, `.sh`, and `.ps1`) and Jupyter Notebooks (`.ipynb`) using the included `extensions.txt` file.
 *   **By archive content:** It can inspect scripts hidden inside `.zip`, `.tar`, and `.tar.gz` files.
 *   **By Jupyter Notebook cells:** It extracts and scans individual code cells from `.ipynb` files.
-*   **By package.json scripts:** It extracts and scans individual commands from the `scripts` object in `package.json` files.
+*   **By package manifest scripts:** It extracts and scans individual commands from the `scripts` or `tasks` object in `package.json`, `composer.json`, and `deno.json`/`deno.jsonc` files.
 *   **By CI/CD workflow scripts:** It extracts and scans `run`, `script`, and `command` blocks from YAML files (GitHub Actions, GitLab CI, etc.).
 *   **By Dockerfile instructions:** It extracts and scans `RUN`, `CMD`, and `ENTRYPOINT` instructions from Dockerfiles.
 *   **By Makefile recipes:** It extracts and scans recipes from Makefiles.
@@ -121,7 +121,7 @@ Run `python gptscan.py` to open the GUI.
 *   **Browse:** Use this menu to select scan targets:
     *   **Select File(s)...:** Choose one or more files to scan.
     *   **Select Folder...:** Choose a whole directory to scan.
-    *   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, or archive (.zip, .tar, .tar.gz) directly from a web link.
+    *   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, manifest (package.json, etc.), or archive (.zip, .tar, .tar.gz) directly from a web link.
     *   **Scan Clipboard:** Scan code currently in your clipboard.
 
 #### Scan Options
@@ -228,7 +228,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--use-gpt, -g`: Use AI Analysis for suspicious code.
 *   `--provider [name]`: Select the AI service provider (`openai`, `openrouter`, or `ollama`).
 *   `--model [name]`: Set the AI model (for example: `gpt-4o`, `llama3.2`).
-*   `--api-base [url]`: Set a custom URL for the AI service.
+*   `--api-base [url]`: Set a custom address for your AI service.
 *   `--rate-limit [number]`: Limit AI requests per minute (default: 60).
 *   `--clear-cache`: Clear the AI analysis cache.
 *   `--output [file], -o [file]`: Save results to a file. The format depends on the extension (.json, .csv, .html, .sarif, .md).
