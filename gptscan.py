@@ -246,6 +246,20 @@ class Config:
         except (ValueError, TypeError):
             return default
 
+    @staticmethod
+    def is_container(file_path: Union[Path, str]) -> bool:
+        """Check if a file is a container that should be unpacked (archives, notebooks, manifests, etc.)."""
+        path_s = str(file_path).lower()
+        # Extensions and manifest files
+        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', '.yml', '.yaml',
+                            'package.json', 'composer.json', 'deno.json', 'deno.jsonc')):
+            return True
+        # Dockerfile and Makefile variants
+        basename = os.path.basename(path_s)
+        if basename in ('dockerfile', 'makefile') or basename.endswith(('.dockerfile', '.makefile')):
+            return True
+        return False
+
     apikey_missing_message = (
         "No API key found. You cannot use OpenAI or OpenRouter, but local scans and Ollama still work."
     )
@@ -386,16 +400,10 @@ class Config:
         if is_explicit or cls.scan_all_files:
             return True
 
-        # Normalize file_path to string for consistent extension checking,
-        # but keep Path objects for file-system operations.
+        # Normalize file_path to string for consistent extension checking
         path_str = str(file_path).lower()
-        # Check archive and container extensions
-        is_container = path_str.endswith(('.zip', '.tar', '.tar.gz', 'package.json', 'composer.json', 'deno.json', 'deno.jsonc', '.yml', '.yaml'))
-        if not is_container:
-            basename = os.path.basename(path_str)
-            is_container = basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
 
-        if not is_member and is_container:
+        if not is_member and cls.is_container(path_str):
             return True
 
         extension = os.path.splitext(path_str)[1]
@@ -2336,13 +2344,8 @@ def scan_files(
     for f_path in file_list:
         is_explicit = f_path in explicit_files
         path_s = str(f_path).lower()
-        # Check if it's a known container by extension, by content, or by filename
-        is_container = path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', 'package.json', '.yml', '.yaml'))
-        if not is_container:
-            basename = os.path.basename(path_s)
-            is_container = basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
 
-        if is_container:
+        if Config.is_container(path_s):
             try:
                 with open(f_path, 'rb') as f:
                     full_content = f.read()
@@ -3696,12 +3699,16 @@ def import_results_from_content_generator(content: str, filename_hint: Optional[
 
 
 def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None, None]:
-    """Generator that yields events from an imported report file."""
+    """Generator that yields events from an imported report file or URL."""
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
+        if file_path.lower().startswith(('http://', 'https://')):
+            content_bytes = fetch_url_content(file_path)
+            content = content_bytes.decode('utf-8', errors='ignore')
+        else:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
         if not content.strip():
-            raise ValueError("File is empty.")
+            raise ValueError("File or URL content is empty.")
     except Exception as e:
         yield ('progress', (0, 1, f"Error: {e}"))
         return
@@ -3809,6 +3816,33 @@ def import_from_clipboard(event: Optional[tk.Event] = None) -> Optional[str]:
         messagebox.showerror("Import Failed", f"Could not parse clipboard content:\n{err}")
 
     return "break"
+
+
+def import_from_url() -> None:
+    """Import scan results from a web link (JSON, CSV, SARIF, Markdown, or HTML)."""
+    if not tree:
+        return
+
+    url = simpledialog.askstring("Import from URL", "Enter the URL of the scan results to import:")
+    if not url:
+        return
+
+    url = url.strip()
+    try:
+        update_status(f"Fetching results from {url}...")
+        content_bytes = fetch_url_content(url)
+        content = content_bytes.decode('utf-8', errors='ignore')
+
+        data_to_import = parse_report_content(content, filename_hint=url)
+
+        if not data_to_import:
+            messagebox.showwarning("Import Warning", "No valid scan results found at the provided URL.")
+            return
+
+        _finalize_import(data_to_import, url)
+
+    except Exception as err:
+        messagebox.showerror("Import Failed", f"Could not import results from URL:\n{err}")
 
 
 def clear_ai_cache() -> None:
@@ -4825,6 +4859,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     file_menu = tk.Menu(menubar, tearoff=0)
     file_menu.add_command(label="Import Results...", command=import_results)
     file_menu.add_command(label="Import from Clipboard", command=import_from_clipboard)
+    file_menu.add_command(label="Import from URL...", command=import_from_url)
     file_menu.add_command(label="Export Results...", command=export_results)
     file_menu.add_command(label="Manage Exclusions...", command=manage_exclusions)
     file_menu.add_command(label="Manage Extensions...", command=manage_extensions)
@@ -5180,6 +5215,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     results_menu = tk.Menu(results_button, tearoff=0)
     results_menu.add_command(label="Import Results...", command=import_results)
     results_menu.add_command(label="Import from Clipboard", command=import_from_clipboard)
+    results_menu.add_command(label="Import from URL...", command=import_from_url)
     results_menu.add_command(label="Export Results...", command=export_results)
     results_menu.add_separator()
     results_menu.add_command(label="Clear Results", command=clear_results)
