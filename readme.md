@@ -19,7 +19,7 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
 ## Installation
 
 ### Prerequisites
-*   Python 3.8 or higher.
+*   Python 3.9, 3.10, or 3.11. (Python 3.12 is not supported yet due to model compatibility).
 *   (Optional) An API key for [OpenAI](https://platform.openai.com/) or [OpenRouter](https://openrouter.ai/).
 *   (Optional) [Ollama](https://ollama.com/) for local AI analysis.
 
