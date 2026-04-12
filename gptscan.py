@@ -117,13 +117,13 @@ def resolve_remote_url(url: str) -> str:
 
     # 5. GitLab Repo -> ZIP Archive
     # Example: https://gitlab.com/user/repo -> https://gitlab.com/user/repo/-/archive/main/repo-main.zip
-    # Note: GitLab is trickier as the default branch varies. We'll try a common pattern.
+    # Note: GitLab is trickier as the default branch varies. We'll try common patterns.
     gl_repo_match = re.match(r'https?://(?:www\.)?gitlab\.com/([^/]+)/([^/]+)$', url, re.IGNORECASE)
     if gl_repo_match:
         user, repo = gl_repo_match.groups()
         # GitLab doesn't have a universal HEAD.zip, but we can try to guess or just return the URL
-        # For now, we'll just return the original URL for repos as guessing the branch is unreliable
-        pass
+        # Common default branches are 'main' or 'master'. We'll try 'main' and let fetch_url_content fallback if it fails.
+        return f"https://gitlab.com/{user}/{repo}/-/archive/main/{repo}-main.zip"
 
     return url
 
@@ -247,8 +247,16 @@ class Config:
             return default
 
     @staticmethod
-    def is_container(file_path: Union[Path, str]) -> bool:
+    def is_container(file_path: Union[Path, str], content: Optional[bytes] = None) -> bool:
         """Check if a file is a container that should be unpacked (archives, notebooks, manifests, etc.)."""
+        # 1. Check by magic bytes if content is available
+        if content:
+            if content.startswith(b'PK\x03\x04') or content.startswith(b'\x1f\x8b'):
+                return True
+            if len(content) > 262 and content[257:262] == b'ustar':
+                return True
+
+        # 2. Check by extension or basename
         path_s = str(file_path).lower()
         # Extensions and manifest files
         if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', '.yml', '.yaml',
@@ -403,7 +411,7 @@ class Config:
         # Normalize file_path to string for consistent extension checking
         path_str = str(file_path).lower()
 
-        if not is_member and cls.is_container(path_str):
+        if not is_member and cls.is_container(path_str, content=content):
             return True
 
         extension = os.path.splitext(path_str)[1]
@@ -1937,8 +1945,15 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         # Check for TAR magic 'ustar' at offset 257
         is_tar = len(content) > 262 and content[257:262] == b'ustar'
 
-        # Only check tarfile.is_tarfile if check_name appears to be a real file path
-        if is_gz or is_tar or (os.path.sep in check_name and os.path.exists(check_name) and tarfile.is_tarfile(check_name)):
+        # Also use tarfile's built-in detection if needed
+        is_tar_via_lib = False
+        if not (is_gz or is_tar):
+            try:
+                is_tar_via_lib = tarfile.is_tarfile(io.BytesIO(content))
+            except Exception:
+                pass
+
+        if is_gz or is_tar or is_tar_via_lib:
             buffer = io.BytesIO(content)
             with tarfile.open(fileobj=buffer) as t:
                 for member in t.getmembers():
