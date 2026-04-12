@@ -110,7 +110,7 @@ def resolve_remote_url(url: str) -> str:
 
     # 4. GitLab Blob -> Raw
     # Example: https://gitlab.com/user/repo/-/blob/main/script.py -> https://gitlab.com/user/repo/-/raw/main/script.py
-    gl_blob_match = re.match(r'(https?://(?:www\.)?gitlab\.com/[^/]+/[^/]+)/-/blob/(.+)', url, re.IGNORECASE)
+    gl_blob_match = re.match(r'(https?://(?:www\.)?gitlab\.com/.+?)/-/blob/(.+)', url, re.IGNORECASE)
     if gl_blob_match:
         base, path = gl_blob_match.groups()
         return f"{base}/-/raw/{path}"
@@ -118,12 +118,12 @@ def resolve_remote_url(url: str) -> str:
     # 5. GitLab Repo -> ZIP Archive
     # Example: https://gitlab.com/user/repo -> https://gitlab.com/user/repo/-/archive/main/repo-main.zip
     # Note: GitLab is trickier as the default branch varies. We'll try common patterns.
-    gl_repo_match = re.match(r'https?://(?:www\.)?gitlab\.com/([^/]+)/([^/]+)$', url, re.IGNORECASE)
+    gl_repo_match = re.match(r'https?://(?:www\.)?gitlab\.com/(.+)/([^/]+)$', url, re.IGNORECASE)
     if gl_repo_match:
-        user, repo = gl_repo_match.groups()
+        group_path, repo = gl_repo_match.groups()
         # GitLab doesn't have a universal HEAD.zip, but we can try to guess or just return the URL
         # Common default branches are 'main' or 'master'. We'll try 'main' and let fetch_url_content fallback if it fails.
-        return f"https://gitlab.com/{user}/{repo}/-/archive/main/{repo}-main.zip"
+        return f"https://gitlab.com/{group_path}/{repo}/-/archive/main/{repo}-main.zip"
 
     return url
 
