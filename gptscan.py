@@ -246,6 +246,20 @@ class Config:
         except (ValueError, TypeError):
             return default
 
+    @staticmethod
+    def is_container(file_path: Union[Path, str]) -> bool:
+        """Check if a file is a container that should be unpacked (archives, notebooks, manifests, etc.)."""
+        path_s = str(file_path).lower()
+        # Extensions and manifest files
+        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', '.yml', '.yaml',
+                            'package.json', 'composer.json', 'deno.json', 'deno.jsonc')):
+            return True
+        # Dockerfile and Makefile variants
+        basename = os.path.basename(path_s)
+        if basename in ('dockerfile', 'makefile') or basename.endswith(('.dockerfile', '.makefile')):
+            return True
+        return False
+
     apikey_missing_message = (
         "No API key found. You cannot use OpenAI or OpenRouter, but local scans and Ollama still work."
     )
@@ -386,16 +400,10 @@ class Config:
         if is_explicit or cls.scan_all_files:
             return True
 
-        # Normalize file_path to string for consistent extension checking,
-        # but keep Path objects for file-system operations.
+        # Normalize file_path to string for consistent extension checking
         path_str = str(file_path).lower()
-        # Check archive and container extensions
-        is_container = path_str.endswith(('.zip', '.tar', '.tar.gz', 'package.json', 'composer.json', 'deno.json', 'deno.jsonc', '.yml', '.yaml'))
-        if not is_container:
-            basename = os.path.basename(path_str)
-            is_container = basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
 
-        if not is_member and is_container:
+        if not is_member and cls.is_container(path_str):
             return True
 
         extension = os.path.splitext(path_str)[1]
@@ -2336,13 +2344,8 @@ def scan_files(
     for f_path in file_list:
         is_explicit = f_path in explicit_files
         path_s = str(f_path).lower()
-        # Check if it's a known container by extension, by content, or by filename
-        is_container = path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', 'package.json', '.yml', '.yaml'))
-        if not is_container:
-            basename = os.path.basename(path_s)
-            is_container = basename == 'dockerfile' or basename == 'makefile' or basename.endswith(('.dockerfile', '.makefile'))
 
-        if is_container:
+        if Config.is_container(path_s):
             try:
                 with open(f_path, 'rb') as f:
                     full_content = f.read()
