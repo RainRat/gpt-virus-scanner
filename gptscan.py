@@ -94,36 +94,69 @@ def resolve_remote_url(url: str) -> str:
         user, repo, path = gh_blob_match.groups()
         return f"https://raw.githubusercontent.com/{user}/{repo}/{path}"
 
-    # 2. GitHub Gist -> Raw
+    # 2. GitHub PR/Commit -> Diff
+    # Example: https://github.com/user/repo/pull/1 -> https://github.com/user/repo/pull/1.diff
+    # Example: https://github.com/user/repo/commit/abc -> https://github.com/user/repo/commit/abc.diff
+    gh_patch_match = re.match(r'https?://(?:www\.)?github\.com/[^/]+/[^/]+/(?:pull/\d+|commit/[a-f0-9]+)$', url, re.IGNORECASE)
+    if gh_patch_match:
+        return f"{url}.diff"
+
+    # 3. GitHub Gist -> Raw
     # Example: https://gist.github.com/user/id -> https://gist.github.com/user/id/raw
     gist_match = re.match(r'https?://gist\.github\.com/([^/]+)/([a-f0-9]+)$', url, re.IGNORECASE)
     if gist_match:
         return f"{url}/raw"
 
-    # 3. GitHub Repo -> ZIP Archive
+    # 4. GitHub Branch/Tag -> ZIP Archive
+    # Example: https://github.com/user/repo/tree/main -> https://github.com/user/repo/archive/refs/heads/main.zip
+    gh_tree_match = re.match(r'https?://(?:www\.)?github\.com/([^/]+)/([^/]+)/tree/(.+)', url, re.IGNORECASE)
+    if gh_tree_match:
+        user, repo, ref = gh_tree_match.groups()
+        return f"https://github.com/{user}/{repo}/archive/refs/heads/{ref}.zip"
+
+    # 5. GitHub Repo -> ZIP Archive
     # Example: https://github.com/user/repo -> https://github.com/user/repo/archive/HEAD.zip
     gh_repo_match = re.match(r'https?://(?:www\.)?github\.com/([^/]+)/([^/]+)$', url, re.IGNORECASE)
     if gh_repo_match:
         user, repo = gh_repo_match.groups()
-        if repo.lower() not in ('settings', 'pulls', 'issues', 'actions', 'projects', 'wiki', 'security', 'insights'):
+        if repo.lower() not in ('settings', 'pulls', 'issues', 'actions', 'projects', 'wiki', 'security', 'insights', 'pull'):
             return f"https://github.com/{user}/{repo}/archive/HEAD.zip"
 
-    # 4. GitLab Blob -> Raw
+    # 6. GitLab Blob -> Raw
     # Example: https://gitlab.com/user/repo/-/blob/main/script.py -> https://gitlab.com/user/repo/-/raw/main/script.py
     gl_blob_match = re.match(r'(https?://(?:www\.)?gitlab\.com/[^/]+/[^/]+)/-/blob/(.+)', url, re.IGNORECASE)
     if gl_blob_match:
         base, path = gl_blob_match.groups()
         return f"{base}/-/raw/{path}"
 
-    # 5. GitLab Repo -> ZIP Archive
+    # 7. GitLab MR -> Diff
+    # Example: https://gitlab.com/user/repo/-/merge_requests/1 -> https://gitlab.com/user/repo/-/merge_requests/1.diff
+    gl_mr_match = re.match(r'https?://(?:www\.)?gitlab\.com/[^/]+/[^/]+/-/merge_requests/\d+$', url, re.IGNORECASE)
+    if gl_mr_match:
+        return f"{url}.diff"
+
+    # 8. GitLab Repo -> ZIP Archive
     # Example: https://gitlab.com/user/repo -> https://gitlab.com/user/repo/-/archive/main/repo-main.zip
-    # Note: GitLab is trickier as the default branch varies. We'll try common patterns.
     gl_repo_match = re.match(r'https?://(?:www\.)?gitlab\.com/([^/]+)/([^/]+)$', url, re.IGNORECASE)
     if gl_repo_match:
         user, repo = gl_repo_match.groups()
         # GitLab doesn't have a universal HEAD.zip, but we can try to guess or just return the URL
         # Common default branches are 'main' or 'master'. We'll try 'main' and let fetch_url_content fallback if it fails.
         return f"https://gitlab.com/{user}/{repo}/-/archive/main/{repo}-main.zip"
+
+    # 9. Bitbucket Cloud Raw
+    # Example: https://bitbucket.org/user/repo/src/main/script.py -> https://bitbucket.org/user/repo/raw/main/script.py
+    bb_raw_match = re.match(r'https?://(?:www\.)?bitbucket\.org/([^/]+)/([^/]+)/src/([^/]+)/(.+)', url, re.IGNORECASE)
+    if bb_raw_match:
+        user, repo, ref, path = bb_raw_match.groups()
+        return f"https://bitbucket.org/{user}/{repo}/raw/{ref}/{path}"
+
+    # 10. Bitbucket Cloud Repo -> ZIP Archive
+    # Example: https://bitbucket.org/user/repo -> https://bitbucket.org/user/repo/get/HEAD.zip
+    bb_repo_match = re.match(r'https?://(?:www\.)?bitbucket\.org/([^/]+)/([^/]+)$', url, re.IGNORECASE)
+    if bb_repo_match:
+        user, repo = bb_repo_match.groups()
+        return f"https://bitbucket.org/{user}/{repo}/get/HEAD.zip"
 
     return url
 
@@ -260,7 +293,7 @@ class Config:
         path_s = str(file_path).lower()
         # Extensions and manifest files
         if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', '.yml', '.yaml',
-                            'package.json', 'composer.json', 'deno.json', 'deno.jsonc')):
+                            '.diff', '.patch', 'package.json', 'composer.json', 'deno.json', 'deno.jsonc')):
             return True
         # Dockerfile and Makefile variants
         basename = os.path.basename(path_s)
@@ -2199,7 +2232,53 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 9. Check for Makefile
+    # 9. Check for Unified Diff (.diff or .patch)
+    if check_name.lower().endswith(('.diff', '.patch')):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            lines = text.splitlines()
+            current_file = None
+            hunk_info = None
+            hunk_lines = []
+
+            def finalize_hunk():
+                if current_file and hunk_info and hunk_lines:
+                    # Only yield if there's at least one added line in this hunk
+                    if any(l.startswith('+') and not l.startswith('+++') for l in hunk_lines):
+                        hunk_text = "\n".join(hunk_lines)
+                        yield (f"{name} [{current_file} @ {hunk_info}]", hunk_text.encode('utf-8'))
+
+            for line in lines:
+                if line.startswith('+++ '):
+                    yield from finalize_hunk()
+                    # Extract file path: +++ b/path/to/file.py -> path/to/file.py
+                    path_part = line[4:].split('\t')[0].strip()
+                    if path_part.startswith(('a/', 'b/')) and '/' in path_part:
+                        path_part = path_part[2:]
+                    current_file = path_part
+                    hunk_info = None
+                    hunk_lines = []
+                elif line.startswith('@@ ') and current_file:
+                    yield from finalize_hunk()
+                    # Extract starting line: @@ -1,1 +1,2 @@ -> line 1
+                    match = re.search(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@', line)
+                    hunk_info = f"line {match.group(1)}" if match else "unknown"
+                    hunk_lines = []
+                elif hunk_info is not None:
+                    if line.startswith((' ', '+')):
+                        hunk_lines.append(line)
+                    elif not line.startswith('-'):
+                        # End of hunk if line doesn't start with context/add/remove
+                        yield from finalize_hunk()
+                        hunk_info = None
+                        hunk_lines = []
+
+            yield from finalize_hunk()
+            return
+        except Exception:
+            pass
+
+    # 10. Check for Makefile
     if 'makefile' in lowered_check and (os.path.basename(lowered_check) == 'makefile' or lowered_check.endswith('.makefile')):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -5316,7 +5395,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, and web links (GitHub/GitLab/Gist) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
@@ -5328,6 +5407,8 @@ def main():
                "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n\n"
                "  # Scan a remote script or a GitHub repository directly from a web link\n"
                "  python gptscan.py https://github.com/user/repo --cli\n\n"
+               "  # Scan a GitHub Pull Request or GitLab Merge Request directly\n"
+               "  python gptscan.py https://github.com/user/repo/pull/123 --cli\n\n"
                "Note: Always run the script from inside its own folder so it can find its required data files (like scripts.h5).",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )

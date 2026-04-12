@@ -61,9 +61,40 @@ def test_resolve_github_case_insensitivity():
     expected = "https://raw.githubusercontent.com/user/repo/main/script.py"
     assert resolve_remote_url(url) == expected
 
-def test_resolve_gitlab_repo_returns_original():
+def test_resolve_gitlab_repo():
     url = "https://gitlab.com/user/repo"
-    assert resolve_remote_url(url) == url
+    expected = "https://gitlab.com/user/repo/-/archive/main/repo-main.zip"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_github_pull_request():
+    url = "https://github.com/user/repo/pull/123"
+    expected = "https://github.com/user/repo/pull/123.diff"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_github_commit():
+    url = "https://github.com/user/repo/commit/abc123def"
+    expected = "https://github.com/user/repo/commit/abc123def.diff"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_github_branch():
+    url = "https://github.com/user/repo/tree/feature-branch"
+    expected = "https://github.com/user/repo/archive/refs/heads/feature-branch.zip"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_gitlab_merge_request():
+    url = "https://gitlab.com/user/repo/-/merge_requests/456"
+    expected = "https://gitlab.com/user/repo/-/merge_requests/456.diff"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_bitbucket_repo():
+    url = "https://bitbucket.org/user/repo"
+    expected = "https://bitbucket.org/user/repo/get/HEAD.zip"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_bitbucket_raw():
+    url = "https://bitbucket.org/user/repo/src/main/script.py"
+    expected = "https://bitbucket.org/user/repo/raw/main/script.py"
+    assert resolve_remote_url(url) == expected
 
 def test_resolve_github_www_prefix():
     url = "https://www.github.com/user/repo/blob/main/script.py"

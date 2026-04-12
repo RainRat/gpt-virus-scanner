@@ -6,6 +6,7 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
 
 ## Features
 *   **Local & Remote Scanning:** Scan local files or fetch them directly from a web link.
+*   **PR/MR & Patch Scanning:** Fetch and scan code changes from GitHub Pull Requests, GitLab Merge Requests, or local `.diff`/`.patch` files.
 *   **Notebook Support:** Analyzes `.ipynb` cells for malicious commands.
 *   **Web & Manifest Analysis:** Scans HTML, Markdown, `package.json`, `composer.json`, and `deno.json`.
 *   **Archive Unpacking:** Automatically unpacks `.zip`, `.tar`, and `.tar.gz` to scan their contents.
@@ -42,7 +43,7 @@ Run `python gptscan.py` to open the GUI.
 #### Targets
 *   **Select File...:** Choose a single script to scan.
 *   **Select Folder...:** Choose a whole directory to scan.
-*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, manifest (package.json, etc.), or archive (.zip, .tar, .tar.gz) directly from a web link.
+*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, manifest (package.json, etc.), PR/MR (GitHub/GitLab), or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
 
 #### Scan Options
@@ -82,6 +83,9 @@ python gptscan.py --cli /path/to/code -o report.html
 
 # Scan only modified files in a Git repo with high sensitivity
 python gptscan.py --cli --git-changes -t 80
+
+# Scan a remote GitHub Pull Request or GitLab Merge Request
+python gptscan.py --cli https://github.com/user/repo/pull/123
 
 # Import and filter results from a previous scan
 python gptscan.py --cli --import results.json -o report.html
