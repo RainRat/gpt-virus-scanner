@@ -127,11 +127,11 @@ Run `python gptscan.py` to open the GUI.
 #### Scan Options
 *   **Git changes only:** Only scan files that are modified or untracked in your Git repository.
 *   **Deep scan:** Scan the whole file. Normally, the scanner only checks the first and last 1 KB (1,024 bytes) of a file to save time.
-*   **Scan all files:** Scan every file, even those without common script extensions.
+*   **Scan all files:** Force the scanner to check every file, even those without common script extensions (like .txt or .log).
 *   **Dry Run:** Simulate the scan without actually analyzing any files.
 *   **Max File Size (MB):** Skip files larger than this size.
 *   **Min. Threat Level:** Set the sensitivity. Higher values show only the most dangerous files.
-*   **Show all files:** See every scanned file, even safe ones.
+*   **Show all files:** Display every file that was scanned in the results list, including those that are safe.
 
 #### AI Analysis
 *   **Use AI Analysis:** Enable detailed reports for suspicious findings.
@@ -224,7 +224,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--stdin`: Scan a code snippet from terminal input.
 *   `--deep, -d`: Scan the entire file instead of just the first and last 1 KB (1,024 bytes).
 *   `--dry-run`: Show which files would be scanned without analyzing them.
-*   `--show-all, -a`: Show all files, including safe ones.
+*   `--show-all, -a`: Display every file that was scanned in the results list, including those that are safe.
 *   `--use-gpt, -g`: Use AI Analysis for suspicious code.
 *   `--provider [name]`: Select the AI service provider (`openai`, `openrouter`, or `ollama`).
 *   `--model [name]`: Set the AI model (for example: `gpt-4o`, `llama3.2`).
@@ -235,7 +235,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--threshold [0-100], -t [0-100]`: Set the minimum threat level to report (default: 50).
 *   `--fail-threshold [0-100]`: Exit with an error if any file meets this threat level.
 *   `--git-changes`: Only scan files that have changed in Git.
-*   `--all-files`: Scan all files, even if they lack a script extension or a script starting line (like `#!/bin/bash`).
+*   `--all-files`: Force the scanner to check every file, even those without common script extensions (like .txt or .log) or a script starting line (like `#!/bin/bash`).
 *   `--exclude [patterns], -e [patterns]`: Skip files that match these patterns.
 *   `--file-list [file]`: Scan a list of files from a text file.
 *   `--extensions [types]`: Only scan specific file types (for example: `py,js`).
