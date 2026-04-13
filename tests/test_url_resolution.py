@@ -61,9 +61,20 @@ def test_resolve_github_case_insensitivity():
     expected = "https://raw.githubusercontent.com/user/repo/main/script.py"
     assert resolve_remote_url(url) == expected
 
-def test_resolve_gitlab_repo_returns_original():
+def test_resolve_gitlab_repo():
     url = "https://gitlab.com/user/repo"
-    assert resolve_remote_url(url) == url
+    expected = "https://gitlab.com/user/repo/-/archive/main/repo-main.zip"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_gitlab_subgroup_repo():
+    url = "https://gitlab.com/group/subgroup/repo"
+    expected = "https://gitlab.com/group/subgroup/repo/-/archive/main/repo-main.zip"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_gitlab_subgroup_blob():
+    url = "https://gitlab.com/group/subgroup/repo/-/blob/main/script.py"
+    expected = "https://gitlab.com/group/subgroup/repo/-/raw/main/script.py"
+    assert resolve_remote_url(url) == expected
 
 def test_resolve_github_www_prefix():
     url = "https://www.github.com/user/repo/blob/main/script.py"
