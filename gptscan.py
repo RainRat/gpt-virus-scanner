@@ -4912,9 +4912,20 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(textbox, "Enter one or more files, folders, or glob patterns (e.g., src/**/*.py) to scan. Separate multiple targets with spaces.")
 
     root.bind('<Escape>', lambda event: cancel_scan())
-    browse_button = ttk.Menubutton(input_frame, text="Browse", width=12)
-    browse_button.grid(row=0, column=2, sticky="e", padx=(5, 0), ipady=5)
+    button_box = ttk.Frame(input_frame)
+    button_box.grid(row=0, column=2, sticky="e")
+
+    browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
+    browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
     bind_hover_message(browse_button, "Browse for scan targets (File, Folder, URL, or Clipboard).")
+
+    scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
+    scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(scan_button, "Start the scan.")
+
+    cancel_button = ttk.Button(button_box, text="Cancel", command=cancel_scan, state="disabled", width=10)
+    cancel_button.pack(side=tk.LEFT, padx=(2, 0), ipady=5)
+    bind_hover_message(cancel_button, "Stop the current scan.")
 
     browse_menu = tk.Menu(browse_button, tearoff=0)
     browse_menu.add_command(label="Select File(s)...", command=browse_file_click)
@@ -4978,23 +4989,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis", padding=10)
     provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
 
-    # --- Actions Frame ---
-    actions_frame = ttk.LabelFrame(settings_frame, text="Actions", padding=10)
-    actions_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(5, 0))
-
-    primary_actions = ttk.Frame(actions_frame)
-    primary_actions.pack(side=tk.TOP, fill=tk.X)
-
-    scan_button = ttk.Button(primary_actions, text="Scan Now", command=button_click, style='Primary.TButton', default='active')
-    scan_button.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=2, padx=(0, 2), ipady=5)
-    bind_hover_message(scan_button, "Start the scan.")
-
-    cancel_button = ttk.Button(primary_actions, text="Cancel", command=cancel_scan, state="disabled")
-    cancel_button.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=2, padx=(2, 0), ipady=5)
-    bind_hover_message(cancel_button, "Stop the current scan.")
-
-    copy_cmd_button = ttk.Button(actions_frame, text="Copy CLI Command", command=copy_cli_command)
-    copy_cmd_button.pack(side=tk.TOP, fill=tk.X, pady=2, ipady=5)
+    copy_cmd_button = ttk.Button(options_frame, text="Copy CLI Command", command=copy_cli_command)
+    copy_cmd_button.grid(row=3, column=0, columnspan=2, sticky='ew', padx=10, pady=(5, 0), ipady=5)
     bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
 
     provider_frame.columnconfigure(1, weight=1)
