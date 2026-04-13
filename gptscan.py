@@ -64,6 +64,7 @@ all_checkbox: Optional[ttk.Checkbutton] = None
 threshold_spin: Optional[ttk.Spinbox] = None
 provider_combo: Optional[ttk.Combobox] = None
 model_combo: Optional[ttk.Combobox] = None
+api_key_entry: Optional[ttk.Entry] = None
 api_entry: Optional[ttk.Entry] = None
 context_menu: Optional[tk.Menu] = None
 _all_results_cache: List[Tuple[Any, ...]] = []
@@ -320,6 +321,15 @@ class Config:
             clean_ext = ext.strip().lower()
             if clean_ext:
                 cls.extensions_set.add(clean_ext if clean_ext.startswith('.') else f".{clean_ext}")
+
+    @classmethod
+    def save_apikey(cls) -> None:
+        """Save the current API key to the apikey.txt file."""
+        try:
+            with open('apikey.txt', 'w', encoding='utf-8') as f:
+                f.write(cls.apikey)
+        except Exception as e:
+            print(f"Warning: Could not save API key: {e}", file=sys.stderr)
 
     @classmethod
     def save_extensions(cls) -> None:
@@ -680,14 +690,16 @@ def toggle_ai_controls() -> None:
     enabled = gpt_var.get() if gpt_var else False
     is_scanning = current_cancel_event is not None
 
-    if provider_combo and model_combo and api_entry:
+    if provider_combo and model_combo and api_key_entry and api_entry:
         if enabled and not is_scanning:
             provider_combo.config(state="readonly")
             model_combo.config(state="normal")
+            api_key_entry.config(state="normal")
             api_entry.config(state="normal")
         else:
             provider_combo.config(state="disabled")
             model_combo.config(state="disabled")
+            api_key_entry.config(state="disabled")
             api_entry.config(state="disabled")
 
     update_tree_columns()
@@ -4939,7 +4951,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_entry, all_checkbox, threshold_spin
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -5091,14 +5103,26 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     provider_combo = ttk.Combobox(provider_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
     provider_combo.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
 
-    ttk.Label(provider_frame, text="Model:").grid(row=1, column=2, sticky='w', padx=(15, 5), pady=2)
+    ttk.Label(provider_frame, text="API Key:").grid(row=1, column=2, sticky='w', padx=(15, 5), pady=2)
+    api_key_var = tk.StringVar(value=Config.apikey)
+    api_key_entry = ttk.Entry(provider_frame, show="*", textvariable=api_key_var)
+    api_key_entry.grid(row=1, column=3, sticky='ew', padx=(5, 10), pady=2)
+
+    def on_api_key_change(*args):
+        Config.apikey = api_key_var.get().strip()
+        global _async_openai_client
+        _async_openai_client = None
+
+    api_key_var.trace_add("write", on_api_key_change)
+
+    ttk.Label(provider_frame, text="Model:").grid(row=2, column=0, sticky='w', padx=(10, 5), pady=2)
     model_var = tk.StringVar(value=Config.model_name)
     model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
-    model_combo.grid(row=1, column=3, sticky='ew', padx=(5, 10), pady=2)
+    model_combo.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
 
-    ttk.Label(provider_frame, text="API Base URL:").grid(row=2, column=0, sticky='w', padx=(10, 5), pady=2)
+    ttk.Label(provider_frame, text="API Base URL:").grid(row=2, column=2, sticky='w', padx=(15, 5), pady=2)
     api_entry = ttk.Entry(provider_frame)
-    api_entry.grid(row=2, column=1, columnspan=3, sticky='ew', padx=(5, 10), pady=2)
+    api_entry.grid(row=2, column=3, sticky='ew', padx=(5, 10), pady=2)
     bind_hover_message(api_entry, "Set a custom URL for the AI service (e.g., http://localhost:11434/v1 for Ollama).")
 
     api_base_var = tk.StringVar(value=Config.api_base or "")
@@ -5378,6 +5402,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         Config.provider = provider_var.get()
         Config.model_name = model_var.get()
         Config.save_settings()
+        Config.save_apikey()
         root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", on_close)
@@ -5488,6 +5513,11 @@ def main():
         help='Specify the AI model (e.g., gpt-4o, llama3.2).'
     )
     ai_group.add_argument(
+        '--api-key', '-k',
+        type=str,
+        help='Set the API key for cloud-based analysis.'
+    )
+    ai_group.add_argument(
         '--api-base',
         type=str,
         help='Set a custom URL for the AI service (useful for local servers).'
@@ -5526,6 +5556,10 @@ def main():
             sys.exit(0)
 
     Config.provider = args.provider
+    if args.api_key:
+        Config.apikey = args.api_key
+        Config.save_apikey()
+
     if args.api_base:
         Config.api_base = args.api_base
 
