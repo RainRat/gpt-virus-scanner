@@ -65,6 +65,7 @@ threshold_spin: Optional[ttk.Spinbox] = None
 provider_combo: Optional[ttk.Combobox] = None
 model_combo: Optional[ttk.Combobox] = None
 api_entry: Optional[ttk.Entry] = None
+api_key_entry: Optional[ttk.Entry] = None
 context_menu: Optional[tk.Menu] = None
 _all_results_cache: List[Tuple[Any, ...]] = []
 _last_scan_summary: str = ""
@@ -330,6 +331,15 @@ class Config:
                     f.write(f"{ext}\n")
         except Exception as e:
             print(f"Warning: Could not save extensions: {e}", file=sys.stderr)
+
+    @classmethod
+    def save_apikey(cls) -> None:
+        """Save the current API key to the apikey.txt file."""
+        try:
+            with open('apikey.txt', 'w', encoding='utf-8') as f:
+                f.write(cls.apikey)
+        except Exception as e:
+            print(f"Warning: Could not save API key: {e}", file=sys.stderr)
 
     @classmethod
     def save_settings(cls) -> None:
@@ -680,15 +690,17 @@ def toggle_ai_controls() -> None:
     enabled = gpt_var.get() if gpt_var else False
     is_scanning = current_cancel_event is not None
 
-    if provider_combo and model_combo and api_entry:
+    if provider_combo and model_combo and api_entry and api_key_entry:
         if enabled and not is_scanning:
             provider_combo.config(state="readonly")
             model_combo.config(state="normal")
             api_entry.config(state="normal")
+            api_key_entry.config(state="normal")
         else:
             provider_combo.config(state="disabled")
             model_combo.config(state="disabled")
             api_entry.config(state="disabled")
+            api_key_entry.config(state="disabled")
 
     update_tree_columns()
 
@@ -1375,8 +1387,8 @@ def set_scanning_state(is_scanning: bool) -> None:
     config_widgets = [
         textbox, browse_button,
         git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox,
-        gpt_checkbox, provider_combo, model_combo, api_entry, copy_cmd_button,
-        all_checkbox, threshold_spin
+        gpt_checkbox, provider_combo, model_combo, api_entry, api_key_entry,
+        copy_cmd_button, all_checkbox, threshold_spin
     ]
     for widget in config_widgets:
         if widget:
@@ -4939,7 +4951,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_entry, all_checkbox, threshold_spin
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_entry, api_key_entry, all_checkbox, threshold_spin
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -5111,6 +5123,21 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         _async_openai_client = None
 
     api_base_var.trace_add("write", on_api_base_change)
+
+    ttk.Label(provider_frame, text="API Key:").grid(row=3, column=0, sticky='w', padx=(10, 5), pady=2)
+    api_key_entry = ttk.Entry(provider_frame, show="*")
+    api_key_entry.grid(row=3, column=1, columnspan=3, sticky='ew', padx=(5, 10), pady=2)
+    bind_hover_message(api_key_entry, "Set the API key for OpenAI or OpenRouter.")
+
+    api_key_var = tk.StringVar(value=Config.apikey)
+    api_key_entry.config(textvariable=api_key_var)
+
+    def on_api_key_change(*args):
+        Config.apikey = api_key_var.get().strip()
+        global _async_openai_client
+        _async_openai_client = None
+
+    api_key_var.trace_add("write", on_api_key_change)
 
     toggle_ai_controls()
 
@@ -5378,6 +5405,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         Config.provider = provider_var.get()
         Config.model_name = model_var.get()
         Config.save_settings()
+        Config.save_apikey()
         root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", on_close)
