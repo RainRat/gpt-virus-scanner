@@ -75,9 +75,14 @@ def test_resolve_gitlab_subgroup_blob():
     expected = "https://gitlab.com/group/subgroup/repo/-/raw/main/script.py"
     assert resolve_remote_url(url) == expected
 
-def test_resolve_github_pull_request():
-    url = "https://github.com/user/repo/pull/123"
+def test_resolve_github_pull_request_with_subpath():
+    url = "https://github.com/user/repo/pull/123/files"
     expected = "https://github.com/user/repo/pull/123.diff"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_gitlab_merge_request_with_subpath():
+    url = "https://gitlab.com/user/repo/-/merge_requests/456/diffs"
+    expected = "https://gitlab.com/user/repo/-/merge_requests/456.diff"
     assert resolve_remote_url(url) == expected
 
 def test_resolve_github_commit():

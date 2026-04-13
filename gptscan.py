@@ -97,9 +97,9 @@ def resolve_remote_url(url: str) -> str:
     # 2. GitHub PR/Commit -> Diff
     # Example: https://github.com/user/repo/pull/1 -> https://github.com/user/repo/pull/1.diff
     # Example: https://github.com/user/repo/commit/abc -> https://github.com/user/repo/commit/abc.diff
-    gh_patch_match = re.match(r'https?://(?:www\.)?github\.com/[^/]+/[^/]+/(?:pull/\d+|commit/[a-f0-9]+)$', url, re.IGNORECASE)
+    gh_patch_match = re.match(r'(https?://(?:www\.)?github\.com/[^/]+/[^/]+/(?:pull/\d+|commit/[a-f0-9]+))(?:/.*)?$', url, re.IGNORECASE)
     if gh_patch_match:
-        return f"{url}.diff"
+        return f"{gh_patch_match.group(1)}.diff"
 
     # 3. GitHub Gist -> Raw
     # Example: https://gist.github.com/user/id -> https://gist.github.com/user/id/raw
@@ -131,9 +131,9 @@ def resolve_remote_url(url: str) -> str:
 
     # 7. GitLab MR -> Diff
     # Example: https://gitlab.com/user/repo/-/merge_requests/1 -> https://gitlab.com/user/repo/-/merge_requests/1.diff
-    gl_mr_match = re.match(r'https?://(?:www\.)?gitlab\.com/(.+)/([^/]+)/-/merge_requests/\d+$', url, re.IGNORECASE)
+    gl_mr_match = re.match(r'(https?://(?:www\.)?gitlab\.com/(.+)/([^/]+)/-/merge_requests/\d+)(?:/.*)?$', url, re.IGNORECASE)
     if gl_mr_match:
-        return f"{url}.diff"
+        return f"{gl_mr_match.group(1)}.diff"
 
     # 8. GitLab Repo -> ZIP Archive
     # Example: https://gitlab.com/user/repo -> https://gitlab.com/user/repo/-/archive/main/repo-main.zip
