@@ -138,7 +138,7 @@ def resolve_remote_url(url: str) -> str:
     # 8. GitLab Repo -> ZIP Archive
     # Example: https://gitlab.com/user/repo -> https://gitlab.com/user/repo/-/archive/main/repo-main.zip
     # Note: GitLab is trickier as the default branch varies. We'll try common patterns.
-    gl_repo_match = re.match(r'https?://(?:www\.)?gitlab\.com/(.+)/([^/]+)$', url, re.IGNORECASE)
+    gl_repo_match = re.match(r'https?://(?:www\.)?gitlab\.com/(?!.*/-/)(.+)/([^/]+)$', url, re.IGNORECASE)
     if gl_repo_match:
         group_path, repo = gl_repo_match.groups()
         # GitLab doesn't have a universal HEAD.zip, but we can try to guess or just return the URL
