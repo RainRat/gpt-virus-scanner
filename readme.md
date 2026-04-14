@@ -10,7 +10,7 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
 *   **Notebook Support:** Analyzes `.ipynb` cells for malicious commands.
 *   **Web & Manifest Analysis:** Scans HTML, Markdown, `package.json`, `composer.json`, and `deno.json`.
 *   **Archive Unpacking:** Automatically unpacks `.zip`, `.tar`, and `.tar.gz` to scan their contents.
-*   **Dual-Stage Analysis:** 
+*   **Two-step analysis:**
     1.  **Fast Local Scan:** A lightweight model identifies suspicious patterns in milliseconds.
     2.  **AI Verification (Optional):** OpenRouter, OpenAI, or Ollama provides a detailed report on why a snippet is suspicious.
 *   **Cross-Platform GUI & CLI:** Use the intuitive Tkinter interface or integrate it into your pipelines via terminal.
@@ -21,6 +21,7 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
 
 ### Prerequisites
 *   Python 3.9, 3.10, or 3.11. (Python 3.12 is not supported yet due to model compatibility).
+*   **Tkinter:** Usually included with Python. On Linux, you might need to install `python3-tk`.
 *   (Optional) An API key for [OpenAI](https://platform.openai.com/) or [OpenRouter](https://openrouter.ai/).
 *   (Optional) [Ollama](https://ollama.com/) for local AI analysis.
 
@@ -32,7 +33,7 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
     ```
 2.  Install dependencies:
     ```bash
-    pip install -r requirements.txt
+    pip install "tensorflow<2.16" openai
     ```
 
 ## Usage
@@ -41,7 +42,8 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
 Run `python gptscan.py` to open the GUI.
 
 #### Targets
-*   **Select File...:** Choose a single script to scan.
+Access these options from the **Browse** menu in the header:
+*   **Select File(s)...:** Choose one or more scripts to scan.
 *   **Select Folder...:** Choose a whole directory to scan.
 *   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, manifest (package.json, etc.), PR/MR (GitHub/GitLab), or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
@@ -66,6 +68,7 @@ Run `python gptscan.py` to open the GUI.
 *   **Show all files:** Display every file that was scanned in the results list, including those that are safe.
 
 #### Actions
+Access report management from the **Results** menu in the footer:
 *   **Scan Now:** Start the scanning process.
 *   **Cancel:** Stop the active scan.
 *   **Copy CLI Command:** Copy the command-line version of your current settings.
