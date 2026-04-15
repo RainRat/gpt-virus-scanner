@@ -54,6 +54,7 @@ reveal_button: Optional[ttk.Button] = None
 vt_button: Optional[ttk.Button] = None
 results_button: Optional[ttk.Menubutton] = None
 browse_button: Optional[ttk.Menubutton] = None
+show_key_btn: Optional[ttk.Button] = None
 copy_cmd_button: Optional[ttk.Button] = None
 git_checkbox: Optional[ttk.Checkbutton] = None
 deep_checkbox: Optional[ttk.Checkbutton] = None
@@ -690,17 +691,19 @@ def toggle_ai_controls() -> None:
     enabled = gpt_var.get() if gpt_var else False
     is_scanning = current_cancel_event is not None
 
-    if provider_combo and model_combo and api_key_entry and api_entry:
+    if provider_combo and model_combo and api_key_entry and api_entry and show_key_btn:
         if enabled and not is_scanning:
             provider_combo.config(state="readonly")
             model_combo.config(state="normal")
             api_key_entry.config(state="normal")
             api_entry.config(state="normal")
+            show_key_btn.config(state="normal")
         else:
             provider_combo.config(state="disabled")
             model_combo.config(state="disabled")
             api_key_entry.config(state="disabled")
             api_entry.config(state="disabled")
+            show_key_btn.config(state="disabled")
 
     update_tree_columns()
 
@@ -1387,8 +1390,8 @@ def set_scanning_state(is_scanning: bool) -> None:
     config_widgets = [
         textbox, browse_button,
         git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox,
-        gpt_checkbox, provider_combo, model_combo, api_entry, copy_cmd_button,
-        all_checkbox, threshold_spin
+        gpt_checkbox, provider_combo, model_combo, api_entry, show_key_btn,
+        copy_cmd_button, all_checkbox, threshold_spin
     ]
     for widget in config_widgets:
         if widget:
@@ -4954,7 +4957,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -5092,7 +5095,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     provider_frame.columnconfigure(3, weight=1)
 
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
-    gpt_checkbox.grid(row=0, column=0, columnspan=4, sticky='w', padx=10, pady=(2, 10))
+    gpt_checkbox.grid(row=0, column=0, columnspan=5, sticky='w', padx=10, pady=(2, 10))
     bind_hover_message(gpt_checkbox, "Use AI to analyze suspicious code and explain what it does.")
 
     if not Config.GPT_ENABLED:
@@ -5105,11 +5108,25 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     provider_var = tk.StringVar(value=Config.provider)
     provider_combo = ttk.Combobox(provider_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
     provider_combo.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
+    bind_hover_message(provider_combo, "Select the AI service provider (OpenAI, OpenRouter, or local Ollama).")
 
     ttk.Label(provider_frame, text="API Key:").grid(row=1, column=2, sticky='w', padx=(15, 5), pady=2)
     api_key_var = tk.StringVar(value=Config.apikey)
     api_key_entry = ttk.Entry(provider_frame, show="*", textvariable=api_key_var)
-    api_key_entry.grid(row=1, column=3, sticky='ew', padx=(5, 10), pady=2)
+    api_key_entry.grid(row=1, column=3, sticky='ew', padx=(5, 5), pady=2)
+    bind_hover_message(api_key_entry, "Enter your API key for cloud providers. It will be saved to apikey.txt.")
+
+    def toggle_api_key_visibility():
+        if api_key_entry['show'] == "*":
+            api_key_entry.config(show="")
+            show_key_btn.config(text="Hide")
+        else:
+            api_key_entry.config(show="*")
+            show_key_btn.config(text="Show")
+
+    show_key_btn = ttk.Button(provider_frame, text="Show", width=6, command=toggle_api_key_visibility)
+    show_key_btn.grid(row=1, column=4, padx=(0, 10), pady=2)
+    bind_hover_message(show_key_btn, "Toggle API key visibility.")
 
     def on_api_key_change(*args):
         Config.apikey = api_key_var.get().strip()
@@ -5122,10 +5139,11 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     model_var = tk.StringVar(value=Config.model_name)
     model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
     model_combo.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
+    bind_hover_message(model_combo, "Choose the specific AI model to use for analysis.")
 
     ttk.Label(provider_frame, text="API Base URL:").grid(row=2, column=2, sticky='w', padx=(15, 5), pady=2)
     api_entry = ttk.Entry(provider_frame)
-    api_entry.grid(row=2, column=3, sticky='ew', padx=(5, 10), pady=2)
+    api_entry.grid(row=2, column=3, columnspan=2, sticky='ew', padx=(5, 10), pady=2)
     bind_hover_message(api_entry, "Set a custom URL for the AI service (e.g., http://localhost:11434/v1 for Ollama).")
 
     api_base_var = tk.StringVar(value=Config.api_base or "")
