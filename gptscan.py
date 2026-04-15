@@ -2295,8 +2295,27 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
     if 'makefile' in lowered_check and (os.path.basename(lowered_check) == 'makefile' or lowered_check.endswith('.makefile')):
         try:
             text = content.decode('utf-8', errors='ignore')
-            # Extract recipes (lines starting with a tab)
-            recipes = re.findall(r'^\t(.*)', text, re.MULTILINE)
+            # Extract recipes (lines starting with a tab) with multi-line support
+            recipes = []
+            current_recipe = []
+
+            def finalize_recipe():
+                if current_recipe:
+                    recipes.append(" ".join([c.rstrip('\\').strip() for c in current_recipe]))
+
+            for line in text.splitlines():
+                if line.startswith('\t'):
+                    current_recipe.append(line[1:])
+                    # If line doesn't end with \, we've finished this recipe
+                    if not line.rstrip().endswith('\\'):
+                        finalize_recipe()
+                        current_recipe = []
+                elif current_recipe:
+                    finalize_recipe()
+                    current_recipe = []
+
+            finalize_recipe()
+
             if recipes:
                 for i, recipe in enumerate(recipes, 1):
                     if recipe.strip():

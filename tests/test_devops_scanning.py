@@ -118,3 +118,15 @@ RUN echo part1 \\
     results = list(unpack_content("Dockerfile", content))
     assert len(results) == 1
     assert results[0][1] == b"echo part1 part2 part3"
+
+def test_makefile_multiline():
+    content = b"""
+target:
+\techo "part 1" \\
+\t"part 2"
+\techo "part 3"
+"""
+    results = list(unpack_content("Makefile", content))
+    assert len(results) == 2
+    assert results[0][1] == b'echo "part 1" "part 2"'
+    assert results[1][1] == b'echo "part 3"'
