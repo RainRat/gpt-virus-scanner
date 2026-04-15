@@ -8,7 +8,7 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
 *   **Local & Remote Scanning:** Scan local files or fetch them directly from a web link.
 *   **PR/MR & Patch Scanning:** Fetch and scan code changes from GitHub Pull Requests, GitLab Merge Requests, or local `.diff`/`.patch` files.
 *   **Notebook Support:** Analyzes `.ipynb` cells for malicious commands.
-*   **Web & Manifest Analysis:** Scans HTML, Markdown, `package.json`, `composer.json`, and `deno.json`.
+*   **Web & Manifest Analysis:** Scans HTML, Markdown, `package.json`, `composer.json`, `deno.json`, and `deno.jsonc`.
 *   **Archive Unpacking:** Automatically unpacks `.zip`, `.tar`, and `.tar.gz` to scan their contents.
 *   **Dual-Stage Analysis:** 
     1.  **Fast Local Scan:** A lightweight model identifies suspicious patterns in milliseconds.
@@ -32,8 +32,10 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
     ```
 2.  Install dependencies:
     ```bash
-    pip install -r requirements.txt
+    pip install "tensorflow<2.16" numpy openai pyyaml
     ```
+
+> **Important:** Always run the script from inside its own folder so it can find its required data files (like `scripts.h5`).
 
 ## Usage
 
@@ -43,7 +45,7 @@ Run `python gptscan.py` to open the GUI.
 #### Targets
 *   **Select File...:** Choose a single script to scan.
 *   **Select Folder...:** Choose a whole directory to scan.
-*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, manifest (package.json, etc.), PR/MR (GitHub/GitLab), or archive (.zip, .tar, .tar.gz) directly from a web link.
+*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, manifest (package.json, `deno.jsonc`, etc.), PR/MR (GitHub/GitLab), or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
 
 #### Scan Options
@@ -93,7 +95,8 @@ python gptscan.py --cli --import results.json -o report.html
 
 #### CLI Options
 *   `--cli`: Run in command-line mode.
-*   `--target [path], -p [path]`: File or directory to scan.
+*   `target`: The folder, file, or web link to scan (positional argument).
+*   `--path [path], -p [path]`: Alternative way to specify a folder, file, or web link to scan.
 *   `--stdin`: Scan a code snippet from terminal input.
 *   `--deep, -d`: Scan the entire file instead of just the first and last 1 KB (1,024 bytes).
 *   `--dry-run`: Show which files would be scanned without analyzing them.
@@ -103,8 +106,9 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--model [name]`: Set the AI model (for example: `gpt-4o`, `llama3.2`).
 *   `--api-key [key], -k [key]`: Set the API key.
 *   `--api-url [url]`: Set a custom base URL for the API.
-*   `--max-size [MB]`: Maximum file size to scan (default: 5MB).
+*   `--max-size [MB]`: Maximum file size to scan (e.g., "10MB"). Default is 10MB.
 *   `--output [file], -o [file]`: Save results to a file (JSON, CSV, SARIF, Markdown, or HTML).
+*   `--report`: Output a human-friendly triage report to the console.
 *   `--threshold [0-100], -t [0-100]`: Set the minimum threat level to report (default: 50).
 *   `--fail-threshold [0-100]`: Exit with an error if any file meets this threat level.
 *   `--git-changes`: Only scan files that have changed in Git.
