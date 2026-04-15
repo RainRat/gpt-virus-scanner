@@ -69,6 +69,7 @@ api_entry: Optional[ttk.Entry] = None
 context_menu: Optional[tk.Menu] = None
 _all_results_cache: List[Tuple[Any, ...]] = []
 _last_scan_summary: str = ""
+_virtual_source_cache: Dict[str, str] = {}
 
 
 def resolve_remote_url(url: str) -> str:
@@ -2524,11 +2525,14 @@ def scan_files(
     if fail_threshold is not None:
         threshold_val = min(threshold_val, fail_threshold / 100.0)
 
-    def handle_scan_result(path: str, maxconf: float, max_window_bytes: bytes, line_num: Union[int, str]) -> Generator[Tuple[str, Any], None, None]:
+    def handle_scan_result(path: str, maxconf: float, max_window_bytes: bytes, line_num: Union[int, str], full_content: Optional[str] = None) -> Generator[Tuple[str, Any], None, None]:
         if maxconf >= 0:
             percent = f"{maxconf:.0%}"
             snippet = ''.join(map(chr, max_window_bytes)).strip()
             cleaned_snippet = _clean_snippet_for_ai(snippet)
+
+            if full_content is not None:
+                _virtual_source_cache[path] = full_content
 
             if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
                 gpt_requests.append(
@@ -2538,6 +2542,7 @@ def scan_files(
                         "snippet": snippet,
                         "cleaned_snippet": cleaned_snippet,
                         "line": line_num,
+                        "full_content": full_content,
                     }
                 )
             elif maxconf >= threshold_val or show_all:
@@ -2698,7 +2703,8 @@ def scan_files(
 
             # Calculate line number for snippet
             line_num = content[:max_offset].count(b'\n') + 1
-            yield from handle_scan_result(name, maxconf, max_window_bytes, line_num)
+            decoded_content = content.decode('utf-8', errors='ignore')
+            yield from handle_scan_result(name, maxconf, max_window_bytes, line_num, full_content=decoded_content)
 
     if cancel_event.is_set():
         return
@@ -2757,6 +2763,9 @@ def scan_files(
                 admin_desc = json_data["administrator"]
                 enduser_desc = json_data["end-user"]
                 chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
+
+            if request.get("full_content"):
+                _virtual_source_cache[request["path"]] = request["full_content"]
 
             yield (
                 'result',
@@ -3961,9 +3970,10 @@ def clear_ai_cache() -> None:
 
 def clear_results() -> None:
     """Clear all results from the Treeview and reset progress/status."""
-    global _all_results_cache, _last_scan_summary
+    global _all_results_cache, _last_scan_summary, _virtual_source_cache
     _all_results_cache = []
     _last_scan_summary = ""
+    _virtual_source_cache = {}
     if tree:
         items = tree.get_children()
         if items:
@@ -4187,7 +4197,10 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         """Load and display either the snippet or full source code."""
         nonlocal showing_full_source
         if showing_full_source:
-            if path.startswith("["):
+            content = None
+            if path in _virtual_source_cache:
+                content = _virtual_source_cache[path]
+            elif path.startswith("["):
                 if not silent_fallback:
                     messagebox.showinfo("Full Source", "Full source is not available for files inside archives, web links, or clipboard content.")
             elif not os.path.exists(path):
@@ -4202,24 +4215,25 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
                     with open(path, 'r', encoding='utf-8', errors='replace') as f:
                         content = f.read()
-
-                    snippet_text.config(state='normal')
-                    snippet_text.delete('1.0', tk.END)
-                    snippet_text.insert(tk.END, content)
-
-                    # Highlight and scroll to line
-                    if str(line).isdigit():
-                        line_idx = f"{line}.0"
-                        snippet_text.tag_add("highlight", line_idx, f"{line}.end")
-                        snippet_text.see(line_idx)
-
-                    snippet_text.config(state='disabled')
-                    source_toggle_btn.config(text="Show Snippet")
-                    snippet_frame.config(text="Full Source")
-                    return
                 except Exception as e:
                     if not silent_fallback and str(e) != "Cancelled":
                         messagebox.showerror("Error", f"Could not read file: {e}")
+
+            if content is not None:
+                snippet_text.config(state='normal')
+                snippet_text.delete('1.0', tk.END)
+                snippet_text.insert(tk.END, content)
+
+                # Highlight and scroll to line
+                if str(line).isdigit():
+                    line_idx = f"{line}.0"
+                    snippet_text.tag_add("highlight", line_idx, f"{line}.end")
+                    snippet_text.see(line_idx)
+
+                snippet_text.config(state='disabled')
+                source_toggle_btn.config(text="Show Snippet")
+                snippet_frame.config(text="Full Source")
+                return
 
         # Default to snippet view
         snippet_text.config(state='normal')
