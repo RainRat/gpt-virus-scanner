@@ -4401,8 +4401,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             tree.see(new_item_id)
             refresh_content(new_item_id)
 
-    # Group: Analysis
-    analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", width=18, command=on_analyze_now)
+    # Group: Actions
+    analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", width=18, command=on_analyze_now, style='Primary.TButton')
     analyze_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(analyze_btn, "Use AI to analyze this code snippet.", label=status_bar)
     if not Config.GPT_ENABLED:
@@ -4412,17 +4412,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     vt_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(vt_btn, "Check this file's hash on VirusTotal.", label=status_bar)
 
-    copy_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
-    copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard.", label=status_bar)
-
-    copy_json_btn = ttk.Button(btn_frame, text="Copy JSON", width=12, command=copy_as_json_details)
-    copy_json_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(copy_json_btn, "Copy the current result as a JSON object. (Ctrl+J)", label=status_bar)
-
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
-    # Group: Exclusions
+    # Group: Management
     rescan_btn = ttk.Button(btn_frame, text="Rescan", width=10, command=on_rescan)
     rescan_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(rescan_btn, "Re-scan this file with current settings. (F5 or R)", label=status_bar)
@@ -4433,11 +4425,22 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
-    # Group: View
+    # Group: Copy & Export
+    copy_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
+    copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard.", label=status_bar)
+
+    copy_json_btn = ttk.Button(btn_frame, text="Copy JSON", width=12, command=copy_as_json_details)
+    copy_json_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(copy_json_btn, "Copy the current result as a JSON object. (Ctrl+J)", label=status_bar)
+
     copy_code_btn = ttk.Button(btn_frame, text="Copy Code", width=12, command=copy_code)
     copy_code_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(copy_code_btn, "Copy the displayed code to the clipboard. (Ctrl+S)", label=status_bar)
 
+    ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
+
+    # Group: View
     source_toggle_btn = ttk.Button(btn_frame, text="Show Full Source", width=18, command=toggle_source)
     source_toggle_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(source_toggle_btn, "Toggle between the suspicious snippet and the full file content.", label=status_bar)
