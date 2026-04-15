@@ -115,3 +115,8 @@ def test_resolve_github_www_prefix():
     url = "https://www.github.com/user/repo/blob/main/script.py"
     expected = "https://raw.githubusercontent.com/user/repo/main/script.py"
     assert resolve_remote_url(url) == expected
+
+def test_resolve_gitlab_issues_not_repo():
+    url = "https://gitlab.com/user/repo/-/issues"
+    # Should not be resolved to an archive
+    assert resolve_remote_url(url) == url
