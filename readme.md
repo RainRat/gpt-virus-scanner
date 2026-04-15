@@ -33,7 +33,7 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
     ```
 2.  Install dependencies:
     ```bash
-    pip install "tensorflow<2.16" numpy openai pyyaml
+    pip install "tensorflow<2.16" numpy openai
     ```
 
 > **Important:** Always run the script from inside its own folder so it can find its required data files (like `scripts.h5`).
