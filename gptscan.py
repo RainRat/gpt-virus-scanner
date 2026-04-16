@@ -1012,11 +1012,13 @@ def collect_files(targets: Union[str, List[str]]) -> List[Path]:
     List[Path]
         A deduplicated list of files to scan.
     """
-    if isinstance(targets, (str, Path)):
+    if isinstance(targets, Path):
+        targets = [str(targets)]
+    elif isinstance(targets, str):
         try:
-            targets = shlex.split(str(targets))
+            targets = shlex.split(targets)
         except ValueError:
-            targets = [str(targets)]
+            targets = [targets]
 
     results: List[Path] = []
     for t in targets:
@@ -2438,11 +2440,13 @@ def scan_files(
             return float(prediction), bytes(padded_data)
 
     # Identify which files were explicitly passed as targets and deduplicate them
-    if isinstance(scan_targets, (str, Path)):
+    if isinstance(scan_targets, Path):
+        scan_targets = [str(scan_targets)]
+    elif isinstance(scan_targets, str):
         try:
-            scan_targets = shlex.split(str(scan_targets))
+            scan_targets = shlex.split(scan_targets)
         except ValueError:
-            scan_targets = [str(scan_targets)]
+            scan_targets = [scan_targets]
 
     scan_targets = list(dict.fromkeys(scan_targets))
 
