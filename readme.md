@@ -108,7 +108,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--provider [name]`: Select the AI service provider (`openai`, `openrouter`, or `ollama`).
 *   `--model [name]`: Set the AI model (for example: `gpt-4o`, `llama3.2`).
 *   `--api-key [key], -k [key]`: Set the API key.
-*   `--api-url [url]`: Set a custom base URL for the API.
+*   `--api-base [url]`: Set a custom base URL for the API.
 *   `--max-size [MB]`: Maximum file size to scan (e.g., "10MB"). Default is 10MB.
 *   `--output [file], -o [file]`: Save results to a file (JSON, CSV, SARIF, Markdown, or HTML).
 *   `--report`: Output a human-friendly triage report to the console.
