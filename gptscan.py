@@ -4332,7 +4332,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     reveal_btn = ttk.Button(header_frame, text="Reveal", width=10, command=lambda: show_in_folder(path_entry.get()))
     reveal_btn.grid(row=1, column=3, padx=2)
-    bind_hover_message(reveal_btn, "Show this file in the system file manager.", label=status_bar)
+    bind_hover_message(reveal_btn, "Show this file in the system file manager. (Ctrl+Enter)", label=status_bar)
 
     open_btn = ttk.Button(header_frame, text="Open", width=10, command=lambda: open_file(path_entry.get()))
     open_btn.grid(row=1, column=4, padx=2)
@@ -4445,7 +4445,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     # Group: Actions
     analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", width=18, command=on_analyze_now, style='Primary.TButton')
     analyze_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(analyze_btn, "Use AI to analyze this code snippet.", label=status_bar)
+    bind_hover_message(analyze_btn, "Use AI to analyze this code snippet. (Ctrl+G)", label=status_bar)
     if not Config.GPT_ENABLED:
         analyze_btn.config(state='disabled')
 
@@ -4469,7 +4469,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     # Group: Copy & Export
     copy_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
     copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard.", label=status_bar)
+    bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard. (Ctrl+Shift+C)", label=status_bar)
 
     copy_json_btn = ttk.Button(btn_frame, text="Copy JSON", width=12, command=copy_as_json_details)
     copy_json_btn.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -4484,7 +4484,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     # Group: View
     source_toggle_btn = ttk.Button(btn_frame, text="Show Full Source", width=18, command=toggle_source)
     source_toggle_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(source_toggle_btn, "Toggle between the suspicious snippet and the full file content.", label=status_bar)
+    bind_hover_message(source_toggle_btn, "Toggle between the suspicious snippet and the full file content. (Ctrl+U)", label=status_bar)
 
     # Group: System
     close_btn = ttk.Button(btn_frame, text="Close", command=details_win.destroy)
@@ -4616,10 +4616,18 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Delete>', lambda e: on_exclude())
     details_win.bind('<Escape>', lambda e: details_win.destroy())
     details_win.bind('<Shift-Return>', lambda e: open_file(path_entry.get()))
+    details_win.bind('<Control-Return>', lambda e: show_in_folder(path_entry.get()))
+    details_win.bind('<Command-Return>', lambda e: show_in_folder(path_entry.get()))
     details_win.bind('<Control-s>', lambda e: copy_code())
     details_win.bind('<Command-s>', lambda e: copy_code())
     details_win.bind('<Control-j>', lambda e: copy_as_json_details())
     details_win.bind('<Command-j>', lambda e: copy_as_json_details())
+    details_win.bind('<Control-g>', lambda e: on_analyze_now())
+    details_win.bind('<Command-g>', lambda e: on_analyze_now())
+    details_win.bind('<Control-Shift-C>', lambda e: copy_analysis())
+    details_win.bind('<Command-Shift-C>', lambda e: copy_analysis())
+    details_win.bind('<Control-u>', lambda e: toggle_source())
+    details_win.bind('<Command-u>', lambda e: toggle_source())
     details_win.bind('<F5>', lambda e: on_rescan())
     details_win.bind('r', lambda e: on_rescan())
     details_win.bind('R', lambda e: on_rescan())
