@@ -49,6 +49,7 @@ Access these options from the **Browse** menu in the header:
 *   **Select Folder...:** Choose a whole directory to scan.
 *   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, manifest (package.json, `deno.jsonc`, etc.), PR/MR (GitHub/GitLab), or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
+*   **Scan Git Diff:** Scan the current Git diff (staged and unstaged changes) for potential threats.
 
 #### Scan Options
 *   **Git changes only:** Only scan files that are modified or untracked in your Git repository.
@@ -92,6 +93,9 @@ python gptscan.py --cli --git-changes -t 80
 # Scan a remote GitHub Pull Request or GitLab Merge Request
 python gptscan.py --cli https://github.com/user/repo/pull/123
 
+# Scan current local Git diff (staged and unstaged changes)
+python gptscan.py --cli --git-diff
+
 # Import and filter results from a previous scan
 python gptscan.py --cli --import results.json -o report.html
 ```
@@ -115,6 +119,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--threshold [0-100], -t [0-100]`: Set the minimum threat level to report (default: 50).
 *   `--fail-threshold [0-100]`: Exit with an error if any file meets this threat level.
 *   `--git-changes`: Only scan files that have changed in Git.
+*   `--git-diff`: Scan the current Git diff (staged and unstaged changes) as a patch.
 *   `--all-files`: Force the scanner to check every file, even those without common script extensions (like .txt or .log) or a script starting line (like `#!/bin/bash`).
 *   `--exclude [patterns], -e [patterns]`: Skip files that match these patterns.
 *   `--file-list [file]`: Scan a list of files from a text file.
