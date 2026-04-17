@@ -295,13 +295,14 @@ class Config:
 
         # 2. Check by extension or basename
         path_s = str(file_path).lower()
-        # Extensions and manifest files
+        # Common archive and document extensions
         if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', '.yml', '.yaml',
-                            '.diff', '.patch', 'package.json', 'composer.json', 'deno.json', 'deno.jsonc')):
+                            '.diff', '.patch')):
             return True
-        # Dockerfile and Makefile variants
+        # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
-        if basename in ('dockerfile', 'makefile') or basename.endswith(('.dockerfile', '.makefile')):
+        if basename in ('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'dockerfile', 'makefile') or \
+           basename.endswith(('.dockerfile', '.makefile')):
             return True
         return False
 
