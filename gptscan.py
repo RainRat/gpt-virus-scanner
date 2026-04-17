@@ -2220,7 +2220,8 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                         list_items = []
                         j = i + 1
                         while j < len(lines):
-                            if not lines[j].strip():
+                            stripped_j = lines[j].strip()
+                            if not stripped_j or stripped_j.startswith('#'):
                                 j += 1
                                 continue
                             curr_indent = len(lines[j]) - len(lines[j].lstrip())
