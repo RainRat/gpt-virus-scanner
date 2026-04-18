@@ -3888,7 +3888,7 @@ def _finalize_import(data_to_import: List[Dict[str, Any]], source_name: str) -> 
     _auto_select_best_result()
 
 
-def import_results() -> None:
+def import_results(event: Optional[tk.Event] = None) -> None:
     """Load results from a JSON or CSV file into the Treeview.
 
     Supports standard JSON lists, NDJSON (newline-delimited JSON), and CSV files.
@@ -4034,7 +4034,7 @@ def _get_tree_results_as_dicts(item_ids: Iterable[str]) -> List[Dict[str, Any]]:
     return results
 
 
-def export_results() -> None:
+def export_results(event: Optional[tk.Event] = None) -> None:
     """Save the current Treeview contents to a file chosen by the user.
 
     Supports CSV, HTML, JSON, and SARIF formats.
@@ -5017,13 +5017,13 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     # --- Menu Bar ---
     menubar = tk.Menu(root)
     file_menu = tk.Menu(menubar, tearoff=0)
-    file_menu.add_command(label="Import Results...", command=import_results)
-    file_menu.add_command(label="Import from Clipboard", command=import_from_clipboard)
+    file_menu.add_command(label="Import Results...", command=import_results, accelerator="Ctrl+O")
+    file_menu.add_command(label="Import from Clipboard", command=import_from_clipboard, accelerator="Ctrl+V")
     file_menu.add_command(label="Import from URL...", command=import_from_url)
-    file_menu.add_command(label="Export Results...", command=export_results)
+    file_menu.add_command(label="Export Results...", command=export_results, accelerator="Ctrl+E")
     file_menu.add_command(label="Manage Exclusions...", command=manage_exclusions)
     file_menu.add_command(label="Manage Extensions...", command=manage_extensions)
-    file_menu.add_command(label="Copy as CLI Command", command=copy_cli_command)
+    file_menu.add_command(label="Copy as CLI Command", command=copy_cli_command, accelerator="Ctrl+Shift+E")
     file_menu.add_separator()
     file_menu.add_command(label="Clear Results", command=clear_results)
     file_menu.add_command(label="Clear AI Cache", command=clear_ai_cache)
@@ -5066,11 +5066,11 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(scan_button, "Start the scan.")
+    bind_hover_message(scan_button, "Start the scan. (Enter)")
 
     cancel_button = ttk.Button(button_box, text="Cancel", command=cancel_scan, state="disabled", width=10)
     cancel_button.pack(side=tk.LEFT, padx=(2, 0), ipady=5)
-    bind_hover_message(cancel_button, "Stop the current scan.")
+    bind_hover_message(cancel_button, "Stop the current scan. (Esc)")
 
     browse_menu = tk.Menu(browse_button, tearoff=0)
     browse_menu.add_command(label="Select File(s)...", command=browse_file_click)
@@ -5260,7 +5260,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     filter_entry.grid(row=0, column=1, sticky="ew")
     filter_entry.bind('<KeyRelease>', _apply_filter)
     filter_entry.bind('<Return>', on_filter_return)
-    bind_hover_message(filter_entry, "Search results by any column (path, threat level, analysis, snippet).")
+    bind_hover_message(filter_entry, "Search results by any column (path, threat level, analysis, snippet). (Ctrl+F)")
 
     def clear_filter():
         filter_var.set("")
@@ -5359,15 +5359,15 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     view_button = ttk.Button(footer_frame, text="View", width=10, command=view_details, style='Primary.TButton')
     view_button.grid(row=0, column=1, padx=2, ipady=5)
-    bind_hover_message(view_button, "Show full analysis and code for the selected result.")
+    bind_hover_message(view_button, "Show full analysis and code for the selected result. (Space or Enter)")
 
     analyze_button = ttk.Button(footer_frame, text="Analyze with AI", width=18, command=analyze_selected_with_ai)
     analyze_button.grid(row=0, column=2, padx=2, ipady=5)
-    bind_hover_message(analyze_button, "Use AI to analyze the currently selected items.")
+    bind_hover_message(analyze_button, "Use AI to analyze the currently selected items. (Ctrl+G)")
 
     vt_button = ttk.Button(footer_frame, text="VirusTotal", width=12, command=check_virustotal)
     vt_button.grid(row=0, column=3, padx=2, ipady=5)
-    bind_hover_message(vt_button, "Check the selected files on VirusTotal.")
+    bind_hover_message(vt_button, "Check the selected files on VirusTotal. (Ctrl+T)")
 
     ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=4, sticky="ns", padx=5)
 
@@ -5377,17 +5377,17 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     reveal_button = ttk.Button(footer_frame, text="Reveal", width=10, command=show_in_folder)
     reveal_button.grid(row=0, column=6, padx=2, ipady=5)
-    bind_hover_message(reveal_button, "Reveal the selected file in the system file manager.")
+    bind_hover_message(reveal_button, "Reveal the selected file in the system file manager. (Ctrl+Enter)")
 
     ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=7, sticky="ns", padx=5)
 
     rescan_button = ttk.Button(footer_frame, text="Rescan", width=10, command=rescan_selected)
     rescan_button.grid(row=0, column=8, padx=2, ipady=5)
-    bind_hover_message(rescan_button, "Re-scan the currently selected items.")
+    bind_hover_message(rescan_button, "Re-scan the currently selected items. (F5 or R)")
 
     exclude_button = ttk.Button(footer_frame, text="Exclude", width=10, command=exclude_selected)
     exclude_button.grid(row=0, column=9, padx=2, ipady=5)
-    bind_hover_message(exclude_button, "Exclude the selected items from future scans.")
+    bind_hover_message(exclude_button, "Exclude the selected items from future scans. (Delete)")
 
     ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=10, sticky="ns", padx=5)
 
@@ -5396,10 +5396,10 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(results_button, "Manage scan results (Import, Export, Clear).")
 
     results_menu = tk.Menu(results_button, tearoff=0)
-    results_menu.add_command(label="Import Results...", command=import_results)
-    results_menu.add_command(label="Import from Clipboard", command=import_from_clipboard)
+    results_menu.add_command(label="Import Results...", command=import_results, accelerator="Ctrl+O")
+    results_menu.add_command(label="Import from Clipboard", command=import_from_clipboard, accelerator="Ctrl+V")
     results_menu.add_command(label="Import from URL...", command=import_from_url)
-    results_menu.add_command(label="Export Results...", command=export_results)
+    results_menu.add_command(label="Export Results...", command=export_results, accelerator="Ctrl+E")
     results_menu.add_separator()
     results_menu.add_command(label="Clear Results", command=clear_results)
     results_button["menu"] = results_menu
@@ -5407,23 +5407,23 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     # --- Context Menu ---
     global context_menu
     context_menu = tk.Menu(root, tearoff=0)
-    context_menu.add_command(label="View Details...", command=view_details)
+    context_menu.add_command(label="View Details...", command=view_details, accelerator="Space")
     context_menu.add_separator()
-    context_menu.add_command(label="Rescan Selected", command=rescan_selected)
-    context_menu.add_command(label="Analyze with AI", command=analyze_selected_with_ai)
-    context_menu.add_command(label="Exclude from future scans", command=exclude_selected)
+    context_menu.add_command(label="Rescan Selected", command=rescan_selected, accelerator="F5")
+    context_menu.add_command(label="Analyze with AI", command=analyze_selected_with_ai, accelerator="Ctrl+G")
+    context_menu.add_command(label="Exclude from future scans", command=exclude_selected, accelerator="Delete")
     context_menu.add_separator()
-    context_menu.add_command(label="Select All", command=select_all_items)
+    context_menu.add_command(label="Select All", command=select_all_items, accelerator="Ctrl+A")
     context_menu.add_separator()
-    context_menu.add_command(label="Open", command=open_file)
-    context_menu.add_command(label="Reveal", command=show_in_folder)
+    context_menu.add_command(label="Open", command=open_file, accelerator="Shift+Enter")
+    context_menu.add_command(label="Reveal", command=show_in_folder, accelerator="Ctrl+Enter")
     context_menu.add_separator()
-    context_menu.add_command(label="Copy File Path", command=copy_path)
-    context_menu.add_command(label="Copy SHA256", command=copy_sha256)
-    context_menu.add_command(label="Check on VirusTotal", command=check_virustotal)
-    context_menu.add_command(label="Copy Snippet", command=copy_snippet)
-    context_menu.add_command(label="Copy as Markdown", command=copy_as_markdown)
-    context_menu.add_command(label="Copy as JSON", command=copy_as_json)
+    context_menu.add_command(label="Copy File Path", command=copy_path, accelerator="Ctrl+C")
+    context_menu.add_command(label="Copy SHA256", command=copy_sha256, accelerator="Ctrl+H")
+    context_menu.add_command(label="Check on VirusTotal", command=check_virustotal, accelerator="Ctrl+T")
+    context_menu.add_command(label="Copy Snippet", command=copy_snippet, accelerator="Ctrl+S")
+    context_menu.add_command(label="Copy as Markdown", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
+    context_menu.add_command(label="Copy as JSON", command=copy_as_json, accelerator="Ctrl+J")
 
     # Bind context menu to right-click and menu key
     tree.bind('<Button-3>', show_context_menu) # Windows/Linux
@@ -5432,6 +5432,12 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # Bind selection and rescan keys
     root.bind('<Return>', on_root_return)
+    root.bind('<Control-o>', import_results)
+    root.bind('<Command-o>', import_results)
+    root.bind('<Control-e>', export_results)
+    root.bind('<Command-e>', export_results)
+    root.bind('<Control-t>', check_virustotal)
+    root.bind('<Command-t>', check_virustotal)
     root.bind('<Control-Shift-E>', copy_cli_command)
     root.bind('<Command-Shift-E>', copy_cli_command)
     root.bind('<Control-v>', import_from_clipboard)
