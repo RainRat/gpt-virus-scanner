@@ -4383,7 +4383,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     path_copy_btn.grid(row=1, column=2, padx=2)
     bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.", label=status_bar)
 
-    reveal_btn = ttk.Button(header_frame, text="Reveal", width=10, command=lambda: show_in_folder(path_entry.get()))
+    reveal_btn = ttk.Button(header_frame, text="Show in Folder", width=14, command=lambda: show_in_folder(path_entry.get()))
     reveal_btn.grid(row=1, column=3, padx=2)
     bind_hover_message(reveal_btn, "Show this file in the system file manager. (Ctrl+Enter)", label=status_bar)
 
@@ -5428,9 +5428,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     open_button.grid(row=0, column=5, padx=2, ipady=5)
     bind_hover_message(open_button, "Open the selected file in its default application. (Shift+Enter)")
 
-    reveal_button = ttk.Button(footer_frame, text="Reveal", width=10, command=show_in_folder)
+    reveal_button = ttk.Button(footer_frame, text="Show in Folder", width=14, command=show_in_folder)
     reveal_button.grid(row=0, column=6, padx=2, ipady=5)
-    bind_hover_message(reveal_button, "Reveal the selected file in the system file manager. (Ctrl+Enter)")
+    bind_hover_message(reveal_button, "Show the selected file in the system file manager. (Ctrl+Enter)")
 
     ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=7, sticky="ns", padx=5)
 
@@ -5462,21 +5462,30 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu = tk.Menu(root, tearoff=0)
     context_menu.add_command(label="View Details...", command=view_details, accelerator="Space")
     context_menu.add_separator()
+
+    # External Group
+    context_menu.add_command(label="Open", command=open_file, accelerator="Shift+Enter")
+    context_menu.add_command(label="Show in Folder", command=show_in_folder, accelerator="Ctrl+Enter")
+    context_menu.add_command(label="Check on VirusTotal", command=check_virustotal, accelerator="Ctrl+T")
+    context_menu.add_separator()
+
+    # Scanning Group
     context_menu.add_command(label="Rescan Selected", command=rescan_selected, accelerator="F5")
     context_menu.add_command(label="Analyze with AI", command=analyze_selected_with_ai, accelerator="Ctrl+G")
     context_menu.add_command(label="Exclude from future scans", command=exclude_selected, accelerator="Delete")
     context_menu.add_separator()
+
+    # Copy Sub-menu
+    copy_submenu = tk.Menu(context_menu, tearoff=0)
+    copy_submenu.add_command(label="File Path", command=copy_path, accelerator="Ctrl+C")
+    copy_submenu.add_command(label="SHA256 Hash", command=copy_sha256, accelerator="Ctrl+H")
+    copy_submenu.add_command(label="Code Snippet", command=copy_snippet, accelerator="Ctrl+S")
+    copy_submenu.add_command(label="as Markdown", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
+    copy_submenu.add_command(label="as JSON", command=copy_as_json, accelerator="Ctrl+J")
+    context_menu.add_cascade(label="Copy", menu=copy_submenu)
+
+    context_menu.add_separator()
     context_menu.add_command(label="Select All", command=select_all_items, accelerator="Ctrl+A")
-    context_menu.add_separator()
-    context_menu.add_command(label="Open", command=open_file, accelerator="Shift+Enter")
-    context_menu.add_command(label="Reveal", command=show_in_folder, accelerator="Ctrl+Enter")
-    context_menu.add_separator()
-    context_menu.add_command(label="Copy File Path", command=copy_path, accelerator="Ctrl+C")
-    context_menu.add_command(label="Copy SHA256", command=copy_sha256, accelerator="Ctrl+H")
-    context_menu.add_command(label="Check on VirusTotal", command=check_virustotal, accelerator="Ctrl+T")
-    context_menu.add_command(label="Copy Snippet", command=copy_snippet, accelerator="Ctrl+S")
-    context_menu.add_command(label="Copy as Markdown", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
-    context_menu.add_command(label="Copy as JSON", command=copy_as_json, accelerator="Ctrl+J")
 
     # Bind context menu to right-click and menu key
     tree.bind('<Button-3>', show_context_menu) # Windows/Linux
