@@ -301,7 +301,7 @@ class Config:
             return True
         # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
-        if basename in ('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'dockerfile', 'makefile') or \
+        if basename in ('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'dockerfile', 'makefile') or \
            basename.endswith(('.dockerfile', '.makefile')):
             return True
         return False
@@ -2139,7 +2139,59 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 5. Check for Markdown code blocks
+    # 5. Check for pyproject.toml
+    if check_name.lower().endswith('pyproject.toml'):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            # Extract values from scripts/tasks sections in TOML.
+            # Using regex to avoid adding a 'toml' dependency.
+            sections = [
+                'project.scripts',
+                'tool.poetry.scripts',
+                'tool.pdm.scripts',
+                'tool.hatch.scripts',
+                'tool.pixi.tasks'
+            ]
+            lines = text.splitlines()
+            current_section = None
+            extracted_any = False
+
+            for line in lines:
+                stripped = line.strip()
+                if not stripped or stripped.startswith('#'):
+                    continue
+
+                # Check for section headers
+                header_match = re.match(r'^\s*\[(.*?)\]\s*', stripped)
+                if header_match:
+                    section_name = header_match.group(1).strip()
+                    if section_name in sections:
+                        current_section = section_name
+                    else:
+                        current_section = None
+                    continue
+
+                # Extract script/task definitions in the active section
+                if current_section:
+                    # Match "key = value" or key = "value"
+                    kv_match = re.match(r'^\s*([A-Za-z0-9_\-\.]+)\s*=\s*(.*)', stripped)
+                    if kv_match:
+                        key, val = kv_match.groups()
+                        # Clean up value (remove quotes and inline comments)
+                        val = val.split('#')[0].strip()
+                        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+                            val = val[1:-1]
+
+                        if val.strip():
+                            yield (f"{name} [Script: {key}]", val.encode('utf-8'))
+                            extracted_any = True
+
+            if extracted_any:
+                return
+        except Exception:
+            pass
+
+    # 6. Check for Markdown code blocks
     if check_name.lower().endswith('.md'):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -2152,7 +2204,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 6. Check for HTML script tags and other embedded elements
+    # 7. Check for HTML script tags and other embedded elements
     if check_name.lower().endswith(('.html', '.htm', '.xhtml')):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -2193,7 +2245,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 7. Check for Dockerfile
+    # 8. Check for Dockerfile
     lowered_check = check_name.lower()
     if 'dockerfile' in lowered_check and (os.path.basename(lowered_check) == 'dockerfile' or lowered_check.endswith('.dockerfile')):
         try:
@@ -2234,7 +2286,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 8. Check for CI/CD Workflows (YAML)
+    # 9. Check for CI/CD Workflows (YAML)
     if lowered_check.endswith(('.yml', '.yaml')):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -2305,7 +2357,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 9. Check for Unified Diff (.diff or .patch)
+    # 10. Check for Unified Diff (.diff or .patch)
     if check_name.lower().endswith(('.diff', '.patch')):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -2351,7 +2403,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 10. Check for Makefile
+    # 11. Check for Makefile
     if 'makefile' in lowered_check and (os.path.basename(lowered_check) == 'makefile' or lowered_check.endswith('.makefile')):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -5544,7 +5596,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json, pyproject.toml), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
