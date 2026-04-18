@@ -999,6 +999,41 @@ def get_git_changed_files(path: str = ".") -> List[str]:
     return [p for f in files if os.path.exists(p := os.path.join(toplevel, f))]
 
 
+def get_git_diff(path: str = ".") -> str:
+    """Get the current Git diff (staged and unstaged) as a string."""
+    abs_path = os.path.abspath(path)
+    search_dir = os.path.dirname(abs_path) if os.path.isfile(abs_path) else abs_path
+
+    try:
+        toplevel = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=search_dir,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return ""
+
+    try:
+        rel_target = os.path.relpath(abs_path, toplevel)
+        targets = [rel_target] if rel_target != "." else []
+    except ValueError:
+        return ""
+
+    try:
+        # Get diff of staged and unstaged changes relative to HEAD
+        cmd = ["git", "diff", "HEAD", "--no-color", "--"] + targets
+        output = subprocess.check_output(
+            cmd,
+            cwd=toplevel,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+        return output
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return ""
+
+
 def collect_files(targets: Union[str, List[str]]) -> List[Path]:
     """Collect files from a single path or a list of paths (files, directories, or globs).
 
@@ -1462,6 +1497,23 @@ def scan_clipboard_click():
                 button_click(extra_snippets=[("[Clipboard]", content.encode('utf-8'))])
     except Exception as e:
         messagebox.showwarning("Clipboard Error", f"Could not read from clipboard: {e}")
+
+
+def scan_git_diff_click():
+    """Scan current Git diff (staged and unstaged changes)."""
+    try:
+        # Get path from textbox or default to current directory
+        target_path = textbox.get().strip() if textbox else "."
+        if not target_path:
+            target_path = "."
+
+        diff_content = get_git_diff(target_path)
+        if diff_content:
+            button_click(extra_snippets=[("[Git Diff]", diff_content.encode('utf-8'))])
+        else:
+            messagebox.showinfo("Git Diff", "No Git changes detected (staged or unstaged) in the target path.")
+    except Exception as e:
+        messagebox.showwarning("Git Diff Error", f"Could not retrieve Git diff: {e}")
 
 
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None) -> None:
@@ -5077,6 +5129,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Select Folder...", command=browse_dir_click)
     browse_menu.add_command(label="Scan URL...", command=select_url_click)
     browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click)
+    browse_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click)
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -5491,7 +5544,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
@@ -5499,6 +5552,8 @@ def main():
                "  python gptscan.py ./my_script.py --cli --json\n\n"
                "  # Scan only changed files in Git and fail if threats are found\n"
                "  python gptscan.py --git-changes --cli --fail-threshold 50\n\n"
+               "  # Scan current local Git diff (staged and unstaged changes)\n"
+               "  python gptscan.py --git-diff --cli\n\n"
                "  # Scan a snippet sent from another command\n"
                "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n\n"
                "  # Scan a remote script or a GitHub repository directly from a web link\n"
@@ -5539,6 +5594,11 @@ def main():
         '--git-changes',
         action='store_true',
         help='Only scan files that have changed in your Git repository.'
+    )
+    scan_group.add_argument(
+        '--git-diff',
+        action='store_true',
+        help='Scan the current Git diff (staged and unstaged changes) as a patch.'
     )
     scan_group.add_argument(
         '--all-files',
@@ -5686,7 +5746,21 @@ def main():
             # Scan only changed files
             scan_targets = git_files
 
-        if not scan_targets and not args.git_changes:
+        extra_snippets = []
+        if args.git_diff:
+            # Use specified targets as git roots, or current directory if none.
+            git_roots = scan_targets if scan_targets else ["."]
+            diff_count = 0
+            for root_dir in git_roots:
+                diff_content = get_git_diff(root_dir)
+                if diff_content:
+                    extra_snippets.append((f"git-diff-{diff_count}.patch", diff_content.encode('utf-8')))
+                    diff_count += 1
+
+            if not extra_snippets:
+                print("No Git diff detected in provided targets.", file=sys.stderr)
+
+        if not scan_targets and not args.git_changes and not args.git_diff:
             # Default to current directory if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
@@ -5719,7 +5793,6 @@ def main():
 
         final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or [])))
 
-        extra_snippets = []
         if args.stdin:
             try:
                 # Read from stdin buffer for binary safety
