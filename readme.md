@@ -8,7 +8,7 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
 *   **Local & Remote Scanning:** Scan local files or fetch them directly from a web link.
 *   **PR/MR & Patch Scanning:** Fetch and scan code changes from GitHub Pull Requests, GitLab Merge Requests, or local `.diff`/`.patch` files.
 *   **Notebook Support:** Analyzes `.ipynb` cells for malicious commands.
-*   **Web & Manifest Analysis:** Scans HTML, Markdown, `package.json`, `composer.json`, `deno.json`, and `deno.jsonc`.
+*   **Web, DevOps & Manifest Analysis:** Scans HTML, Markdown, Dockerfiles, Makefiles, CI/CD workflows (GitHub Actions, GitLab CI), `package.json`, `composer.json`, `deno.json`, and `deno.jsonc`.
 *   **Archive Unpacking:** Automatically unpacks `.zip`, `.tar`, and `.tar.gz` to scan their contents.
 *   **Two-step analysis:**
     1.  **Fast Local Scan:** A lightweight model identifies suspicious patterns in milliseconds.
@@ -47,7 +47,7 @@ Run `python gptscan.py` to open the GUI.
 Access these options from the **Browse** menu in the header:
 *   **Select File(s)...:** Choose one or more scripts to scan.
 *   **Select Folder...:** Choose a whole directory to scan.
-*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, manifest (package.json, `deno.jsonc`, etc.), PR/MR (GitHub/GitLab), or archive (.zip, .tar, .tar.gz) directly from a web link.
+*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, Dockerfile, Makefile, manifest (package.json, `deno.jsonc`, etc.), PR/MR (GitHub/GitLab), or archive (.zip, .tar, .tar.gz) directly from a web link (GitHub, GitLab, Bitbucket, or Gist).
 *   **Scan Clipboard:** Scan code currently in your clipboard.
 *   **Scan Git Diff:** Scan the current Git diff (staged and unstaged changes) for potential threats.
 
