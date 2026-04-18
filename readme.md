@@ -83,8 +83,11 @@ Access report management from the **Results** menu in the footer:
 The scanner can be used directly from the command line for automation.
 
 ```bash
-# Scan a directory and save results to HTML
-python gptscan.py --cli /path/to/code -o report.html
+# Scan a folder and save results to HTML
+python gptscan.py --cli ./my_scripts -o report.html
+
+# Scan specific file types using a glob pattern
+python gptscan.py --cli "src/**/*.py"
 
 # Scan only modified files in a Git repo with high sensitivity
 python gptscan.py --cli --git-changes -t 80
@@ -98,7 +101,8 @@ python gptscan.py --cli --import results.json -o report.html
 
 #### CLI Options
 *   `--cli`: Run in command-line mode.
-*   `target`: The folder, file, or web link to scan (positional argument).
+*   `target`: The folder, file, glob pattern (e.g., `src/**/*.py`), or web link to scan.
+*   `files`: Additional folders, files, glob patterns, or web links to scan.
 *   `--path [path], -p [path]`: Alternative way to specify a folder, file, or web link to scan.
 *   `--stdin`: Scan a code snippet from terminal input.
 *   `--deep, -d`: Scan the entire file instead of just the first and last 1 KB (1,024 bytes).
@@ -109,7 +113,7 @@ python gptscan.py --cli --import results.json -o report.html
 *   `--model [name]`: Set the AI model (for example: `gpt-4o`, `llama3.2`).
 *   `--api-key [key], -k [key]`: Set the API key.
 *   `--api-base [url]`: Set a custom base URL for the API.
-*   `--max-size [MB]`: Maximum file size to scan (e.g., "10MB"). Default is 10MB.
+*   `--max-size [size]`: Maximum file size to scan (e.g., "500KB", "10MB", "1GB"). Default is 10MB.
 *   `--output [file], -o [file]`: Save results to a file (JSON, CSV, SARIF, Markdown, or HTML).
 *   `--report`: Output a human-friendly triage report to the console.
 *   `--threshold [0-100], -t [0-100]`: Set the minimum threat level to report (default: 50).
