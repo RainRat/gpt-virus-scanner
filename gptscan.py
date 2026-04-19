@@ -301,7 +301,7 @@ class Config:
             return True
         # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
-        if basename in ('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'dockerfile', 'makefile') or \
+        if basename in ('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'dockerfile', 'makefile') or \
            basename.endswith(('.dockerfile', '.makefile')):
             return True
         return False
@@ -2090,15 +2090,42 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc)
+    # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc, pyproject.toml)
     lowered_check = check_name.lower()
-    if lowered_check.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc')):
+    if lowered_check.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml')):
         try:
             text = content.decode('utf-8', errors='ignore')
+            if lowered_check.endswith('pyproject.toml'):
+                # Handle TOML manifest
+                sections = re.split(r'^\[', text, flags=re.MULTILINE)
+                for section in sections:
+                    if not section:
+                        continue
+                    lines = section.splitlines()
+                    header = lines[0].strip().rstrip(']')
+                    if header in ('project.scripts', 'tool.poetry.scripts', 'tool.poe.tasks', 'tool.taskipy.tasks'):
+                        for line in lines[1:]:
+                            line = line.strip()
+                            if not line or line.startswith('#') or line.startswith('['):
+                                continue
+                            if '=' in line:
+                                parts = line.split('=', 1)
+                                key = parts[0].strip().strip('"\'')
+                                val = parts[1].strip()
+                                cmd = ""
+                                if val.startswith(('"', "'")):
+                                    cmd = val.strip('"\'')
+                                elif val.startswith('{') and val.endswith('}'):
+                                    m = re.search(r'(?:cmd|shell)\s*=\s*["\'](.*?)["\']', val)
+                                    if m:
+                                        cmd = m.group(1)
+                                if cmd:
+                                    label = 'Script' if 'scripts' in header else 'Task'
+                                    yield (f"{name} [{label}: {key}]", cmd.encode('utf-8'))
+                return
+
+            # Handle JSON manifests
             if lowered_check.endswith('.jsonc'):
-                # Strip single-line and multi-line comments for JSONC support
-                # This regex strips /* ... */ comments and // ... comments while attempting to ignore
-                # // if it appears inside a double-quoted string (to avoid mangling URLs).
                 text = re.sub(
                     r'(/\*.*?\*/)|("(?:\\.|[^"\\])*")|(//[^\n]*)',
                     lambda m: m.group(2) if m.group(2) else " ",
@@ -2110,7 +2137,6 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             if not isinstance(manifest, dict):
                 return
 
-            # Determine key and label based on manifest type
             key = 'scripts'
             label = 'Script'
             if 'deno.json' in lowered_check:
@@ -2119,22 +2145,14 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
 
             scripts = manifest.get(key, {})
             if isinstance(scripts, dict):
-                yielded_any = False
                 for script_name, command in scripts.items():
                     if isinstance(command, str):
                         if command.strip():
                             yield (f"{name} [{label}: {script_name}]", command.encode('utf-8'))
-                            yielded_any = True
                     elif isinstance(command, list):
-                        # Support for array-based scripts (common in composer.json)
                         for i, cmd in enumerate(command, 1):
                             if isinstance(cmd, str) and cmd.strip():
                                 yield (f"{name} [{label}: {script_name} ({i})]", cmd.encode('utf-8'))
-                                yielded_any = True
-                if yielded_any:
-                    return
-
-            # If it's a manifest but has no scripts/tasks, we don't want to scan it as a whole file
             return
         except Exception:
             pass
@@ -5544,7 +5562,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json, pyproject.toml), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
