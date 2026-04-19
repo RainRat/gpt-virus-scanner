@@ -108,6 +108,26 @@ def mock_view_details_env(monkeypatch):
         return btn
     monkeypatch.setattr(gptscan.ttk, 'Button', mock_button_init)
 
+    def mock_menubutton_init(master, **kwargs):
+        btn = MagicMock()
+        text = kwargs.get('text', '')
+        if text:
+            captured[f"btn_{text}"] = (btn, kwargs.get('command'))
+        return btn
+    monkeypatch.setattr(gptscan.ttk, 'Menubutton', mock_menubutton_init)
+
+    class MockMenu:
+        def __init__(self, master=None, **kwargs):
+            self.items = []
+        def add_command(self, **kwargs):
+            label = kwargs.get('label', '')
+            if label:
+                captured[f"btn_{label}"] = (self, kwargs.get('command'))
+            self.items.append(kwargs)
+        def post(self, x, y): pass
+        def add_separator(self): pass
+    monkeypatch.setattr(gptscan.tk, 'Menu', MockMenu)
+
     def mock_labelframe_init(master, **kwargs):
         lf = MagicMock()
         text = kwargs.get('text', '')

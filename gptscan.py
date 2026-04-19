@@ -4520,17 +4520,15 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
     # Group: Copy & Export
-    copy_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
-    copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard. (Ctrl+Shift+C)", label=status_bar)
+    copy_details_btn = ttk.Menubutton(btn_frame, text="Copy...", width=10)
+    copy_details_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(copy_details_btn, "Copy results or code to the clipboard.", label=status_bar)
 
-    copy_json_btn = ttk.Button(btn_frame, text="Copy JSON", width=12, command=copy_as_json_details)
-    copy_json_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(copy_json_btn, "Copy the current result as a JSON object. (Ctrl+J)", label=status_bar)
-
-    copy_code_btn = ttk.Button(btn_frame, text="Copy Code", width=12, command=copy_code)
-    copy_code_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(copy_code_btn, "Copy the displayed code to the clipboard. (Ctrl+S)", label=status_bar)
+    copy_details_menu = tk.Menu(copy_details_btn, tearoff=0)
+    copy_details_menu.add_command(label="Copy Analysis", command=copy_analysis, accelerator="Ctrl+Shift+C")
+    copy_details_menu.add_command(label="Copy JSON", command=copy_as_json_details, accelerator="Ctrl+J")
+    copy_details_menu.add_command(label="Copy Code", command=copy_code, accelerator="Ctrl+S")
+    copy_details_btn["menu"] = copy_details_menu
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
@@ -4558,6 +4556,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         open_btn.config(state='disabled' if is_scanning else 'normal')
         vt_btn.config(state='disabled' if is_scanning else 'normal')
         path_copy_btn.config(state='disabled' if is_scanning else 'normal')
+        copy_details_btn.config(state='disabled' if is_scanning else 'normal')
         reveal_btn.config(state='disabled' if is_scanning else 'normal')
 
         # vals: (path, own_conf, admin, user, gpt_conf, snippet, line)
