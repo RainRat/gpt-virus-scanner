@@ -5544,7 +5544,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json, deno.jsonc), build scripts (Dockerfile, Makefile), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"

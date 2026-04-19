@@ -8,6 +8,7 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
 *   **Local & Remote Scanning:** Scan local files or fetch them directly from a web link.
 *   **PR/MR & Patch Scanning:** Fetch and scan code changes from GitHub Pull Requests, GitLab Merge Requests, or local `.diff`/`.patch` files.
 *   **Notebook Support:** Analyzes `.ipynb` cells for malicious commands.
+*   **Build & DevOps Scanning:** Scans `Dockerfile`, `Makefile`, and CI/CD workflows (GitHub Actions, GitLab CI).
 *   **Web & Manifest Analysis:** Scans HTML, Markdown, `package.json`, `composer.json`, `deno.json`, and `deno.jsonc`.
 *   **Archive Unpacking:** Automatically unpacks `.zip`, `.tar`, and `.tar.gz` to scan their contents.
 *   **Two-step analysis:**
@@ -20,7 +21,7 @@ AI-powered script analysis for local and remote files. This tool uses a pre-trai
 ## Installation
 
 ### Prerequisites
-*   Python 3.9, 3.10, or 3.11. (Python 3.12 is not supported yet due to model compatibility).
+*   Python 3.9, 3.10, 3.11, or 3.12. (Note: 3.12 requires TensorFlow 2.16 or newer).
 *   **Tkinter:** Usually included with Python. On Linux, you might need to install `python3-tk`.
 *   (Optional) An API key for [OpenAI](https://platform.openai.com/) or [OpenRouter](https://openrouter.ai/).
 *   (Optional) [Ollama](https://ollama.com/) for local AI analysis.
@@ -47,7 +48,7 @@ Run `python gptscan.py` to open the GUI.
 Access these options from the **Browse** menu in the header:
 *   **Select File(s)...:** Choose one or more scripts to scan.
 *   **Select Folder...:** Choose a whole directory to scan.
-*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, manifest (package.json, `deno.jsonc`, etc.), PR/MR (GitHub/GitLab), or archive (.zip, .tar, .tar.gz) directly from a web link.
+*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, manifest (package.json, `deno.jsonc`, etc.), build script (Dockerfile, Makefile), CI/CD workflow, PR/MR (GitHub/GitLab), or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
 *   **Scan Git Diff:** Scan the current Git diff (staged and unstaged changes) for potential threats.
 
