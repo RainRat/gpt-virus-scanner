@@ -725,6 +725,22 @@ def browse_file_click() -> None:
         _set_scan_target(files_selected)
 
 
+def browse_file_list_click() -> None:
+    """Handle the file list selection dialog and populate the textbox."""
+    file_selected = filedialog.askopenfilename(
+        title="Select File List to Scan",
+        filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+    )
+    if file_selected:
+        try:
+            with open(file_selected, 'r', encoding='utf-8') as f:
+                paths = [line.strip() for line in f if line.strip()]
+            if paths:
+                _set_scan_target(paths)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not read file list: {e}")
+
+
 class AsyncRateLimiter:
     """Simple asynchronous rate limiter using a sliding one-minute window."""
 
@@ -5114,7 +5130,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (File, Folder, URL, or Clipboard).")
+    bind_hover_message(browse_button, "Browse for scan targets (File, Folder, URL, File List, or Clipboard).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -5128,6 +5144,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Select File(s)...", command=browse_file_click)
     browse_menu.add_command(label="Select Folder...", command=browse_dir_click)
     browse_menu.add_command(label="Scan URL...", command=select_url_click)
+    browse_menu.add_command(label="Scan File List...", command=browse_file_list_click)
     browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click)
     browse_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click)
     browse_button["menu"] = browse_menu
