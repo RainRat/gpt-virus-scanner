@@ -22,9 +22,9 @@ def test_view_details_copy_json(mock_view_details_env):
     with patch("gptscan._get_tree_results_as_dicts", return_value=mock_json_result):
         gptscan.view_details(item_id="item1")
 
-        # Find the Copy JSON button and command
-        assert "btn_Copy JSON" in captured
-        btn_mock, copy_json_cmd = captured["btn_Copy JSON"]
+        # Find the Copy JSON menu item command
+        assert "menu_Copy JSON" in captured
+        copy_json_cmd = captured["menu_Copy JSON"]
 
         # Execute the command
         from gptscan import root as mock_root
