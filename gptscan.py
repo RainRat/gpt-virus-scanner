@@ -301,7 +301,7 @@ class Config:
             return True
         # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
-        if basename in ('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'dockerfile', 'makefile') or \
+        if basename in ('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'dockerfile', 'makefile') or \
            basename.endswith(('.dockerfile', '.makefile')):
             return True
         return False
@@ -2135,6 +2135,62 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                     return
 
             # If it's a manifest but has no scripts/tasks, we don't want to scan it as a whole file
+            return
+        except Exception:
+            pass
+
+    # 4b. Check for pyproject.toml
+    if lowered_check.endswith('pyproject.toml'):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            # Extract [project.scripts], [tool.poetry.scripts], [tool.poe.tasks], [tool.taskipy.tasks]
+            sections = [
+                (r'\[project\.scripts\]', 'Script'),
+                (r'\[tool\.poetry\.scripts\]', 'Poetry Script'),
+                (r'\[tool\.poe\.tasks\]', 'Poe Task'),
+                (r'\[tool\.taskipy\.tasks\]', 'Taskipy Task')
+            ]
+
+            yielded_any = False
+            for section_regex, label in sections:
+                # Find the start of the section
+                match = re.search(section_regex, text)
+                if match:
+                    start_pos = match.end()
+                    # Find the start of the next section or end of file
+                    next_section = re.search(r'^\s*\[', text[start_pos:], re.MULTILINE)
+                    end_pos = start_pos + next_section.start() if next_section else len(text)
+                    section_text = text[start_pos:end_pos]
+
+                    # Extract key-value pairs
+                    for line in section_text.splitlines():
+                        line = line.strip()
+                        if not line or line.startswith('#'):
+                            continue
+
+                        # Match key = "value" or key = { ... }
+                        kv_match = re.match(r'^\s*([\w.-]+)\s*=\s*(.*)', line)
+                        if kv_match:
+                            script_name = kv_match.group(1).strip()
+                            value = kv_match.group(2).strip()
+
+                            command = None
+                            # If it's an inline table like { cmd = "..." } or { shell = "..." }
+                            if value.startswith('{'):
+                                cmd_match = re.search(r'(?:cmd|shell)\s*=\s*["\'](.*?)["\']', value)
+                                if cmd_match:
+                                    command = cmd_match.group(1)
+                            else:
+                                # If it's a string (possibly with trailing comment)
+                                str_match = re.match(r'^["\'](.*?)["\']', value)
+                                if str_match:
+                                    command = str_match.group(1)
+
+                            if command and command.strip():
+                                yield (f"{name} [{label}: {script_name}]", command.encode('utf-8'))
+                                yielded_any = True
+
+            # Whether or not we found scripts, we don't want to scan the TOML as a whole file
             return
         except Exception:
             pass
@@ -5544,7 +5600,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json, pyproject.toml), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
