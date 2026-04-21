@@ -2873,12 +2873,21 @@ def scan_files(
 
             tasks = [asyncio.create_task(run_request(request)) for request in gpt_requests]
             results: List[Tuple[Dict[str, Any], Optional[Dict]]] = []
-            for completed in asyncio.as_completed(tasks):
-                if cancel_event.is_set():
-                    for t in tasks:
-                        t.cancel()
-                    break
-                results.append(await completed)
+            
+            tasks_pending = set(tasks)
+            try:
+                while tasks_pending and not cancel_event.is_set():
+                    done, tasks_pending = await asyncio.wait(
+                        tasks_pending,
+                        return_when=asyncio.FIRST_COMPLETED
+                    )
+                    for t in done:
+                        results.append(await t)
+            finally:
+                for t in tasks_pending:
+                    t.cancel()
+                if tasks_pending:
+                    await asyncio.gather(*tasks_pending, return_exceptions=True)
             return results, wait_messages
 
         total_progress += len(gpt_requests)
