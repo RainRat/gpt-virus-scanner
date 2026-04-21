@@ -15,9 +15,9 @@ def test_view_details_copy_code(mock_view_details_env):
 
     gptscan.view_details(item_id="item1")
 
-    # Find the Copy Code button and command
-    assert "btn_Copy Code" in captured
-    btn_mock, copy_code_cmd = captured["btn_Copy Code"]
+    # Find the Copy Code menu item and command
+    assert "menu_Copy Code" in captured
+    copy_code_cmd = captured["menu_Copy Code"]
 
     # Execute the command
     from gptscan import root as mock_root

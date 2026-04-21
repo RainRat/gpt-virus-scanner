@@ -4519,18 +4519,16 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
-    # Group: Copy & Export
-    copy_btn = ttk.Button(btn_frame, text="Copy Analysis", width=15, command=copy_analysis)
-    copy_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(copy_btn, "Copy the full analysis and snippet to clipboard. (Ctrl+Shift+C)", label=status_bar)
+    # Group: Copy Actions
+    copy_menu_btn = ttk.Menubutton(btn_frame, text="Copy...", width=12)
+    copy_menu_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(copy_menu_btn, "Copy analysis, JSON, or code to the clipboard.", label=status_bar)
 
-    copy_json_btn = ttk.Button(btn_frame, text="Copy JSON", width=12, command=copy_as_json_details)
-    copy_json_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(copy_json_btn, "Copy the current result as a JSON object. (Ctrl+J)", label=status_bar)
-
-    copy_code_btn = ttk.Button(btn_frame, text="Copy Code", width=12, command=copy_code)
-    copy_code_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(copy_code_btn, "Copy the displayed code to the clipboard. (Ctrl+S)", label=status_bar)
+    copy_menu = tk.Menu(copy_menu_btn, tearoff=0)
+    copy_menu.add_command(label="Copy Analysis", command=copy_analysis, accelerator="Ctrl+Shift+C")
+    copy_menu.add_command(label="Copy as JSON", command=copy_as_json_details, accelerator="Ctrl+J")
+    copy_menu.add_command(label="Copy Code", command=copy_code, accelerator="Ctrl+S")
+    copy_menu_btn["menu"] = copy_menu
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 

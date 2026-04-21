@@ -108,6 +108,29 @@ def mock_view_details_env(monkeypatch):
         return btn
     monkeypatch.setattr(gptscan.ttk, 'Button', mock_button_init)
 
+    class MockMenu:
+        def __init__(self, master=None, **kwargs):
+            self.master = master
+            self.items = {}
+        def add_command(self, **kwargs):
+            label = kwargs.get('label')
+            if label:
+                self.items[label] = kwargs.get('command')
+                captured[f"menu_{label}"] = kwargs.get('command')
+        def add_separator(self): pass
+        def add_cascade(self, **kwargs): pass
+        def entryconfig(self, index, **kwargs): pass
+
+    monkeypatch.setattr(gptscan.tk, 'Menu', MockMenu)
+
+    def mock_menubutton_init(master, **kwargs):
+        mb = MagicMock()
+        text = kwargs.get('text', '')
+        if text:
+            captured[f"mb_{text}"] = mb
+        return mb
+    monkeypatch.setattr(gptscan.ttk, 'Menubutton', mock_menubutton_init)
+
     def mock_labelframe_init(master, **kwargs):
         lf = MagicMock()
         text = kwargs.get('text', '')
@@ -343,7 +366,8 @@ def test_view_details_copy_analysis(mock_view_details_env):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     setup_details(mock_view_details_env, "item1", "test.py", own_conf="90%", admin="Admin Notes", user="User Notes", gpt_conf="80%", snippet="print('test')")
     from gptscan import root as mock_root
-    copy_cmd = captured["btn_Copy Analysis"][1]
+    # Command is now in the menu
+    copy_cmd = captured["menu_Copy Analysis"]
     copy_cmd()
     mock_root.clipboard_clear.assert_called_once()
     copied_text = mock_root.clipboard_append.call_args[0][0]
