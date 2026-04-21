@@ -301,7 +301,7 @@ class Config:
             return True
         # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
-        if basename in ('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'dockerfile', 'makefile') or \
+        if basename in ('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'dockerfile', 'makefile') or \
            basename.endswith(('.dockerfile', '.makefile')):
             return True
         return False
@@ -2090,11 +2090,64 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc)
+    # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc, pyproject.toml)
     lowered_check = check_name.lower()
-    if lowered_check.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc')):
+    if lowered_check.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml')):
         try:
             text = content.decode('utf-8', errors='ignore')
+            if lowered_check.endswith('.pyproject.toml') or os.path.basename(lowered_check) == 'pyproject.toml':
+                # Parse pyproject.toml using regex to avoid toml dependency
+                # We look for scripts in:
+                # [project.scripts], [tool.poetry.scripts], [tool.pdm.scripts], [tool.hatch.scripts]
+                script_sections = [
+                    r'\[project\.scripts\]',
+                    r'\[tool\.poetry\.scripts\]',
+                    r'\[tool\.pdm\.scripts\]',
+                    r'\[tool\.hatch\.scripts\]',
+                    r'\[tool\.pdm\.dev-dependencies\]' # Sometimes has scripts too, but usually it's just scripts
+                ]
+
+                # More robust: just look for any [*.scripts]
+                section_pattern = r'\[(?:.*?\.)?scripts\]'
+
+                lines = text.splitlines()
+                in_script_section = False
+                for line in lines:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+
+                    if line.startswith('[') and line.endswith(']'):
+                        if re.match(section_pattern, line, re.IGNORECASE) or \
+                           any(re.match(s, line, re.IGNORECASE) for s in script_sections):
+                            in_script_section = True
+                        else:
+                            in_script_section = False
+                        continue
+
+                    if in_script_section:
+                        # Match key = "value" or key = { ... }
+                        # Handles simple: test = "pytest"
+                        # Handles complex: test = { cmd = "pytest", help = "run tests" }
+                        match = re.match(r'^([^=\s]+)\s*=\s*(.*)', line)
+                        if match:
+                            script_name = match.group(1).strip().strip('"\'')
+                            command_val = match.group(2).strip()
+
+                            # If it's a string, use it directly
+                            if command_val.startswith(('"', "'")):
+                                command = command_val.strip('"\'')
+                                if command:
+                                    yield (f"{name} [Script: {script_name}]", command.encode('utf-8'))
+                            elif command_val.startswith('{'):
+                                # Try to extract 'cmd' or 'command' or 'shell' from inline table
+                                cmd_match = re.search(r'(?:cmd|command|shell|composite)\s*=\s*("[^"]*"|\'[^\']*\'|\[[^\]]*\])', command_val)
+                                if cmd_match:
+                                    cmd_val = cmd_match.group(1).strip('"\'[] ')
+                                    if cmd_val:
+                                        yield (f"{name} [Script: {script_name}]", cmd_val.encode('utf-8'))
+                return
+
             if lowered_check.endswith('.jsonc'):
                 # Strip single-line and multi-line comments for JSONC support
                 # This regex strips /* ... */ comments and // ... comments while attempting to ignore
