@@ -948,8 +948,8 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
             tree.item(iid, values=new_vals)
 
 
-def get_git_changed_files(path: str = ".") -> List[str]:
-    """Get a list of changed files (staged, unstaged, untracked) from git."""
+def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
+    """Resolve the Git toplevel directory and the relative path of the target."""
     abs_path = os.path.abspath(path)
     search_dir = os.path.dirname(abs_path) if os.path.isfile(abs_path) else abs_path
 
@@ -960,14 +960,19 @@ def get_git_changed_files(path: str = ".") -> List[str]:
             stderr=subprocess.PIPE,
             universal_newlines=True
         ).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        rel_target = os.path.relpath(abs_path, toplevel)
+        return toplevel, rel_target
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError, ValueError):
+        return None, None
+
+
+def get_git_changed_files(path: str = ".") -> List[str]:
+    """Get a list of changed files (staged, unstaged, untracked) from git."""
+    toplevel, rel_target = _get_git_info(path)
+    if toplevel is None:
         return []
 
-    try:
-        rel_target = os.path.relpath(abs_path, toplevel)
-        targets = [rel_target]
-    except ValueError:
-        return []
+    targets = [rel_target]
 
     files = set()
     # Changed (staged and unstaged) relative to HEAD
@@ -1001,24 +1006,11 @@ def get_git_changed_files(path: str = ".") -> List[str]:
 
 def get_git_diff(path: str = ".") -> str:
     """Get the current Git diff (staged and unstaged) as a string."""
-    abs_path = os.path.abspath(path)
-    search_dir = os.path.dirname(abs_path) if os.path.isfile(abs_path) else abs_path
-
-    try:
-        toplevel = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=search_dir,
-            stderr=subprocess.PIPE,
-            universal_newlines=True
-        ).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+    toplevel, rel_target = _get_git_info(path)
+    if toplevel is None:
         return ""
 
-    try:
-        rel_target = os.path.relpath(abs_path, toplevel)
-        targets = [rel_target] if rel_target != "." else []
-    except ValueError:
-        return ""
+    targets = [rel_target] if rel_target != "." else []
 
     try:
         # Get diff of staged and unstaged changes relative to HEAD
