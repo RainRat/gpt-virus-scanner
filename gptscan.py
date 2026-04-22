@@ -74,7 +74,7 @@ _virtual_source_cache: Dict[str, str] = {}
 
 
 def resolve_remote_url(url: str) -> str:
-    """Resolve GitHub/GitLab repository or blob URLs to their raw content or archive.
+    """Resolve GitHub/GitLab/Bitbucket repository, blob, tag, or PR URLs to their raw content or archive.
 
     Args:
         url: The original URL to resolve.
@@ -104,20 +104,27 @@ def resolve_remote_url(url: str) -> str:
     if gh_patch_match:
         return f"{gh_patch_match.group(1)}.diff"
 
-    # 3. GitHub Gist -> Raw
-    # Example: https://gist.github.com/user/id -> https://gist.github.com/user/id/raw
+    # 3. GitHub Gist -> ZIP Archive (gets all files)
+    # Example: https://gist.github.com/user/id -> https://gist.github.com/user/id/download
     gist_match = re.match(r'https?://gist\.github\.com/([^/]+)/([a-f0-9]+)$', url, re.IGNORECASE)
     if gist_match:
-        return f"{url}/raw"
+        return f"{url}/download"
 
-    # 4. GitHub Branch/Tag -> ZIP Archive
+    # 4. GitHub Tag/Release -> ZIP Archive
+    # Example: https://github.com/user/repo/releases/tag/v1.0 -> https://github.com/user/repo/archive/refs/tags/v1.0.zip
+    gh_tag_match = re.match(r'https?://(?:www\.)?github\.com/([^/]+)/([^/]+)/releases/tag/(.+)', url, re.IGNORECASE)
+    if gh_tag_match:
+        user, repo, tag = gh_tag_match.groups()
+        return f"https://github.com/{user}/{repo}/archive/refs/tags/{tag}.zip"
+
+    # 5. GitHub Branch/Tree -> ZIP Archive
     # Example: https://github.com/user/repo/tree/main -> https://github.com/user/repo/archive/refs/heads/main.zip
     gh_tree_match = re.match(r'https?://(?:www\.)?github\.com/([^/]+)/([^/]+)/tree/(.+)', url, re.IGNORECASE)
     if gh_tree_match:
         user, repo, ref = gh_tree_match.groups()
         return f"https://github.com/{user}/{repo}/archive/refs/heads/{ref}.zip"
 
-    # 5. GitHub Repo -> ZIP Archive
+    # 6. GitHub Repo -> ZIP Archive
     # Example: https://github.com/user/repo -> https://github.com/user/repo/archive/HEAD.zip
     gh_repo_match = re.match(r'https?://(?:www\.)?github\.com/([^/]+)/([^/]+)$', url, re.IGNORECASE)
     if gh_repo_match:
@@ -125,20 +132,33 @@ def resolve_remote_url(url: str) -> str:
         if repo.lower() not in ('settings', 'pulls', 'issues', 'actions', 'projects', 'wiki', 'security', 'insights', 'pull'):
             return f"https://github.com/{user}/{repo}/archive/HEAD.zip"
 
-    # 6. GitLab Blob -> Raw
+    # 7. GitLab Blob -> Raw
     # Example: https://gitlab.com/user/repo/-/blob/main/script.py -> https://gitlab.com/user/repo/-/raw/main/script.py
     gl_blob_match = re.match(r'(https?://(?:www\.)?gitlab\.com/.+?)/-/blob/(.+)', url, re.IGNORECASE)
     if gl_blob_match:
         base, path = gl_blob_match.groups()
         return f"{base}/-/raw/{path}"
 
-    # 7. GitLab MR -> Diff
+    # 8. GitLab MR -> Diff
     # Example: https://gitlab.com/user/repo/-/merge_requests/1 -> https://gitlab.com/user/repo/-/merge_requests/1.diff
     gl_mr_match = re.match(r'(https?://(?:www\.)?gitlab\.com/(.+)/([^/]+)/-/merge_requests/\d+)(?:/.*)?$', url, re.IGNORECASE)
     if gl_mr_match:
         return f"{gl_mr_match.group(1)}.diff"
 
-    # 8. GitLab Repo -> ZIP Archive
+    # 9. GitLab Snippet -> Raw
+    # Example: https://gitlab.com/snippets/123 -> https://gitlab.com/snippets/123/raw
+    gl_snippet_match = re.match(r'(https?://(?:www\.)?gitlab\.com/snippets/\d+)(?:/.*)?$', url, re.IGNORECASE)
+    if gl_snippet_match:
+        return f"{gl_snippet_match.group(1)}/raw"
+
+    # 10. GitLab Tag -> ZIP Archive
+    # Example: https://gitlab.com/user/repo/-/tags/v1.0 -> https://gitlab.com/user/repo/-/archive/v1.0/repo-v1.0.zip
+    gl_tag_match = re.match(r'(https?://(?:www\.)?gitlab\.com/(.+)/([^/]+))/-/tags/(.+)', url, re.IGNORECASE)
+    if gl_tag_match:
+        base, group, repo, tag = gl_tag_match.groups()
+        return f"{base}/-/archive/{tag}/{repo}-{tag}.zip"
+
+    # 11. GitLab Repo -> ZIP Archive
     # Example: https://gitlab.com/user/repo -> https://gitlab.com/user/repo/-/archive/main/repo-main.zip
     # Note: GitLab is trickier as the default branch varies. We'll try common patterns.
     gl_repo_match = re.match(r'https?://(?:www\.)?gitlab\.com/(?!.*/-/)(.+)/([^/]+)$', url, re.IGNORECASE)
@@ -148,14 +168,27 @@ def resolve_remote_url(url: str) -> str:
         # Common default branches are 'main' or 'master'. We'll try 'main' and let fetch_url_content fallback if it fails.
         return f"https://gitlab.com/{group_path}/{repo}/-/archive/main/{repo}-main.zip"
 
-    # 9. Bitbucket Cloud Raw
+    # 12. Bitbucket Cloud Raw
     # Example: https://bitbucket.org/user/repo/src/main/script.py -> https://bitbucket.org/user/repo/raw/main/script.py
     bb_raw_match = re.match(r'https?://(?:www\.)?bitbucket\.org/([^/]+)/([^/]+)/src/([^/]+)/(.+)', url, re.IGNORECASE)
     if bb_raw_match:
         user, repo, ref, path = bb_raw_match.groups()
         return f"https://bitbucket.org/{user}/{repo}/raw/{ref}/{path}"
 
-    # 10. Bitbucket Cloud Repo -> ZIP Archive
+    # 13. Bitbucket PR/Commit -> Diff
+    # Example: https://bitbucket.org/user/repo/pull-requests/1 -> https://bitbucket.org/user/repo/pull-requests/1/diff
+    # Example: https://bitbucket.org/user/repo/commits/abc -> https://bitbucket.org/user/repo/commits/abc/diff
+    bb_diff_match = re.match(r'(https?://(?:www\.)?bitbucket\.org/[^/]+/[^/]+/(?:pull-requests/\d+|commits/[a-f0-9]+))(?:/.*)?$', url, re.IGNORECASE)
+    if bb_diff_match:
+        return f"{bb_diff_match.group(1)}/diff"
+
+    # 14. Bitbucket Snippet -> Raw
+    # Example: https://bitbucket.org/user/snippets/abc -> https://bitbucket.org/user/snippets/abc/raw
+    bb_snippet_match = re.match(r'(https?://(?:www\.)?bitbucket\.org/[^/]+/snippets/[^/]+)(?:/.*)?$', url, re.IGNORECASE)
+    if bb_snippet_match:
+        return f"{bb_snippet_match.group(1)}/raw"
+
+    # 15. Bitbucket Cloud Repo -> ZIP Archive
     # Example: https://bitbucket.org/user/repo -> https://bitbucket.org/user/repo/get/HEAD.zip
     bb_repo_match = re.match(r'https?://(?:www\.)?bitbucket\.org/([^/]+)/([^/]+)$', url, re.IGNORECASE)
     if bb_repo_match:
@@ -2300,7 +2333,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         try:
             text = content.decode('utf-8', errors='ignore')
             snippets = []
-            script_keys = ['run', 'script', 'command', 'before_script', 'after_script']
+            script_keys = ['run', 'script', 'command', 'before_script', 'after_script', 'entrypoint']
             # Match keys, optionally prefixed by a dash (common in YAML lists)
             key_pattern = r'^\s*(?:-\s*)?(?:' + '|'.join(script_keys) + r'):\s*(.*)'
             lines = text.splitlines()
@@ -5613,7 +5646,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Docker Compose (entrypoint), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist including PRs, tags and multi-file gists) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"

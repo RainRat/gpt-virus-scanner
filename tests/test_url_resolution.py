@@ -8,7 +8,7 @@ def test_resolve_github_blob():
 
 def test_resolve_github_gist():
     url = "https://gist.github.com/user/1234567890abcdef"
-    expected = "https://gist.github.com/user/1234567890abcdef/raw"
+    expected = "https://gist.github.com/user/1234567890abcdef/download"
     assert resolve_remote_url(url) == expected
 
 def test_resolve_github_repo():
@@ -95,6 +95,11 @@ def test_resolve_github_branch():
     expected = "https://github.com/user/repo/archive/refs/heads/feature-branch.zip"
     assert resolve_remote_url(url) == expected
 
+def test_resolve_github_tag():
+    url = "https://github.com/user/repo/releases/tag/v1.0"
+    expected = "https://github.com/user/repo/archive/refs/tags/v1.0.zip"
+    assert resolve_remote_url(url) == expected
+
 def test_resolve_gitlab_merge_request():
     url = "https://gitlab.com/user/repo/-/merge_requests/456"
     expected = "https://gitlab.com/user/repo/-/merge_requests/456.diff"
@@ -120,3 +125,28 @@ def test_resolve_gitlab_issues_not_repo():
     url = "https://gitlab.com/user/repo/-/issues"
     # Should not be resolved to an archive
     assert resolve_remote_url(url) == url
+
+def test_resolve_gitlab_snippet():
+    url = "https://gitlab.com/snippets/12345"
+    expected = "https://gitlab.com/snippets/12345/raw"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_gitlab_tag():
+    url = "https://gitlab.com/user/repo/-/tags/v1.0"
+    expected = "https://gitlab.com/user/repo/-/archive/v1.0/repo-v1.0.zip"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_bitbucket_pull_request():
+    url = "https://bitbucket.org/user/repo/pull-requests/1"
+    expected = "https://bitbucket.org/user/repo/pull-requests/1/diff"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_bitbucket_commit():
+    url = "https://bitbucket.org/user/repo/commits/abc123def"
+    expected = "https://bitbucket.org/user/repo/commits/abc123def/diff"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_bitbucket_snippet():
+    url = "https://bitbucket.org/user/snippets/abcxyz"
+    expected = "https://bitbucket.org/user/snippets/abcxyz/raw"
+    assert resolve_remote_url(url) == expected

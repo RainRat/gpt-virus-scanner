@@ -6,10 +6,10 @@ Scan your scripts and files for dangerous code using AI. This tool uses a pre-tr
 
 ## Features
 *   **Scan Local & Web Files:** Scan files on your computer or directly from a web link.
-*   **GitHub & GitLab Support:** Scan code changes from GitHub Pull Requests, GitLab Merge Requests, or `.diff`/`.patch` files.
+*   **Platform Support:** Scan code changes from GitHub, GitLab, and Bitbucket (including Pull Requests, Commits, Tags, and Snippets).
 *   **Notebook Support:** Analyzes `.ipynb` cells for dangerous commands.
-*   **Web & Project Files:** Scans HTML, Markdown, `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, and `deno.jsonc`.
-*   **Unpack Zip & Tar:** Automatically opens `.zip`, `.tar`, and `.tar.gz` to scan the files inside.
+*   **Project & Build Files:** Scans HTML, Markdown, Docker Compose (`entrypoint`), `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, and `deno.jsonc`.
+*   **Unpack Zip & Tar:** Automatically opens `.zip`, `.tar`, and `.tar.gz` to scan the files inside. Supports multi-file Gists.
 *   **Two-step analysis:**
     1.  **Fast Local Scan:** A quick check finds suspicious patterns in milliseconds.
     2.  **AI Verification (Optional):** AI providers like OpenAI or Ollama give a detailed report on why a file is suspicious.
