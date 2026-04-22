@@ -1042,6 +1042,20 @@ def get_git_diff(path: str = ".") -> str:
         return ""
 
 
+def _normalize_targets(targets: Union[str, List[str], Path]) -> List[str]:
+    """Normalize scan targets (Path, string, or list) into a deduplicated list of strings."""
+    if isinstance(targets, Path):
+        targets = [str(targets)]
+    elif isinstance(targets, str):
+        try:
+            targets = shlex.split(targets)
+        except ValueError:
+            targets = [targets]
+
+    # Use dict keys to remove duplicates while preserving insertion order.
+    return list(dict.fromkeys(targets))
+
+
 def collect_files(targets: Union[str, List[str]]) -> List[Path]:
     """Collect files from a single path or a list of paths (files, directories, or globs).
 
@@ -1056,13 +1070,7 @@ def collect_files(targets: Union[str, List[str]]) -> List[Path]:
     List[Path]
         A deduplicated list of files to scan.
     """
-    if isinstance(targets, Path):
-        targets = [str(targets)]
-    elif isinstance(targets, str):
-        try:
-            targets = shlex.split(targets)
-        except ValueError:
-            targets = [targets]
+    targets = _normalize_targets(targets)
 
     results: List[Path] = []
     for t in targets:
@@ -2555,15 +2563,7 @@ def scan_files(
             return float(prediction), bytes(padded_data)
 
     # Identify which files were explicitly passed as targets and deduplicate them
-    if isinstance(scan_targets, Path):
-        scan_targets = [str(scan_targets)]
-    elif isinstance(scan_targets, str):
-        try:
-            scan_targets = shlex.split(scan_targets)
-        except ValueError:
-            scan_targets = [scan_targets]
-
-    scan_targets = list(dict.fromkeys(scan_targets))
+    scan_targets = _normalize_targets(scan_targets)
 
     url_targets = [str(t) for t in scan_targets if str(t).startswith(('http://', 'https://'))]
     local_targets = [t for t in scan_targets if str(t) not in url_targets]
