@@ -6,13 +6,13 @@ Scan your scripts and files for dangerous code using AI. This tool uses a pre-tr
 
 ## Features
 *   **Scan Local & Web Files:** Scan files on your computer or directly from a web link.
-*   **GitHub & GitLab Support:** Scan code changes from GitHub Pull Requests, GitLab Merge Requests, or `.diff`/`.patch` files.
+*   **Platform Support:** Scan repositories and code changes from GitHub, GitLab, and Bitbucket (including PRs and `.diff`/`.patch` files).
 *   **Notebook Support:** Analyzes `.ipynb` cells for dangerous commands.
-*   **Web & Project Files:** Scans HTML, Markdown, `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, and `deno.jsonc`.
+*   **Project & Build Files:** Scans `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, HTML, and Markdown.
 *   **Unpack Zip & Tar:** Automatically opens `.zip`, `.tar`, and `.tar.gz` to scan the files inside.
 *   **Two-step analysis:**
     1.  **Fast Local Scan:** A quick check finds suspicious patterns in milliseconds.
-    2.  **AI Verification (Optional):** AI providers like OpenAI or Ollama give a detailed report on why a file is suspicious.
+    2.  **AI Verification (Optional):** AI providers like OpenAI, OpenRouter, or Ollama give a detailed report on why a file is suspicious.
 *   **Easy Interface:** Use the simple window (GUI) or the command line (CLI).
 *   **Git Integration:** Scan only the files you have changed in your Git repository.
 *   **Search & Filter:** Easily find specific results by name, threat level, or code.
@@ -48,7 +48,7 @@ Run `python3 gptscan.py` to open the scanner window.
 Use the **Browse** menu at the top to choose what to check:
 *   **Select File(s)...:** Choose one or more scripts.
 *   **Select Folder...:** Scan an entire folder.
-*   **Scan URL...:** Scan a file, Notebook, or GitHub PR directly from a link (supports `package.json`, `pyproject.toml`, etc.).
+*   **Scan URL...:** Scan a file, Notebook, or GitHub/GitLab/Bitbucket PR directly from a link (supports `package.json`, `pyproject.toml`, etc.).
 *   **Scan Clipboard:** Scan code you have copied.
 *   **Scan Git Diff:** Scan the changes you are currently making in your Git project.
 
