@@ -5533,19 +5533,23 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu.add_separator()
     context_menu.add_command(label="Rescan Selected", command=rescan_selected, accelerator="F5")
     context_menu.add_command(label="Analyze with AI", command=analyze_selected_with_ai, accelerator="Ctrl+G")
-    context_menu.add_command(label="Exclude from future scans", command=exclude_selected, accelerator="Delete")
-    context_menu.add_separator()
-    context_menu.add_command(label="Select All", command=select_all_items, accelerator="Ctrl+A")
+    context_menu.add_command(label="Exclude Selected", command=exclude_selected, accelerator="Delete")
     context_menu.add_separator()
     context_menu.add_command(label="Open", command=open_file, accelerator="Shift+Enter")
     context_menu.add_command(label="Reveal", command=show_in_folder, accelerator="Ctrl+Enter")
-    context_menu.add_separator()
-    context_menu.add_command(label="Copy File Path", command=copy_path, accelerator="Ctrl+C")
-    context_menu.add_command(label="Copy SHA256", command=copy_sha256, accelerator="Ctrl+H")
     context_menu.add_command(label="Check on VirusTotal", command=check_virustotal, accelerator="Ctrl+T")
-    context_menu.add_command(label="Copy Snippet", command=copy_snippet, accelerator="Ctrl+S")
-    context_menu.add_command(label="Copy as Markdown", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
-    context_menu.add_command(label="Copy as JSON", command=copy_as_json, accelerator="Ctrl+J")
+    context_menu.add_separator()
+
+    copy_submenu = tk.Menu(context_menu, tearoff=0)
+    copy_submenu.add_command(label="File Path", command=copy_path, accelerator="Ctrl+C")
+    copy_submenu.add_command(label="SHA256 Hash", command=copy_sha256, accelerator="Ctrl+H")
+    copy_submenu.add_command(label="Code Snippet", command=copy_snippet, accelerator="Ctrl+S")
+    copy_submenu.add_command(label="As Markdown Table", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
+    copy_submenu.add_command(label="As JSON Array", command=copy_as_json, accelerator="Ctrl+J")
+    context_menu.add_cascade(label="Copy", menu=copy_submenu)
+
+    context_menu.add_separator()
+    context_menu.add_command(label="Select All", command=select_all_items, accelerator="Ctrl+A")
 
     # Bind context menu to right-click and menu key
     tree.bind('<Button-3>', show_context_menu) # Windows/Linux
