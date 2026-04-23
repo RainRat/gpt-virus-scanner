@@ -2146,55 +2146,64 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             text = content.decode('utf-8', errors='ignore')
             if lowered_check.endswith('.pyproject.toml') or os.path.basename(lowered_check) == 'pyproject.toml':
                 # Parse pyproject.toml using regex to avoid toml dependency
-                # We look for scripts in:
-                # [project.scripts], [tool.poetry.scripts], [tool.pdm.scripts], [tool.hatch.scripts]
-                script_sections = [
-                    r'\[project\.scripts\]',
-                    r'\[tool\.poetry\.scripts\]',
-                    r'\[tool\.pdm\.scripts\]',
-                    r'\[tool\.hatch\.scripts\]',
-                    r'\[tool\.pdm\.dev-dependencies\]' # Sometimes has scripts too, but usually it's just scripts
-                ]
-
-                # More robust: just look for any [*.scripts]
-                section_pattern = r'\[(?:.*?\.)?scripts\]'
-
                 lines = text.splitlines()
                 in_script_section = False
+                current_nested_script = None
+
                 for line in lines:
                     line = line.strip()
                     if not line or line.startswith('#'):
                         continue
 
                     if line.startswith('[') and line.endswith(']'):
-                        if re.match(section_pattern, line, re.IGNORECASE) or \
-                           any(re.match(s, line, re.IGNORECASE) for s in script_sections):
+                        section = line[1:-1].strip()
+                        # Flat script sections: [project.scripts], [tool.pdm.scripts], etc.
+                        if re.match(r'^(?:.*?\.)?scripts$', section, re.IGNORECASE) or \
+                           section.lower() == 'tool.pdm.dev-dependencies':
                             in_script_section = True
+                            current_nested_script = None
+                        # Nested script sections: [tool.pdm.scripts.test]
+                        elif match := re.match(r'^(?:.*?\.)?scripts\.(.+)$', section, re.IGNORECASE):
+                            in_script_section = True
+                            current_nested_script = match.group(1).strip()
                         else:
                             in_script_section = False
+                            current_nested_script = None
                         continue
 
                     if in_script_section:
-                        # Match key = "value" or key = { ... }
-                        # Handles simple: test = "pytest"
-                        # Handles complex: test = { cmd = "pytest", help = "run tests" }
-                        match = re.match(r'^([^=\s]+)\s*=\s*(.*)', line)
-                        if match:
-                            script_name = match.group(1).strip().strip('"\'')
-                            command_val = match.group(2).strip()
+                        if current_nested_script:
+                            # Inside a nested section like [tool.pdm.scripts.test]
+                            # Look for cmd, shell, command, or composite keys
+                            match = re.match(r'^(?:cmd|shell|command|composite)\s*=\s*(.*)', line, re.IGNORECASE)
+                            if match:
+                                command_val = match.group(1).strip()
+                                if command_val.startswith(('"', "'", "[")):
+                                    command = command_val.strip('"\'[] ')
+                                    if command:
+                                        yield (f"{name} [Script: {current_nested_script}]", command.encode('utf-8'))
+                                        # Only yield once per nested section
+                                        in_script_section = False
+                        else:
+                            # Inside a flat section like [project.scripts]
+                            # Match key = "value" or key = { ... }
+                            match = re.match(r'^([^=\s]+)\s*=\s*(.*)', line)
+                            if match:
+                                script_name = match.group(1).strip().strip('"\'')
+                                command_val = match.group(2).strip()
 
-                            # If it's a string, use it directly
-                            if command_val.startswith(('"', "'")):
-                                command = command_val.strip('"\'')
-                                if command:
-                                    yield (f"{name} [Script: {script_name}]", command.encode('utf-8'))
-                            elif command_val.startswith('{'):
-                                # Try to extract 'cmd' or 'command' or 'shell' from inline table
-                                cmd_match = re.search(r'(?:cmd|command|shell|composite)\s*=\s*("[^"]*"|\'[^\']*\'|\[[^\]]*\])', command_val)
-                                if cmd_match:
-                                    cmd_val = cmd_match.group(1).strip('"\'[] ')
-                                    if cmd_val:
-                                        yield (f"{name} [Script: {script_name}]", cmd_val.encode('utf-8'))
+                                # If it's a string, use it directly
+                                if command_val.startswith(('"', "'")):
+                                    command = command_val.strip('"\'')
+                                    if command:
+                                        yield (f"{name} [Script: {script_name}]", command.encode('utf-8'))
+                                elif command_val.startswith('{'):
+                                    # Try to extract 'cmd' or 'command' or 'shell' from inline table
+                                    cmd_match = re.search(r'(?:cmd|command|shell|composite)\s*=\s*("[^"]*"|\'[^\']*\'|\[[^\]]*\])', command_val)
+                                    if cmd_match:
+                                        cmd_val = cmd_match.group(1).strip('"\'[] ')
+                                        if cmd_val:
+                                            yield (f"{name} [Script: {script_name}]", cmd_val.encode('utf-8'))
                 return
 
             if lowered_check.endswith('.jsonc'):
