@@ -4495,7 +4495,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     path_copy_btn.grid(row=1, column=2, padx=2)
     bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.", label=status_bar)
 
-    reveal_btn = ttk.Button(header_frame, text="Reveal", width=10, command=lambda: show_in_folder(path_entry.get()))
+    reveal_btn = ttk.Button(header_frame, text="Show in Folder", width=14, command=lambda: show_in_folder(path_entry.get()))
     reveal_btn.grid(row=1, column=3, padx=2)
     bind_hover_message(reveal_btn, "Show this file in the system file manager. (Ctrl+Enter)", label=status_bar)
 
@@ -4990,7 +4990,7 @@ def copy_as_json(event: Optional[tk.Event] = None) -> None:
 
 
 def show_in_folder(event_or_path: Union[tk.Event, str, None] = None) -> None:
-    """Reveal the selected or specified file in the system file manager."""
+    """Show the selected or specified file in the system file manager."""
     file_path = _resolve_file_path(event_or_path)
     if not file_path:
         return
@@ -5539,9 +5539,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     open_button.grid(row=0, column=5, padx=2, ipady=5)
     bind_hover_message(open_button, "Open the selected file in its default application. (Shift+Enter)")
 
-    reveal_button = ttk.Button(footer_frame, text="Reveal", width=10, command=show_in_folder)
+    reveal_button = ttk.Button(footer_frame, text="Show in Folder", width=14, command=show_in_folder)
     reveal_button.grid(row=0, column=6, padx=2, ipady=5)
-    bind_hover_message(reveal_button, "Reveal the selected file in the system file manager. (Ctrl+Enter)")
+    bind_hover_message(reveal_button, "Show the selected file in the system file manager. (Ctrl+Enter)")
 
     ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=7, sticky="ns", padx=5)
 
@@ -5578,7 +5578,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu.add_command(label="Exclude Selected", command=exclude_selected, accelerator="Delete")
     context_menu.add_separator()
     context_menu.add_command(label="Open", command=open_file, accelerator="Shift+Enter")
-    context_menu.add_command(label="Reveal", command=show_in_folder, accelerator="Ctrl+Enter")
+    context_menu.add_command(label="Show in Folder", command=show_in_folder, accelerator="Ctrl+Enter")
     context_menu.add_command(label="Check on VirusTotal", command=check_virustotal, accelerator="Ctrl+T")
     context_menu.add_separator()
 
