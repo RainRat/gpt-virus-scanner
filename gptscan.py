@@ -5306,7 +5306,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     provider_frame.columnconfigure(3, weight=1)
 
     gpt_checkbox = ttk.Checkbutton(provider_frame, text="Use AI Analysis", variable=gpt_var, command=toggle_ai_controls)
-    gpt_checkbox.grid(row=0, column=0, columnspan=5, sticky='w', padx=10, pady=(2, 10))
+    gpt_checkbox.grid(row=0, column=0, columnspan=4, sticky='w', padx=10, pady=(2, 10))
     bind_hover_message(gpt_checkbox, "Use AI to analyze suspicious code and explain what it does.")
 
     if not Config.GPT_ENABLED:
@@ -5322,9 +5322,13 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(provider_combo, "Select the AI service provider (OpenAI, OpenRouter, or local Ollama).")
 
     ttk.Label(provider_frame, text="API Key:").grid(row=1, column=2, sticky='w', padx=(15, 5), pady=2)
+
+    key_container = ttk.Frame(provider_frame)
+    key_container.grid(row=1, column=3, sticky='ew', padx=(5, 10), pady=2)
+
     api_key_var = tk.StringVar(value=Config.apikey)
-    api_key_entry = ttk.Entry(provider_frame, show="*", textvariable=api_key_var)
-    api_key_entry.grid(row=1, column=3, sticky='ew', padx=(5, 5), pady=2)
+    api_key_entry = ttk.Entry(key_container, show="*", textvariable=api_key_var)
+    api_key_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
     bind_hover_message(api_key_entry, "Enter your API key for cloud providers. It will be saved to apikey.txt.")
 
     def toggle_api_key_visibility():
@@ -5335,8 +5339,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
             api_key_entry.config(show="*")
             show_key_btn.config(text="Show")
 
-    show_key_btn = ttk.Button(provider_frame, text="Show", width=6, command=toggle_api_key_visibility)
-    show_key_btn.grid(row=1, column=4, padx=(0, 10), pady=2)
+    show_key_btn = ttk.Button(key_container, text="Show", width=6, command=toggle_api_key_visibility)
+    show_key_btn.pack(side=tk.LEFT, padx=(5, 0))
     bind_hover_message(show_key_btn, "Toggle API key visibility.")
 
     def on_api_key_change(*args):
@@ -5354,7 +5358,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     ttk.Label(provider_frame, text="API Base URL:").grid(row=2, column=2, sticky='w', padx=(15, 5), pady=2)
     api_entry = ttk.Entry(provider_frame)
-    api_entry.grid(row=2, column=3, columnspan=2, sticky='ew', padx=(5, 10), pady=2)
+    api_entry.grid(row=2, column=3, sticky='ew', padx=(5, 10), pady=2)
     bind_hover_message(api_entry, "Set a custom URL for the AI service (e.g., http://localhost:11434/v1 for Ollama).")
 
     api_base_var = tk.StringVar(value=Config.api_base or "")
