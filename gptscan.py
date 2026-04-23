@@ -1085,8 +1085,8 @@ def _normalize_targets(targets: Union[str, List[str], Path]) -> List[str]:
         except ValueError:
             targets = [targets]
 
-    # Use dict keys to remove duplicates while preserving insertion order.
-    return list(dict.fromkeys(targets))
+    # Ensure all targets are strings and deduplicate while preserving order.
+    return list(dict.fromkeys(str(t) for t in targets))
 
 
 def collect_files(targets: Union[str, List[str]]) -> List[Path]:
