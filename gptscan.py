@@ -245,6 +245,9 @@ def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = Non
     # Resolve GitHub/GitLab URLs to raw content/archives
     url = resolve_remote_url(url)
 
+    if not url.lower().startswith(('http://', 'https://')):
+        raise ValueError(f"Unauthorized URL scheme: {url}")
+
     with urllib.request.urlopen(url, timeout=timeout) as response:
         content_length = response.getheader('Content-Length')
         if content_length and int(content_length) > max_size:
