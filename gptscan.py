@@ -5529,33 +5529,33 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     view_button.grid(row=0, column=1, padx=2, ipady=5)
     bind_hover_message(view_button, "Show full analysis and code for the selected result. (Space or Enter)")
 
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=2, sticky="ns", padx=5)
+
+    rescan_button = ttk.Button(footer_frame, text="Rescan", width=10, command=rescan_selected)
+    rescan_button.grid(row=0, column=3, padx=2, ipady=5)
+    bind_hover_message(rescan_button, "Re-scan the currently selected items. (F5 or R)")
+
     analyze_button = ttk.Button(footer_frame, text="Analyze with AI", width=18, command=analyze_selected_with_ai)
-    analyze_button.grid(row=0, column=2, padx=2, ipady=5)
+    analyze_button.grid(row=0, column=4, padx=2, ipady=5)
     bind_hover_message(analyze_button, "Use AI to analyze the currently selected items. (Ctrl+G)")
 
-    vt_button = ttk.Button(footer_frame, text="VirusTotal", width=12, command=check_virustotal)
-    vt_button.grid(row=0, column=3, padx=2, ipady=5)
-    bind_hover_message(vt_button, "Check the selected files on VirusTotal. (Ctrl+T)")
+    exclude_button = ttk.Button(footer_frame, text="Exclude", width=10, command=exclude_selected)
+    exclude_button.grid(row=0, column=5, padx=2, ipady=5)
+    bind_hover_message(exclude_button, "Exclude the selected items from future scans. (Delete)")
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=4, sticky="ns", padx=5)
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=6, sticky="ns", padx=5)
 
     open_button = ttk.Button(footer_frame, text="Open", width=10, command=open_file)
-    open_button.grid(row=0, column=5, padx=2, ipady=5)
+    open_button.grid(row=0, column=7, padx=2, ipady=5)
     bind_hover_message(open_button, "Open the selected file in its default application. (Shift+Enter)")
 
     reveal_button = ttk.Button(footer_frame, text="Show in Folder", width=14, command=show_in_folder)
-    reveal_button.grid(row=0, column=6, padx=2, ipady=5)
+    reveal_button.grid(row=0, column=8, padx=2, ipady=5)
     bind_hover_message(reveal_button, "Show the selected file in the system file manager. (Ctrl+Enter)")
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=7, sticky="ns", padx=5)
-
-    rescan_button = ttk.Button(footer_frame, text="Rescan", width=10, command=rescan_selected)
-    rescan_button.grid(row=0, column=8, padx=2, ipady=5)
-    bind_hover_message(rescan_button, "Re-scan the currently selected items. (F5 or R)")
-
-    exclude_button = ttk.Button(footer_frame, text="Exclude", width=10, command=exclude_selected)
-    exclude_button.grid(row=0, column=9, padx=2, ipady=5)
-    bind_hover_message(exclude_button, "Exclude the selected items from future scans. (Delete)")
+    vt_button = ttk.Button(footer_frame, text="VirusTotal", width=12, command=check_virustotal)
+    vt_button.grid(row=0, column=9, padx=2, ipady=5)
+    bind_hover_message(vt_button, "Check the selected files on VirusTotal. (Ctrl+T)")
 
     ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=10, sticky="ns", padx=5)
 
