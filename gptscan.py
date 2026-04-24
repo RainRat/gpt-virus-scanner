@@ -74,7 +74,7 @@ _virtual_source_cache: Dict[str, str] = {}
 
 
 def resolve_remote_url(url: str) -> str:
-    """Resolve GitHub/GitLab/Bitbucket repository, blob, tag, or PR URLs to their raw content or archive.
+    """Resolve GitHub/GitLab/Bitbucket/Pastebin/Hugging Face repository, blob, tag, or PR URLs to their raw content or archive.
 
     Args:
         url: The original URL to resolve.
@@ -194,6 +194,21 @@ def resolve_remote_url(url: str) -> str:
     if bb_repo_match:
         user, repo = bb_repo_match.groups()
         return f"https://bitbucket.org/{user}/{repo}/get/HEAD.zip"
+
+    # 16. Pastebin -> Raw
+    # Example: https://pastebin.com/abcdefgh -> https://pastebin.com/raw/abcdefgh
+    pb_match = re.match(r'https?://(?:www\.)?pastebin\.com/([a-zA-Z0-9]+)$', url, re.IGNORECASE)
+    if pb_match:
+        paste_id = pb_match.group(1)
+        if paste_id.lower() not in ('archive', 'tools', 'faq', 'contact', 'night_mode', 'pro', 'doc', 'signup', 'login', 'api', 'trends', 'languages'):
+            return f"https://pastebin.com/raw/{paste_id}"
+
+    # 17. Hugging Face Blob -> Raw
+    # Example: https://huggingface.co/user/repo/blob/main/script.py -> https://huggingface.co/user/repo/raw/main/script.py
+    hf_blob_match = re.match(r'(https?://(?:www\.)?huggingface\.co/.+)/blob/(.+)', url, re.IGNORECASE)
+    if hf_blob_match:
+        base, path = hf_blob_match.groups()
+        return f"{base}/raw/{path}"
 
     return url
 
@@ -5663,7 +5678,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Docker Compose (entrypoint), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist including PRs, tags and multi-file gists) for malicious code using AI.",
+        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Docker Compose (entrypoint), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist/Pastebin/Hugging Face including PRs, tags and multi-file gists) for malicious code using AI.",
         epilog="Examples:\n"
                "  # Scan a folder using AI analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
@@ -5679,6 +5694,8 @@ def main():
                "  python gptscan.py https://github.com/user/repo --cli\n\n"
                "  # Scan a GitHub Pull Request or GitLab Merge Request directly\n"
                "  python gptscan.py https://github.com/user/repo/pull/123 --cli\n\n"
+               "  # Scan a Pastebin paste or a Hugging Face script directly\n"
+               "  python gptscan.py https://pastebin.com/abcdefgh --cli\n\n"
                "Note: Always run the script from inside its own folder so it can find its required data files (like scripts.h5).",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
