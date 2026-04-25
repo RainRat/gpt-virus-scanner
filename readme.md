@@ -57,8 +57,8 @@ python gptscan.py file1.py folder/ https://github.com/user/repo --cli
 ### Setting up AI Analysis
 To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama running locally.
 1.  Open the GUI.
-2.  Click the **Settings** (gear icon) in the header.
-3.  Choose your provider and enter your API key or model name.
+2.  Find the **AI Analysis** panel in the main window.
+3.  Check **Use AI Analysis**, choose your provider, and enter your API key or model name.
 
 ## How it works
 1.  **Local Filter:** The tool uses a deep learning model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
