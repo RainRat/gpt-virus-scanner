@@ -344,6 +344,9 @@ class Config:
                 return True
             if len(content) > 262 and content[257:262] == b'ustar':
                 return True
+            # Jupyter Notebook signature
+            if content.startswith(b'{') and b'"cells"' in content:
+                return True
 
         # 2. Check by extension or basename
         path_s = str(file_path).lower()

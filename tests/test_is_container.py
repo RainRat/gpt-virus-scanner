@@ -21,6 +21,13 @@ def test_is_container_magic_bytes_too_short():
     content = b'ustar' # Too short to check offset 257
     assert Config.is_container("file.unknown", content=content) is False
 
+def test_is_container_notebook_by_content():
+    # Jupyter Notebook: starts with { and contains "cells"
+    content = b'{\n "cells": [],\n "metadata": {}\n}'
+    assert Config.is_container("notebook", content=content) is True
+    # Negative case: starts with { but no "cells"
+    assert Config.is_container("data.json", content=b'{"key": "value"}') is False
+
 def test_is_container_by_extension():
     extensions = [
         '.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml',
