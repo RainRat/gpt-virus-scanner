@@ -5340,10 +5340,16 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     provider_combo.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
     bind_hover_message(provider_combo, "Select the AI service provider (OpenAI, OpenRouter, or local Ollama).")
 
-    ttk.Label(provider_frame, text="API Key:").grid(row=1, column=2, sticky='w', padx=(15, 5), pady=2)
+    ttk.Label(provider_frame, text="Model:").grid(row=1, column=2, sticky='w', padx=(15, 5), pady=2)
+    model_var = tk.StringVar(value=Config.model_name)
+    model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
+    model_combo.grid(row=1, column=3, sticky='ew', padx=(5, 10), pady=2)
+    bind_hover_message(model_combo, "Choose the specific AI model to use for analysis.")
+
+    ttk.Label(provider_frame, text="API Key:").grid(row=2, column=0, sticky='w', padx=(10, 5), pady=2)
 
     key_container = ttk.Frame(provider_frame)
-    key_container.grid(row=1, column=3, sticky='ew', padx=(5, 10), pady=2)
+    key_container.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
 
     api_key_var = tk.StringVar(value=Config.apikey)
     api_key_entry = ttk.Entry(key_container, show="*", textvariable=api_key_var)
@@ -5368,12 +5374,6 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         _async_openai_client = None
 
     api_key_var.trace_add("write", on_api_key_change)
-
-    ttk.Label(provider_frame, text="Model:").grid(row=2, column=0, sticky='w', padx=(10, 5), pady=2)
-    model_var = tk.StringVar(value=Config.model_name)
-    model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
-    model_combo.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
-    bind_hover_message(model_combo, "Choose the specific AI model to use for analysis.")
 
     ttk.Label(provider_frame, text="API Base URL:").grid(row=2, column=2, sticky='w', padx=(15, 5), pady=2)
     api_entry = ttk.Entry(provider_frame)
