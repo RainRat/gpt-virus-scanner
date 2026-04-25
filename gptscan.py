@@ -5682,43 +5682,43 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, archives (ZIP/TAR), Jupyter Notebooks, package manifests (package.json, composer.json, deno.json), CI/CD workflows (GitHub Actions, GitLab CI), Docker Compose (entrypoint), Markdown files, HTML files, patches (.diff/.patch), git diffs, and web links (GitHub/GitLab/Bitbucket/Gist/Pastebin/Hugging Face including PRs, tags and multi-file gists) for malicious code using AI.",
+        description="Scan scripts, project files, and web links for dangerous code using AI. Supports archives, Notebooks, package manifests, CI/CD workflows, Docker, and Git changes.",
         epilog="Examples:\n"
-               "  # Scan a folder using AI analysis\n"
+               "  # Scan a folder and use AI for deep analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
-               "  # Scan a single file and save as JSON\n"
+               "  # Scan one file and save the results as JSON\n"
                "  python gptscan.py ./my_script.py --cli --json\n\n"
-               "  # Scan only changed files in Git and fail if threats are found\n"
+               "  # Scan only files changed in Git and stop if threats are found\n"
                "  python gptscan.py --git-changes --cli --fail-threshold 50\n\n"
-               "  # Scan current local Git diff (staged and unstaged changes)\n"
+               "  # Scan current Git changes (staged and unstaged)\n"
                "  python gptscan.py --git-diff --cli\n\n"
-               "  # Scan a snippet sent from another command\n"
+               "  # Scan a code snippet from the terminal\n"
                "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n\n"
-               "  # Scan a remote script or a GitHub repository directly from a web link\n"
+               "  # Scan a GitHub project from a web link\n"
                "  python gptscan.py https://github.com/user/repo --cli\n\n"
-               "  # Scan a GitHub Pull Request or GitLab Merge Request directly\n"
+               "  # Scan a GitHub Pull Request directly\n"
                "  python gptscan.py https://github.com/user/repo/pull/123 --cli\n\n"
                "  # Scan a Pastebin paste or a Hugging Face script directly\n"
                "  python gptscan.py https://pastebin.com/abcdefgh --cli\n\n"
-               "Note: Always run the script from inside its own folder so it can find its required data files (like scripts.h5).",
+               "Note: Run the script from its own folder so it can find its data files.",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {Config.VERSION}')
-    parser.add_argument('target', nargs='?', help='The folder, file, glob pattern (e.g., src/**/*.py), or web link to scan.')
+    parser.add_argument('target', nargs='?', help='The folder, file, pattern, or web link to scan.')
     parser.add_argument(
         'files',
         nargs='*',
-        help='Additional folders, files, glob patterns, or web links to scan.'
+        help='Other folders, files, patterns, or web links to scan.'
     )
 
     scan_group = parser.add_argument_group("Scan Options")
     scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or web link to scan.')
-    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the entire file instead of just the first and last 1 KB (1,024 bytes).')
-    scan_group.add_argument('--dry-run', action='store_true', help='Show which files would be scanned without analyzing them.')
+    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. This is slower but more thorough.')
+    scan_group.add_argument('--dry-run', action='store_true', help='Show which files would be scanned without checking them.')
     scan_group.add_argument(
         '--extensions',
         type=str,
-        help='Only scan these file types (comma-separated, e.g., "py,js").'
+        help='Only scan these file types (for example: "py,js").'
     )
     scan_group.add_argument(
         '-e', '--exclude',
@@ -5733,74 +5733,74 @@ def main():
     scan_group.add_argument(
         '--git-changes',
         action='store_true',
-        help='Only scan files that have changed in your Git repository.'
+        help='Only scan files that have changed in your Git project.'
     )
     scan_group.add_argument(
         '--git-diff',
         action='store_true',
-        help='Scan the current Git diff (staged and unstaged changes) as a patch.'
+        help='Scan current Git changes (staged and unstaged).'
     )
     scan_group.add_argument(
         '--all-files',
         action='store_true',
-        help='Scan every file, even if it does not have a script extension or a starting line (like #!/bin/bash).'
+        help='Scan every file, even if it is not a script.'
     )
     scan_group.add_argument(
         '--fail-threshold',
         type=int,
-        help='Exit with an error if any file has a threat level at or above this number (0-100).'
+        help='Stop with an error if a file has a threat level at or above this number (0-100).'
     )
     scan_group.add_argument(
         '--threshold', '-t',
         type=int,
         default=50,
-        help='Show only files with a threat level at or above this number (0-100). The default is 50.'
+        help='Only show results with a threat level at or above this number (0-100). The default is 50.'
     )
     scan_group.add_argument(
         '--stdin',
         action='store_true',
-        help='Scan a code snippet sent from another command in the terminal.'
+        help='Scan code sent from another command in the terminal.'
     )
     scan_group.add_argument(
         '--import-results', '--import',
         type=str,
-        help='Import results from a previous scan (JSON, CSV, SARIF, Markdown, or HTML). Use "-" to read from the terminal.'
+        help='Import results from a previous scan. Use "-" to read from the terminal.'
     )
     scan_group.add_argument(
         '--max-size',
         type=str,
-        help='The maximum file size to scan (e.g., "10MB", "500KB"). The default is 10MB.'
+        help='The maximum file size to scan (for example: "10MB"). The default is 10MB.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
-    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Enable detailed AI reports for suspicious files. Cloud providers (OpenAI, OpenRouter) need an API key; local Ollama does not.')
+    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Use AI to analyze suspicious files. Cloud providers need an API key; Ollama does not.')
     ai_group.add_argument(
         '--provider',
         type=str,
         default='openai',
         choices=['openai', 'openrouter', 'ollama'],
-        help='Select the AI service provider (default: openai).'
+        help='Choose your AI service (default: openai).'
     )
     ai_group.add_argument(
         '--model',
         type=str,
-        help='Specify the AI model (e.g., gpt-4o, llama3.2).'
+        help='Choose the AI model (for example: gpt-4o, llama3.2).'
     )
     ai_group.add_argument(
         '--api-key', '-k',
         type=str,
-        help='Set the API key for cloud-based analysis.'
+        help='The API key for your AI service.'
     )
     ai_group.add_argument(
         '--api-base',
         type=str,
-        help='Set a custom URL for the AI service (useful for local servers).'
+        help='A custom URL for the AI service (useful for local servers).'
     )
     ai_group.add_argument(
         '--rate-limit',
         type=int,
         default=Config.RATE_LIMIT_PER_MINUTE,
-        help='Limit AI requests per minute to avoid errors (default: 60).'
+        help='Maximum AI requests per minute (default: 60).'
     )
     ai_group.add_argument(
         '--clear-cache',
@@ -5809,15 +5809,15 @@ def main():
     )
 
     output_group = parser.add_argument_group("Output")
-    output_group.add_argument('--cli', action='store_true', help='Run in command-line mode instead of opening a window.')
-    output_group.add_argument('-a', '--show-all', action='store_true', help='Show all scanned files, including safe ones.')
-    output_group.add_argument('-o', '--output', type=str, help='Save the scan results to a file. The tool chooses the format based on the file extension.')
-    output_group.add_argument('-j', '--json', action='store_true', help='Output results in JSON format (one object per line).')
-    output_group.add_argument('--csv', action='store_true', help='Output results in CSV format (default when output is piped or redirected).')
-    output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format (a common format used by security tools).')
-    output_group.add_argument('--html', action='store_true', help='Create an HTML report of the results.')
-    output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report of the results.')
-    output_group.add_argument('--report', action='store_true', help='Output a human-friendly triage report to the console (default when outputting directly to a terminal).')
+    output_group.add_argument('--cli', action='store_true', help='Run in the terminal instead of opening a window.')
+    output_group.add_argument('-a', '--show-all', action='store_true', help='Show all scanned files, even safe ones.')
+    output_group.add_argument('-o', '--output', type=str, help='Save the results to a file.')
+    output_group.add_argument('-j', '--json', action='store_true', help='Output results as JSON.')
+    output_group.add_argument('--csv', action='store_true', help='Output results as CSV.')
+    output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format.')
+    output_group.add_argument('--html', action='store_true', help='Create an HTML report.')
+    output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report.')
+    output_group.add_argument('--report', action='store_true', help='Output a friendly report to the terminal.')
 
     args = parser.parse_args()
 
