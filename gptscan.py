@@ -2826,6 +2826,8 @@ def scan_files(
                 maxconf = -1.0
                 max_window_bytes = b""
                 max_offset = 0
+                hits_found = 0
+                file_content_for_lines = None
                 error_message: Optional[str] = None
 
                 try:
@@ -2839,6 +2841,16 @@ def scan_files(
                                 maxconf = result
                                 max_window_bytes = padded_bytes
                                 max_offset = offset
+
+                            if result >= threshold_val:
+                                hits_found += 1
+                                if file_content_for_lines is None:
+                                    curr_pos = f.tell()
+                                    f.seek(0)
+                                    file_content_for_lines = f.read()
+                                    f.seek(curr_pos)
+                                line_num = file_content_for_lines[:offset].count(b'\n') + 1
+                                yield from handle_scan_result(str(file_path), result, padded_bytes, line_num)
                 except OSError as err:
                     error_message = f"Error reading file: {err}"
 
@@ -2855,8 +2867,8 @@ def scan_files(
                             '-',
                         )
                     )
-                else:
-                    # Calculate line number
+                elif hits_found == 0:
+                    # Calculate line number for best hit
                     line_num = 1
                     try:
                         with open(file_path, 'rb') as f:
@@ -2893,6 +2905,8 @@ def scan_files(
             maxconf = -1.0
             max_window_bytes = b""
             max_offset = 0
+            hits_found = 0
+            decoded_content = content.decode('utf-8', errors='ignore')
             with io.BytesIO(content) as f:
                 for offset, window in iter_windows(f, file_size, deep_scan):
                     if cancel_event.is_set():
@@ -2903,10 +2917,15 @@ def scan_files(
                         max_window_bytes = padded_bytes
                         max_offset = offset
 
-            # Calculate line number for snippet
-            line_num = content[:max_offset].count(b'\n') + 1
-            decoded_content = content.decode('utf-8', errors='ignore')
-            yield from handle_scan_result(name, maxconf, max_window_bytes, line_num, full_content=decoded_content)
+                    if result >= threshold_val:
+                        hits_found += 1
+                        line_num = content[:offset].count(b'\n') + 1
+                        yield from handle_scan_result(name, result, padded_bytes, line_num, full_content=decoded_content)
+
+            if hits_found == 0:
+                # Calculate line number for best hit
+                line_num = content[:max_offset].count(b'\n') + 1
+                yield from handle_scan_result(name, maxconf, max_window_bytes, line_num, full_content=decoded_content)
 
     if cancel_event.is_set():
         return
@@ -5754,7 +5773,7 @@ def main():
         '--threshold', '-t',
         type=int,
         default=50,
-        help='Only show results with a threat level at or above this number (0-100). The default is 50.'
+        help='Show all results with a threat level at or above this number (0-100). If no results meet the threshold, only the most suspicious one is shown. The default is 50.'
     )
     scan_group.add_argument(
         '--stdin',
