@@ -41,6 +41,7 @@ Access these options from the **Browse** menu:
 *   **Select File(s)...:** Choose one or more scripts to scan.
 *   **Select Folder...:** Choose a whole directory to scan.
 *   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, Dockerfile, Makefile, manifest (package.json, `deno.jsonc`, etc.), PR/MR (GitHub/GitLab/Bitbucket), Pastebin paste, Hugging Face blob, or archive (.zip, .tar, .tar.gz) directly from a web link.
+*   **Scan File List...:** Read a list of files to scan from a text file.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
 *   **Scan Git Diff:** Scan changes in your local Git repository.
 
@@ -57,7 +58,7 @@ python gptscan.py file1.py folder/ https://github.com/user/repo --cli
 ### Setting up AI Analysis
 To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama running locally.
 1.  Open the GUI.
-2.  Click the **Settings** (gear icon) in the header.
+2.  In the **AI Analysis** panel, check the **Use AI Analysis** box.
 3.  Choose your provider and enter your API key or model name.
 
 ## How it works
