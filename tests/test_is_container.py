@@ -30,10 +30,24 @@ def test_is_container_by_extension():
         assert Config.is_container(f"test{ext}") is True
 
 def test_is_container_by_manifest_name():
-    manifests = ['package.json', 'composer.json', 'deno.json', 'deno.jsonc']
+    manifests = ['package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml']
     for name in manifests:
         assert Config.is_container(name) is True
         assert Config.is_container(f"sub/dir/{name}") is True
+
+def test_is_container_manifest_variants():
+    # Should match variants like my.package.json if consistency with unpack_content is desired
+    variants = ['my.package.json', 'prod.composer.json', 'custom.deno.json']
+    for name in variants:
+        assert Config.is_container(name) is True
+
+def test_is_container_notebook_by_content():
+    content = b'{"cells": [], "metadata": {}}'
+    assert Config.is_container("unknown_file", content=content) is True
+
+    # Negative case: JSON but not a notebook
+    content_not_notebook = b'{"key": "value"}'
+    assert Config.is_container("unknown_file", content=content_not_notebook) is False
 
 def test_is_container_by_devops_name():
     devops = ['Dockerfile', 'Makefile', 'my.dockerfile', 'project.makefile']
