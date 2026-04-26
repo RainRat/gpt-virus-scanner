@@ -52,6 +52,7 @@ analyze_button: Optional[ttk.Button] = None
 exclude_button: Optional[ttk.Button] = None
 reveal_button: Optional[ttk.Button] = None
 vt_button: Optional[ttk.Button] = None
+view_online_button: Optional[ttk.Button] = None
 results_button: Optional[ttk.Menubutton] = None
 browse_button: Optional[ttk.Menubutton] = None
 show_key_btn: Optional[ttk.Button] = None
@@ -1034,6 +1035,98 @@ def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
         return None, None
 
 
+def _get_git_remote_url(toplevel: str) -> Optional[str]:
+    """Get the remote origin URL for the Git repository."""
+    try:
+        return subprocess.check_output(
+            ["git", "remote", "get-url", "origin"],
+            cwd=toplevel,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return None
+
+
+def _get_git_revision(toplevel: str) -> Optional[str]:
+    """Get the current Git revision (SHA) for the repository."""
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=toplevel,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return None
+
+
+def get_online_url(path: str, line: Union[int, str] = 1) -> Optional[str]:
+    """Construct a web URL for a local Git-tracked file or a remote target.
+
+    Args:
+        path: File path or remote target name.
+        line: The line number to link to.
+
+    Returns:
+        The online URL string, or None if it could not be resolved.
+    """
+    line_val = int(line) if str(line).isdigit() and int(line) > 0 else None
+
+    # 1. Handle Remote Targets (e.g., "[URL] https://github.com/...")
+    if path.startswith("[URL] "):
+        url = path[6:].strip()
+
+        # Try to restore blob view from raw URLs for better UX
+        # GitHub Raw: https://raw.githubusercontent.com/user/repo/rev/path
+        gh_raw_match = re.match(r'https?://raw\.githubusercontent\.com/([^/]+)/([^/]+)/(.+)', url, re.IGNORECASE)
+        if gh_raw_match:
+            user, repo, rest = gh_raw_match.groups()
+            url = f"https://github.com/{user}/{repo}/blob/{rest}"
+
+        # GitLab Raw: https://gitlab.com/user/repo/-/raw/rev/path
+        if '/-/raw/' in url.lower():
+            url = url.replace('/-/raw/', '/-/blob/')
+
+        # Append line fragment
+        if line_val:
+            if 'bitbucket.org' in url.lower():
+                return f"{url}#lines-{line_val}"
+            return f"{url}#L{line_val}"
+        return url
+
+    # 2. Handle Local Files
+    toplevel, rel_path = _get_git_info(path)
+    if not toplevel or not rel_path:
+        return None
+
+    remote = _get_git_remote_url(toplevel)
+    if not remote:
+        return None
+
+    rev = _get_git_revision(toplevel) or "HEAD"
+
+    # Normalize Remote URL (Convert SSH to HTTPS, remove .git suffix)
+    # git@host:user/repo.git -> https://host/user/repo
+    remote = re.sub(r'^git@([^:]+):', r'https://\1/', remote)
+    remote = re.sub(r'\.git$', '', remote)
+    remote = remote.rstrip('/')
+
+    rel_path_url = rel_path.replace(os.sep, '/')
+
+    if 'github.com' in remote.lower():
+        base = f"{remote}/blob/{rev}/{rel_path_url}"
+        return f"{base}#L{line_val}" if line_val else base
+    if 'gitlab.com' in remote.lower():
+        base = f"{remote}/-/blob/{rev}/{rel_path_url}"
+        return f"{base}#L{line_val}" if line_val else base
+    if 'bitbucket.org' in remote.lower():
+        base = f"{remote}/src/{rev}/{rel_path_url}"
+        return f"{base}#lines-{line_val}" if line_val else base
+
+    return None
+
+
 def get_git_changed_files(path: str = ".") -> List[str]:
     """Get a list of changed files (staged, unstaged, untracked) from git."""
     toplevel, rel_target = _get_git_info(path)
@@ -1507,7 +1600,7 @@ def set_scanning_state(is_scanning: bool) -> None:
     # Disable all footer buttons during a scan
     footer_buttons = [
         view_button, rescan_button, open_button, analyze_button, exclude_button,
-        reveal_button, vt_button, results_button
+        reveal_button, vt_button, view_online_button, results_button
     ]
     for btn in footer_buttons:
         if btn:
@@ -4637,6 +4730,10 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     vt_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(vt_btn, "Check this file's hash on VirusTotal.", label=status_bar)
 
+    view_online_btn = ttk.Button(btn_frame, text="View Online", width=14, command=lambda: view_online(path_entry.get(), line=line_label.cget("text")))
+    view_online_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(view_online_btn, "View this file in its online repository. (Ctrl+L)", label=status_bar)
+
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
     # Group: Management
@@ -4686,6 +4783,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         exclude_btn.config(state='disabled' if is_scanning else 'normal')
         open_btn.config(state='disabled' if is_scanning else 'normal')
         vt_btn.config(state='disabled' if is_scanning else 'normal')
+        view_online_btn.config(state='disabled' if is_scanning else 'normal')
         path_copy_btn.config(state='disabled' if is_scanning else 'normal')
         reveal_btn.config(state='disabled' if is_scanning else 'normal')
 
@@ -4806,6 +4904,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Command-j>', lambda e: copy_as_json_details())
     details_win.bind('<Control-g>', lambda e: on_analyze_now())
     details_win.bind('<Command-g>', lambda e: on_analyze_now())
+    details_win.bind('<Control-l>', lambda e: view_online(path_entry.get(), line=line_label.cget("text")))
+    details_win.bind('<Command-l>', lambda e: view_online(path_entry.get(), line=line_label.cget("text")))
     details_win.bind('<Control-Shift-C>', lambda e: copy_analysis())
     details_win.bind('<Command-Shift-C>', lambda e: copy_analysis())
     details_win.bind('<Control-u>', lambda e: toggle_source())
@@ -5008,6 +5108,44 @@ def copy_as_json(event: Optional[tk.Event] = None) -> None:
     update_status(f"Copied {len(results)} item(s) as JSON.")
 
 
+def view_online(event_or_path: Union[tk.Event, str, None] = None, line: Optional[Union[int, str]] = None) -> None:
+    """Open the selected result in a web browser (GitHub/GitLab/Bitbucket)."""
+    # 1. Resolve path and line number
+    file_path = None
+    line_num = line
+
+    if isinstance(event_or_path, str):
+        file_path = event_or_path
+    else:
+        if not tree: return
+        selection = tree.selection()
+        if not selection: return
+        values = _get_item_raw_values(selection[0])
+        if not values: return
+        file_path = str(values[0])
+        if line_num is None:
+            line_num = values[6] if len(values) > 6 else 1
+
+    if not file_path:
+        return
+    if line_num is None:
+        line_num = 1
+
+    # 2. Get URL
+    url = get_online_url(file_path, line_num)
+
+    if url:
+        webbrowser.open(url)
+        update_status(f"Opening online view for {os.path.basename(file_path)}...")
+    else:
+        messagebox.showinfo(
+            "Online View Unavailable",
+            "This file could not be resolved to an online repository.\n\n"
+            "Ensure it is part of a Git project with a remote origin (GitHub, GitLab, or Bitbucket) "
+            "or is a remote URL target."
+        )
+
+
 def show_in_folder(event_or_path: Union[tk.Event, str, None] = None) -> None:
     """Show the selected or specified file in the system file manager."""
     file_path = _resolve_file_path(event_or_path)
@@ -5050,7 +5188,7 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
     has_selection = bool(tree.selection())
 
     # Buttons that depend on having one or more items selected
-    dependent_buttons = [view_button, open_button, rescan_button, exclude_button, reveal_button, vt_button]
+    dependent_buttons = [view_button, open_button, rescan_button, exclude_button, reveal_button, vt_button, view_online_button]
     for btn in dependent_buttons:
         if btn:
             btn.config(state="normal" if has_selection else "disabled")
@@ -5185,7 +5323,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, view_online_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -5576,10 +5714,14 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     vt_button.grid(row=0, column=9, padx=2, ipady=5)
     bind_hover_message(vt_button, "Check the selected files on VirusTotal. (Ctrl+T)")
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=10, sticky="ns", padx=5)
+    view_online_button = ttk.Button(footer_frame, text="View Online", width=14, command=view_online)
+    view_online_button.grid(row=0, column=10, padx=2, ipady=5)
+    bind_hover_message(view_online_button, "View the selected file in its online repository. (Ctrl+L)")
+
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=11, sticky="ns", padx=5)
 
     results_button = ttk.Menubutton(footer_frame, text="Results", width=12)
-    results_button.grid(row=0, column=11, padx=(2, 0), ipady=5)
+    results_button.grid(row=0, column=12, padx=(2, 0), ipady=5)
     bind_hover_message(results_button, "Manage scan results (Import, Export, Clear).")
 
     results_menu = tk.Menu(results_button, tearoff=0)
@@ -5603,6 +5745,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     context_menu.add_command(label="Open", command=open_file, accelerator="Shift+Enter")
     context_menu.add_command(label="Show in Folder", command=show_in_folder, accelerator="Ctrl+Enter")
     context_menu.add_command(label="Check on VirusTotal", command=check_virustotal, accelerator="Ctrl+T")
+    context_menu.add_command(label="View Online", command=view_online, accelerator="Ctrl+L")
     context_menu.add_separator()
 
     copy_submenu = tk.Menu(context_menu, tearoff=0)
@@ -5629,6 +5772,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-e>', export_results)
     root.bind('<Control-t>', check_virustotal)
     root.bind('<Command-t>', check_virustotal)
+    root.bind('<Control-l>', view_online)
+    root.bind('<Command-l>', view_online)
     root.bind('<Control-Shift-E>', copy_cli_command)
     root.bind('<Command-Shift-E>', copy_cli_command)
     root.bind('<Control-v>', import_from_clipboard)
