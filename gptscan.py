@@ -352,7 +352,7 @@ class Config:
         # 2. Check by extension or basename
         path_s = str(file_path).lower()
         # Common archive and document extensions
-        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', '.yml', '.yaml',
+        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', '.svg', '.yml', '.yaml',
                             '.diff', '.patch')):
             return True
         # Explicit manifest files and build scripts (checked by basename)
@@ -2377,8 +2377,8 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 6. Check for HTML script tags and other embedded elements
-    if check_name.lower().endswith(('.html', '.htm', '.xhtml')):
+    # 6. Check for HTML/SVG script tags and other embedded elements
+    if check_name.lower().endswith(('.html', '.htm', '.xhtml', '.svg')):
         try:
             text = content.decode('utf-8', errors='ignore')
             extracted_any = False
