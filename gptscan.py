@@ -2626,7 +2626,7 @@ def scan_files(
     # Identify which files were explicitly passed as targets and deduplicate them
     scan_targets = _normalize_targets(scan_targets)
 
-    url_targets = [str(t) for t in scan_targets if str(t).startswith(('http://', 'https://'))]
+    url_targets = [str(t) for t in scan_targets if str(t).lower().startswith(('http://', 'https://'))]
     local_targets = [t for t in scan_targets if str(t) not in url_targets]
 
     explicit_targets = {Path(t) for t in local_targets}
