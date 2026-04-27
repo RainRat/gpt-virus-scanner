@@ -338,11 +338,14 @@ class Config:
     @staticmethod
     def is_container(file_path: Union[Path, str], content: Optional[bytes] = None) -> bool:
         """Check if a file is a container that should be unpacked (archives, notebooks, manifests, etc.)."""
-        # 1. Check by magic bytes if content is available
+        # 1. Check by magic bytes or content markers if available
         if content:
             if content.startswith(b'PK\x03\x04') or content.startswith(b'\x1f\x8b'):
                 return True
             if len(content) > 262 and content[257:262] == b'ustar':
+                return True
+            # Detect Jupyter Notebooks by content
+            if content.startswith(b'{') and b'"cells"' in content:
                 return True
 
         # 2. Check by extension or basename
@@ -353,8 +356,7 @@ class Config:
             return True
         # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
-        if basename in ('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'dockerfile', 'makefile') or \
-           basename.endswith(('.dockerfile', '.makefile')):
+        if basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'dockerfile', 'makefile')):
             return True
         return False
 
