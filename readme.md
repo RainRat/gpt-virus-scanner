@@ -19,7 +19,7 @@ Scan your files for dangerous code with AI. This tool uses a machine learning mo
 
 ## What you need
 *   **Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet.
-*   **Model file:** You need the `scripts.h5` model file in the project folder to use the local scanner.
+*   **Model file:** The `scripts.h5` model file is required for the local scanner. It is already included in this repository.
 
 ## How to install
 1.  **Clone the repository:**
@@ -29,18 +29,21 @@ Scan your files for dangerous code with AI. This tool uses a machine learning mo
     ```
 2.  **Install the required packages:**
     ```bash
-    pip install "tensorflow<2.16" openai numpy pyyaml
+    python3 -m pip install "tensorflow<2.16" openai numpy pyyaml
     ```
-    *Note: If you are on Linux, you may also need to install `python3-tk` for the window interface.*
+    *Note: If you are on Linux, you may also need to install `python3-tk` for the window interface:*
+    ```bash
+    sudo apt install python3-tk
+    ```
 
 ## How to use
 ### Using the Window (GUI)
-Run `python gptscan.py` to open the scanner window.
+Run `python3 gptscan.py` to open the scanner window.
 
 Access these options from the **Browse** menu:
 *   **Select File(s)...:** Choose one or more scripts to scan.
 *   **Select Folder...:** Choose a whole directory to scan.
-*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, Dockerfile, Makefile, manifest (package.json, `deno.jsonc`, etc.), PR/MR (GitHub/GitLab/Bitbucket), Pastebin paste, Hugging Face blob, or archive (.zip, .tar, .tar.gz) directly from a web link.
+*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, Dockerfile, Makefile, project file (package.json, `deno.jsonc`, etc.), PR/MR (GitHub/GitLab/Bitbucket), Pastebin paste, Hugging Face blob, or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Scan File List...:** Read a list of files to scan from a text file.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
 *   **Scan Git Diff:** Scan changes in your local Git repository.
@@ -48,11 +51,11 @@ Access these options from the **Browse** menu:
 ### Using the Terminal (CLI)
 To run the scanner in your terminal, use the `--cli` flag:
 ```bash
-python gptscan.py path/to/your/script.py --cli
+python3 gptscan.py path/to/your/script.py --cli
 ```
 You can also scan multiple files, folders, or web links:
 ```bash
-python gptscan.py file1.py folder/ https://github.com/user/repo --cli
+python3 gptscan.py file1.py folder/ https://github.com/user/repo --cli
 ```
 
 ### Setting up AI Analysis
