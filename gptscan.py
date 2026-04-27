@@ -1129,8 +1129,13 @@ def get_online_url(path: str, line: Union[int, str] = 1) -> Optional[str]:
     return None
 
 
-def get_git_changed_files(path: str = ".") -> List[str]:
-    """Get a list of changed files (staged, unstaged, untracked) from git."""
+def get_git_changed_files(path: str = ".", ref: str = "HEAD") -> List[str]:
+    """Get a list of changed files (staged, unstaged, untracked) from git.
+
+    Args:
+        path: The directory or file path.
+        ref: The git revision to compare against. Defaults to "HEAD".
+    """
     toplevel, rel_target = _get_git_info(path)
     if toplevel is None:
         return []
@@ -1138,9 +1143,9 @@ def get_git_changed_files(path: str = ".") -> List[str]:
     targets = [rel_target]
 
     files = set()
-    # Changed (staged and unstaged) relative to HEAD
+    # Changed relative to ref
     try:
-        cmd = ["git", "diff", "--name-only", "HEAD", "--"] + targets
+        cmd = ["git", "diff", "--name-only", ref, "--"] + targets
         output = subprocess.check_output(
             cmd,
             cwd=toplevel,
@@ -1151,24 +1156,30 @@ def get_git_changed_files(path: str = ".") -> List[str]:
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         pass
 
-    # Untracked files
-    try:
-        cmd = ["git", "ls-files", "--others", "--exclude-standard", "--"] + targets
-        output = subprocess.check_output(
-            cmd,
-            cwd=toplevel,
-            stderr=subprocess.PIPE,
-            universal_newlines=True
-        )
-        files.update(line.strip() for line in output.splitlines() if line.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
-        pass
+    # Untracked files (only relevant when comparing against HEAD/working tree)
+    if ref == "HEAD":
+        try:
+            cmd = ["git", "ls-files", "--others", "--exclude-standard", "--"] + targets
+            output = subprocess.check_output(
+                cmd,
+                cwd=toplevel,
+                stderr=subprocess.PIPE,
+                universal_newlines=True
+            )
+            files.update(line.strip() for line in output.splitlines() if line.strip())
+        except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+            pass
 
     return [p for f in files if os.path.exists(p := os.path.join(toplevel, f))]
 
 
-def get_git_diff(path: str = ".") -> str:
-    """Get the current Git diff (staged and unstaged) as a string."""
+def get_git_diff(path: str = ".", ref: str = "HEAD") -> str:
+    """Get the Git diff as a string.
+
+    Args:
+        path: The directory or file path.
+        ref: The git revision to compare against. Defaults to "HEAD".
+    """
     toplevel, rel_target = _get_git_info(path)
     if toplevel is None:
         return ""
@@ -1176,8 +1187,8 @@ def get_git_diff(path: str = ".") -> str:
     targets = [rel_target] if rel_target != "." else []
 
     try:
-        # Get diff of staged and unstaged changes relative to HEAD
-        cmd = ["git", "diff", "HEAD", "--no-color", "--"] + targets
+        # Get diff relative to ref
+        cmd = ["git", "diff", ref, "--no-color", "--"] + targets
         output = subprocess.check_output(
             cmd,
             cwd=toplevel,
@@ -1677,6 +1688,33 @@ def scan_git_diff_click():
             messagebox.showinfo("Git Diff", "No Git changes detected (staged or unstaged) in the target path.")
     except Exception as e:
         messagebox.showwarning("Git Diff Error", f"Could not retrieve Git diff: {e}")
+
+
+def scan_git_revision_click():
+    """Scan files changed in a specific Git revision."""
+    try:
+        target_path = textbox.get().strip() if textbox else "."
+        if not target_path:
+            target_path = "."
+
+        toplevel, _ = _get_git_info(target_path)
+        if toplevel is None:
+            messagebox.showwarning("Git Error", "Target path is not part of a Git repository.")
+            return
+
+        ref = simpledialog.askstring("Scan Git Revision", "Enter a Git revision (e.g., main, HEAD~1, or a commit hash):")
+        if not ref:
+            return
+
+        changed_files = get_git_changed_files(target_path, ref=ref)
+        if changed_files:
+            # Update the textbox with the changed files list and trigger scan
+            _set_scan_target(changed_files)
+            button_click()
+        else:
+            messagebox.showinfo("Git Revision", f"No changed files found for revision '{ref}'.")
+    except Exception as e:
+        messagebox.showwarning("Git Revision Error", f"Could not scan Git revision: {e}")
 
 
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None) -> None:
@@ -5419,6 +5457,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan File List...", command=browse_file_list_click)
     browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click)
     browse_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click)
+    browse_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -5898,13 +5937,15 @@ def main():
     )
     scan_group.add_argument(
         '--git-changes',
-        action='store_true',
-        help='Only scan files that have changed in your Git project.'
+        nargs='?',
+        const='HEAD',
+        help='Only scan files changed in Git. Optionally provide a revision (e.g., "main").'
     )
     scan_group.add_argument(
         '--git-diff',
-        action='store_true',
-        help='Scan current Git changes (staged and unstaged).'
+        nargs='?',
+        const='HEAD',
+        help='Scan current Git changes as a diff. Optionally provide a revision (e.g., "HEAD~1").'
     )
     scan_group.add_argument(
         '--all-files',
@@ -6045,10 +6086,10 @@ def main():
             git_roots = scan_targets if scan_targets else ["."]
             git_files = []
             for root_dir in git_roots:
-                git_files.extend(get_git_changed_files(root_dir))
+                git_files.extend(get_git_changed_files(root_dir, ref=args.git_changes))
 
             if not git_files:
-                print("No git changes detected in provided targets.", file=sys.stderr)
+                print(f"No git changes detected in provided targets (ref: {args.git_changes}).", file=sys.stderr)
             # Scan only changed files
             scan_targets = git_files
 
@@ -6058,13 +6099,13 @@ def main():
             git_roots = scan_targets if scan_targets else ["."]
             diff_count = 0
             for root_dir in git_roots:
-                diff_content = get_git_diff(root_dir)
+                diff_content = get_git_diff(root_dir, ref=args.git_diff)
                 if diff_content:
                     extra_snippets.append((f"git-diff-{diff_count}.patch", diff_content.encode('utf-8')))
                     diff_count += 1
 
             if not extra_snippets:
-                print("No Git diff detected in provided targets.", file=sys.stderr)
+                print(f"No Git diff detected in provided targets (ref: {args.git_diff}).", file=sys.stderr)
 
         if not scan_targets and not args.git_changes and not args.git_diff:
             # Default to current directory if no targets provided and NOT using git-changes
