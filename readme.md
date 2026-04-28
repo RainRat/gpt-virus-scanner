@@ -8,7 +8,7 @@ Scan your files for dangerous code with AI. This tool uses a machine learning mo
 *   **Scan Local & Web Files:** Scan files on your computer or from a web link.
 *   **Platform Support:** Scan code from GitHub, GitLab, Bitbucket, Pastebin, and Hugging Face (including PRs, Commits, Tags, and Snippets).
 *   **Notebook Support:** Scan cells in `.ipynb` files for dangerous commands.
-*   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, Docker Compose, HTML, and Markdown.
+*   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, Docker Compose, HTML, SVG, and Markdown.
 *   **Unpack Archives:** Open `.zip`, `.tar`, and `.tar.gz` files automatically to scan the contents.
 *   **Two-step analysis:**
     1.  **Fast Local Scan:** A quick check finds suspicious patterns in milliseconds.
