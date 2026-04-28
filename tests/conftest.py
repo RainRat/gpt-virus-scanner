@@ -57,6 +57,8 @@ def reset_globals():
     import gptscan
     gptscan.current_cancel_event = None
     gptscan._all_results_cache = []
+    gptscan._last_scan_summary = ""
+    gptscan._virtual_source_cache = {}
     gptscan._model_cache = None
     gptscan._async_openai_client = None
 
