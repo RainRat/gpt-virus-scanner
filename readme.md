@@ -6,7 +6,7 @@ Scan your files for dangerous code with AI. This tool uses a machine learning mo
 
 ## Features
 *   **Scan Local & Web Files:** Scan files on your computer or from a web link.
-*   **Platform Support:** Scan code from GitHub, GitLab, Bitbucket, Pastebin, and Hugging Face (including PRs, Commits, Tags, and Snippets).
+*   **Platform Support:** Scan code from GitHub, GitLab, Bitbucket, Gists, Pastebin, and Hugging Face (including PRs, Commits, Tags, and Snippets).
 *   **Notebook Support:** Scan cells in `.ipynb` files for dangerous commands.
 *   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, Docker Compose, HTML, and Markdown.
 *   **Unpack Archives:** Open `.zip`, `.tar`, and `.tar.gz` files automatically to scan the contents.
@@ -19,7 +19,7 @@ Scan your files for dangerous code with AI. This tool uses a machine learning mo
 
 ## What you need
 *   **Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet.
-*   **Model file:** You need the `scripts.h5` model file in the project folder to use the local scanner.
+*   **Included files:** The repository already includes the `scripts.h5` model file and the `task.txt` AI instructions. You do not need to download these separately.
 
 ## How to install
 1.  **Clone the repository:**
@@ -29,13 +29,13 @@ Scan your files for dangerous code with AI. This tool uses a machine learning mo
     ```
 2.  **Install the required packages:**
     ```bash
-    pip install "tensorflow<2.16" openai numpy pyyaml
+    python3 -m pip install "tensorflow<2.16" openai numpy pyyaml
     ```
     *Note: If you are on Linux, you may also need to install `python3-tk` for the window interface.*
 
 ## How to use
 ### Using the Window (GUI)
-Run `python gptscan.py` to open the scanner window.
+Run `python3 gptscan.py` to open the scanner window.
 
 Access these options from the **Browse** menu:
 *   **Select File(s)...:** Choose one or more scripts to scan.
@@ -48,11 +48,11 @@ Access these options from the **Browse** menu:
 ### Using the Terminal (CLI)
 To run the scanner in your terminal, use the `--cli` flag:
 ```bash
-python gptscan.py path/to/your/script.py --cli
+python3 gptscan.py path/to/your/script.py --cli
 ```
 You can also scan multiple files, folders, or web links:
 ```bash
-python gptscan.py file1.py folder/ https://github.com/user/repo --cli
+python3 gptscan.py file1.py folder/ https://github.com/user/repo --cli
 ```
 
 ### Setting up AI Analysis
@@ -60,6 +60,21 @@ To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama
 1.  Open the GUI.
 2.  In the **AI Analysis** panel, check the **Use AI Analysis** box.
 3.  Choose your provider and enter your API key or model name.
+
+## Reviewing Results
+Once a scan is complete, you can interact with the results in the table:
+*   **Filter results:** Press `Ctrl+F` to quickly search for specific files, threat levels, or suspicious code.
+*   **See details:** Double-click a row or press `Space` to see a detailed analysis of why a file was flagged.
+*   **Right-click menu:** Right-click any result to access more tools:
+    *   **View Online:** Open the file on GitHub, GitLab, or Bitbucket.
+    *   **VirusTotal:** Check the file's hash against the VirusTotal database.
+    *   **Exclude Selected:** Ignore specific files or patterns in future scans.
+    *   **Copy:** Quickly copy the file path, hash, or code snippet.
+*   **Export reports:** Use the **Results** button in the bottom corner (or `Ctrl+E`) to save your results as a JSON, CSV, HTML, or Markdown report.
+
+## Customizing the Scanner
+*   **Ignore files:** Create a `.gptscanignore` file in the project folder to exclude specific files or folders using glob patterns (like `node_modules/*` or `*.log`).
+*   **Change file types:** Edit `extensions.txt` to add or remove the file extensions the scanner looks for (for example, `.php` or `.rb`).
 
 ## How it works
 1.  **Local Filter:** The tool uses a deep learning model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
