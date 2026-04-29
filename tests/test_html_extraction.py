@@ -91,7 +91,7 @@ def test_unpack_content_html_embedded_elements():
     assert len(snippets) == 2
     assert snippets[0][0] == "test.html [Script 1]"
     assert snippets[1][0] == "test.html [Embedded Elements]"
-    
+
     embedded_text = snippets[1][1].decode('utf-8')
     assert '<iframe src="http://malicious-iframe.com"></iframe>' in embedded_text
     assert '<object data="malicious.swf"></object>' in embedded_text
@@ -99,3 +99,26 @@ def test_unpack_content_html_embedded_elements():
     assert '<applet code="Malicious.class"></applet>' in embedded_text
     assert '<iframe src="no-closing-tag">' in embedded_text
 
+def test_unpack_content_html_attributes():
+    """Verify that event handlers and javascript: URLs are extracted from HTML."""
+    html_content = """
+    <body onload="alert(1)">
+        <div onclick="console.log('hit')"></div>
+        <a href="javascript:malicious()">Link</a>
+        <img src="javascript:evil()">
+    </body>
+    """
+    snippets = list(unpack_content("attr.html", html_content.encode('utf-8')))
+
+    # Should find Attributes
+    assert any(s[0] == "attr.html [Attributes]" for s in snippets)
+
+    attr_text = next(s[1].decode('utf-8') for s in snippets if s[0] == "attr.html [Attributes]")
+    assert "// onload" in attr_text
+    assert "alert(1)" in attr_text
+    assert "// onclick" in attr_text
+    assert "console.log('hit')" in attr_text
+    assert "// href" in attr_text
+    assert "javascript:malicious()" in attr_text
+    assert "// src" in attr_text
+    assert "javascript:evil()" in attr_text
