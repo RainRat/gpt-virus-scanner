@@ -352,7 +352,7 @@ class Config:
         # 2. Check by extension or basename
         path_s = str(file_path).lower()
         # Common archive and document extensions
-        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', '.yml', '.yaml',
+        if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', '.svg', '.yml', '.yaml',
                             '.diff', '.patch')):
             return True
         # Explicit manifest files and build scripts (checked by basename)
@@ -2377,19 +2377,19 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 6. Check for HTML script tags and other embedded elements
-    if check_name.lower().endswith(('.html', '.htm', '.xhtml')):
+    # 6. Check for HTML/SVG script tags and other embedded elements
+    if check_name.lower().endswith(('.html', '.htm', '.xhtml', '.svg')):
         try:
             text = content.decode('utf-8', errors='ignore')
             extracted_any = False
-            
+
             # 1. Match <script> blocks (yield individually as they can be large)
             scripts = re.findall(r'<script\b[^>]*>(.*?)</script>', text, re.DOTALL | re.IGNORECASE)
             for i, script in enumerate(scripts, 1):
                 if script.strip():
                     yield (f"{name} [Script {i}]", script.encode('utf-8'))
                     extracted_any = True
-            
+
             # 2. Match other embedded elements (bundle together as they are usually small)
             embedded_patterns = [
                 r'<iframe\b[^>]*>.*?</iframe>',
@@ -2400,19 +2400,42 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 r'<applet\b[^>]*>.*?</applet>',
                 r'<applet\b[^>]*>'
             ]
-            
+
             embedded_elements = []
             for pattern in embedded_patterns:
                 matches = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
                 for match in matches:
                     if match.strip() and match not in embedded_elements:
                         embedded_elements.append(match.strip())
-            
+
             if embedded_elements:
                 bundle = "\n".join(embedded_elements)
                 yield (f"{name} [Embedded Elements]", bundle.encode('utf-8'))
                 extracted_any = True
-                
+
+            # 3. Match inline event handlers and javascript: URLs in attributes
+            # Matches on...="script", on...='script', or on...=script (unquoted)
+            # Also handles leading whitespace in javascript: URLs
+            attr_patterns = [
+                (r'\s+(on[a-z]+)\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)', True),
+                (r'\s+(?:href|src)\s*=\s*("\s*javascript:[^"]*"|\'\s*javascript:[^\']*\'|\s*javascript:[^\s>]+)', False)
+            ]
+            extracted_attrs = []
+            for pattern, has_name_group in attr_patterns:
+                matches = re.findall(pattern, text, re.IGNORECASE)
+                for match in matches:
+                    val = match[1] if has_name_group else match
+                    script = val.strip('"\'').strip()
+                    if script:
+                        unescaped = html.unescape(script)
+                        if unescaped not in extracted_attrs:
+                            extracted_attrs.append(unescaped)
+
+            if extracted_attrs:
+                bundle = "\n".join(extracted_attrs)
+                yield (f"{name} [Attributes]", bundle.encode('utf-8'))
+                extracted_any = True
+
             if extracted_any:
                 return
         except Exception:
