@@ -3914,7 +3914,7 @@ def standardize_result_dict(item: Any) -> Dict[str, Any]:
         return {k: "" for k in REPORT_FIELD_MAPPING}
 
     res = {
-        key: next((str(item[alt]) if item[alt] is not None else "" for alt in alts if alt in item), "")
+        key: next((str(item[alt]) for alt in alts if item.get(alt) not in (None, "")), "")
         for key, alts in REPORT_FIELD_MAPPING.items()
     }
     # Fallback: if own_conf is empty but gpt_conf has a value, they might be using a report
