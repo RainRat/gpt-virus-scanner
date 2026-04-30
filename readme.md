@@ -10,37 +10,39 @@ Scan your files for dangerous code with AI. This tool uses a machine learning mo
 *   **Notebook Support:** Scan cells in `.ipynb` files for dangerous commands.
 *   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, Docker Compose, HTML, and Markdown.
 *   **Unpack Archives:** Open `.zip`, `.tar`, and `.tar.gz` files automatically to scan the contents.
+*   **CI/CD Workflows:** Scan GitHub Actions, GitLab CI, and other YAML workflows for suspicious commands.
+*   **Unified Diffs:** Scan `.diff` and `.patch` files to review code changes.
 *   **Two-step analysis:**
     1.  **Fast Local Scan:** A quick check finds suspicious patterns in milliseconds.
     2.  **AI Analysis (Optional):** Get a detailed report from OpenAI, OpenRouter, or Ollama explaining why a file is suspicious.
 *   **Easy Interface:** Use the graphical window or the command line.
-*   **Git Integration:** Scan only the files you have changed in your Git repository.
+*   **Git Integration:** Scan only the files you have changed in your Git project.
 *   **Search & Filter:** Easily find specific results by name, threat level, or code.
 
 ## What you need
 *   **Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet.
-*   **Model file:** You need the `scripts.h5` model file in the project folder to use the local scanner.
+*   **Data files:** You need the `scripts.h5` model file and `task.txt` AI instructions in the project folder. Both are included in this project.
 
 ## How to install
-1.  **Clone the repository:**
+1.  **Clone the project:**
     ```bash
     git clone https://github.com/RainRat/gpt-virus-scanner.git
     cd gpt-virus-scanner
     ```
 2.  **Install the required packages:**
     ```bash
-    pip install "tensorflow<2.16" openai numpy pyyaml
+    python3 -m pip install "tensorflow<2.16" openai numpy pyyaml
     ```
     *Note: If you are on Linux, you may also need to install `python3-tk` for the window interface.*
 
 ## How to use
 ### Using the Window (GUI)
-Run `python gptscan.py` to open the scanner window.
+Run `python3 gptscan.py` to open the scanner window.
 
 Access these options from the **Browse** menu:
 *   **Select File(s)...:** Choose one or more scripts to scan.
 *   **Select Folder...:** Choose a whole directory to scan.
-*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, Dockerfile, Makefile, manifest (package.json, `deno.jsonc`, etc.), PR/MR (GitHub/GitLab/Bitbucket), Pastebin paste, Hugging Face blob, or archive (.zip, .tar, .tar.gz) directly from a web link.
+*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, Dockerfile, Makefile, manifest (`package.json`, `pyproject.toml`, `composer.json`, etc.), CI/CD workflow, PR/MR (GitHub/GitLab/Bitbucket), Pastebin paste, Hugging Face blob, or archive (.zip, .tar, .tar.gz) directly from a web link.
 *   **Scan File List...:** Read a list of files to scan from a text file.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
 *   **Scan Git Diff:** Scan changes in your local Git repository.
@@ -48,11 +50,11 @@ Access these options from the **Browse** menu:
 ### Using the Terminal (CLI)
 To run the scanner in your terminal, use the `--cli` flag:
 ```bash
-python gptscan.py path/to/your/script.py --cli
+python3 gptscan.py path/to/your/script.py --cli
 ```
 You can also scan multiple files, folders, or web links:
 ```bash
-python gptscan.py file1.py folder/ https://github.com/user/repo --cli
+python3 gptscan.py file1.py folder/ https://github.com/user/repo --cli
 ```
 
 ### Setting up AI Analysis
