@@ -4155,6 +4155,11 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
 
                             item['admin_desc'] = admin_match.group(1).replace('<br>', '\n').replace('\\|', '|') if admin_match else ""
                             item['end-user_desc'] = user_match.group(1).replace('<br>', '\n').replace('\\|', '|') if user_match else ""
+                            del item['Analysis']
+
+                        if 'Threat Level' in item:
+                            item['gpt_conf'] = item['Threat Level']
+                            del item['Threat Level']
 
                         # Clean up Snippet (remove backticks or <code> tags)
                         if 'Snippet' in item:
@@ -4164,7 +4169,8 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
                             else:
                                 raw_snippet = raw_snippet.strip('`')
 
-                            item['Snippet'] = html.unescape(raw_snippet).replace('\\|', '|')
+                            item['snippet'] = html.unescape(raw_snippet).replace('\\|', '|')
+                            del item['Snippet']
 
                         if 'Path' in item:
                             item['Path'] = item['Path'].replace('\\|', '|')
