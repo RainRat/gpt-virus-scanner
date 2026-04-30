@@ -5402,7 +5402,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (File, Folder, URL, File List, or Clipboard).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -5413,12 +5413,14 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(cancel_button, "Stop the current scan. (Esc)")
 
     browse_menu = tk.Menu(browse_button, tearoff=0)
-    browse_menu.add_command(label="Select File(s)...", command=browse_file_click)
+    browse_menu.add_command(label="Select File(s)...", command=browse_file_click, accelerator="Ctrl+Shift+O")
     browse_menu.add_command(label="Select Folder...", command=browse_dir_click)
-    browse_menu.add_command(label="Scan URL...", command=select_url_click)
+    browse_menu.add_separator()
+    browse_menu.add_command(label="Scan URL...", command=select_url_click, accelerator="Ctrl+Shift+U")
     browse_menu.add_command(label="Scan File List...", command=browse_file_list_click)
-    browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click)
-    browse_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click)
+    browse_menu.add_separator()
+    browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click, accelerator="Ctrl+Shift+V")
+    browse_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -5789,6 +5791,14 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Return>', on_root_return)
     root.bind('<Control-o>', import_results)
     root.bind('<Command-o>', import_results)
+    root.bind('<Control-Shift-O>', lambda event: browse_file_click())
+    root.bind('<Command-Shift-O>', lambda event: browse_file_click())
+    root.bind('<Control-Shift-U>', lambda event: select_url_click())
+    root.bind('<Command-Shift-U>', lambda event: select_url_click())
+    root.bind('<Control-Shift-V>', lambda event: scan_clipboard_click())
+    root.bind('<Command-Shift-V>', lambda event: scan_clipboard_click())
+    root.bind('<Control-Shift-D>', lambda event: scan_git_diff_click())
+    root.bind('<Command-Shift-D>', lambda event: scan_git_diff_click())
     root.bind('<Control-e>', export_results)
     root.bind('<Command-e>', export_results)
     root.bind('<Control-t>', check_virustotal)
