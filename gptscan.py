@@ -1098,6 +1098,9 @@ def get_online_url(path: str, line: Union[int, str] = 1) -> Optional[str]:
         return url
 
     # 2. Handle Local Files
+    if path.startswith("["):
+        return None
+
     toplevel, rel_path = _get_git_info(path)
     if not toplevel or not rel_path:
         return None
@@ -1342,6 +1345,28 @@ def get_file_sha256(file_path_or_data: Union[str, Path, bytes]) -> str:
         return sha256_hash.hexdigest()
     except Exception:
         return ""
+
+
+def get_virustotal_url(path: str, snippet: Optional[str] = None) -> Optional[str]:
+    """Construct a VirusTotal URL for a local file or a virtual snippet.
+
+    Args:
+        path: File path or virtual target name.
+        snippet: The code snippet content (required for virtual paths).
+
+    Returns:
+        The VirusTotal URL string, or None if the hash could not be calculated.
+    """
+    h = ""
+    if path.startswith("[") or not os.path.exists(path):
+        if snippet:
+            h = get_file_sha256(snippet.encode('utf-8'))
+    else:
+        h = get_file_sha256(path)
+
+    if h:
+        return f"https://www.virustotal.com/gui/file/{h}"
+    return None
 
 
 def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, use_color: bool = False, high_risk: int = 0, medium_risk: int = 0) -> str:
@@ -3487,16 +3512,14 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         lines.append(f"    {BOLD}Threat Level:{RESET} Local: {own_conf}" + (f", AI: {gpt_conf}" if gpt_conf else ""))
         lines.append(f"    {BOLD}Location:{RESET}   Line {line_num}")
 
-        # Hash for VirusTotal
-        h = ""
-        if path.startswith("[") or not os.path.exists(path):
-            if snippet:
-                h = get_file_sha256(snippet.encode('utf-8'))
-        else:
-            h = get_file_sha256(path)
+        # Links
+        vt_url = get_virustotal_url(path, snippet)
+        online_url = get_online_url(path, line_num)
 
-        if h:
-            lines.append(f"    {BOLD}VirusTotal:{RESET} https://www.virustotal.com/gui/file/{h}")
+        if vt_url:
+            lines.append(f"    {BOLD}VirusTotal:{RESET} {vt_url}")
+        if online_url:
+            lines.append(f"    {BOLD}Online View:{RESET} {online_url}")
 
         if admin or user:
             lines.append(f"    {BOLD}AI Analysis:{RESET}")
@@ -3628,6 +3651,16 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
         admin_html = html.escape(admin).replace("\n", "<br>")
         user_html = html.escape(user).replace("\n", "<br>")
 
+        vt_url = get_virustotal_url(path, snippet)
+        online_url = get_online_url(path, r.get("line", 1))
+
+        links = []
+        if vt_url:
+            links.append(f'<a href="{vt_url}" target="_blank">VirusTotal</a>')
+        if online_url:
+            links.append(f'<a href="{online_url}" target="_blank">Online Source</a>')
+        links_html = "<br>".join(links)
+
         rows.append(f"""
         <tr class="{row_class}">
             <td>{html.escape(path)}</td>
@@ -3637,6 +3670,7 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
                 <strong>Admin:</strong> {admin_html}<br>
                 <strong>User:</strong> {user_html}
             </td>
+            <td>{links_html}</td>
             <td><pre><code>{html.escape(snippet)}</code></pre></td>
         </tr>
         """)
@@ -3670,11 +3704,12 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
     <table>
         <thead>
             <tr>
-                <th style="width: 20%">Path</th>
+                <th style="width: 15%">Path</th>
                 <th style="width: 5%">Line</th>
                 <th style="width: 10%">Threat Level</th>
                 <th style="width: 25%">Analysis</th>
-                <th style="width: 40%">Snippet</th>
+                <th style="width: 10%">Links</th>
+                <th style="width: 35%">Snippet</th>
             </tr>
         </thead>
         <tbody>
@@ -3759,6 +3794,13 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
         lines.append(f"- **Local Threat:** {own_conf}")
         if gpt_conf:
             lines.append(f"- **AI Threat:** {gpt_conf}")
+
+        vt_url = get_virustotal_url(path, snippet)
+        online_url = get_online_url(path, line)
+        if vt_url:
+            lines.append(f"- **VirusTotal:** [Check Hash]({vt_url})")
+        if online_url:
+            lines.append(f"- **Online View:** [View Source]({online_url})")
         lines.append("")
 
         if admin or user:
