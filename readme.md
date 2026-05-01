@@ -63,6 +63,18 @@ To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama
 2.  In the **AI Analysis** panel, check the **Use AI Analysis** box.
 3.  Choose your provider and enter your API key or model name.
 
+## Reviewing Results
+The scanner provides several ways to analyze and manage your results:
+*   **Search & Filter:** Use the **Filter** bar (or press `Ctrl+F`) to search through results by file path, threat level, or code.
+*   **View Details:** Double-click any result or press `Space` to see a detailed analysis and the full source code.
+*   **Right-Click Menu:** Right-click a result to access quick actions, such as **Check on VirusTotal** or **View Online** (for Git-tracked files).
+*   **Export Reports:** Save your results in various formats (CSV, Markdown, HTML, JSON, or SARIF) by selecting **File > Export Results...**.
+
+## Customizing the Scanner
+You can tailor the scanner to your needs:
+*   **Exclusions:** Ignore specific files or folders by using **File > Manage Exclusions...** or by adding patterns to a `.gptscanignore` file in the project folder.
+*   **Extensions:** Control which file types are scanned by using **File > Manage Extensions...** or by editing the `extensions.txt` file.
+
 ## How it works
 1.  **Local Filter:** The tool uses a deep learning model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
 2.  **AI Analysis:** If a file looks suspicious, you can ask an AI for a second opinion. The AI will explain *why* it thinks the code is dangerous, helping you decide what to do.
