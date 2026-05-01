@@ -2908,7 +2908,7 @@ def scan_files(
     if fail_threshold is not None:
         threshold_val = min(threshold_val, fail_threshold / 100.0)
 
-    def handle_scan_result(path: str, maxconf: float, max_window_bytes: bytes, line_num: Union[int, str], full_content: Optional[str] = None) -> Generator[Tuple[str, Any], None, None]:
+    def handle_scan_result(path: str, maxconf: float, max_window_bytes: bytes, line_num: Union[int, str], full_content: Optional[str] = None, force: bool = False) -> Generator[Tuple[str, Any], None, None]:
         if maxconf >= 0:
             percent = f"{maxconf:.0%}"
             snippet = ''.join(map(chr, max_window_bytes)).strip()
@@ -2928,7 +2928,7 @@ def scan_files(
                         "full_content": full_content,
                     }
                 )
-            elif maxconf >= threshold_val or show_all:
+            elif maxconf >= threshold_val or show_all or force:
                 yield (
                     'result',
                     (
@@ -3056,7 +3056,7 @@ def scan_files(
                             line_num = f.read(max_offset).count(b'\n') + 1
                     except Exception:
                         pass
-                    yield from handle_scan_result(str(file_path), maxconf, max_window_bytes, line_num)
+                    yield from handle_scan_result(str(file_path), maxconf, max_window_bytes, line_num, force=True)
 
     for name, content in extra_snippets:
         if cancel_event.is_set():
@@ -3106,7 +3106,7 @@ def scan_files(
             if hits_found == 0:
                 # Calculate line number for best hit
                 line_num = content[:max_offset].count(b'\n') + 1
-                yield from handle_scan_result(name, maxconf, max_window_bytes, line_num, full_content=decoded_content)
+                yield from handle_scan_result(name, maxconf, max_window_bytes, line_num, full_content=decoded_content, force=True)
 
     if cancel_event.is_set():
         return
