@@ -348,6 +348,9 @@ class Config:
             # Detect Jupyter Notebooks by content
             if content.startswith(b'{') and b'"cells"' in content:
                 return True
+            # Detect Unified Diffs by content (e.g. for clipboard scans)
+            if content.startswith(b'--- ') or content.startswith(b'Index: ') or content.startswith(b'diff --git '):
+                return True
 
         # 2. Check by extension or basename
         path_s = str(file_path).lower()
@@ -357,7 +360,8 @@ class Config:
             return True
         # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
-        if basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'dockerfile', 'makefile')):
+        if basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml',
+                            'dockerfile', 'makefile', 'docker-compose.yml', 'docker-compose.yaml')):
             return True
         return False
 
@@ -2616,8 +2620,9 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 9. Check for Unified Diff (.diff or .patch)
-    if check_name.lower().endswith(('.diff', '.patch')):
+    # 9. Check for Unified Diff (.diff, .patch, or by content)
+    if check_name.lower().endswith(('.diff', '.patch')) or \
+       (content.startswith(b'--- ') or content.startswith(b'Index: ') or content.startswith(b'diff --git ')):
         try:
             text = content.decode('utf-8', errors='ignore')
             lines = text.splitlines()
