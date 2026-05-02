@@ -46,11 +46,17 @@ Access these options from the **Browse** menu:
 *   **Scan File List...:** Read a list of files to scan from a text file.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
 *   **Scan Git Diff:** Scan changes in your local Git repository.
+*   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for malicious one-liners.
 
 ### Using the Terminal (CLI)
 To run the scanner in your terminal, use the `--cli` flag:
 ```bash
 python3 gptscan.py path/to/your/script.py --cli
+```
+
+To scan your shell history from the terminal:
+```bash
+python3 gptscan.py --shell-history --cli
 ```
 You can also scan multiple files, folders, or web links:
 ```bash

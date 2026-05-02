@@ -1023,6 +1023,34 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
             tree.item(iid, values=new_vals)
 
 
+def get_shell_history_paths() -> List[str]:
+    """Identify common shell history files on the current system."""
+    paths = []
+    home = Path.home()
+
+    # Linux/macOS/Unix-like
+    common_files = [
+        '.bash_history', '.zsh_history', '.python_history',
+        '.ash_history', '.dash_history', '.mysql_history',
+        '.psql_history', '.node_repl_history', '.sqlite_history'
+    ]
+
+    for f in common_files:
+        p = home / f
+        if p.exists():
+            paths.append(str(p))
+
+    # Windows PowerShell History
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            ps_history = Path(appdata) / "Microsoft" / "Windows" / "PowerShell" / "PSReadLine" / "ConsoleHost_history.txt"
+            if ps_history.exists():
+                paths.append(str(ps_history))
+
+    return paths
+
+
 def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
     """Resolve the Git toplevel directory and the relative path of the target."""
     abs_path = os.path.abspath(path)
@@ -1744,6 +1772,19 @@ def scan_git_revision_click():
             messagebox.showinfo("Git Revision", f"No changed files found for revision '{ref}'.")
     except Exception as e:
         messagebox.showwarning("Git Revision Error", f"Could not scan Git revision: {e}")
+
+
+def scan_shell_history_click():
+    """Scan common shell history files."""
+    try:
+        history_paths = get_shell_history_paths()
+        if history_paths:
+            _set_scan_target(history_paths)
+            button_click()
+        else:
+            messagebox.showinfo("Shell History", "No common shell history files were found on this system.")
+    except Exception as e:
+        messagebox.showwarning("Shell History Error", f"Could not scan shell history: {e}")
 
 
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None) -> None:
@@ -5516,7 +5557,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/H).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -5536,6 +5577,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click, accelerator="Ctrl+Shift+V")
     browse_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
     browse_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
+    browse_menu.add_command(label="Scan Shell History", command=scan_shell_history_click, accelerator="Ctrl+Shift+H")
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -5911,6 +5953,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-V>', lambda event: scan_clipboard_click())
     root.bind('<Control-Shift-D>', lambda event: scan_git_diff_click())
     root.bind('<Command-Shift-D>', lambda event: scan_git_diff_click())
+    root.bind('<Control-Shift-H>', lambda event: scan_shell_history_click())
+    root.bind('<Command-Shift-H>', lambda event: scan_shell_history_click())
     root.bind('<Control-e>', export_results)
     root.bind('<Command-e>', export_results)
     root.bind('<Control-t>', check_virustotal)
@@ -6050,6 +6094,11 @@ def main():
         '--stdin',
         action='store_true',
         help='Scan code sent from another command in the terminal.'
+    )
+    scan_group.add_argument(
+        '--shell-history',
+        action='store_true',
+        help='Scan common shell history files.'
     )
     scan_group.add_argument(
         '--import-results', '--import',
@@ -6231,6 +6280,13 @@ def main():
                     extra_snippets.append(("[Stdin]", stdin_content))
             except Exception as e:
                 print(f"Error reading from terminal input: {e}", file=sys.stderr)
+
+        if args.shell_history:
+            history_paths = get_shell_history_paths()
+            if history_paths:
+                scan_targets.extend(history_paths)
+            else:
+                print("No common shell history files were found on this system.", file=sys.stderr)
 
         threats = run_cli(
             scan_targets,
