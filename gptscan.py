@@ -2974,9 +2974,6 @@ def scan_files(
                     )
                 )
 
-        if file_size is not None:
-            total_bytes_scanned += file_size
-
         # Check file size limit (skip if not explicitly requested)
         if not is_explicit and file_size is not None and file_size > Config.MAX_FILE_SIZE:
             yield (
@@ -2992,6 +2989,9 @@ def scan_files(
                 )
             )
             continue
+
+        if file_size is not None:
+            total_bytes_scanned += file_size
 
         if dry_run:
             yield (
