@@ -4911,16 +4911,23 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         vals = _get_item_raw_values(new_id)
         if not vals: return
 
-        # Ensure buttons reflect current scanning state
+        # Ensure buttons reflect current scanning state and result context (local vs virtual)
         is_scanning = current_cancel_event is not None
-        rescan_btn.config(state='disabled' if is_scanning else 'normal')
+        is_virtual = str(vals[0]).startswith("[")
+        is_url = str(vals[0]).startswith("[URL] ")
+
+        # File actions are disabled for virtual targets (clipboard, stdin, archive members)
+        file_state = 'disabled' if is_scanning or is_virtual else 'normal'
+
+        rescan_btn.config(state=file_state)
         analyze_btn.config(state='disabled' if is_scanning or not Config.GPT_ENABLED else 'normal')
-        exclude_btn.config(state='disabled' if is_scanning else 'normal')
-        open_btn.config(state='disabled' if is_scanning else 'normal')
+        exclude_btn.config(state=file_state)
+        open_btn.config(state=file_state)
         vt_btn.config(state='disabled' if is_scanning else 'normal')
-        view_online_btn.config(state='disabled' if is_scanning else 'normal')
+        # View Online works for physical files and remote URL targets
+        view_online_btn.config(state='disabled' if is_scanning or (is_virtual and not is_url) else 'normal')
         path_copy_btn.config(state='disabled' if is_scanning else 'normal')
-        reveal_btn.config(state='disabled' if is_scanning else 'normal')
+        reveal_btn.config(state=file_state)
 
         # vals: (path, own_conf, admin, user, gpt_conf, snippet, line)
         path, own_conf, admin, user, gpt_conf, snippet = vals[:6]
@@ -5311,26 +5318,82 @@ def show_context_menu(event: tk.Event) -> None:
         if iid and iid not in tree.selection():
             tree.selection_set(iid)
 
-    if tree.selection():
+    selection = tree.selection()
+    if selection:
+        # Context-aware path flags
+        has_virtual = False
+        has_non_url_virtual = False
+
+        for item_id in selection:
+            values = _get_item_raw_values(item_id)
+            if values:
+                path = str(values[0])
+                if path.startswith("["):
+                    has_virtual = True
+                    if not path.startswith("[URL] "):
+                        has_non_url_virtual = True
+
+        file_state = "disabled" if has_virtual else "normal"
+        online_state = "disabled" if has_non_url_virtual else "normal"
+        ai_state = "normal" if Config.GPT_ENABLED else "disabled"
+
+        # Synchronize context menu item states with selection context
+        context_menu.entryconfigure("Rescan Selected", state=file_state)
+        context_menu.entryconfigure("Analyze with AI", state=ai_state)
+        context_menu.entryconfigure("Exclude Selected", state=file_state)
+        context_menu.entryconfigure("Open", state=file_state)
+        context_menu.entryconfigure("Show in Folder", state=file_state)
+        context_menu.entryconfigure("View Online", state=online_state)
+
         context_menu.post(event.x_root, event.y_root)
 
 
 def update_button_states(event: Optional[tk.Event] = None) -> None:
-    """Enable or disable selection-dependent buttons."""
+    """Enable or disable selection-dependent buttons based on current selection."""
     if not tree:
         return
 
-    has_selection = bool(tree.selection())
+    selection = tree.selection()
+    has_selection = bool(selection)
 
-    # Buttons that depend on having one or more items selected
-    dependent_buttons = [view_button, open_button, rescan_button, exclude_button, reveal_button, vt_button, view_online_button]
-    for btn in dependent_buttons:
+    # Context-aware path flags
+    has_virtual = False
+    has_non_url_virtual = False
+
+    for item_id in selection:
+        values = _get_item_raw_values(item_id)
+        if values:
+            path = str(values[0])
+            if path.startswith("["):
+                has_virtual = True
+                if not path.startswith("[URL] "):
+                    has_non_url_virtual = True
+
+    if not has_selection:
+        # Disable all dependent buttons when nothing is selected
+        for btn in [view_button, open_button, rescan_button, analyze_button, exclude_button, reveal_button, vt_button, view_online_button]:
+            if btn:
+                btn.config(state="disabled")
+        return
+
+    # View and VirusTotal always work as long as something is selected
+    for btn in [view_button, vt_button]:
         if btn:
-            btn.config(state="normal" if has_selection else "disabled")
+            btn.config(state="normal")
 
+    # AI Analysis depends on selection and global configuration
     if analyze_button:
-        ai_available = Config.GPT_ENABLED
-        analyze_button.config(state="normal" if has_selection and ai_available else "disabled")
+        analyze_button.config(state="normal" if Config.GPT_ENABLED else "disabled")
+
+    # Physical file actions are disabled if any virtual targets (clipboard, stdin, archive members) are selected
+    file_state = "disabled" if has_virtual else "normal"
+    for btn in [open_button, rescan_button, exclude_button, reveal_button]:
+        if btn:
+            btn.config(state=file_state)
+
+    # View Online works for physical files AND remote URL targets, but not for other virtual types
+    if view_online_button:
+        view_online_button.config(state="disabled" if has_non_url_virtual else "normal")
 
 
 def copy_cli_command(event: Optional[tk.Event] = None) -> None:
