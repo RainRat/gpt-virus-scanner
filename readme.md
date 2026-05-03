@@ -1,6 +1,6 @@
 # GPT Virus Scanner
 
-Scan your files for dangerous code with AI. This tool uses a machine learning model to find threats in scripts, Notebooks, archives, and project files.
+Scan your files for dangerous code with AI. This tool uses a quick scan model to find threats in scripts, Notebooks, archives, and project files.
 
 ![GPT Virus Scanner](gpt-virus-scan.png)
 
@@ -31,9 +31,9 @@ Scan your files for dangerous code with AI. This tool uses a machine learning mo
     ```
 2.  **Install the required packages:**
     ```bash
-    python3 -m pip install "tensorflow<2.16" openai numpy pyyaml
+    python3 -m pip install "tensorflow<2.16" openai numpy
     ```
-    *Note: If you are on Linux, you may also need to install `python3-tk` for the window interface.*
+    *Note: `pyyaml` is only required for training. If you are on Linux, you may also need to install `python3-tk` for the window interface.*
 
 ## How to use
 ### Using the Window (GUI)
@@ -76,8 +76,11 @@ You can tailor the scanner to your needs:
 *   **Extensions:** Control which file types are scanned by using **File > Manage Extensions...** or by editing the `extensions.txt` file.
 
 ## How it works
-1.  **Local Filter:** The tool uses a deep learning model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
+1.  **Local Filter:** The tool uses a quick scan model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
 2.  **AI Analysis:** If a file looks suspicious, you can ask an AI for a second opinion. The AI will explain *why* it thinks the code is dangerous, helping you decide what to do.
+
+## Advanced Usage
+If you want to train your own local scan model, see the [Training Guide](train.md).
 
 ## License
 This project is licensed under the GNU Lesser General Public License v2.1.
