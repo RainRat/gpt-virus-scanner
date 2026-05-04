@@ -733,9 +733,37 @@ def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
         scan_button.focus_set()
 
 
+def _get_initial_dir() -> Optional[str]:
+    """Determine the initial directory for file dialogs based on the current scan target."""
+    if not textbox:
+        return None
+
+    raw_path = textbox.get().strip()
+    if not raw_path:
+        return None
+
+    try:
+        # Use shlex.split to handle multiple/quoted paths
+        targets = shlex.split(raw_path)
+        if not targets:
+            return None
+
+        first_target = targets[0]
+        # Ignore URLs and virtual paths
+        if first_target.lower().startswith(('http://', 'https://')) or first_target.startswith('['):
+            return None
+
+        p = Path(first_target).resolve()
+        if p.exists():
+            return str(p.parent if p.is_file() else p)
+    except Exception:
+        pass
+    return None
+
+
 def browse_dir_click() -> None:
     """Handle the directory selection dialog and populate the textbox."""
-    folder_selected = filedialog.askdirectory()
+    folder_selected = filedialog.askdirectory(initialdir=_get_initial_dir())
     if folder_selected:
         _set_scan_target(folder_selected)
 
@@ -778,7 +806,8 @@ def browse_file_click() -> None:
     ]
     files_selected = filedialog.askopenfilenames(
         title="Select File(s) to Scan",
-        filetypes=file_types
+        filetypes=file_types,
+        initialdir=_get_initial_dir()
     )
     if files_selected:
         _set_scan_target(files_selected)
@@ -788,7 +817,8 @@ def browse_file_list_click() -> None:
     """Handle the file list selection dialog and populate the textbox."""
     file_selected = filedialog.askopenfilename(
         title="Select File List to Scan",
-        filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+        filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+        initialdir=_get_initial_dir()
     )
     if file_selected:
         try:
@@ -2166,7 +2196,7 @@ def manage_exclusions() -> None:
                     messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
 
     def add_folder():
-        folder = filedialog.askdirectory(parent=manage_win)
+        folder = filedialog.askdirectory(parent=manage_win, initialdir=_get_initial_dir())
         if folder:
             try:
                 rel_path = os.path.relpath(folder, os.getcwd())
@@ -4368,6 +4398,7 @@ def import_results(event: Optional[tk.Event] = None) -> None:
             ("All files", "*.*")
         ],
         title="Import Scan Results",
+        initialdir=_get_initial_dir()
     )
     if not file_path:
         return
@@ -4514,6 +4545,7 @@ def export_results(event: Optional[tk.Event] = None) -> None:
             ("All files", "*.*")
         ],
         title="Export Scan Results",
+        initialdir=_get_initial_dir()
     )
     if not file_path:
         return
