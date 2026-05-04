@@ -2,55 +2,133 @@ import sys
 import pytest
 from unittest.mock import MagicMock
 
-# Create a mock object for tkinter
-mock_tk = MagicMock()
+# Define real functions for mainloop to satisfy matplotlib's check
+def mock_mainloop(*args, **kwargs):
+    pass
 
-# Explicitly mock attributes accessed during import or usage
-mock_tk.Tk = MagicMock
-mock_tk.Label = MagicMock
-mock_tk.Entry = MagicMock
-mock_tk.Button = MagicMock
-mock_tk.BooleanVar = MagicMock
-mock_tk.Checkbutton = MagicMock
-mock_tk.END = "end"
-mock_tk.BOTH = "both"
-mock_tk.NO = "no"
-mock_tk.RIGHT = "right"
-mock_tk.Y = "y"
-mock_tk.Event = MagicMock
-mock_tk.TclError = Exception
+class MockMisc:
+    @staticmethod
+    def mainloop(*args, **kwargs):
+        pass
+
+class MockWidget:
+    def __init__(self, *args, **kwargs):
+        self.master = args[0] if args else None
+        self.children = []
+    def grid(self, *args, **kwargs): return self
+    def grid_forget(self, *args, **kwargs): pass
+    def grid_remove(self, *args, **kwargs): pass
+    def pack(self, *args, **kwargs): return self
+    def pack_forget(self, *args, **kwargs): pass
+    def place(self, *args, **kwargs): return self
+    def place_forget(self, *args, **kwargs): pass
+    def config(self, *args, **kwargs): pass
+    def configure(self, *args, **kwargs): pass
+    def cget(self, *args, **kwargs): return ""
+    def delete(self, *args, **kwargs): pass
+    def insert(self, *args, **kwargs): pass
+    def bind(self, *args, **kwargs): pass
+    def unbind(self, *args, **kwargs): pass
+    def winfo_viewable(self): return True
+    def winfo_children(self): return self.children
+    def destroy(self): pass
+    def update(self): pass
+    def update_idletasks(self): pass
+    def __setitem__(self, key, value): pass
+    def __getitem__(self, key): return MagicMock()
+    def __repr__(self): return f"Mock{self.__class__.__name__}"
+
+# Explicitly mock basic components as real classes to avoid metaclass conflicts
+class MockFrame(MockWidget):
+    def columnconfigure(self, *args, **kwargs): pass
+    def rowconfigure(self, *args, **kwargs): pass
+
+class MockTk(MockFrame):
+    def withdraw(self): pass
+    def deiconify(self): pass
+    def title(self, *args): pass
+    def geometry(self, *args): pass
+    def protocol(self, *args): pass
+    def mainloop(self, *args): pass
+    def quit(self): pass
+
+class MockLabel(MockWidget):
+    pass
+
+class MockMenu(MockWidget):
+    def add_command(self, *args, **kwargs): pass
+    def add_separator(self, *args, **kwargs): pass
+    def add_cascade(self, *args, **kwargs): pass
+    def delete(self, *args, **kwargs): pass
+    def entryconfig(self, *args, **kwargs): pass
+    def post(self, *args, **kwargs): pass
+    def unpost(self, *args, **kwargs): pass
+
+# A custom mock class that returns MagicMock for any attribute not explicitly set
+class MockTkModule:
+    def __init__(self):
+        self.mainloop = mock_mainloop
+        self.Misc = MockMisc
+        self.Tk = MockTk
+        self.Toplevel = MockTk
+        self.Frame = MockFrame
+        self.Label = MockLabel
+        self.Entry = MagicMock
+        self.Button = MagicMock
+        self.Checkbutton = MagicMock
+        self.BooleanVar = MagicMock
+        self.StringVar = MagicMock
+        self.IntVar = MagicMock
+        self.Menu = MockMenu
+        self.Text = MagicMock
+        self.Scrollbar = MagicMock
+        self.TclError = Exception
+        self.END = "end"
+        self.BOTH = "both"
+        self.Y = "y"
+        self.X = "x"
+        self.NO = "no"
+        self.YES = "yes"
+        self.RIGHT = "right"
+        self.LEFT = "left"
+        self.TOP = "top"
+        self.BOTTOM = "bottom"
+        self.NONE = "none"
+        self.VERTICAL = "vertical"
+        self.HORIZONTAL = "horizontal"
+        self.Event = MagicMock
+        self.messagebox = MagicMock()
+        self.filedialog = MagicMock()
+        self.simpledialog = MagicMock()
+        self.ttk = MagicMock()
+        self.font = MagicMock()
+        self.scrolledtext = MagicMock()
+        
+        # Populate ttk with components
+        self.ttk.Frame = MockFrame
+        self.ttk.Label = MockLabel
+        self.ttk.Button = MagicMock
+        self.ttk.Entry = MagicMock
+        self.ttk.Treeview = MagicMock
+        self.ttk.Separator = MockWidget
+        self.ttk.Menubutton = MockWidget
+        self.ttk.Progressbar = MockWidget
+        self.ttk.Spinbox = MockWidget
+        self.ttk.Combobox = MockWidget
+
+    def __getattr__(self, name):
+        return MagicMock()
+
+mock_tk = MockTkModule()
 
 # Inject into sys.modules
 sys.modules['tkinter'] = mock_tk
-sys.modules['tkinter.filedialog'] = MagicMock()
-sys.modules['tkinter.font'] = MagicMock()
-
-# Explicitly mock Label to be a real class so it's not a mock instance
-class MockLabel:
-    def __init__(self, *args, **kwargs): pass
-    def grid(self, *args, **kwargs): pass
-    def pack(self, *args, **kwargs): pass
-    def config(self, *args, **kwargs): pass
-    def cget(self, *args, **kwargs): return ""
-    def __repr__(self): return "MockLabel"
-
-mock_tk.Label = MockLabel
-
-mock_ttk = MagicMock()
-# Explicitly mock Frame to be a real class so it's not a mock instance
-class MockFrame:
-    def __init__(self, *args, **kwargs): pass
-    def grid(self, *args, **kwargs): pass
-    def pack(self, *args, **kwargs): pass
-    def columnconfigure(self, *args, **kwargs): pass
-    def rowconfigure(self, *args, **kwargs): pass
-    def winfo_viewable(self): return True
-    def __repr__(self): return "MockFrame"
-
-mock_ttk.Frame = MockFrame
-sys.modules['tkinter.ttk'] = mock_ttk
-sys.modules['tkinter.messagebox'] = MagicMock()
-sys.modules['tkinter.scrolledtext'] = MagicMock()
+sys.modules['tkinter.messagebox'] = mock_tk.messagebox
+sys.modules['tkinter.filedialog'] = mock_tk.filedialog
+sys.modules['tkinter.simpledialog'] = mock_tk.simpledialog
+sys.modules['tkinter.ttk'] = mock_tk.ttk
+sys.modules['tkinter.font'] = mock_tk.font
+sys.modules['tkinter.scrolledtext'] = mock_tk.scrolledtext
 
 @pytest.fixture(autouse=True)
 def reset_globals():

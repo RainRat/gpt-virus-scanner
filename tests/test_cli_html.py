@@ -5,13 +5,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 from io import StringIO
 
-# Mock tkinter before importing gptscan
-sys.modules['tkinter'] = MagicMock()
-sys.modules['tkinter.filedialog'] = MagicMock()
-sys.modules['tkinter.messagebox'] = MagicMock()
-sys.modules['tkinter.ttk'] = MagicMock()
-sys.modules['tkinter.font'] = MagicMock()
-
 import gptscan
 
 class TestCLIHTML(unittest.TestCase):
