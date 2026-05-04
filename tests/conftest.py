@@ -61,8 +61,6 @@ def reset_globals():
     gptscan._virtual_source_cache = {}
     gptscan._model_cache = None
     gptscan._async_openai_client = None
-    gptscan._virtual_source_cache = {}
-    gptscan._last_scan_summary = ""
 
     # Save original Config state
     orig_exts = gptscan.Config.extensions_set.copy()
