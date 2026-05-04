@@ -1051,6 +1051,22 @@ def get_shell_history_paths() -> List[str]:
     return paths
 
 
+def get_system_path_dirs() -> List[str]:
+    """Retrieve existing directories from the system PATH environment variable."""
+    path_env = os.environ.get("PATH", "")
+    sep = os.pathsep
+    dirs = []
+    seen = set()
+    for p in path_env.split(sep):
+        if not p:
+            continue
+        abs_p = os.path.abspath(p)
+        if abs_p not in seen and os.path.isdir(abs_p):
+            dirs.append(abs_p)
+            seen.add(abs_p)
+    return dirs
+
+
 def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
     """Resolve the Git toplevel directory and the relative path of the target."""
     abs_path = os.path.abspath(path)
@@ -1789,6 +1805,19 @@ def scan_shell_history_click():
             messagebox.showinfo("Shell History", "No common shell history files were found on this system.")
     except Exception as e:
         messagebox.showwarning("Shell History Error", f"Could not scan shell history: {e}")
+
+
+def scan_system_path_click():
+    """Scan all directories in the system PATH."""
+    try:
+        path_dirs = get_system_path_dirs()
+        if path_dirs:
+            _set_scan_target(path_dirs)
+            button_click()
+        else:
+            messagebox.showinfo("System PATH", "No valid directories found in the system PATH.")
+    except Exception as e:
+        messagebox.showwarning("System PATH Error", f"Could not scan system PATH: {e}")
 
 
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None) -> None:
@@ -5618,7 +5647,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/H).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/H/P).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -5639,6 +5668,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
     browse_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
     browse_menu.add_command(label="Scan Shell History", command=scan_shell_history_click, accelerator="Ctrl+Shift+H")
+    browse_menu.add_command(label="Scan System PATH", command=scan_system_path_click, accelerator="Ctrl+Shift+P")
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -6016,6 +6046,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-D>', lambda event: scan_git_diff_click())
     root.bind('<Control-Shift-H>', lambda event: scan_shell_history_click())
     root.bind('<Command-Shift-H>', lambda event: scan_shell_history_click())
+    root.bind('<Control-Shift-P>', lambda event: scan_system_path_click())
+    root.bind('<Command-Shift-P>', lambda event: scan_system_path_click())
     root.bind('<Control-e>', export_results)
     root.bind('<Command-e>', export_results)
     root.bind('<Control-t>', check_virustotal)
@@ -6075,7 +6107,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, project files, and web links for dangerous code using AI. Supports archives, Notebooks, package manifests, CI/CD workflows, Docker, and Git changes.",
+        description="Scan scripts, project files, and web links for dangerous code using AI. Supports archives, Notebooks, package manifests, CI/CD workflows, Docker, Git changes, and system PATH.",
         epilog="Examples:\n"
                "  # Scan a folder and use AI for deep analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
@@ -6089,6 +6121,8 @@ def main():
                "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n\n"
                "  # Scan a GitHub project from a web link\n"
                "  python gptscan.py https://github.com/user/repo --cli\n\n"
+               "  # Scan all directories in the system PATH\n"
+               "  python gptscan.py --system-path --cli\n\n"
                "  # Scan a GitHub Pull Request directly\n"
                "  python gptscan.py https://github.com/user/repo/pull/123 --cli\n\n"
                "  # Scan a Pastebin paste or a Hugging Face script directly\n"
@@ -6160,6 +6194,11 @@ def main():
         '--shell-history',
         action='store_true',
         help='Scan common shell history files.'
+    )
+    scan_group.add_argument(
+        '--system-path',
+        action='store_true',
+        help='Scan all directories in the system PATH.'
     )
     scan_group.add_argument(
         '--import-results', '--import',
@@ -6348,6 +6387,13 @@ def main():
                 scan_targets.extend(history_paths)
             else:
                 print("No common shell history files were found on this system.", file=sys.stderr)
+
+        if args.system_path:
+            path_dirs = get_system_path_dirs()
+            if path_dirs:
+                scan_targets.extend(path_dirs)
+            else:
+                print("No valid directories found in the system PATH.", file=sys.stderr)
 
         threats = run_cli(
             scan_targets,
