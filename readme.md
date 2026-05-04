@@ -17,15 +17,15 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 
 ### Supported Platforms
 *   **Scan Local & Web Files:** Scan files on your computer or directly from a web link.
-*   **Remote Repositories:** Scan code from GitHub, GitLab, and Bitbucket (including PRs, Commits, and Tags).
-*   **Web Snippets:** Scan from Pastebin and Hugging Face.
+*   **Remote Repositories:** Scan code from GitHub (including Gists), GitLab, and Bitbucket (including PRs, Commits, and Tags).
+*   **Web Snippets:** Scan from Pastebin, Hugging Face, and Bitbucket Snippets.
 
 ### File Format Support
 *   **Notebook Support:** Scan cells in `.ipynb` files for dangerous commands.
 *   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, and Docker Compose.
 *   **Archives:** Open `.zip`, `.tar`, and `.tar.gz` files automatically to scan the contents.
 *   **CI/CD Workflows:** Scan GitHub Actions, GitLab CI, and other YAML workflows for suspicious commands.
-*   **Web Files:** Scan HTML and Markdown files for embedded scripts.
+*   **Web Files:** Scan HTML, SVG, and Markdown files for embedded scripts.
 
 ## What you need
 *   **Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet.
@@ -82,7 +82,8 @@ To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama
 The scanner provides several ways to analyze and manage your results:
 *   **Search & Filter:** Use the **Filter** bar (or press `Ctrl+F`) to search through results by file path, threat level, or code.
 *   **View Details:** Double-click any result or press `Space` to see a detailed analysis and the full source code.
-*   **Right-Click Menu:** Right-click a result to access quick actions, such as **Check on VirusTotal** or **View Online**.
+*   **Right-Click Menu:** Right-click a result to access quick actions, such as **Check on VirusTotal**, **View Online**, **Rescan**, or **Exclude**.
+*   **Import Results:** Load previous scan reports from a file, URL, or your clipboard by selecting **File > Import Results...**.
 *   **Export Reports:** Save your results in various formats (CSV, Markdown, HTML, JSON, or SARIF) by selecting **File > Export Results...**.
 
 ## Customizing the Scanner
