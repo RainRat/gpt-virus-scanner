@@ -1,23 +1,31 @@
 # GPT Virus Scanner
 
-Scan your files for dangerous code with AI. This tool uses a machine learning model to find threats in scripts, Notebooks, archives, and project files.
+Scan your files for dangerous code with AI. This tool uses a quick scan model to find threats in scripts, Notebooks, archives, and project files.
 
 ![GPT Virus Scanner](gpt-virus-scan.png)
 
 ## Features
-*   **Scan Local & Web Files:** Scan files on your computer or from a web link.
-*   **Platform Support:** Scan code from GitHub, GitLab, Bitbucket, Pastebin, and Hugging Face (including PRs, Commits, Tags, and Snippets).
-*   **Notebook Support:** Scan cells in `.ipynb` files for dangerous commands.
-*   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, Docker Compose, HTML, and Markdown.
-*   **Unpack Archives:** Open `.zip`, `.tar`, and `.tar.gz` files automatically to scan the contents.
-*   **CI/CD Workflows:** Scan GitHub Actions, GitLab CI, and other YAML workflows for suspicious commands.
-*   **Unified Diffs:** Scan `.diff` and `.patch` files to review code changes.
+
+### Core Capabilities
 *   **Two-step analysis:**
     1.  **Fast Local Scan:** A quick check finds suspicious patterns in milliseconds.
     2.  **AI Analysis (Optional):** Get a detailed report from OpenAI, OpenRouter, or Ollama explaining why a file is suspicious.
-*   **Easy Interface:** Use the graphical window or the command line.
-*   **Git Integration:** Scan only the files you have changed in your Git project.
+*   **Flexible Interface:** Use the friendly window interface or the command line for automation.
+*   **Git Integration:** Scan only the files you have changed in your project.
 *   **Search & Filter:** Easily find specific results by name, threat level, or code.
+*   **Unified Diffs:** Scan `.diff` and `.patch` files to review code changes.
+
+### Supported Platforms
+*   **Scan Local & Web Files:** Scan files on your computer or directly from a web link.
+*   **Remote Repositories:** Scan code from GitHub, GitLab, and Bitbucket (including PRs, Commits, and Tags).
+*   **Web Snippets:** Scan from Pastebin and Hugging Face.
+
+### File Format Support
+*   **Notebook Support:** Scan cells in `.ipynb` files for dangerous commands.
+*   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, and Docker Compose.
+*   **Archives:** Open `.zip`, `.tar`, and `.tar.gz` files automatically to scan the contents.
+*   **CI/CD Workflows:** Scan GitHub Actions, GitLab CI, and other YAML workflows for suspicious commands.
+*   **Web Files:** Scan HTML and Markdown files for embedded scripts.
 
 ## What you need
 *   **Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet.
@@ -31,9 +39,9 @@ Scan your files for dangerous code with AI. This tool uses a machine learning mo
     ```
 2.  **Install the required packages:**
     ```bash
-    python3 -m pip install "tensorflow<2.16" openai numpy pyyaml
+    python3 -m pip install "tensorflow<2.16" openai numpy
     ```
-    *Note: If you are on Linux, you may also need to install `python3-tk` for the window interface.*
+    *Note: `pyyaml` is also needed if you plan to train your own models. If you are on Linux, you may also need `python3-tk` for the window interface.*
 
 ## How to use
 ### Using the Window (GUI)
@@ -42,10 +50,11 @@ Run `python3 gptscan.py` to open the scanner window.
 Access these options from the **Browse** menu:
 *   **Select File(s)...:** Choose one or more scripts to scan.
 *   **Select Folder...:** Choose a whole directory to scan.
-*   **Scan URL...:** Scan a script, Notebook, HTML, Markdown file, Dockerfile, Makefile, manifest (`package.json`, `pyproject.toml`, `composer.json`, etc.), CI/CD workflow, PR/MR (GitHub/GitLab/Bitbucket), Pastebin paste, Hugging Face blob, or archive (.zip, .tar, .tar.gz) directly from a web link.
+*   **Scan URL...:** Scan scripts or archives directly from a web link.
 *   **Scan File List...:** Read a list of files to scan from a text file.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
-*   **Scan Git Diff:** Scan changes in your local Git repository.
+*   **Scan Git Diff:** Scan changes in your local project.
+*   **Scan Git Revision...:** Scan files modified in a specific Git revision or commit.
 *   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for malicious one-liners.
 
 ### Using the Terminal (CLI)
@@ -73,16 +82,21 @@ To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama
 The scanner provides several ways to analyze and manage your results:
 *   **Search & Filter:** Use the **Filter** bar (or press `Ctrl+F`) to search through results by file path, threat level, or code.
 *   **View Details:** Double-click any result or press `Space` to see a detailed analysis and the full source code.
-*   **Right-Click Menu:** Right-click a result to access quick actions, such as **Check on VirusTotal** or **View Online** (for Git-tracked files).
+*   **Right-Click Menu:** Right-click a result to access quick actions, such as **Check on VirusTotal** or **View Online**.
 *   **Export Reports:** Save your results in various formats (CSV, Markdown, HTML, JSON, or SARIF) by selecting **File > Export Results...**.
 
 ## Customizing the Scanner
 You can tailor the scanner to your needs:
-*   **Exclusions:** Ignore specific files or folders by using **File > Manage Exclusions...** or by adding patterns to a `.gptscanignore` file in the project folder.
+*   **Exclusions:** Ignore specific files or folders by using **File > Manage Exclusions...** or by adding patterns to a `.gptscanignore` file.
 *   **Extensions:** Control which file types are scanned by using **File > Manage Extensions...** or by editing the `extensions.txt` file.
 
+## Advanced Usage
+### Training the Model
+You can train the local "quick scan" model on your own data. This requires `pyyaml` to be installed.
+See [Training the Local Scanner](train.md) for more information.
+
 ## How it works
-1.  **Local Filter:** The tool uses a deep learning model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
+1.  **Local Filter:** The tool uses a quick scan model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
 2.  **AI Analysis:** If a file looks suspicious, you can ask an AI for a second opinion. The AI will explain *why* it thinks the code is dangerous, helping you decide what to do.
 
 ## License
