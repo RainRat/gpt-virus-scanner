@@ -1648,6 +1648,10 @@ def _auto_select_best_result() -> None:
 def set_scanning_state(is_scanning: bool) -> None:
     """Enable or disable controls based on scanning state."""
 
+    # Update selection-dependent controls at start of scan to disable context menu
+    if is_scanning:
+        update_button_states()
+
     if scan_button:
         scan_button.config(
             text="Scanning..." if is_scanning else "Scan Now",
@@ -4952,16 +4956,24 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         vals = _get_item_raw_values(new_id)
         if not vals: return
 
+        # vals: (path, own_conf, admin, user, gpt_conf, snippet, line)
+        path = str(vals[0])
+
+        is_virtual = path.startswith("[")
+        is_non_url_virtual = is_virtual and not path.startswith("[URL] ")
+
         # Ensure buttons reflect current scanning state
         is_scanning = current_cancel_event is not None
-        rescan_btn.config(state='disabled' if is_scanning else 'normal')
+
+        # Define button states based on scan status and virtual path
+        rescan_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
         analyze_btn.config(state='disabled' if is_scanning or not Config.GPT_ENABLED else 'normal')
-        exclude_btn.config(state='disabled' if is_scanning else 'normal')
-        open_btn.config(state='disabled' if is_scanning else 'normal')
+        exclude_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
+        open_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
         vt_btn.config(state='disabled' if is_scanning else 'normal')
-        view_online_btn.config(state='disabled' if is_scanning else 'normal')
+        view_online_btn.config(state='disabled' if is_scanning or is_non_url_virtual else 'normal')
         path_copy_btn.config(state='disabled' if is_scanning else 'normal')
-        reveal_btn.config(state='disabled' if is_scanning else 'normal')
+        reveal_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
 
         # vals: (path, own_conf, admin, user, gpt_conf, snippet, line)
         path, own_conf, admin, user, gpt_conf, snippet = vals[:6]
@@ -5361,17 +5373,66 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
     if not tree:
         return
 
-    has_selection = bool(tree.selection())
+    selection = tree.selection()
+    has_selection = bool(selection)
+    is_scanning = current_cancel_event is not None
 
-    # Buttons that depend on having one or more items selected
-    dependent_buttons = [view_button, open_button, rescan_button, exclude_button, reveal_button, vt_button, view_online_button]
-    for btn in dependent_buttons:
-        if btn:
-            btn.config(state="normal" if has_selection else "disabled")
+    # Identify if any selected items are virtual (not physical local files)
+    has_virtual = False
+    has_non_url_virtual = False
+    for item_id in selection:
+        vals = _get_item_raw_values(item_id)
+        if vals:
+            path = str(vals[0])
+            if path.startswith("["):
+                has_virtual = True
+                if not path.startswith("[URL] "):
+                    has_non_url_virtual = True
+
+    # Define button states based on selection and scan status
+    # 1. Base dependency (must have selection and not be scanning)
+    base_state = "normal" if has_selection and not is_scanning else "disabled"
+
+    # 2. Local-only actions (disable if any virtual item is selected)
+    local_state = "normal" if has_selection and not is_scanning and not has_virtual else "disabled"
+
+    # 3. Actions requiring non-virtual path or URL
+    online_state = "normal" if has_selection and not is_scanning and not has_non_url_virtual else "disabled"
+
+    # Apply to footer buttons
+    if view_button:
+        view_button.config(state=base_state)
+    if open_button:
+        open_button.config(state=local_state)
+    if rescan_button:
+        rescan_button.config(state=local_state)
+    if exclude_button:
+        exclude_button.config(state=local_state)
+    if reveal_button:
+        reveal_button.config(state=local_state)
+    if vt_button:
+        vt_button.config(state=base_state)
+    if view_online_button:
+        view_online_button.config(state=online_state)
 
     if analyze_button:
         ai_available = Config.GPT_ENABLED
-        analyze_button.config(state="normal" if has_selection and ai_available else "disabled")
+        analyze_button.config(state="normal" if has_selection and ai_available and not is_scanning else "disabled")
+
+    # Update Context Menu states
+    if context_menu:
+        try:
+            # Entry indices can be tricky if separators change, but we target by label for safety
+            context_menu.entryconfig("View Details...", state=base_state)
+            context_menu.entryconfig("Rescan Selected", state=local_state)
+            context_menu.entryconfig("Analyze with AI", state="normal" if has_selection and Config.GPT_ENABLED and not is_scanning else "disabled")
+            context_menu.entryconfig("Exclude Selected", state=local_state)
+            context_menu.entryconfig("Open", state=local_state)
+            context_menu.entryconfig("Show in Folder", state=local_state)
+            context_menu.entryconfig("Check on VirusTotal", state=base_state)
+            context_menu.entryconfig("View Online", state=online_state)
+        except tk.TclError:
+            pass # Menu might not be fully initialized or entry labels differ
 
 
 def copy_cli_command(event: Optional[tk.Event] = None) -> None:
