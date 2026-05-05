@@ -5204,27 +5204,22 @@ def check_virustotal(event_or_path: Union[tk.Event, str, None] = None) -> None:
 
     found_any = False
     for file_path, snippet in targets:
-        h = None
-        if file_path.startswith("["):
-            if snippet is None:
-                # Try to find it in the tree if snippet wasn't provided (explicit path case)
-                for item_id in tree.get_children():
-                    vals = _get_item_raw_values(item_id)
-                    if vals and vals[0] == file_path:
-                        snippet = str(vals[5])
-                        break
-            
-            if snippet:
-                h = get_file_sha256(snippet.encode('utf-8'))
-        else:
-            if os.path.exists(file_path):
-                h = get_file_sha256(file_path)
-            elif isinstance(event_or_path, str):
+        if file_path.startswith("[") and snippet is None:
+            # Try to find it in the tree if snippet wasn't provided (explicit path case)
+            for item_id in tree.get_children():
+                vals = _get_item_raw_values(item_id)
+                if vals and vals[0] == file_path:
+                    snippet = str(vals[5])
+                    break
+
+        if not file_path.startswith("[") and not os.path.exists(file_path):
+            if isinstance(event_or_path, str):
                 messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
                 return
+            continue
 
-        if h:
-            url = f"https://www.virustotal.com/gui/file/{h}"
+        url = get_virustotal_url(file_path, snippet)
+        if url:
             webbrowser.open(url)
             found_any = True
 
