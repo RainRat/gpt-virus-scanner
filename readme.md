@@ -57,6 +57,7 @@ Access these options from the **Browse** menu:
 *   **Scan Git Diff:** Scan changes in your local project.
 *   **Scan Git Revision...:** Scan files modified in a specific Git revision or commit.
 *   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for malicious one-liners.
+*   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
 
 ### Using the Terminal (CLI)
 To run the scanner in your terminal, use the `--cli` flag:
@@ -68,6 +69,12 @@ To scan your shell history from the terminal:
 ```bash
 python3 gptscan.py --shell-history --cli
 ```
+
+To scan all directories in your system PATH:
+```bash
+python3 gptscan.py --system-path --cli
+```
+
 You can also scan multiple files, folders, or web links:
 ```bash
 python3 gptscan.py file1.py folder/ https://github.com/user/repo --cli
