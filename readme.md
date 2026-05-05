@@ -17,7 +17,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 
 ### Supported Platforms
 *   **Scan Local & Web Files:** Scan files on your computer or directly from a web link.
-*   **Remote Repositories:** Scan code from GitHub, GitLab, and Bitbucket (including PRs, Commits, and Tags).
+*   **Remote Repositories:** Scan code from GitHub (including Gists), GitLab, and Bitbucket (including Snippets, PRs, Commits, and Tags).
 *   **Web Snippets:** Scan from Pastebin and Hugging Face.
 
 ### File Format Support
@@ -25,7 +25,8 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 *   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, and Docker Compose.
 *   **Archives:** Open `.zip`, `.tar`, and `.tar.gz` files automatically to scan the contents.
 *   **CI/CD Workflows:** Scan GitHub Actions, GitLab CI, and other YAML workflows for suspicious commands.
-*   **Web Files:** Scan HTML and Markdown files for embedded scripts.
+*   **Web Files:** Scan HTML, SVG, and Markdown files for embedded scripts.
+*   **Unified Diffs:** Scan `.diff` and `.patch` files to review code changes.
 
 ## What you need
 *   **Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet.
@@ -78,12 +79,22 @@ To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama
 2.  In the **AI Analysis** panel, check the **Use AI Analysis** box.
 3.  Choose your provider and enter your API key or model name.
 
+*Note: Your API key is saved locally in `apikey.txt`. Do not share this file or commit it to a public repository.*
+
 ## Reviewing Results
 The scanner provides several ways to analyze and manage your results:
-*   **Search & Filter:** Use the **Filter** bar (or press `Ctrl+F`) to search through results by file path, threat level, or code.
+*   **Filtering Results:**
+    *   **Filter Bar:** Use the **Filter** bar at the top (or press `Ctrl+F`) to quickly find results by file path, analysis text, or code snippets.
+    *   **Min. Threat Level:** Use the **Min. Threat Level** setting in the **Options** panel to hide files with low threat scores.
 *   **View Details:** Double-click any result or press `Space` to see a detailed analysis and the full source code.
-*   **Right-Click Menu:** Right-click a result to access quick actions, such as **Check on VirusTotal** or **View Online**.
-*   **Export Reports:** Save your results in various formats (CSV, Markdown, HTML, JSON, or SARIF) by selecting **File > Export Results...**.
+*   **Right-Click Menu:** Right-click a result for quick actions:
+    *   **Rescan:** Scan the file again (useful after making changes).
+    *   **Exclude:** Add the file or folder to your ignore list.
+    *   **Check on VirusTotal:** Search for the file's hash on VirusTotal.
+    *   **View Online:** Open the source file in your web browser (for Git projects and remote URLs).
+*   **Export & Import:**
+    *   **Export Results:** Save your scan to a file (CSV, Markdown, HTML, JSON, or SARIF) via **File > Export Results...**.
+    *   **Import Results:** Load previous scan results from any of the supported formats via **File > Import Results...** or by dragging the file into the window.
 
 ## Customizing the Scanner
 You can tailor the scanner to your needs:
