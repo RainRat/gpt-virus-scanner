@@ -2744,7 +2744,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             def finalize_hunk():
                 if current_file and hunk_info and hunk_lines:
                     # Only yield if there's at least one added line in this hunk
-                    if any(l.startswith('+') and not l.startswith('+++') for l in hunk_lines):
+                    if any(line.startswith('+') and not line.startswith('+++') for line in hunk_lines):
                         hunk_text = "\n".join(hunk_lines)
                         yield (f"{name} [{current_file} @ {hunk_info}]", hunk_text.encode('utf-8'))
 
@@ -4876,7 +4876,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         def run_thread(target_id):
             try:
                 vals = _get_item_raw_values(target_id)
-                if not vals: return
+                if not vals:
+                    return
                 snippet = vals[5]
 
                 result = request_single_gpt_analysis(snippet)
@@ -5022,7 +5023,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         nonlocal current_item_id
         current_item_id = new_id
         vals = _get_item_raw_values(new_id)
-        if not vals: return
+        if not vals:
+            return
 
         # vals: (path, own_conf, admin, user, gpt_conf, snippet, line)
         path = str(vals[0])
@@ -5123,7 +5125,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
                 tree.selection_set(new_id)
                 tree.see(new_id)
                 refresh_content(new_id)
-        except ValueError: pass
+        except ValueError:
+            pass
 
     def on_next():
         all_visible = tree.get_children()
@@ -5134,7 +5137,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
                 tree.selection_set(new_id)
                 tree.see(new_id)
                 refresh_content(new_id)
-        except ValueError: pass
+        except ValueError:
+            pass
 
     prev_btn = ttk.Button(nav_header, text="< Previous", command=on_prev)
     prev_btn.pack(side=tk.LEFT, ipady=2)
@@ -5368,11 +5372,14 @@ def view_online(event_or_path: Union[tk.Event, str, None] = None, line: Optional
     if isinstance(event_or_path, str):
         file_path = event_or_path
     else:
-        if not tree: return
+        if not tree:
+            return
         selection = tree.selection()
-        if not selection: return
+        if not selection:
+            return
         values = _get_item_raw_values(selection[0])
-        if not values: return
+        if not values:
+            return
         file_path = str(values[0])
         if line_num is None:
             line_num = values[6] if len(values) > 6 else 1
