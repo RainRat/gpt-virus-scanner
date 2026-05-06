@@ -22,8 +22,10 @@ composite = ["lint", "test"]
     assert "pyproject.toml [Script: post_install]" in scripts
     assert scripts["pyproject.toml [Script: post_install]"] == "echo done"
 
-    assert "pyproject.toml [Script: multi]" in scripts
-    assert scripts["pyproject.toml [Script: multi]"] == "lint\", \"test" # Due to simple regex stripping of []
+    assert "pyproject.toml [Script: multi (1)]" in scripts
+    assert scripts["pyproject.toml [Script: multi (1)]"] == "lint"
+    assert "pyproject.toml [Script: multi (2)]" in scripts
+    assert scripts["pyproject.toml [Script: multi (2)]"] == "test"
 
 def test_pyproject_hatch_scripts():
     content = b"""

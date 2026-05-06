@@ -2442,6 +2442,20 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 in_script_section = False
                 current_nested_script = None
 
+                def yield_pyproject_scripts(label_name, val):
+                    if val.startswith('['):
+                        # Array of commands: ["a", "b"]
+                        items = re.findall(r'"([^"]*)"|\'([^\']*)\'', val)
+                        for idx, item in enumerate(items, 1):
+                            cmd = item[0] or item[1]
+                            if cmd.strip():
+                                yield (f"{name} [Script: {label_name} ({idx})]", cmd.encode('utf-8'))
+                    else:
+                        # Single command: "a"
+                        cmd = val.strip('"\'')
+                        if cmd.strip():
+                            yield (f"{name} [Script: {label_name}]", cmd.encode('utf-8'))
+
                 for line in lines:
                     line = line.strip()
                     if not line or line.startswith('#'):
@@ -2469,13 +2483,9 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                             # Look for cmd, shell, command, or composite keys
                             match = re.match(r'^(?:cmd|shell|command|composite)\s*=\s*(.*)', line, re.IGNORECASE)
                             if match:
-                                command_val = match.group(1).strip()
-                                if command_val.startswith(('"', "'", "[")):
-                                    command = command_val.strip('"\'[] ')
-                                    if command:
-                                        yield (f"{name} [Script: {current_nested_script}]", command.encode('utf-8'))
-                                        # Only yield once per nested section
-                                        in_script_section = False
+                                yield from yield_pyproject_scripts(current_nested_script, match.group(1).strip())
+                                # Only yield once per nested section
+                                in_script_section = False
                         else:
                             # Inside a flat section like [project.scripts]
                             # Match key = "value" or key = { ... }
@@ -2484,18 +2494,13 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                 script_name = match.group(1).strip().strip('"\'')
                                 command_val = match.group(2).strip()
 
-                                # If it's a string, use it directly
-                                if command_val.startswith(('"', "'")):
-                                    command = command_val.strip('"\'')
-                                    if command:
-                                        yield (f"{name} [Script: {script_name}]", command.encode('utf-8'))
-                                elif command_val.startswith('{'):
+                                if command_val.startswith('{'):
                                     # Try to extract 'cmd' or 'command' or 'shell' from inline table
                                     cmd_match = re.search(r'(?:cmd|command|shell|composite)\s*=\s*("[^"]*"|\'[^\']*\'|\[[^\]]*\])', command_val)
                                     if cmd_match:
-                                        cmd_val = cmd_match.group(1).strip('"\'[] ')
-                                        if cmd_val:
-                                            yield (f"{name} [Script: {script_name}]", cmd_val.encode('utf-8'))
+                                        yield from yield_pyproject_scripts(script_name, cmd_match.group(1).strip())
+                                else:
+                                    yield from yield_pyproject_scripts(script_name, command_val)
                 return
 
             if lowered_check.endswith('.jsonc'):

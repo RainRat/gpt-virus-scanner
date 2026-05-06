@@ -25,7 +25,8 @@ ignored = "rm -rf /"
     assert "pyproject.toml [Script: spam-cli]" in names
     assert "pyproject.toml [Script: poetry-run]" in names
     assert "pyproject.toml [Script: pdm-task]" in names
-    assert "pyproject.toml [Script: composite]" in names
+    assert "pyproject.toml [Script: composite (1)]" in names
+    assert "pyproject.toml [Script: composite (2)]" in names
     assert "pyproject.toml [Script: hatch-test]" in names
     assert "pyproject.toml [Script: ignored]" not in names
 
