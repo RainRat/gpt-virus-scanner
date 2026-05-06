@@ -82,11 +82,17 @@ python3 gptscan.py file1.py folder/ https://github.com/user/repo --cli
 
 ### Setting up AI Analysis
 To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama running locally.
-1.  Open the GUI.
-2.  In the **AI Analysis** panel, check the **Use AI Analysis** box.
-3.  Choose your provider and enter your API key or model name.
 
-*Note: Your API key is saved locally in `apikey.txt`. Do not share this file or commit it to a public repository.*
+#### API Keys
+You can provide your API key in three ways:
+*   **In the GUI:** Enter it in the **AI Analysis** panel. It will be saved locally to `apikey.txt`.
+*   **Environment Variables:** Set the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable in your terminal.
+*   **Local File:** Create a file named `apikey.txt` in the project folder and paste your key there.
+
+*Note: Do not share `apikey.txt` or commit it to a public repository.*
+
+#### Custom API Base (Advanced)
+If you use a local proxy or a custom endpoint (like a specific Ollama setup or an OpenAI-compatible server), you can set a custom **API Base** URL in the GUI or with the `--api-base` terminal flag.
 
 ## Reviewing Results
 The scanner provides several ways to analyze and manage your results:
