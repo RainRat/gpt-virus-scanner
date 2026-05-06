@@ -1104,6 +1104,42 @@ def get_system_path_directories() -> List[str]:
     return dirs
 
 
+def get_running_process_commands() -> List[Tuple[str, bytes]]:
+    """Collect command lines of all running processes."""
+    processes = []
+    try:
+        if sys.platform == "win32":
+            # Use PowerShell to get process name and command line
+            cmd = ["powershell", "-NoProfile", "-Command",
+                   "Get-CimInstance Win32_Process | Select-Object Name, CommandLine | ConvertTo-Json"]
+            output = subprocess.check_output(cmd, stderr=subprocess.PIPE, universal_newlines=True)
+            if output.strip():
+                data = json.loads(output)
+                if isinstance(data, dict):
+                    data = [data]
+                for item in data:
+                    name = item.get("Name", "Unknown")
+                    cmdline = item.get("CommandLine")
+                    if cmdline:
+                        processes.append((f"[Process] {name}", cmdline.encode('utf-8')))
+        else:
+            # Linux/macOS
+            # ps -eo args returns the command line
+            # We skip the first line (header)
+            output = subprocess.check_output(["ps", "-eo", "args"], stderr=subprocess.PIPE, universal_newlines=True)
+            lines = output.splitlines()
+            for line in lines[1:]:
+                line = line.strip()
+                if line and not line.startswith('[') and not line.endswith(']'): # Filter out kernel threads
+                    # Use the first part of the command as a name hint
+                    name = line.split()[0] if line.split() else "Unknown"
+                    processes.append((f"[Process] {os.path.basename(name)}", line.encode('utf-8')))
+    except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    return processes
+
+
 def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
     """Resolve the Git toplevel directory and the relative path of the target."""
     abs_path = os.path.abspath(path)
@@ -1855,6 +1891,18 @@ def scan_system_path_click():
             messagebox.showinfo("System PATH", "No valid directories found in the system PATH.")
     except Exception as e:
         messagebox.showwarning("System PATH Error", f"Could not scan system PATH: {e}")
+
+
+def scan_running_processes_click():
+    """Scan command lines of all running processes."""
+    try:
+        processes = get_running_process_commands()
+        if processes:
+            button_click(extra_snippets=processes)
+        else:
+            messagebox.showinfo("Running Processes", "No running processes with command lines were found.")
+    except Exception as e:
+        messagebox.showwarning("Running Processes Error", f"Could not scan running processes: {e}")
 
 
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None) -> None:
@@ -5688,7 +5736,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/H/P).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/H/P/K).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -5710,6 +5758,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
     browse_menu.add_command(label="Scan Shell History", command=scan_shell_history_click, accelerator="Ctrl+Shift+H")
     browse_menu.add_command(label="Scan System PATH", command=scan_system_path_click, accelerator="Ctrl+Shift+P")
+    browse_menu.add_command(label="Scan Running Processes", command=scan_running_processes_click, accelerator="Ctrl+Shift+K")
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -6089,6 +6138,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-H>', lambda event: scan_shell_history_click())
     root.bind('<Control-Shift-P>', lambda event: scan_system_path_click())
     root.bind('<Command-Shift-P>', lambda event: scan_system_path_click())
+    root.bind('<Control-Shift-K>', lambda event: scan_running_processes_click())
+    root.bind('<Command-Shift-K>', lambda event: scan_running_processes_click())
     root.bind('<Control-e>', export_results)
     root.bind('<Command-e>', export_results)
     root.bind('<Control-t>', check_virustotal)
@@ -6238,6 +6289,11 @@ def main():
         '--system-path',
         action='store_true',
         help='Scan all directories in the system PATH.'
+    )
+    scan_group.add_argument(
+        '--running-processes',
+        action='store_true',
+        help='Scan command lines of all running processes.'
     )
     scan_group.add_argument(
         '--import-results', '--import',
@@ -6433,6 +6489,13 @@ def main():
                 scan_targets.extend(path_dirs)
             else:
                 print("No valid directories found in the system PATH.", file=sys.stderr)
+
+        if args.running_processes:
+            processes = get_running_process_commands()
+            if processes:
+                extra_snippets.extend(processes)
+            else:
+                print("No running processes with command lines were found.", file=sys.stderr)
 
         threats = run_cli(
             scan_targets,
