@@ -1138,6 +1138,48 @@ def get_running_process_commands() -> List[Tuple[str, bytes]]:
     return processes
 
 
+def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
+    """Collect command lines of all scheduled tasks (Cron on Linux/macOS, schtasks on Windows)."""
+    tasks = []
+    try:
+        if sys.platform == "win32":
+            # Use schtasks to get task name and action (command) in CSV format
+            # /fo CSV /v provides verbose output including 'Task To Run'
+            cmd = ["schtasks", "/query", "/fo", "CSV", "/v"]
+            output = subprocess.check_output(cmd, stderr=subprocess.PIPE, universal_newlines=True)
+            if output.strip():
+                f = io.StringIO(output)
+                reader = csv.DictReader(f)
+                for row in reader:
+                    name = row.get("TaskName", "Unknown")
+                    command = row.get("Task To Run") or row.get("Action")
+                    if command and command.strip() and command.lower() != "n/a":
+                        tasks.append((f"[Task] {name}", command.encode('utf-8')))
+        else:
+            # Linux/macOS - Collect from user crontab
+            try:
+                output = subprocess.check_output(["crontab", "-l"], stderr=subprocess.PIPE, universal_newlines=True)
+                for line in output.splitlines():
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        # Crontab format: min hour day month dow command
+                        # Try to skip the first 5 fields
+                        parts = line.split(None, 5)
+                        if len(parts) > 5:
+                            command = parts[5]
+                            tasks.append(("[Cron] User", command.encode('utf-8')))
+                        elif line.startswith('@'):
+                            parts = line.split(None, 1)
+                            if len(parts) > 1:
+                                tasks.append(("[Cron] User", parts[1].encode('utf-8')))
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                pass
+    except Exception:
+        pass
+
+    return tasks
+
+
 def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
     """Resolve the Git toplevel directory and the relative path of the target."""
     abs_path = os.path.abspath(path)
@@ -1901,6 +1943,18 @@ def scan_running_processes_click():
             messagebox.showinfo("Running Processes", "No running processes with command lines were found.")
     except Exception as e:
         messagebox.showwarning("Running Processes Error", f"Could not scan running processes: {e}")
+
+
+def scan_scheduled_tasks_click():
+    """Scan all scheduled tasks and Cron jobs."""
+    try:
+        tasks = get_scheduled_task_commands()
+        if tasks:
+            button_click(extra_snippets=tasks)
+        else:
+            messagebox.showinfo("Scheduled Tasks", "No scheduled tasks or Cron jobs were found.")
+    except Exception as e:
+        messagebox.showwarning("Scheduled Tasks Error", f"Could not scan scheduled tasks: {e}")
 
 
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None) -> None:
@@ -5739,7 +5793,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/H/P/K).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/H/P/K/T).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -5762,6 +5816,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Shell History", command=scan_shell_history_click, accelerator="Ctrl+Shift+H")
     browse_menu.add_command(label="Scan System PATH", command=scan_system_path_click, accelerator="Ctrl+Shift+P")
     browse_menu.add_command(label="Scan Running Processes", command=scan_running_processes_click, accelerator="Ctrl+Shift+K")
+    browse_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -6149,6 +6204,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-P>', lambda event: scan_system_path_click())
     root.bind('<Control-Shift-K>', lambda event: scan_running_processes_click())
     root.bind('<Command-Shift-K>', lambda event: scan_running_processes_click())
+    root.bind('<Control-Shift-T>', lambda event: scan_scheduled_tasks_click())
+    root.bind('<Command-Shift-T>', lambda event: scan_scheduled_tasks_click())
     root.bind('<Control-e>', export_results)
     root.bind('<Command-e>', export_results)
     root.bind('<Control-t>', check_virustotal)
@@ -6303,6 +6360,11 @@ def main():
         '--running-processes',
         action='store_true',
         help='Scan command lines of all running processes.'
+    )
+    scan_group.add_argument(
+        '--scheduled-tasks',
+        action='store_true',
+        help='Scan all scheduled tasks and Cron jobs.'
     )
     scan_group.add_argument(
         '--import-results', '--import',
@@ -6505,6 +6567,13 @@ def main():
                 extra_snippets.extend(processes)
             else:
                 print("No running processes with command lines were found.", file=sys.stderr)
+
+        if args.scheduled_tasks:
+            tasks = get_scheduled_task_commands()
+            if tasks:
+                extra_snippets.extend(tasks)
+            else:
+                print("No scheduled tasks or Cron jobs were found.", file=sys.stderr)
 
         threats = run_cli(
             scan_targets,

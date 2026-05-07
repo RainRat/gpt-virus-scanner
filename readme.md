@@ -59,6 +59,7 @@ Access these options from the **Browse** menu:
 *   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for malicious one-liners.
 *   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
 *   **Scan Running Processes:** Scan command lines of all running processes to find potentially malicious execution strings (Ctrl+Shift+K).
+*   **Scan Scheduled Tasks:** Scan all scheduled tasks (Windows) and Cron jobs (Linux/macOS) to identify malicious persistence (Ctrl+Shift+T).
 
 ### Using the Terminal (CLI)
 To run the scanner in your terminal, use the `--cli` flag:
@@ -79,6 +80,11 @@ python3 gptscan.py --system-path --cli
 To scan all running processes:
 ```bash
 python3 gptscan.py --running-processes --cli
+```
+
+To scan all scheduled tasks and Cron jobs:
+```bash
+python3 gptscan.py --scheduled-tasks --cli
 ```
 
 You can also scan multiple files, folders, or web links:
