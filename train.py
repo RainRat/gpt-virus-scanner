@@ -518,7 +518,7 @@ Examples:
   python train.py --config config.yml --model-name my_model
   
   # Use custom data directories
-  python train.py --config config.yml --positive-dir data/malicious --negative-dir data/safe
+  python train.py --config config.yml --positive-dir data/dangerous --negative-dir data/safe
         """
     )
     
@@ -545,7 +545,7 @@ Examples:
     parser.add_argument(
         '--positive-dir',
         type=str,
-        help='Directory with malicious files'
+        help='Directory with dangerous files'
     )
     
     parser.add_argument(
@@ -622,7 +622,7 @@ def main():
         # Training mode
         print(f"Running training mode")
         print(f"Model: {config.model_name}")
-        print(f"Malicious files: {positive_dir}")
+        print(f"Dangerous files: {positive_dir}")
         print(f"Safe files: {negative_dir}")
         
         trainer = Trainer(config)
@@ -635,7 +635,7 @@ def main():
         )
         
         print(f"Loaded {len(x_train)} samples")
-        print(f"Malicious files: {np.sum(y_train)}")
+        print(f"Dangerous files: {np.sum(y_train)}")
         print(f"Safe files: {len(y_train) - np.sum(y_train)}")
         
         # Load best hyperparameters if available
