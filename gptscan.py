@@ -684,15 +684,12 @@ def process_ui_queue() -> None:
 
 def bind_hover_message(widget: tk.Widget, message: str, label: Optional[ttk.Label] = None) -> None:
     """Bind mouse enter/leave events to update the status label."""
-    target_label = label or status_label
-    if not target_label:
-        return
-
     # Store the previous message to restore it later
     previous_message: List[str] = ["Ready"]
 
     def on_enter(event):
-        if current_cancel_event is None:
+        target_label = label or status_label
+        if target_label and current_cancel_event is None:
             # Save current text, defaulting to Ready if empty
             current_text = target_label.cget("text")
             previous_message[0] = current_text if current_text else "Ready"
@@ -701,7 +698,8 @@ def bind_hover_message(widget: tk.Widget, message: str, label: Optional[ttk.Labe
                 root.update_idletasks()
 
     def on_leave(event):
-        if current_cancel_event is None:
+        target_label = label or status_label
+        if target_label and current_cancel_event is None:
             target_label.config(text=previous_message[0])
             if root:
                 root.update_idletasks()
@@ -5670,7 +5668,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # Configure grid weights to ensure resizing behaves correctly
     root.columnconfigure(0, weight=1)
-    root.rowconfigure(4, weight=1)  # The row containing the Treeview (tree_frame)
+    root.rowconfigure(3, weight=1)  # The row containing the Treeview (tree_frame)
 
     # --- Input Frame ---
     input_frame = ttk.Frame(root)
@@ -5909,13 +5907,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
             f"extensions.txt not found. Using default extensions: {default_exts}"
         )
 
-    # --- Progress Bar ---
-    progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, mode='determinate')
-    progress_bar.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
-
     # --- Filter Frame ---
     filter_frame = ttk.Frame(root)
-    filter_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
+    filter_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
     filter_frame.columnconfigure(1, weight=1)
 
     ttk.Label(filter_frame, text="Filter:").grid(row=0, column=0, sticky="w", padx=(0, 5))
@@ -5940,7 +5934,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     # Configure tags for row highlighting
     # Note: 'alt' theme or similar might be needed for background colors to show in some environments
     tree_frame = ttk.Frame(root)
-    tree_frame.grid(row=4, column=0, sticky="nsew", padx=10, pady=5)
+    tree_frame.grid(row=3, column=0, sticky="nsew", padx=10, pady=5)
     tree_frame.columnconfigure(0, weight=1)
     tree_frame.rowconfigure(0, weight=1)
 
@@ -5990,52 +5984,62 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # --- Footer Frame ---
     footer_frame = ttk.Frame(root)
-    footer_frame.grid(row=5, column=0, sticky="ew", padx=10, pady=(0, 10))
-    footer_frame.columnconfigure(0, weight=1)
-
-    status_label = ttk.Label(footer_frame, text="Ready", anchor="w")
-    status_label.grid(row=0, column=0, sticky="ew")
+    footer_frame.grid(row=4, column=0, sticky="ew", padx=10, pady=(0, 5))
+    footer_frame.columnconfigure(11, weight=1)
 
     view_button = ttk.Button(footer_frame, text="View", width=10, command=view_details, style='Primary.TButton')
-    view_button.grid(row=0, column=1, padx=2, ipady=5)
+    view_button.grid(row=0, column=0, padx=2, ipady=5)
     bind_hover_message(view_button, "Show full analysis and code for the selected result. (Space or Enter)")
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=2, sticky="ns", padx=5)
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=1, sticky="ns", padx=5)
 
     rescan_button = ttk.Button(footer_frame, text="Rescan", width=10, command=rescan_selected)
-    rescan_button.grid(row=0, column=3, padx=2, ipady=5)
+    rescan_button.grid(row=0, column=2, padx=2, ipady=5)
     bind_hover_message(rescan_button, "Re-scan the currently selected items. (F5 or R)")
 
     analyze_button = ttk.Button(footer_frame, text="Analyze with AI", width=18, command=analyze_selected_with_ai)
-    analyze_button.grid(row=0, column=4, padx=2, ipady=5)
+    analyze_button.grid(row=0, column=3, padx=2, ipady=5)
     bind_hover_message(analyze_button, "Use AI to analyze the currently selected items. (Ctrl+G)")
 
     exclude_button = ttk.Button(footer_frame, text="Exclude", width=10, command=exclude_selected)
-    exclude_button.grid(row=0, column=5, padx=2, ipady=5)
+    exclude_button.grid(row=0, column=4, padx=2, ipady=5)
     bind_hover_message(exclude_button, "Exclude the selected items from future scans. (Delete)")
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=6, sticky="ns", padx=5)
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=5, sticky="ns", padx=5)
 
     open_button = ttk.Button(footer_frame, text="Open", width=10, command=open_file)
-    open_button.grid(row=0, column=7, padx=2, ipady=5)
+    open_button.grid(row=0, column=6, padx=2, ipady=5)
     bind_hover_message(open_button, "Open the selected file in its default application. (Shift+Enter)")
 
     reveal_button = ttk.Button(footer_frame, text="Show in Folder", width=14, command=show_in_folder)
-    reveal_button.grid(row=0, column=8, padx=2, ipady=5)
+    reveal_button.grid(row=0, column=7, padx=2, ipady=5)
     bind_hover_message(reveal_button, "Show the selected file in the system file manager. (Ctrl+Enter)")
 
     vt_button = ttk.Button(footer_frame, text="VirusTotal", width=12, command=check_virustotal)
-    vt_button.grid(row=0, column=9, padx=2, ipady=5)
+    vt_button.grid(row=0, column=8, padx=2, ipady=5)
     bind_hover_message(vt_button, "Check the selected files on VirusTotal. (Ctrl+T)")
 
     view_online_button = ttk.Button(footer_frame, text="View Online", width=14, command=view_online)
-    view_online_button.grid(row=0, column=10, padx=2, ipady=5)
+    view_online_button.grid(row=0, column=9, padx=2, ipady=5)
     bind_hover_message(view_online_button, "View the selected file in its online repository. (Ctrl+L)")
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=11, sticky="ns", padx=5)
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=10, sticky="ns", padx=5)
+
+    # Spacer
+    ttk.Frame(footer_frame).grid(row=0, column=11, sticky="ew")
 
     results_button = ttk.Menubutton(footer_frame, text="Results", width=12)
     results_button.grid(row=0, column=12, padx=(2, 0), ipady=5)
+
+    # --- Status Bar Frame ---
+    status_bar_frame = ttk.Frame(root)
+    status_bar_frame.grid(row=5, column=0, sticky="ew")
+
+    progress_bar = ttk.Progressbar(status_bar_frame, orient=tk.HORIZONTAL, mode='determinate')
+    progress_bar.pack(side=tk.TOP, fill=tk.X)
+
+    status_label = ttk.Label(status_bar_frame, text="Ready", anchor="w", relief=tk.SUNKEN, padding=(10, 3))
+    status_label.pack(side=tk.BOTTOM, fill=tk.X)
     bind_hover_message(results_button, "Manage scan results (Import, Export, Clear).")
 
     results_menu = tk.Menu(results_button, tearoff=0)
