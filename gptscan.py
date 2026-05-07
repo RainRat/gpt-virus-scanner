@@ -2670,7 +2670,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         try:
             text = content.decode('utf-8', errors='ignore')
             snippets = []
-            script_keys = ['run', 'script', 'command', 'before_script', 'after_script', 'entrypoint']
+            script_keys = ['run', 'script', 'command', 'before_script', 'after_script', 'entrypoint', 'commands', 'entry', 'bash', 'powershell', 'pwsh', 'cmd']
             # Match keys, optionally prefixed by a dash (common in YAML lists)
             key_pattern = r'^\s*(?:-\s*)?(?:' + '|'.join(script_keys) + r'):\s*(.*)'
             lines = text.splitlines()
