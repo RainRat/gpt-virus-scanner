@@ -1508,6 +1508,7 @@ def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Opt
     medium_risk : int, optional
         Number of medium risk files found.
     """
+    file_text = "file" if total_scanned == 1 else "files"
     threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
 
     threats_display = str(threats_found)
@@ -1516,7 +1517,7 @@ def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Opt
         threats_display = f"\033[1;91m{threats_found}\033[0m"
 
     bytes_info = f" ({format_bytes(total_bytes)})" if total_bytes is not None else ""
-    summary = f"Scan complete: {total_scanned} files{bytes_info} scanned, {threats_display} {threat_text} found"
+    summary = f"Scan complete: {total_scanned} {file_text}{bytes_info} scanned, {threats_display} {threat_text} found"
 
     if threats_found > 0:
         summary += f" ({high_risk} high risk, {medium_risk} medium risk)."
@@ -1525,7 +1526,7 @@ def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Opt
 
     if elapsed_time and elapsed_time > 0:
         files_per_sec = total_scanned / elapsed_time
-        summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} files/s"
+        summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} {file_text}/s"
         if total_bytes:
             bytes_per_sec = total_bytes / elapsed_time
             summary += f", {format_bytes(bytes_per_sec)}/s"
@@ -3514,6 +3515,7 @@ def _consume_scan_events(
                         medium_risk_found += 1
             elif event_type == 'summary':
                 total_files, total_bytes, elapsed_time = data
+                metrics['total_files'] = total_files
                 metrics['total_bytes'] = total_bytes
                 metrics['elapsed_time'] = elapsed_time
     finally:
@@ -3523,7 +3525,7 @@ def _consume_scan_events(
         else:
             enqueue_ui_update(
                 finish_scan_state,
-                current_scanned,
+                metrics.get('total_files', current_scanned),
                 threats_found,
                 metrics.get('total_bytes'),
                 metrics.get('elapsed_time'),
@@ -4119,12 +4121,13 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             sys.stderr.flush()
         elif event_type == 'summary':
             total_files, total_bytes, elapsed_time = data
+            metrics['total_files'] = total_files
             metrics['total_bytes'] = total_bytes
             metrics['elapsed_time'] = elapsed_time
 
     if final_progress is not None:
         print(file=sys.stderr)
-        total_scanned = final_progress[1]
+        total_scanned = metrics.get('total_files', final_progress[1])
         summary = format_scan_summary(
             total_scanned,
             threats_found,

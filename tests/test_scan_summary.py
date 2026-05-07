@@ -9,7 +9,7 @@ def test_format_scan_summary_basic():
 def test_format_scan_summary_singular():
     # Test singular "suspicious file"
     summary = format_scan_summary(total_scanned=1, threats_found=1, high_risk=1, medium_risk=0)
-    assert summary == "Scan complete: 1 files scanned, 1 suspicious file found (1 high risk, 0 medium risk)."
+    assert summary == "Scan complete: 1 file scanned, 1 suspicious file found (1 high risk, 0 medium risk)."
 
 def test_format_scan_summary_zero():
     # Test zero suspicious files
@@ -20,6 +20,11 @@ def test_format_scan_summary_with_time():
     # Test summary with time and files/s
     summary = format_scan_summary(total_scanned=10, threats_found=0, elapsed_time=2.0)
     assert "Time: 2.0s (5.0 files/s)." in summary
+
+def test_format_scan_summary_with_time_singular():
+    # Test summary with time and file/s (singular)
+    summary = format_scan_summary(total_scanned=1, threats_found=0, elapsed_time=2.0)
+    assert "Time: 2.0s (0.5 file/s)." in summary
 
 def test_format_scan_summary_with_bytes():
     # Test summary with time and throughput
