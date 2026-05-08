@@ -4285,9 +4285,10 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
 
             cells = re.findall(r'<td\b[^>]*>(.*?)</td>', row_content, re.DOTALL | re.IGNORECASE)
             if len(cells) >= 5:
-                # Path, Line, Threat Level, Analysis, Snippet
+                # Path, Line, Threat Level, Analysis, Links (optional), Snippet
+                # Snippet is usually in the last cell, which is at index 5 if Links is present
+                snippet_cell = cells[5] if len(cells) >= 6 else cells[4]
                 # Snippet is inside <pre><code>
-                snippet_cell = cells[4]
                 snippet_match = re.search(r'<pre><code>(.*?)</code></pre>', snippet_cell, re.DOTALL | re.IGNORECASE)
                 snippet_raw = snippet_match.group(1) if snippet_match else snippet_cell
 
