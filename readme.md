@@ -59,6 +59,7 @@ Access these options from the **Browse** menu:
 *   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for dangerous one-liners.
 *   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
 *   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
+*   **Scan Environment Variables:** Scan all non-empty environment variables for suspicious scripts or commands (Ctrl+Shift+N).
 *   **Scan Scheduled Tasks:** Scan all scheduled tasks (Windows) and Cron jobs (Linux/macOS) to identify dangerous persistence (Ctrl+Shift+T).
 
 ### Using the Terminal (CLI)
@@ -85,6 +86,11 @@ python3 gptscan.py --running-processes --cli
 To scan all scheduled tasks and Cron jobs:
 ```bash
 python3 gptscan.py --scheduled-tasks --cli
+```
+
+To scan all environment variables:
+```bash
+python3 gptscan.py --env-vars --cli
 ```
 
 You can also scan multiple files, folders, or web links:
