@@ -2744,7 +2744,8 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                     continue
 
                 # Check for new instruction
-                instr_match = re.match(r'^\s*(?:RUN|CMD|ENTRYPOINT)\s+(.*)', line, re.IGNORECASE)
+                # Support ONBUILD RUN/CMD/ENTRYPOINT and HEALTHCHECK [OPTIONS] CMD
+                instr_match = re.match(r'^\s*(?:(?:ONBUILD\s+)?(?:RUN|CMD|ENTRYPOINT)|HEALTHCHECK(?:\s+--[a-z0-9-]+=[^\s]+)*\s+CMD)\s+(.*)', line, re.IGNORECASE)
                 if instr_match:
                     finalize_instr()
                     current_instr = [instr_match.group(1)]
