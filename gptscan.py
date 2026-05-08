@@ -2877,7 +2877,7 @@ def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -
     """Yield file chunks for scanning.
 
     Balance speed and thoroughness by checking the beginning and end of files
-    where script headers and malicious payloads are usually found.
+    where script headers and dangerous payloads are usually found.
     """
     if maxlen is None:
         maxlen = Config.MAXLEN
@@ -2927,7 +2927,7 @@ def scan_files(
     extra_snippets: Optional[List[Tuple[str, bytes]]] = None,
     fail_threshold: Optional[int] = None,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
-    """Scan files for malicious content and optionally request GPT analysis.
+    """Scan files for dangerous content and optionally request GPT analysis.
 
     Parameters
     ----------
@@ -3773,7 +3773,7 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
                             {
                                 "id": "GPTScan.MaliciousContent",
                                 "shortDescription": {
-                                    "text": "Potential malicious content detected."
+                                    "text": "Potential dangerous content detected."
                                 },
                                 "helpUri": "https://github.com/user/gpt-virus-scanner"
                             }
@@ -5713,7 +5713,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     menubar.add_cascade(label="File", menu=file_menu)
 
     help_menu = tk.Menu(menubar, tearoff=0)
-    help_menu.add_command(label="About", command=lambda: messagebox.showinfo("About", f"GPT Virus Scanner v{Config.VERSION}\nThis tool uses AI to find malicious code in your scripts."))
+    help_menu.add_command(label="About", command=lambda: messagebox.showinfo("About", f"GPT Virus Scanner v{Config.VERSION}\nThis tool uses AI to find dangerous code in your scripts."))
     menubar.add_cascade(label="Help", menu=help_menu)
     root.config(menu=menubar)
 

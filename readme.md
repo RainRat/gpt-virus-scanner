@@ -56,9 +56,9 @@ Access these options from the **Browse** menu:
 *   **Scan Clipboard:** Scan code currently in your clipboard.
 *   **Scan Git Diff:** Scan changes in your local project.
 *   **Scan Git Revision...:** Scan files modified in a specific Git revision or commit.
-*   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for malicious one-liners.
+*   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for dangerous one-liners.
 *   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
-*   **Scan Running Processes:** Scan command lines of all running processes to find potentially malicious execution strings (Ctrl+Shift+K).
+*   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
 
 ### Using the Terminal (CLI)
 To run the scanner in your terminal, use the `--cli` flag:
@@ -113,7 +113,7 @@ The scanner provides several ways to analyze and manage your results:
     *   **View Online:** Open the source file in your web browser (for Git projects and remote URLs).
 *   **Export & Import:**
     *   **Export Results:** Save your scan to a file (CSV, Markdown, HTML, JSON, or SARIF) via **File > Export Results...**.
-    *   **Import Results:** Load previous scan results from any of the supported formats via **File > Import Results...** or by dragging the file into the window.
+    *   **Import Results:** Load previous scan results from any of the supported formats via **File > Import Results...** or by pasting them from your clipboard (`Ctrl+V`).
 
 ## Customizing the Scanner
 You can tailor the scanner to your needs:

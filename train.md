@@ -1,6 +1,6 @@
 # Training the Local Scanner
 
-This tool trains the local model (the file classifier) used by the GPT Virus Scanner. It learns to recognize the difference between safe and malicious files by studying many examples.
+This tool trains the local model (the file classifier) used by the GPT Virus Scanner. It learns to recognize the difference between safe and dangerous files by studying many examples.
 
 ## Features
 
@@ -46,7 +46,7 @@ prediction:
   threshold: 0.5            # Threat level (0.0 to 1.0) required to flag a file
 
 weights:
-  positive_sample_weight: 1.0 # Importance of malicious examples during training
+  positive_sample_weight: 1.0 # Importance of dangerous examples during training
 
 # AI settings for the automatic optimization process.
 # These values (0.0 to 1.0) control how the model is built.
@@ -83,7 +83,7 @@ project/
     ├── 0/             # safe files
     │   ├── file1.bin
     │   └── file2.bin
-    └── 1/             # malicious files
+    └── 1/             # dangerous files
         ├── file3.bin
         └── file4.bin
 ```
@@ -166,7 +166,7 @@ python train.py --config config.yml \
 --config, -c           Path to YAML configuration file (required)
 --mode, -m             Mode: train or predict (overrides config)
 --model-name           Model name (overrides config)
---positive-dir         Directory with malicious files
+--positive-dir         Directory with dangerous files
 --negative-dir         Directory with safe files
 --predict-dir          Directory with files to predict on
 --output-dir           Output directory for prediction results
@@ -188,7 +188,7 @@ python train.py --config config.yml \
 
 ### Training Process
 
-1. **Gathers Examples:** The script looks at your folders of "safe" and "malicious" files.
+1. **Gathers Examples:** The script looks at your folders of "safe" and "dangerous" files.
 2. **Prepares Data:** It converts the files into a standard format.
    - If a file is too small, it adds extra data to reach the required size.
    - If a file is too large, it takes parts from the beginning and the end.
@@ -223,7 +223,7 @@ The script uses numbers between 0 and 1 to represent these settings. You can fin
 - Let training run for several hours to find the best settings.
 - Watch the terminal for "New Best Model!" messages.
 - Use the saved `*_best_hp.yml` file to resume training from the best settings.
-- Adjust `positive_sample_weight` if you have many more safe files than malicious ones
+- Adjust `positive_sample_weight` if you have many more safe files than dangerous ones
 - Increase `max_params` if you want larger models (though this will make training slower)
 
 ## Stopping Training
