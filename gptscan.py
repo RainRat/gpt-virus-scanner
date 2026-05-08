@@ -2648,7 +2648,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             # Also handles leading whitespace in javascript: URLs
             attr_patterns = [
                 (r'\s+(on[a-z]+)\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)', True),
-                (r'\s+(?:href|src)\s*=\s*("\s*javascript:[^"]*"|\'\s*javascript:[^\']*\'|\s*javascript:[^\s>]+)', False)
+                (r'\s+(?:href|src|action|formaction|data|xlink:href)\s*=\s*("\s*javascript:[^"]*"|\'\s*javascript:[^\']*\'|\s*javascript:[^\s>]+)', False)
             ]
             extracted_attrs = []
             for pattern, has_name_group in attr_patterns:
