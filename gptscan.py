@@ -5772,7 +5772,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     settings_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
     # --- Options Frame ---
-    options_frame = ttk.LabelFrame(settings_frame, text="Options", padding=10)
+    options_frame = ttk.LabelFrame(settings_frame, text="Scan Options", padding=10)
     options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
 
     gpt_var = tk.BooleanVar(value=Config.use_ai_analysis)
@@ -5791,8 +5791,6 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     scan_all_checkbox = ttk.Checkbutton(options_frame, text="Scan all files", variable=scan_all_var)
     scan_all_checkbox.grid(row=1, column=0, sticky='w', padx=10, pady=2)
     bind_hover_message(scan_all_checkbox, "Scan all files regardless of their extension or whether they contain a script starting line (like #!/bin/bash).")
-
-    all_var = tk.BooleanVar(value=Config.show_all_files)
 
     dry_var = tk.BooleanVar()
     dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
@@ -5817,35 +5815,12 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     max_size_spin.bind('<KeyRelease>', lambda e: on_max_size_change())
     bind_hover_message(max_size_spin, "Skip files larger than this size (in Megabytes).")
 
-    threshold_row = ttk.Frame(options_frame)
-    threshold_row.grid(row=3, column=0, columnspan=2, sticky='w', padx=10, pady=2)
-
-    def on_threshold_change():
-        try:
-            val = int(threshold_spin.get())
-            Config.THRESHOLD = max(0, min(100, val))
-            _apply_filter()
-        except ValueError:
-            pass
-
-    ttk.Label(threshold_row, text="Min. Threat Level:").pack(side=tk.LEFT)
-    threshold_spin = ttk.Spinbox(threshold_row, from_=0, to=100, width=5, command=on_threshold_change)
-    threshold_spin.delete(0, tk.END)
-    threshold_spin.insert(0, str(Config.THRESHOLD))
-    threshold_spin.pack(side=tk.LEFT, padx=5)
-    threshold_spin.bind('<KeyRelease>', lambda e: on_threshold_change())
-    bind_hover_message(threshold_spin, "Files with a threat level lower than this will be ignored.")
-
-    all_checkbox = ttk.Checkbutton(threshold_row, text="Show all results", variable=all_var, command=_apply_filter)
-    all_checkbox.pack(side=tk.LEFT, padx=(10, 0))
-    bind_hover_message(all_checkbox, "Display all scanned files, including safe ones.")
-
     # --- Provider Frame ---
     provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis", padding=10)
     provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
 
     copy_cmd_button = ttk.Button(options_frame, text="Copy CLI Command", command=copy_cli_command)
-    copy_cmd_button.grid(row=4, column=0, columnspan=2, sticky='ew', padx=10, pady=(5, 0), ipady=5)
+    copy_cmd_button.grid(row=3, column=0, columnspan=2, sticky='ew', padx=10, pady=(5, 0), ipady=5)
     bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
 
     provider_frame.columnconfigure(1, weight=1)
@@ -5977,8 +5952,31 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         _apply_filter()
 
     clear_filter_btn = ttk.Button(filter_frame, text="Clear", width=8, command=clear_filter)
-    clear_filter_btn.grid(row=0, column=2, padx=(5, 0), ipady=5)
+    clear_filter_btn.grid(row=0, column=2, padx=(5, 10), ipady=5)
     bind_hover_message(clear_filter_btn, "Clear the filter.")
+
+    ttk.Separator(filter_frame, orient=tk.VERTICAL).grid(row=0, column=3, sticky="ns", padx=10)
+
+    def on_threshold_change():
+        try:
+            val = int(threshold_spin.get())
+            Config.THRESHOLD = max(0, min(100, val))
+            _apply_filter()
+        except ValueError:
+            pass
+
+    ttk.Label(filter_frame, text="Min. Threat Level:").grid(row=0, column=4, sticky="w", padx=(5, 0))
+    threshold_spin = ttk.Spinbox(filter_frame, from_=0, to=100, width=5, command=on_threshold_change)
+    threshold_spin.delete(0, tk.END)
+    threshold_spin.insert(0, str(Config.THRESHOLD))
+    threshold_spin.grid(row=0, column=5, sticky="w", padx=5)
+    threshold_spin.bind('<KeyRelease>', lambda e: on_threshold_change())
+    bind_hover_message(threshold_spin, "Files with a threat level lower than this will be ignored.")
+
+    all_var = tk.BooleanVar(value=Config.show_all_files)
+    all_checkbox = ttk.Checkbutton(filter_frame, text="Show all results", variable=all_var, command=_apply_filter)
+    all_checkbox.grid(row=0, column=6, sticky="w", padx=(5, 0))
+    bind_hover_message(all_checkbox, "Display all scanned files, including safe ones.")
 
     # --- Treeview ---
     style.configure('Scanner.Treeview', rowheight=50)
