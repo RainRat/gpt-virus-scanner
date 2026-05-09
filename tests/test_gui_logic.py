@@ -26,6 +26,9 @@ def test_browse_dir_click_selects_folder_updates_textbox(monkeypatch):
     monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
     mock_scan_button = MagicMock()
     monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
+    # Mock button_click to avoid side effects
+    mock_button_click = MagicMock()
+    monkeypatch.setattr(gptscan, 'button_click', mock_button_click)
 
     # Mock askdirectory to return a path
     monkeypatch.setattr(gptscan.tkinter.filedialog, 'askdirectory', lambda **kwargs: '/path/to/folder')
@@ -38,23 +41,31 @@ def test_browse_dir_click_selects_folder_updates_textbox(monkeypatch):
     mock_textbox.delete.assert_called_with(0, gptscan.tk.END)
     mock_textbox.insert.assert_called_with(0, '/path/to/folder')
     mock_scan_button.focus_set.assert_called_once()
+    mock_button_click.assert_called_once()
 
 def test_browse_file_click_cancels(monkeypatch):
     mock_textbox = MagicMock()
     monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
     monkeypatch.setattr(gptscan, 'scan_button', MagicMock(), raising=False)
+    # Mock button_click to verify it's NOT called
+    mock_button_click = MagicMock()
+    monkeypatch.setattr(gptscan, 'button_click', mock_button_click)
 
     monkeypatch.setattr(gptscan.tkinter.filedialog, 'askopenfilenames', lambda **kwargs: [])
 
     gptscan.browse_file_click()
 
     mock_textbox.delete.assert_not_called()
+    mock_button_click.assert_not_called()
 
 def test_browse_file_click_selects_file(monkeypatch):
     mock_textbox = MagicMock()
     monkeypatch.setattr(gptscan, 'textbox', mock_textbox, raising=False)
     mock_scan_button = MagicMock()
     monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
+    # Mock button_click
+    mock_button_click = MagicMock()
+    monkeypatch.setattr(gptscan, 'button_click', mock_button_click)
 
     monkeypatch.setattr(gptscan.tkinter.filedialog, 'askopenfilenames', lambda **kwargs: ['/path/to/file.py'])
 
@@ -63,6 +74,7 @@ def test_browse_file_click_selects_file(monkeypatch):
     mock_textbox.delete.assert_called_with(0, gptscan.tk.END)
     mock_textbox.insert.assert_called_with(0, '/path/to/file.py')
     mock_scan_button.focus_set.assert_called_once()
+    mock_button_click.assert_called_once()
 
 def test_set_scanning_state_updates_buttons(monkeypatch):
     # Setup mocks

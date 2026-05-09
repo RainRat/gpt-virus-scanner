@@ -13,11 +13,15 @@ def test_browse_file_list_click_success(monkeypatch, tmp_path):
     # Mock _set_scan_target to capture the paths
     mock_set_target = MagicMock()
     monkeypatch.setattr("gptscan._set_scan_target", mock_set_target)
+    # Mock button_click
+    mock_button_click = MagicMock()
+    monkeypatch.setattr("gptscan.button_click", mock_button_click)
 
     gptscan.browse_file_list_click()
 
     # Verify that _set_scan_target was called with the expected paths
     mock_set_target.assert_called_once_with(["file1.py", "file2.js", "folder/"])
+    mock_button_click.assert_called_once()
 
 def test_browse_file_list_click_cancel(monkeypatch):
     # Mock filedialog.askopenfilename to return empty string (cancel)
@@ -25,11 +29,15 @@ def test_browse_file_list_click_cancel(monkeypatch):
 
     mock_set_target = MagicMock()
     monkeypatch.setattr("gptscan._set_scan_target", mock_set_target)
+    # Mock button_click
+    mock_button_click = MagicMock()
+    monkeypatch.setattr("gptscan.button_click", mock_button_click)
 
     gptscan.browse_file_list_click()
 
     # Verify that _set_scan_target was not called
     mock_set_target.assert_not_called()
+    mock_button_click.assert_not_called()
 
 def test_browse_file_list_click_error(monkeypatch, tmp_path):
     # Mock filedialog.askopenfilename to return a path that doesn't exist or causes error
