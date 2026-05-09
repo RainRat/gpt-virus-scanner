@@ -102,7 +102,7 @@ def test_cli_summary(capsys, monkeypatch):
     gptscan.run_cli(["."], deep=False, show_all=False, use_gpt=False, rate_limit=60)
 
     captured = capsys.readouterr()
-    assert "Scan complete: 1 files scanned, 1 suspicious file found (1 high risk, 0 medium risk)." in captured.err
+    assert "Scan complete: 1 file scanned, 1 suspicious file found (1 high risk, 0 medium risk)." in captured.err
 
 
 def test_generate_console_report():
