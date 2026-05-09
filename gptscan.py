@@ -1142,6 +1142,15 @@ def get_running_process_commands() -> List[Tuple[str, bytes]]:
     return processes
 
 
+def get_environment_variable_snippets() -> List[Tuple[str, bytes]]:
+    """Collect all non-empty environment variables as snippets."""
+    snippets = []
+    for key, value in os.environ.items():
+        if value.strip():
+            snippets.append((f"[EnvVar] {key}", value.encode('utf-8')))
+    return snippets
+
+
 def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
     """Collect command lines of all scheduled tasks (Cron on Linux/macOS, schtasks on Windows)."""
     tasks = []
@@ -1960,6 +1969,18 @@ def scan_scheduled_tasks_click():
             messagebox.showinfo("Scheduled Tasks", "No scheduled tasks or Cron jobs were found.")
     except Exception as e:
         messagebox.showwarning("Scheduled Tasks Error", f"Could not scan scheduled tasks: {e}")
+
+
+def scan_env_vars_click():
+    """Scan all non-empty environment variables."""
+    try:
+        snippets = get_environment_variable_snippets()
+        if snippets:
+            button_click(extra_snippets=snippets)
+        else:
+            messagebox.showinfo("Environment Variables", "No non-empty environment variables were found.")
+    except Exception as e:
+        messagebox.showwarning("Environment Variables Error", f"Could not scan environment variables: {e}")
 
 
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None) -> None:
@@ -5807,7 +5828,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/H/P/K/T).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/H/P/K/N/T).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -5830,6 +5851,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Shell History", command=scan_shell_history_click, accelerator="Ctrl+Shift+H")
     browse_menu.add_command(label="Scan System PATH", command=scan_system_path_click, accelerator="Ctrl+Shift+P")
     browse_menu.add_command(label="Scan Running Processes", command=scan_running_processes_click, accelerator="Ctrl+Shift+K")
+    browse_menu.add_command(label="Scan Environment Variables", command=scan_env_vars_click, accelerator="Ctrl+Shift+N")
     browse_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
     browse_button["menu"] = browse_menu
 
@@ -6216,6 +6238,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-P>', lambda event: scan_system_path_click())
     root.bind('<Control-Shift-K>', lambda event: scan_running_processes_click())
     root.bind('<Command-Shift-K>', lambda event: scan_running_processes_click())
+    root.bind('<Control-Shift-N>', lambda event: scan_env_vars_click())
+    root.bind('<Command-Shift-N>', lambda event: scan_env_vars_click())
     root.bind('<Control-Shift-T>', lambda event: scan_scheduled_tasks_click())
     root.bind('<Command-Shift-T>', lambda event: scan_scheduled_tasks_click())
     root.bind('<Control-e>', export_results)
@@ -6295,6 +6319,8 @@ def main():
                "  python gptscan.py https://github.com/user/repo/pull/123 --cli\n\n"
                "  # Scan a Pastebin paste or a Hugging Face script directly\n"
                "  python gptscan.py https://pastebin.com/abcdefgh --cli\n\n"
+               "  # Scan all environment variables\n"
+               "  python gptscan.py --env-vars --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -6379,6 +6405,11 @@ def main():
         help='Scan all scheduled tasks and Cron jobs.'
     )
     scan_group.add_argument(
+        '--env-vars',
+        action='store_true',
+        help='Scan all non-empty environment variables.'
+    )
+    scan_group.add_argument(
         '--import-results', '--import',
         type=str,
         help='Import results from a previous scan. Use "-" to read from the terminal.'
@@ -6443,7 +6474,7 @@ def main():
         Config.save_cache()
         print("AI Analysis cache cleared.", file=sys.stderr)
         # If we ONLY wanted to clear cache, exit now.
-        if not any([args.target, args.path, args.stdin, args.import_results, args.files]):
+        if not any([args.target, args.path, args.stdin, args.import_results, args.files, args.env_vars]):
             sys.exit(0)
 
     Config.provider = args.provider
@@ -6586,6 +6617,13 @@ def main():
                 extra_snippets.extend(tasks)
             else:
                 print("No scheduled tasks or Cron jobs were found.", file=sys.stderr)
+
+        if args.env_vars:
+            snippets = get_environment_variable_snippets()
+            if snippets:
+                extra_snippets.extend(snippets)
+            else:
+                print("No non-empty environment variables were found.", file=sys.stderr)
 
         threats = run_cli(
             scan_targets,
