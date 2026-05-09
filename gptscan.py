@@ -767,6 +767,7 @@ def browse_dir_click() -> None:
     folder_selected = filedialog.askdirectory(initialdir=_get_initial_dir())
     if folder_selected:
         _set_scan_target(folder_selected)
+        button_click()
 
 
 def select_url_click() -> None:
@@ -774,6 +775,7 @@ def select_url_click() -> None:
     url_selected = simpledialog.askstring("Scan URL", "Enter a script URL to scan (http/https):")
     if url_selected:
         _set_scan_target(url_selected.strip())
+        button_click()
 
 
 def toggle_ai_controls() -> None:
@@ -812,6 +814,7 @@ def browse_file_click() -> None:
     )
     if files_selected:
         _set_scan_target(files_selected)
+        button_click()
 
 
 def browse_file_list_click() -> None:
@@ -827,6 +830,7 @@ def browse_file_list_click() -> None:
                 paths = [line.strip() for line in f if line.strip()]
             if paths:
                 _set_scan_target(paths)
+                button_click()
         except Exception as e:
             messagebox.showerror("Error", f"Could not read file list: {e}")
 
@@ -5814,8 +5818,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(cancel_button, "Stop the current scan. (Esc)")
 
     browse_menu = tk.Menu(browse_button, tearoff=0)
-    browse_menu.add_command(label="Select File(s)...", command=browse_file_click, accelerator="Ctrl+Shift+O")
-    browse_menu.add_command(label="Select Folder...", command=browse_dir_click)
+    browse_menu.add_command(label="Scan File(s)...", command=browse_file_click, accelerator="Ctrl+Shift+O")
+    browse_menu.add_command(label="Scan Folder...", command=browse_dir_click)
     browse_menu.add_separator()
     browse_menu.add_command(label="Scan URL...", command=select_url_click, accelerator="Ctrl+Shift+U")
     browse_menu.add_command(label="Scan File List...", command=browse_file_list_click)
