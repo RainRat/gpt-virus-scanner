@@ -2564,10 +2564,11 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
 
     # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc, pyproject.toml)
     lowered_check = check_name.lower()
-    if lowered_check.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml')):
+    check_basename = os.path.basename(lowered_check)
+    if check_basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml')):
         try:
             text = content.decode('utf-8', errors='ignore')
-            if lowered_check.endswith('.pyproject.toml') or os.path.basename(lowered_check) == 'pyproject.toml':
+            if check_basename.endswith('pyproject.toml'):
                 # Parse pyproject.toml using regex to avoid toml dependency
                 lines = text.splitlines()
                 in_script_section = False
@@ -2756,8 +2757,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             pass
 
     # 7. Check for Dockerfile
-    lowered_check = check_name.lower()
-    if 'dockerfile' in lowered_check and (os.path.basename(lowered_check) == 'dockerfile' or lowered_check.endswith('.dockerfile')):
+    if check_basename.endswith('dockerfile'):
         try:
             text = content.decode('utf-8', errors='ignore')
             # Extract RUN, CMD, and ENTRYPOINT instructions with multi-line support
@@ -2916,7 +2916,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             pass
 
     # 10. Check for Makefile
-    if 'makefile' in lowered_check and (os.path.basename(lowered_check) == 'makefile' or lowered_check.endswith('.makefile')):
+    if check_basename.endswith('makefile'):
         try:
             text = content.decode('utf-8', errors='ignore')
             # Extract recipes (lines starting with a tab) with multi-line support
