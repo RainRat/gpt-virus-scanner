@@ -1581,7 +1581,8 @@ def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Opt
 
     if elapsed_time and elapsed_time > 0:
         files_per_sec = total_scanned / elapsed_time
-        summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} {file_text}/s"
+        rate_text = "file" if files_per_sec <= 1.0 else "files"
+        summary += f" Time: {elapsed_time:.1f}s ({files_per_sec:.1f} {rate_text}/s"
         if total_bytes:
             bytes_per_sec = total_bytes / elapsed_time
             summary += f", {format_bytes(bytes_per_sec)}/s"
