@@ -5,6 +5,7 @@ import hashlib
 import html
 import io
 import json
+import plistlib
 import os
 import queue
 import re
@@ -1193,6 +1194,72 @@ def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
     return tasks
 
 
+def get_startup_item_commands() -> List[Tuple[str, bytes]]:
+    """Collect command lines of all startup items (Autostart on Linux, LaunchAgents on macOS, StartupCommand on Windows)."""
+    items = []
+    try:
+        if sys.platform == "win32":
+            # Use PowerShell to get startup commands
+            cmd = ["powershell", "-NoProfile", "-Command",
+                   "Get-CimInstance Win32_StartupCommand | Select-Object Name, Command | ConvertTo-Json"]
+            output = subprocess.check_output(cmd, stderr=subprocess.PIPE, universal_newlines=True)
+            if output.strip():
+                data = json.loads(output)
+                if isinstance(data, dict):
+                    data = [data]
+                for item in data:
+                    name = item.get("Name", "Unknown")
+                    command = item.get("Command")
+                    if command and command.strip():
+                        items.append((f"[Startup] {name}", command.encode('utf-8')))
+        elif sys.platform == "darwin":
+            # macOS - Scan LaunchAgents and LaunchDaemons
+            search_dirs = [
+                Path("/Library/LaunchAgents"),
+                Path("/Library/LaunchDaemons"),
+                Path.home() / "Library" / "LaunchAgents"
+            ]
+            for d in search_dirs:
+                if d.exists():
+                    for p in d.glob("*.plist"):
+                        try:
+                            with open(p, "rb") as f:
+                                data = plistlib.load(f)
+                                # Try 'Program' or 'ProgramArguments'
+                                command = data.get("Program")
+                                if not command:
+                                    args = data.get("ProgramArguments")
+                                    if args:
+                                        command = " ".join(args) if isinstance(args, list) else str(args)
+                                if command and command.strip():
+                                    items.append((f"[LaunchAgent] {p.name}", command.encode('utf-8')))
+                        except Exception:
+                            pass
+        else:
+            # Linux - Scan .desktop files in autostart directories
+            search_dirs = [
+                Path("/etc/xdg/autostart"),
+                Path.home() / ".config" / "autostart"
+            ]
+            for d in search_dirs:
+                if d.exists():
+                    for p in d.glob("*.desktop"):
+                        try:
+                            with open(p, "r", encoding="utf-8", errors="ignore") as f:
+                                for line in f:
+                                    if line.startswith("Exec="):
+                                        command = line[5:].strip()
+                                        if command:
+                                            items.append((f"[Autostart] {p.name}", command.encode('utf-8')))
+                                        break
+                        except Exception:
+                            pass
+    except Exception:
+        pass
+
+    return items
+
+
 def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
     """Resolve the Git toplevel directory and the relative path of the target."""
     abs_path = os.path.abspath(path)
@@ -1969,6 +2036,18 @@ def scan_scheduled_tasks_click():
             messagebox.showinfo("Scheduled Tasks", "No scheduled tasks or Cron jobs were found.")
     except Exception as e:
         messagebox.showwarning("Scheduled Tasks Error", f"Could not scan scheduled tasks: {e}")
+
+
+def scan_startup_items_click():
+    """Scan all system startup items and LaunchAgents."""
+    try:
+        items = get_startup_item_commands()
+        if items:
+            button_click(extra_snippets=items)
+        else:
+            messagebox.showinfo("Startup Items", "No system startup items or LaunchAgents were found.")
+    except Exception as e:
+        messagebox.showwarning("Startup Items Error", f"Could not scan startup items: {e}")
 
 
 def scan_env_vars_click():
@@ -5828,7 +5907,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/H/P/K/N/T).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/H/P/K/N/T/A).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -5853,6 +5932,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Running Processes", command=scan_running_processes_click, accelerator="Ctrl+Shift+K")
     browse_menu.add_command(label="Scan Environment Variables", command=scan_env_vars_click, accelerator="Ctrl+Shift+N")
     browse_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
+    browse_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -6242,6 +6322,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-N>', lambda event: scan_env_vars_click())
     root.bind('<Control-Shift-T>', lambda event: scan_scheduled_tasks_click())
     root.bind('<Command-Shift-T>', lambda event: scan_scheduled_tasks_click())
+    root.bind('<Control-Shift-A>', lambda event: scan_startup_items_click())
+    root.bind('<Command-Shift-A>', lambda event: scan_startup_items_click())
     root.bind('<Control-e>', export_results)
     root.bind('<Command-e>', export_results)
     root.bind('<Control-t>', check_virustotal)
@@ -6403,6 +6485,11 @@ def main():
         '--scheduled-tasks',
         action='store_true',
         help='Scan all scheduled tasks and Cron jobs.'
+    )
+    scan_group.add_argument(
+        '--startup-items',
+        action='store_true',
+        help='Scan all system startup items and LaunchAgents.'
     )
     scan_group.add_argument(
         '--env-vars',
@@ -6617,6 +6704,13 @@ def main():
                 extra_snippets.extend(tasks)
             else:
                 print("No scheduled tasks or Cron jobs were found.", file=sys.stderr)
+
+        if args.startup_items:
+            items = get_startup_item_commands()
+            if items:
+                extra_snippets.extend(items)
+            else:
+                print("No system startup items or LaunchAgents were found.", file=sys.stderr)
 
         if args.env_vars:
             snippets = get_environment_variable_snippets()
