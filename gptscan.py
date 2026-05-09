@@ -2453,16 +2453,21 @@ def manage_extensions() -> None:
 
 
 def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str] = None) -> Generator[Tuple[str, bytes], None, None]:
-    """Recursively unpack archives and notebooks into individual snippets.
+    """Extract scan-ready snippets from various container formats.
+
+    This function recursively unpacks archives (ZIP, TAR), Jupyter Notebooks,
+    package manifests (package.json, pyproject.toml), Dockerfiles, Makefiles,
+    CI/CD workflows (YAML), web files (HTML, SVG), and Unified Diffs.
+    It ensures that only relevant code blocks and scripts are processed.
 
     Args:
         name: The display name or path of the content.
         content: The raw bytes of the content.
-        depth: Current recursion depth to prevent infinite loops.
-        hint: Optional filename hint for extension checking.
+        depth: Current recursion depth to prevent infinite loops (max 5).
+        hint: Optional filename hint to assist in format detection.
 
     Yields:
-        Tuples of (display_name, content_bytes).
+        Tuples containing the snippet name and its content as bytes.
     """
     if depth > 5:
         return
