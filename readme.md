@@ -49,8 +49,8 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 Run `python3 gptscan.py` to open the scanner window.
 
 Access these options from the **Browse** menu:
-*   **Select File(s)...:** Choose one or more scripts to scan.
-*   **Select Folder...:** Choose a whole directory to scan.
+*   **Scan File(s)...:** Choose one or more scripts to scan.
+*   **Scan Folder...:** Choose a whole directory to scan.
 *   **Scan URL...:** Scan scripts or archives directly from a web link.
 *   **Scan File List...:** Read a list of files to scan from a text file.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
@@ -116,7 +116,7 @@ If you use a local proxy or a custom endpoint (like a specific Ollama setup or a
 The scanner provides several ways to analyze and manage your results:
 *   **Filtering Results:**
     *   **Filter Bar:** Use the **Filter** bar at the top (or press `Ctrl+F`) to quickly find results by file path, analysis text, or code snippets.
-    *   **Min. Threat Level:** Use the **Min. Threat Level** setting in the **Options** panel to hide files with low threat scores.
+    *   **Min. Threat Level:** Use the **Min. Threat Level** setting in the **Filter** bar to hide files with low threat scores.
 *   **View Details:** Double-click any result or press `Space` to see a detailed analysis and the full source code.
 *   **Right-Click Menu:** Right-click a result for quick actions:
     *   **Rescan:** Scan the file again (useful after making changes).
