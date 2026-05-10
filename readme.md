@@ -61,6 +61,7 @@ Access these options from the **Browse** menu:
 *   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
 *   **Scan Environment Variables:** Scan all non-empty environment variables for suspicious scripts or commands (Ctrl+Shift+N).
 *   **Scan Scheduled Tasks:** Scan all scheduled tasks (Windows) and Cron jobs (Linux/macOS) to identify dangerous persistence (Ctrl+Shift+T).
+*   **Scan Startup Items:** Scan all system startup items and LaunchAgents to find malicious persistence (Ctrl+Shift+A).
 
 ### Using the Terminal (CLI)
 To run the scanner in your terminal, use the `--cli` flag:
@@ -86,6 +87,11 @@ python3 gptscan.py --running-processes --cli
 To scan all scheduled tasks and Cron jobs:
 ```bash
 python3 gptscan.py --scheduled-tasks --cli
+```
+
+To scan all system startup items and LaunchAgents:
+```bash
+python3 gptscan.py --startup-items --cli
 ```
 
 To scan all environment variables:
