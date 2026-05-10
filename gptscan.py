@@ -6072,7 +6072,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     ttk.Label(provider_frame, text="API Key:").grid(row=2, column=0, sticky='w', padx=(10, 5), pady=2)
 
     key_container = ttk.Frame(provider_frame)
-    key_container.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
+    key_container.grid(row=2, column=1, columnspan=3, sticky='ew', padx=(5, 10), pady=2)
 
     api_key_var = tk.StringVar(value=Config.apikey)
     api_key_entry = ttk.Entry(key_container, show="*", textvariable=api_key_var)
@@ -6098,9 +6098,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     api_key_var.trace_add("write", on_api_key_change)
 
-    ttk.Label(provider_frame, text="API Base URL:").grid(row=2, column=2, sticky='w', padx=(15, 5), pady=2)
+    ttk.Label(provider_frame, text="API Base URL:").grid(row=3, column=0, sticky='w', padx=(10, 5), pady=2)
     api_entry = ttk.Entry(provider_frame)
-    api_entry.grid(row=2, column=3, sticky='ew', padx=(5, 10), pady=2)
+    api_entry.grid(row=3, column=1, columnspan=3, sticky='ew', padx=(5, 10), pady=2)
     bind_hover_message(api_entry, "Set a custom URL for the AI service (e.g., http://localhost:11434/v1 for Ollama).")
 
     api_base_var = tk.StringVar(value=Config.api_base or "")
