@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from gptscan import fetch_url_content, Config
+import gptscan
+from gptscan import fetch_url_content
 
 def test_fetch_url_content_detects_truncation():
     max_size = 100
@@ -21,8 +22,8 @@ def test_fetch_url_content_detects_truncation():
             fetch_url_content("http://example.com/toolarge.py", max_size=max_size)
 
 def test_fetch_url_content_with_none_max_size():
-    original_max = Config.MAX_FILE_SIZE
-    Config.MAX_FILE_SIZE = 50
+    original_max = gptscan.Config.MAX_FILE_SIZE
+    gptscan.Config.MAX_FILE_SIZE = 50
     try:
         mock_response = MagicMock()
         mock_response.getheader.return_value = "100" # Larger than 50
@@ -32,7 +33,7 @@ def test_fetch_url_content_with_none_max_size():
             with pytest.raises(ValueError, match="Content too large"):
                 fetch_url_content("http://example.com/default_limit.py", max_size=None)
     finally:
-        Config.MAX_FILE_SIZE = original_max
+        gptscan.Config.MAX_FILE_SIZE = original_max
 
 def test_fetch_url_content_success_within_limit():
     max_size = 100

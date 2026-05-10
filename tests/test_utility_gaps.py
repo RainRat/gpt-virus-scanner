@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import json
 from tkinter import ttk
 import gptscan
-from gptscan import format_bytes, extract_data_from_gpt_response, async_handle_gpt_response, Config, AsyncRateLimiter, get_wrapped_values, enqueue_ui_update, ui_queue
+from gptscan import format_bytes, extract_data_from_gpt_response, async_handle_gpt_response, Config, AsyncRateLimiter, get_wrapped_values, enqueue_ui_update
 
 def test_format_bytes_units():
     assert "100.0 B" in format_bytes(100)
@@ -70,16 +70,16 @@ def test_get_wrapped_values_with_hidden_column(monkeypatch):
     assert result[6] == orig_json_data
 
 def test_enqueue_ui_update():
-    while not ui_queue.empty():
-        ui_queue.get()
+    while not gptscan.ui_queue.empty():
+        gptscan.ui_queue.get()
 
     def my_func(a, b=1):
         pass
 
     enqueue_ui_update(my_func, "arg1", b=2)
 
-    assert not ui_queue.empty()
-    func, args, kwargs = ui_queue.get()
+    assert not gptscan.ui_queue.empty()
+    func, args, kwargs = gptscan.ui_queue.get()
     assert func == my_func
     assert args == ("arg1",)
     assert kwargs == {"b": 2}
