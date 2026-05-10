@@ -1487,21 +1487,16 @@ def collect_files(targets: Union[str, List[str]]) -> List[Path]:
 
     results: List[Path] = []
     for t in targets:
-        p = Path(t)
-        if p.exists():
+        candidate_paths = [t] if Path(t).exists() else []
+        if not candidate_paths and any(char in t for char in ['*', '?', '[']):
+            candidate_paths = glob.glob(t, recursive=True)
+
+        for path_str in candidate_paths:
+            p = Path(path_str)
             if p.is_file():
                 results.append(p)
             elif p.is_dir():
                 results.extend([f for f in p.rglob('*') if f.is_file()])
-        elif any(char in str(t) for char in ['*', '?', '[']):
-            # Try to expand as a glob pattern
-            expanded = glob.glob(str(t), recursive=True)
-            for path_str in expanded:
-                ep = Path(path_str)
-                if ep.is_file():
-                    results.append(ep)
-                elif ep.is_dir():
-                    results.extend([f for f in ep.rglob('*') if f.is_file()])
 
     # Use dict keys to remove duplicates while preserving insertion order.
     return list(dict.fromkeys(results))
