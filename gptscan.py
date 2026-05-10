@@ -63,7 +63,12 @@ scan_all_checkbox: Optional[ttk.Checkbutton] = None
 dry_checkbox: Optional[ttk.Checkbutton] = None
 gpt_checkbox: Optional[ttk.Checkbutton] = None
 all_checkbox: Optional[ttk.Checkbutton] = None
+gpt_var: Optional[tk.BooleanVar] = None
 threshold_spin: Optional[ttk.Spinbox] = None
+provider_var: Optional[tk.StringVar] = None
+model_var: Optional[tk.StringVar] = None
+api_base_var: Optional[tk.StringVar] = None
+api_key_var: Optional[tk.StringVar] = None
 provider_combo: Optional[ttk.Combobox] = None
 model_combo: Optional[ttk.Combobox] = None
 api_key_entry: Optional[ttk.Entry] = None
@@ -782,14 +787,20 @@ def toggle_ai_controls() -> None:
     """Enable or disable AI analysis controls based on current settings and scan state."""
     enabled = gpt_var.get() if gpt_var else False
     is_scanning = current_cancel_event is not None
+    provider = provider_combo.get() if provider_combo else Config.provider
 
     if provider_combo and model_combo and api_key_entry and api_entry and show_key_btn:
         if enabled and not is_scanning:
             provider_combo.config(state="readonly")
             model_combo.config(state="normal")
-            api_key_entry.config(state="normal")
             api_entry.config(state="normal")
-            show_key_btn.config(state="normal")
+
+            if provider == "ollama":
+                api_key_entry.config(state="disabled")
+                show_key_btn.config(state="disabled")
+            else:
+                api_key_entry.config(state="normal")
+                show_key_btn.config(state="normal")
         else:
             provider_combo.config(state="disabled")
             model_combo.config(state="disabled")
@@ -5758,6 +5769,47 @@ def get_model_presets(provider: str) -> List[str]:
         return []
 
 
+def update_model_presets(provider: str) -> None:
+    """Update the model combobox with presets for the selected provider."""
+    if model_combo:
+        model_combo['values'] = get_model_presets(provider)
+
+
+def on_provider_change(event: Optional[tk.Event] = None) -> None:
+    """Handle changes to the AI provider selection."""
+    if not provider_var:
+        return
+    p = provider_var.get()
+    Config.provider = p
+
+    # Reset clients so they are recreated with new settings
+    global _async_openai_client
+    _async_openai_client = None
+
+    update_model_presets(p)
+
+    if p == "ollama":
+        # Only switch to default Ollama model if current model is not an Ollama preset
+        current_model = model_var.get() if model_var else ""
+        ollama_presets = get_model_presets("ollama")
+        if model_var and current_model not in ollama_presets:
+            model_var.set("llama3.2")
+
+        if api_base_var and not api_base_var.get().strip():
+            api_base_var.set("http://localhost:11434/v1")
+    elif api_base_var and api_base_var.get().strip() == "http://localhost:11434/v1":
+        api_base_var.set("")
+        # Default to the first preset if available, else keep current or specific default
+        if model_combo and model_combo['values']:
+            if model_var:
+                model_var.set(model_combo['values'][0])
+        elif model_var:
+            model_var.set("gpt-4o")
+    if model_var:
+        Config.model_name = model_var.get()
+    toggle_ai_controls()
+
+
 def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     """Construct and return the main Tkinter GUI for the scanner.
 
@@ -5771,7 +5823,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, view_online_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, view_online_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -5862,7 +5914,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # --- Options Frame ---
     options_frame = ttk.LabelFrame(settings_frame, text="Scan Options", padding=10)
-    options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 5))
+    options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
     gpt_var = tk.BooleanVar(value=Config.use_ai_analysis)
 
@@ -5945,7 +5997,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     api_key_var = tk.StringVar(value=Config.apikey)
     api_key_entry = ttk.Entry(key_container, show="*", textvariable=api_key_var)
     api_key_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-    bind_hover_message(api_key_entry, "Enter your API key for cloud providers. It will be saved to apikey.txt.")
+    bind_hover_message(api_key_entry, "Enter your API key for cloud providers. (Not required for Ollama). It will be saved to apikey.txt.")
 
     def toggle_api_key_visibility():
         if api_key_entry['show'] == "*":
@@ -5984,30 +6036,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     toggle_ai_controls()
 
-    def update_model_presets(provider: str):
-        model_combo['values'] = get_model_presets(provider)
-
     update_model_presets(Config.provider)
-
-    def on_provider_change(event):
-        p = provider_var.get()
-        Config.provider = p
-
-        # Reset clients so they are recreated with new settings
-        global _async_openai_client
-        _async_openai_client = None
-
-        update_model_presets(p)
-
-        if p == "ollama":
-            model_var.set("llama3.2")
-        else:
-            # Default to the first preset if available, else keep current or specific default
-            if model_combo['values']:
-                model_var.set(model_combo['values'][0])
-            else:
-                model_var.set("gpt-4o")
-        Config.model_name = model_var.get()
 
     provider_combo.bind("<<ComboboxSelected>>", on_provider_change)
 
