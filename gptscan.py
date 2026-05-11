@@ -1250,6 +1250,30 @@ def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
     return tasks
 
 
+def get_ssh_config_paths() -> List[str]:
+    """Identify common SSH configuration and authorized_keys files."""
+    paths = []
+    home = Path.home()
+
+    # User-level SSH files
+    user_ssh = home / ".ssh"
+    if user_ssh.exists():
+        for f in ["config", "authorized_keys"]:
+            p = user_ssh / f
+            if p.exists():
+                paths.append(str(p))
+
+    # System-level SSH files
+    system_ssh_dir = Path("/etc/ssh")
+    if system_ssh_dir.exists():
+        for f in ["sshd_config", "ssh_config"]:
+            p = system_ssh_dir / f
+            if p.exists():
+                paths.append(str(p))
+
+    return sorted(list(set(paths)))
+
+
 def get_startup_item_commands() -> List[Tuple[str, bytes]]:
     """Collect command lines of all startup items (Autostart on Linux, LaunchAgents on macOS, StartupCommand on Windows)."""
     items = []
@@ -2126,6 +2150,30 @@ def scan_env_vars_click():
             messagebox.showinfo("Environment Variables", "No non-empty environment variables were found.")
     except Exception as e:
         messagebox.showwarning("Environment Variables Error", f"Could not scan environment variables: {e}")
+
+
+def scan_system_audit_click():
+    """Perform a comprehensive system audit scan (Profiles, History, Path, SSH, Processes, Tasks, Startup, EnvVars)."""
+    try:
+        all_paths = []
+        all_paths.extend(get_shell_profile_paths())
+        all_paths.extend(get_shell_history_paths())
+        all_paths.extend(get_system_path_directories())
+        all_paths.extend(get_ssh_config_paths())
+
+        all_snippets = []
+        all_snippets.extend(get_running_process_commands())
+        all_snippets.extend(get_environment_variable_snippets())
+        all_snippets.extend(get_scheduled_task_commands())
+        all_snippets.extend(get_startup_item_commands())
+
+        if all_paths or all_snippets:
+            _set_scan_target(all_paths)
+            button_click(extra_snippets=all_snippets)
+        else:
+            messagebox.showinfo("System Audit", "No system items were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("System Audit Error", f"Could not perform system audit: {e}")
 
 
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None) -> None:
@@ -6040,7 +6088,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/B/H/P/K/N/T/A).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/I/B/H/P/K/N/T/A).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -6060,6 +6108,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click, accelerator="Ctrl+Shift+V")
     browse_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
     browse_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
+    browse_menu.add_command(label="System Audit", command=scan_system_audit_click, accelerator="Ctrl+Shift+I")
     browse_menu.add_command(label="Scan Shell Profiles", command=scan_shell_profiles_click, accelerator="Ctrl+Shift+B")
     browse_menu.add_command(label="Scan Shell History", command=scan_shell_history_click, accelerator="Ctrl+Shift+H")
     browse_menu.add_command(label="Scan System PATH", command=scan_system_path_click, accelerator="Ctrl+Shift+P")
@@ -6437,6 +6486,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-T>', lambda event: scan_scheduled_tasks_click())
     root.bind('<Control-Shift-A>', lambda event: scan_startup_items_click())
     root.bind('<Command-Shift-A>', lambda event: scan_startup_items_click())
+    root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
+    root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
     root.bind('<Command-e>', export_results)
     root.bind('<Control-t>', check_virustotal)
@@ -6516,6 +6567,8 @@ def main():
                "  python gptscan.py https://pastebin.com/abcdefgh --cli\n\n"
                "  # Scan all environment variables\n"
                "  python gptscan.py --env-vars --cli\n\n"
+               "  # Perform a comprehensive system audit\n"
+               "  python gptscan.py --audit --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -6613,6 +6666,11 @@ def main():
         '--env-vars',
         action='store_true',
         help='Scan all non-empty environment variables.'
+    )
+    scan_group.add_argument(
+        '--audit',
+        action='store_true',
+        help='Perform a comprehensive system audit scan.'
     )
     scan_group.add_argument(
         '--import-results', '--import',
@@ -6843,6 +6901,16 @@ def main():
                 extra_snippets.extend(snippets)
             else:
                 print("No non-empty environment variables were found.", file=sys.stderr)
+
+        if args.audit:
+            scan_targets.extend(get_shell_profile_paths())
+            scan_targets.extend(get_shell_history_paths())
+            scan_targets.extend(get_system_path_directories())
+            scan_targets.extend(get_ssh_config_paths())
+            extra_snippets.extend(get_running_process_commands())
+            extra_snippets.extend(get_environment_variable_snippets())
+            extra_snippets.extend(get_scheduled_task_commands())
+            extra_snippets.extend(get_startup_item_commands())
 
         threats = run_cli(
             scan_targets,
