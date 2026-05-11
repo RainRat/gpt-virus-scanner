@@ -1939,10 +1939,11 @@ def set_scanning_state(is_scanning: bool) -> None:
         update_button_states()
 
     if scan_button:
-        scan_button.config(state="disabled" if is_scanning else "normal")
+        new_state = "disabled" if is_scanning else "normal"
         if is_scanning:
-            scan_button.config(text="Scanning...")
+            scan_button.config(text="Scanning...", state=new_state)
         else:
+            scan_button.config(text="Scan Now", state=new_state)
             toggle_dry_run()
     if cancel_button:
         cancel_button.config(state="normal" if is_scanning else "disabled")
