@@ -64,7 +64,6 @@ scan_all_checkbox: Optional[ttk.Checkbutton] = None
 dry_checkbox: Optional[ttk.Checkbutton] = None
 gpt_checkbox: Optional[ttk.Checkbutton] = None
 all_checkbox: Optional[ttk.Checkbutton] = None
-gpt_var: Optional[tk.BooleanVar] = None
 threshold_spin: Optional[ttk.Spinbox] = None
 provider_var: Optional[tk.StringVar] = None
 model_var: Optional[tk.StringVar] = None
