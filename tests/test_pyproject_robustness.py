@@ -76,3 +76,21 @@ CMD = "echo upper"
 
     assert "pyproject.toml [Script: UPPER]" in scripts
     assert scripts["pyproject.toml [Script: UPPER]"] == "echo upper"
+
+def test_pyproject_header_robustness():
+    """Verify that pyproject.toml sections with trailing comments and whitespace are recognized."""
+    content = b"""
+[tool.pdm.scripts] # comment
+test = "echo hello"
+
+[ tool.pdm.scripts.nested ] # another comment
+cmd = "pytest"
+"""
+    results = list(unpack_content("pyproject.toml", content))
+    scripts = {s[0]: s[1].decode() for s in results}
+
+    assert len(results) == 2
+    assert "pyproject.toml [Script: test]" in scripts
+    assert scripts["pyproject.toml [Script: test]"] == "echo hello"
+    assert "pyproject.toml [Script: nested]" in scripts
+    assert scripts["pyproject.toml [Script: nested]"] == "pytest"
