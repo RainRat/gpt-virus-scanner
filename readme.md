@@ -63,6 +63,48 @@ Access these options from the **Browse** menu:
 *   **Scan Scheduled Tasks:** Scan all scheduled tasks (Windows) and Cron jobs (Linux/macOS) to identify dangerous persistence (Ctrl+Shift+T).
 *   **Scan Startup Items:** Scan all system startup items and LaunchAgents to find malicious persistence (Ctrl+Shift+A).
 
+### Keyboard Shortcuts
+The scanner includes shortcuts for faster navigation:
+
+| Shortcut | Action |
+| :--- | :--- |
+| **General** | |
+| `Enter` | Start Scan |
+| `Esc` | Cancel Scan |
+| `Ctrl+F` | Focus Filter Bar |
+| `Ctrl+O` | Import Results |
+| `Ctrl+E` | Export Results |
+| `Ctrl+V` | Import from Clipboard |
+| **Scan Actions** | |
+| `Ctrl+Shift+O` | Scan File(s) |
+| `Ctrl+Shift+U` | Scan URL |
+| `Ctrl+Shift+V` | Scan Clipboard |
+| `Ctrl+Shift+D` | Scan Git Diff |
+| `Ctrl+Shift+H` | Scan Shell History |
+| `Ctrl+Shift+P` | Scan System PATH |
+| `Ctrl+Shift+K` | Scan Running Processes |
+| `Ctrl+Shift+N` | Scan Environment Variables |
+| `Ctrl+Shift+T` | Scan Scheduled Tasks |
+| `Ctrl+Shift+A` | Scan Startup Items |
+| **Results List** | |
+| `Space` / `Enter` | View Details |
+| `F5` | Rescan |
+| `Delete` | Exclude |
+| `Ctrl+A` | Select All |
+| `Ctrl+C` | Copy File Path |
+| `Shift+Enter` | Open File |
+| `Ctrl+Enter` | Reveal in Folder |
+| `Ctrl+T` | Check on VirusTotal |
+| `Ctrl+L` | View Online |
+| **Details Window** | |
+| `Ctrl+U` | Toggle Full Source |
+| `Ctrl+S` | Copy Code Snippet |
+| `Ctrl+Shift+C` | Copy AI Analysis |
+| `Ctrl+J` | Copy JSON Data |
+| `Ctrl+L` | View Online |
+
+*Note: macOS users should use `Command` instead of `Ctrl` for most shortcuts.*
+
 ### Using the Terminal (CLI)
 To run the scanner in your terminal, use the `--cli` flag:
 ```bash
