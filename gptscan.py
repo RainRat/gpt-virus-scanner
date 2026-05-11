@@ -2743,8 +2743,9 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                     if not line or line.startswith('#'):
                         continue
 
-                    if line.startswith('[') and line.endswith(']'):
-                        section = line[1:-1].strip()
+                    header_match = re.match(r'^\[\s*([^\]]+)\s*\](?:\s*#.*)?$', line)
+                    if header_match:
+                        section = header_match.group(1).strip()
                         # Flat script sections: [project.scripts], [tool.pdm.scripts], etc.
                         if re.match(r'^(?:.*?\.)?scripts$', section, re.IGNORECASE) or \
                            section.lower() == 'tool.pdm.dev-dependencies':
