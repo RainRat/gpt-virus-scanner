@@ -2661,6 +2661,19 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 current_nested_script = None
 
                 def yield_pyproject_scripts(label_name, val):
+                    # Strip inline comment if not a multiline string
+                    if not (val.startswith(('"""', "'''"))):
+                        # Match a hash that is NOT inside a quoted string
+                        # Simple approach: find first # and check if it's outside quotes
+                        comment_match = re.search(r'(?m)(^|[^"\'\\])(#.*)$', val)
+                        if comment_match:
+                            # A more robust regex to match comments outside quotes:
+                            # (?:[^"\'#]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*(#.*)
+                            robust_comment_match = re.search(r'^(?:[^"\'#]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*(#.*)', val)
+                            if robust_comment_match:
+                                comment_start = robust_comment_match.start(1)
+                                val = val[:comment_start].strip()
+
                     if val.startswith('['):
                         # Array of commands: ["a", "b"]
                         items = re.findall(r'"([^"]*)"|\'([^\']*)\'', val)
@@ -2669,13 +2682,15 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                             if cmd.strip():
                                 yield (f"{name} [Script: {label_name} ({idx})]", cmd.encode('utf-8'))
                     else:
-                        # Single command: "a"
+                        # Single command or multi-line content
                         cmd = val.strip('"\'')
                         if cmd.strip():
                             yield (f"{name} [Script: {label_name}]", cmd.encode('utf-8'))
 
-                for line in lines:
-                    line = line.strip()
+                i = 0
+                while i < len(lines):
+                    line = lines[i].strip()
+                    i += 1
                     if not line or line.startswith('#'):
                         continue
 
@@ -2696,29 +2711,39 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                         continue
 
                     if in_script_section:
-                        if current_nested_script:
-                            # Inside a nested section like [tool.pdm.scripts.test]
-                            # Look for cmd, shell, command, or composite keys
-                            match = re.match(r'^(?:cmd|shell|command|composite)\s*=\s*(.*)', line, re.IGNORECASE)
-                            if match:
-                                yield from yield_pyproject_scripts(current_nested_script, match.group(1).strip())
-                                # Only yield once per nested section
-                                in_script_section = False
-                        else:
-                            # Inside a flat section like [project.scripts]
-                            # Match key = "value" or key = { ... }
-                            match = re.match(r'^([^=\s]+)\s*=\s*(.*)', line)
-                            if match:
-                                script_name = match.group(1).strip().strip('"\'')
-                                command_val = match.group(2).strip()
+                        # Match key = "value" or key = { ... }
+                        match = re.match(r'^([^=\s]+)\s*=\s*(.*)', line)
+                        if match:
+                            script_key = match.group(1).strip().strip('"\'')
+                            command_val = match.group(2).strip()
 
+                            # Handle multiline strings
+                            if command_val.startswith(('"""', "'''")):
+                                quote_type = command_val[:3]
+                                if not (command_val.endswith(quote_type) and len(command_val) >= 6):
+                                    multiline_lines = [command_val]
+                                    while i < len(lines):
+                                        curr_line = lines[i]
+                                        multiline_lines.append(curr_line)
+                                        i += 1
+                                        if quote_type in curr_line:
+                                            break
+                                    command_val = "\n".join(multiline_lines)
+
+                            if current_nested_script:
+                                # Inside a nested section like [tool.pdm.scripts.test]
+                                if script_key.lower() in ('cmd', 'shell', 'command', 'composite'):
+                                    yield from yield_pyproject_scripts(current_nested_script, command_val)
+                                    in_script_section = False
+                            else:
+                                # Inside a flat section like [project.scripts]
                                 if command_val.startswith('{'):
-                                    # Try to extract 'cmd' or 'command' or 'shell' from inline table
+                                    # Inline table
                                     cmd_match = re.search(r'(?:cmd|command|shell|composite)\s*=\s*("[^"]*"|\'[^\']*\'|\[[^\]]*\])', command_val)
                                     if cmd_match:
-                                        yield from yield_pyproject_scripts(script_name, cmd_match.group(1).strip())
+                                        yield from yield_pyproject_scripts(script_key, cmd_match.group(1).strip())
                                 else:
-                                    yield from yield_pyproject_scripts(script_name, command_val)
+                                    yield from yield_pyproject_scripts(script_key, command_val)
                 return
 
             if lowered_check.endswith('.jsonc'):
