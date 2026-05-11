@@ -783,6 +783,16 @@ def select_url_click() -> None:
         button_click()
 
 
+def toggle_dry_run() -> None:
+    """Update the scan button text based on the Dry Run state."""
+    if not scan_button or not dry_var:
+        return
+
+    is_scanning = current_cancel_event is not None
+    if not is_scanning:
+        scan_button.config(text="Dry Run" if dry_var.get() else "Scan Now")
+
+
 def toggle_ai_controls() -> None:
     """Enable or disable AI analysis controls based on current settings and scan state."""
     enabled = gpt_var.get() if gpt_var else False
@@ -1905,10 +1915,11 @@ def set_scanning_state(is_scanning: bool) -> None:
         update_button_states()
 
     if scan_button:
-        scan_button.config(
-            text="Scanning..." if is_scanning else "Scan Now",
-            state="disabled" if is_scanning else "normal"
-        )
+        scan_button.config(state="disabled" if is_scanning else "normal")
+        if is_scanning:
+            scan_button.config(text="Scanning...")
+        else:
+            toggle_dry_run()
     if cancel_button:
         cancel_button.config(state="normal" if is_scanning else "disabled")
 
@@ -6067,6 +6078,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
     gpt_var = tk.BooleanVar(value=Config.use_ai_analysis)
+    dry_var = tk.BooleanVar(value=False)
 
     git_var = tk.BooleanVar(value=Config.git_changes_only)
     git_checkbox = ttk.Checkbutton(options_frame, text="Git changes only", variable=git_var)
@@ -6083,8 +6095,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     scan_all_checkbox.grid(row=1, column=0, sticky='w', padx=10, pady=2)
     bind_hover_message(scan_all_checkbox, "Scan all files regardless of their extension or whether they contain a script starting line (like #!/bin/bash).")
 
-    dry_var = tk.BooleanVar()
-    dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var)
+    dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var, command=toggle_dry_run)
     dry_checkbox.grid(row=1, column=1, sticky='w', padx=10, pady=2)
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
