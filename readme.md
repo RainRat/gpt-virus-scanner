@@ -13,9 +13,8 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 *   **Flexible Interface:** Use the friendly window interface or the command line for automation.
 *   **Git Integration:** Scan only the files you have changed in your project.
 *   **Search & Filter:** Easily find specific results by name, threat level, or code.
-*   **Unified Diffs:** Scan `.diff` and `.patch` files to review code changes.
 
-### Supported Platforms
+### Supported Sources
 *   **Scan Local & Web Files:** Scan files on your computer or directly from a web link.
 *   **Remote Repositories:** Scan code from GitHub (including Gists), GitLab, and Bitbucket (including Snippets, PRs, Commits, and Tags).
 *   **Web Snippets:** Scan from Pastebin and Hugging Face.
@@ -28,21 +27,26 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 *   **Web Files:** Scan HTML, SVG, and Markdown files for embedded scripts.
 *   **Unified Diffs:** Scan `.diff` and `.patch` files to review code changes.
 
-## What you need
+## Installation
+
+### Prerequisites
 *   **Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet.
 *   **Data files:** You need the `scripts.h5` model file and `task.txt` AI instructions in the project folder. Both are included in this project.
 
-## How to install
+### Setup
 1.  **Clone the project:**
     ```bash
     git clone https://github.com/RainRat/gpt-virus-scanner.git
     cd gpt-virus-scanner
     ```
-2.  **Install the required packages:**
+2.  **Install dependencies:**
+    Run the following command to install the mandatory packages:
     ```bash
     python3 -m pip install "tensorflow<2.16" openai numpy
     ```
-    *Note: `pyyaml` is also needed if you plan to train your own models. If you are on Linux, you may also need `python3-tk` for the window interface.*
+    You may also need these optional packages depending on your use case:
+    *   **PyYAML:** Required if you plan to train your own models.
+    *   **python3-tk:** If you are on Linux, this is required for the scanner's window (GUI) interface.
 
 ## How to use
 ### Using the Window (GUI)
