@@ -57,6 +57,7 @@ Access these options from the **Browse** menu:
 *   **Scan Shell Profiles:** Scan your shell configuration files (.bashrc, .zshrc, etc.) and PowerShell profiles for dangerous aliases or functions (Ctrl+Shift+B).
 *   **Scan Git Diff:** Scan changes in your local project.
 *   **Scan Git Revision...:** Scan files modified in a specific Git revision or commit.
+*   **System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, and startup items (Ctrl+Shift+I).
 *   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for dangerous one-liners.
 *   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
 *   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
@@ -81,6 +82,7 @@ The scanner includes shortcuts for faster navigation:
 | `Ctrl+Shift+U` | Scan URL |
 | `Ctrl+Shift+V` | Scan Clipboard |
 | `Ctrl+Shift+D` | Scan Git Diff |
+| `Ctrl+Shift+I` | System Audit |
 | `Ctrl+Shift+H` | Scan Shell History |
 | `Ctrl+Shift+P` | Scan System PATH |
 | `Ctrl+Shift+K` | Scan Running Processes |
