@@ -361,7 +361,7 @@ class Config:
         path_s = str(file_path).lower()
         # Common archive and document extensions
         if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', '.svg', '.yml', '.yaml',
-                            '.diff', '.patch')):
+                            '.diff', '.patch', '.service', '.desktop')):
             return True
         # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
@@ -1197,6 +1197,56 @@ def get_running_process_commands() -> List[Tuple[str, bytes]]:
         pass
 
     return processes
+
+
+def get_system_service_paths() -> List[str]:
+    """Identify common systemd service and user service configuration files."""
+    paths = []
+    if sys.platform != "linux":
+        return paths
+
+    search_dirs = [
+        Path("/etc/systemd/system"),
+        Path("/lib/systemd/system"),
+        Path("/usr/lib/systemd/system"),
+        Path.home() / ".config" / "systemd" / "user"
+    ]
+
+    for d in search_dirs:
+        if d.exists():
+            # Only scan .service files to avoid excessive noise from other systemd units
+            for p in d.rglob("*.service"):
+                try:
+                    # Skip symlinks to avoid duplicate scanning of units
+                    if p.is_file() and not p.is_symlink():
+                        paths.append(str(p))
+                except Exception:
+                    pass
+
+    return sorted(list(set(paths)))
+
+
+def get_system_service_commands() -> List[Tuple[str, bytes]]:
+    """Collect command lines of all system services (Windows Service PathName)."""
+    items = []
+    try:
+        if sys.platform == "win32":
+            # Use PowerShell to get service commands
+            cmd = ["powershell", "-NoProfile", "-Command",
+                   "Get-CimInstance Win32_Service | Select-Object Name, PathName | ConvertTo-Json"]
+            output = subprocess.check_output(cmd, stderr=subprocess.PIPE, universal_newlines=True)
+            if output.strip():
+                data = json.loads(output)
+                if isinstance(data, dict):
+                    data = [data]
+                for item in data:
+                    name = item.get("Name", "Unknown")
+                    command = item.get("PathName")
+                    if command and command.strip():
+                        items.append((f"[Service] {name}", command.encode('utf-8')))
+    except Exception:
+        pass
+    return items
 
 
 def get_environment_variable_snippets() -> List[Tuple[str, bytes]]:
@@ -2141,6 +2191,21 @@ def scan_startup_items_click():
         messagebox.showwarning("Startup Items Error", f"Could not scan startup items: {e}")
 
 
+def scan_system_services_click():
+    """Scan all system services (systemd files on Linux, Service PathName on Windows)."""
+    try:
+        paths = get_system_service_paths()
+        snippets = get_system_service_commands()
+        if paths or snippets:
+            if paths:
+                _set_scan_target(paths)
+            button_click(extra_snippets=snippets)
+        else:
+            messagebox.showinfo("System Services", "No system services were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("System Services Error", f"Could not scan system services: {e}")
+
+
 def scan_env_vars_click():
     """Scan all non-empty environment variables."""
     try:
@@ -2154,19 +2219,21 @@ def scan_env_vars_click():
 
 
 def scan_system_audit_click():
-    """Perform a comprehensive system audit scan (Profiles, History, Path, SSH, Processes, Tasks, Startup, EnvVars)."""
+    """Perform a comprehensive system audit scan (Profiles, History, Path, SSH, Processes, Tasks, Startup, Services, EnvVars)."""
     try:
         all_paths = []
         all_paths.extend(get_shell_profile_paths())
         all_paths.extend(get_shell_history_paths())
         all_paths.extend(get_system_path_directories())
         all_paths.extend(get_ssh_config_paths())
+        all_paths.extend(get_system_service_paths())
 
         all_snippets = []
         all_snippets.extend(get_running_process_commands())
         all_snippets.extend(get_environment_variable_snippets())
         all_snippets.extend(get_scheduled_task_commands())
         all_snippets.extend(get_startup_item_commands())
+        all_snippets.extend(get_system_service_commands())
 
         if all_paths or all_snippets:
             _set_scan_target(all_paths)
@@ -3135,7 +3202,55 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 10. Check for Makefile
+    # 10. Check for Systemd Service or Desktop Files
+    if check_basename.endswith(('.service', '.desktop')):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            snippets = []
+            current_snippet = []
+
+            def finalize_snippet():
+                if current_snippet:
+                    snippets.append(" ".join([c.rstrip('\\').strip() for c in current_snippet]))
+
+            # Common keys that contain commands
+            cmd_keys = ('exec', 'execstart', 'execstartpre', 'execstartpost',
+                        'execstop', 'execstoppost', 'execreload')
+
+            for line in text.splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith(('#', ';')):
+                    continue
+
+                # Match key=value
+                match = re.match(r'^([^=\s]+)\s*=\s*(.*)', stripped)
+                if match:
+                    finalize_snippet()
+                    key = match.group(1).strip().lower()
+                    val = match.group(2).strip()
+                    if key in cmd_keys:
+                        current_snippet = [val]
+                    else:
+                        current_snippet = []
+                elif current_snippet:
+                    # Multi-line continuation
+                    current_snippet.append(stripped)
+
+                if current_snippet and not line.rstrip().endswith('\\'):
+                    finalize_snippet()
+                    current_snippet = []
+
+            finalize_snippet()
+
+            if snippets:
+                for i, cmd in enumerate(snippets, 1):
+                    if cmd.strip():
+                        yield (f"{name} [Command {i}]", cmd.encode('utf-8'))
+                return
+        except Exception:
+            pass
+
+    # 11. Check for Makefile
     if check_basename.endswith('makefile'):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -6117,6 +6232,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Environment Variables", command=scan_env_vars_click, accelerator="Ctrl+Shift+N")
     browse_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
     browse_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
+    browse_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -6487,6 +6603,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-T>', lambda event: scan_scheduled_tasks_click())
     root.bind('<Control-Shift-A>', lambda event: scan_startup_items_click())
     root.bind('<Command-Shift-A>', lambda event: scan_startup_items_click())
+    root.bind('<Control-Shift-S>', lambda event: scan_system_services_click())
+    root.bind('<Command-Shift-S>', lambda event: scan_system_services_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
@@ -6662,6 +6780,11 @@ def main():
         '--startup-items',
         action='store_true',
         help='Scan all system startup items and LaunchAgents.'
+    )
+    scan_group.add_argument(
+        '--system-services',
+        action='store_true',
+        help='Scan all system services (systemd files on Linux, Service PathName on Windows).'
     )
     scan_group.add_argument(
         '--env-vars',
@@ -6896,6 +7019,16 @@ def main():
             else:
                 print("No system startup items or LaunchAgents were found.", file=sys.stderr)
 
+        if args.system_services:
+            service_paths = get_system_service_paths()
+            if service_paths:
+                scan_targets.extend(service_paths)
+            service_cmds = get_system_service_commands()
+            if service_cmds:
+                extra_snippets.extend(service_cmds)
+            if not service_paths and not service_cmds:
+                print("No system services or systemd units were found.", file=sys.stderr)
+
         if args.env_vars:
             snippets = get_environment_variable_snippets()
             if snippets:
@@ -6908,10 +7041,12 @@ def main():
             scan_targets.extend(get_shell_history_paths())
             scan_targets.extend(get_system_path_directories())
             scan_targets.extend(get_ssh_config_paths())
+            scan_targets.extend(get_system_service_paths())
             extra_snippets.extend(get_running_process_commands())
             extra_snippets.extend(get_environment_variable_snippets())
             extra_snippets.extend(get_scheduled_task_commands())
             extra_snippets.extend(get_startup_item_commands())
+            extra_snippets.extend(get_system_service_commands())
 
         threats = run_cli(
             scan_targets,
