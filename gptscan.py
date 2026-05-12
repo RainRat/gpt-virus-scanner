@@ -5088,16 +5088,19 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     ttk.Separator(main_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
 
+    paned_window = ttk.Panedwindow(main_frame, orient=tk.VERTICAL)
+    paned_window.pack(fill=tk.BOTH, expand=True, pady=5)
+
     # Analysis sections
-    analysis_frame = ttk.LabelFrame(main_frame, text="AI Analysis", padding=5)
+    analysis_frame = ttk.LabelFrame(paned_window, text="AI Analysis", padding=5)
     admin_label = ttk.Label(analysis_frame, text="Administrator Notes:", font=('TkDefaultFont', 9, 'bold'))
     admin_text = scrolledtext.ScrolledText(analysis_frame, height=5, wrap=tk.WORD)
     user_label = ttk.Label(analysis_frame, text="End-User Notes:", font=('TkDefaultFont', 9, 'bold'))
     user_text = scrolledtext.ScrolledText(analysis_frame, height=5, wrap=tk.WORD)
 
     # Snippet section
-    snippet_frame = ttk.LabelFrame(main_frame, text="Code Snippet", padding=5)
-    snippet_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+    snippet_frame = ttk.LabelFrame(paned_window, text="Code Snippet", padding=5)
+    paned_window.add(snippet_frame, weight=1)
 
     snippet_text = scrolledtext.ScrolledText(snippet_frame, height=8, font=('Courier', 10), wrap=tk.NONE)
     snippet_text.pack(fill=tk.BOTH, expand=True)
@@ -5450,7 +5453,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             gpt_conf_label.config(text="")
 
         if admin or user:
-            analysis_frame.pack(fill=tk.BOTH, expand=True, pady=5, before=snippet_frame)
+            if str(analysis_frame) not in paned_window.panes():
+                paned_window.insert(0, analysis_frame, weight=1)
+
             if admin:
                 admin_label.pack(anchor="w")
                 admin_text.config(state='normal')
@@ -5472,7 +5477,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
                 user_label.pack_forget()
                 user_text.pack_forget()
         else:
-            analysis_frame.pack_forget()
+            if str(analysis_frame) in paned_window.panes():
+                paned_window.forget(analysis_frame)
 
         load_display_code(path, line, snippet, silent_fallback=True)
 
