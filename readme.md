@@ -191,6 +191,7 @@ The scanner provides several ways to analyze and manage your results:
 You can tailor the scanner to your needs:
 *   **Exclusions:** Ignore specific files or folders by using **File > Manage Exclusions...** or by adding patterns to a `.gptscanignore` file.
 *   **Extensions:** Control which file types are scanned by using **File > Manage Extensions...** or by editing the `extensions.txt` file.
+*   **File Size:** The scanner skips files larger than 10MB during folder scans. You can adjust this limit in the **Scan Options** panel or by using the `--max-size` flag in the terminal. Files selected individually are always scanned, regardless of their size.
 
 ## Advanced Usage
 ### Training the Model
