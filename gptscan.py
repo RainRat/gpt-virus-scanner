@@ -6738,7 +6738,13 @@ def main():
         Config.save_cache()
         print("AI Analysis cache cleared.", file=sys.stderr)
         # If we ONLY wanted to clear cache, exit now.
-        if not any([args.target, args.path, args.stdin, args.import_results, args.files, args.env_vars]):
+        if not any([
+            args.target, args.path, args.stdin, args.import_results, args.files,
+            args.env_vars, args.file_list, args.git_changes, args.git_diff,
+            args.shell_profiles, args.shell_history, args.system_path,
+            args.running_processes, args.scheduled_tasks, args.startup_items,
+            args.audit
+        ]):
             sys.exit(0)
 
     Config.provider = args.provider
