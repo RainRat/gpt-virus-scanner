@@ -1636,6 +1636,14 @@ def parse_percent(val: str, default: float = -1.0) -> float:
         return default
 
 
+def format_percent(val: Any) -> str:
+    """Format a numeric threat level (0-100) as a percentage string (e.g., 85 to "85%")."""
+    try:
+        return "{:.0%}".format(int(val) / 100.)
+    except (ValueError, TypeError):
+        return "Error"
+
+
 def parse_size_string(size_str: str) -> int:
     """Convert a human-readable size string (e.g., "10MB", "500KB") to bytes.
 
@@ -3779,7 +3787,7 @@ def scan_files(
             else:
                 admin_desc = json_data["administrator"]
                 enduser_desc = json_data["end-user"]
-                chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
+                chatgpt_conf_percent = format_percent(json_data["threat-level"])
 
             if request.get("full_content"):
                 _virtual_source_cache[request["path"]] = request["full_content"]
@@ -3851,7 +3859,7 @@ def batch_ai_analysis_events(
             else:
                 admin_desc = json_data["administrator"]
                 enduser_desc = json_data["end-user"]
-                chatgpt_conf_percent = "{:.0%}".format(int(json_data["threat-level"]) / 100.)
+                chatgpt_conf_percent = format_percent(json_data["threat-level"])
 
             result_data = (
                 request["path"],
@@ -5385,10 +5393,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
                     updated_vals[3] = result.get("end-user", "")
                     # Safer extraction of threat-level
                     threat_level = result.get("threat-level", 0)
-                    try:
-                        updated_vals[4] = "{:.0%}".format(int(threat_level) / 100.)
-                    except (ValueError, TypeError):
-                        updated_vals[4] = "Error"
+                    updated_vals[4] = format_percent(threat_level)
 
                     enqueue_ui_update(update_tree_row, target_id, tuple(updated_vals))
                     # Only refresh the details view if the user is still viewing the same item
