@@ -2858,7 +2858,17 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                 yield (f"{name} [Script: {label_name} ({idx})]", cmd.encode('utf-8'))
                     else:
                         # Single command or multi-line content
-                        cmd = val.strip('"\'')
+                        if val.startswith('"""') and val.endswith('"""') and len(val) >= 6:
+                            cmd = val[3:-3]
+                        elif val.startswith("'''") and val.endswith("'''") and len(val) >= 6:
+                            cmd = val[3:-3]
+                        elif val.startswith('"') and val.endswith('"') and len(val) >= 2:
+                            cmd = val[1:-1]
+                        elif val.startswith("'") and val.endswith("'") and len(val) >= 2:
+                            cmd = val[1:-1]
+                        else:
+                            cmd = val
+                        
                         if cmd.strip():
                             yield (f"{name} [Script: {label_name}]", cmd.encode('utf-8'))
 
@@ -6880,7 +6890,7 @@ def main():
             args.env_vars, args.file_list, args.git_changes, args.git_diff,
             args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
-            args.audit
+            args.system_services, args.audit
         ]):
             sys.exit(0)
 
