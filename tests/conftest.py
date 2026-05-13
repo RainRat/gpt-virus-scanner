@@ -55,6 +55,22 @@ class MockTk(MockFrame):
 class MockLabel(MockWidget):
     pass
 
+class MockPanedwindow(MockWidget):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._panes = []
+    def add(self, child, **kwargs):
+        if child not in self._panes:
+            self._panes.append(child)
+    def insert(self, pos, child, **kwargs):
+        if child not in self._panes:
+            self._panes.insert(pos, child)
+    def forget(self, child):
+        if child in self._panes:
+            self._panes.remove(child)
+    def panes(self):
+        return self._panes
+
 class MockMenu(MockWidget):
     def add_command(self, *args, **kwargs): pass
     def add_separator(self, *args, **kwargs): pass
@@ -111,6 +127,7 @@ class MockTkModule:
         self.ttk.Entry = MagicMock
         self.ttk.Treeview = MagicMock
         self.ttk.Separator = MockWidget
+        self.ttk.Panedwindow = MockPanedwindow
         self.ttk.Menubutton = MockWidget
         self.ttk.Progressbar = MockWidget
         self.ttk.Spinbox = MockWidget
