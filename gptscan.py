@@ -2829,13 +2829,21 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                             # Handle multiline strings
                             if command_val.startswith(('"""', "'''")):
                                 quote_type = command_val[:3]
-                                if not (command_val.endswith(quote_type) and len(command_val) >= 6):
+                                # Check if it also ends with it (possibly with a comment)
+                                # Finding the second occurrence of quote_type after the first 3 chars
+                                end_pos = command_val.find(quote_type, 3)
+                                if end_pos != -1:
+                                    command_val = command_val[:end_pos + 3]
+                                else:
                                     multiline_lines = [command_val]
                                     while i < len(lines):
                                         curr_line = lines[i]
                                         multiline_lines.append(curr_line)
                                         i += 1
-                                        if quote_type in curr_line:
+                                        end_pos = curr_line.find(quote_type)
+                                        if end_pos != -1:
+                                            # Truncate at closing quotes to ignore trailing comments
+                                            multiline_lines[-1] = curr_line[:end_pos + 3]
                                             break
                                     command_val = "\n".join(multiline_lines)
 
