@@ -1390,6 +1390,54 @@ def get_startup_item_commands() -> List[Tuple[str, bytes]]:
     return items
 
 
+def get_git_hooks_paths(path: str = ".") -> List[str]:
+    """Identify local and global Git hooks for scanning."""
+    paths = []
+
+    # 1. Local Hooks
+    toplevel, _ = _get_git_info(path)
+    if toplevel:
+        try:
+            # We try to resolve the hooks directory using rev-parse
+            # Fallback to .git/hooks if rev-parse --git-path is not supported or returns /dev/null
+            git_dir = subprocess.check_output(
+                ["git", "rev-parse", "--git-dir"],
+                cwd=toplevel,
+                stderr=subprocess.PIPE,
+                universal_newlines=True
+            ).strip()
+
+            hooks_dir = os.path.join(toplevel, git_dir, "hooks")
+            if os.path.isdir(hooks_dir):
+                # Only scan files that are not samples
+                for entry in os.listdir(hooks_dir):
+                    if not entry.endswith(".sample"):
+                        p = os.path.join(hooks_dir, entry)
+                        if os.path.isfile(p):
+                            paths.append(p)
+        except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+            pass
+
+    # 2. Global Hooks
+    try:
+        global_hooks = subprocess.check_output(
+            ["git", "config", "--get", "core.hooksPath"],
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        ).strip()
+        if global_hooks:
+            # Expand ~ if present
+            global_hooks_path = Path(global_hooks).expanduser()
+            if global_hooks_path.is_dir():
+                for entry in global_hooks_path.iterdir():
+                    if entry.is_file() and not entry.name.endswith(".sample"):
+                        paths.append(str(entry))
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+
+    return sorted(list(set(paths)))
+
+
 def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
     """Resolve the Git toplevel directory and the relative path of the target."""
     abs_path = os.path.abspath(path)
@@ -2089,6 +2137,24 @@ def scan_git_diff_click():
         messagebox.showwarning("Git Diff Error", f"Could not retrieve Git diff: {e}")
 
 
+def scan_git_hooks_click():
+    """Scan local and global Git hooks."""
+    try:
+        # Get path from textbox or default to current directory
+        target_path = textbox.get().strip() if textbox else "."
+        if not target_path:
+            target_path = "."
+
+        hook_paths = get_git_hooks_paths(target_path)
+        if hook_paths:
+            _set_scan_target(hook_paths)
+            button_click()
+        else:
+            messagebox.showinfo("Git Hooks", "No Git hooks found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Git Hooks Error", f"Could not scan Git hooks: {e}")
+
+
 def scan_git_revision_click():
     """Scan files changed in a specific Git revision."""
     try:
@@ -2227,6 +2293,7 @@ def scan_system_audit_click():
         all_paths.extend(get_system_path_directories())
         all_paths.extend(get_ssh_config_paths())
         all_paths.extend(get_system_service_paths())
+        all_paths.extend(get_git_hooks_paths())
 
         all_snippets = []
         all_snippets.extend(get_running_process_commands())
@@ -6228,7 +6295,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/I/B/H/P/K/N/T/A).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -6247,6 +6314,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_separator()
     browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click, accelerator="Ctrl+Shift+V")
     browse_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
+    browse_menu.add_command(label="Scan Git Hooks", command=scan_git_hooks_click, accelerator="Ctrl+Shift+G")
     browse_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
     browse_menu.add_command(label="System Audit", command=scan_system_audit_click, accelerator="Ctrl+Shift+I")
     browse_menu.add_command(label="Scan Shell Profiles", command=scan_shell_profiles_click, accelerator="Ctrl+Shift+B")
@@ -6613,6 +6681,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-V>', lambda event: scan_clipboard_click())
     root.bind('<Control-Shift-D>', lambda event: scan_git_diff_click())
     root.bind('<Command-Shift-D>', lambda event: scan_git_diff_click())
+    root.bind('<Control-Shift-G>', lambda event: scan_git_hooks_click())
+    root.bind('<Command-Shift-G>', lambda event: scan_git_hooks_click())
     root.bind('<Control-Shift-B>', lambda event: scan_shell_profiles_click())
     root.bind('<Command-Shift-B>', lambda event: scan_shell_profiles_click())
     root.bind('<Control-Shift-H>', lambda event: scan_shell_history_click())
@@ -6712,6 +6782,8 @@ def main():
                "  python gptscan.py --env-vars --cli\n\n"
                "  # Perform a comprehensive system audit\n"
                "  python gptscan.py --audit --cli\n\n"
+               "  # Scan local and global Git hooks\n"
+               "  python gptscan.py --git-hooks --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -6753,6 +6825,11 @@ def main():
         nargs='?',
         const='HEAD',
         help='Scan current Git changes as a diff. Optionally provide a revision (e.g., "HEAD~1").'
+    )
+    scan_group.add_argument(
+        '--git-hooks',
+        action='store_true',
+        help='Scan local and global Git hooks.'
     )
     scan_group.add_argument(
         '--all-files',
@@ -6887,7 +6964,7 @@ def main():
         # If we ONLY wanted to clear cache, exit now.
         if not any([
             args.target, args.path, args.stdin, args.import_results, args.files,
-            args.env_vars, args.file_list, args.git_changes, args.git_diff,
+            args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks,
             args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
             args.system_services, args.audit
@@ -6965,7 +7042,13 @@ def main():
             if not extra_snippets:
                 print(f"No Git diff detected in provided targets (ref: {args.git_diff}).", file=sys.stderr)
 
-        if not scan_targets and not args.git_changes and not args.git_diff and not extra_snippets:
+        if args.git_hooks:
+            # Use a copy of current targets as git roots to avoid infinite loop when extending scan_targets
+            git_roots = list(scan_targets) if scan_targets else ["."]
+            for root_dir in git_roots:
+                scan_targets.extend(get_git_hooks_paths(root_dir))
+
+        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not extra_snippets:
             # Default to current directory if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
@@ -7072,6 +7155,7 @@ def main():
             scan_targets.extend(get_system_path_directories())
             scan_targets.extend(get_ssh_config_paths())
             scan_targets.extend(get_system_service_paths())
+            scan_targets.extend(get_git_hooks_paths())
             extra_snippets.extend(get_running_process_commands())
             extra_snippets.extend(get_environment_variable_snippets())
             extra_snippets.extend(get_scheduled_task_commands())
