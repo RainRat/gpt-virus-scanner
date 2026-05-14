@@ -3159,7 +3159,26 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                             list_match = re.match(r'^\s*-\s*(.*)', lines[j])
                             if list_match:
                                 cmd = list_match.group(1).strip()
-                                if cmd:
+                                if cmd in ('|', '>', '|-', '|+', '>-', '>+'):
+                                    # Multi-line block within list
+                                    block_lines = []
+                                    list_indent = len(lines[j]) - len(lines[j].lstrip())
+                                    j += 1
+                                    while j < len(lines):
+                                        if not lines[j].strip():
+                                            block_lines.append("")
+                                            j += 1
+                                            continue
+                                        inner_indent = len(lines[j]) - len(lines[j].lstrip())
+                                        if inner_indent <= list_indent:
+                                            break
+                                        # Strip indentation from block lines
+                                        block_lines.append(lines[j][list_indent+2:])
+                                        j += 1
+                                    if block_lines:
+                                        list_items.append("\n".join(block_lines))
+                                    continue
+                                elif cmd:
                                     list_items.append(cmd)
                                 j += 1
                             else:
