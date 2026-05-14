@@ -82,7 +82,8 @@ The scanner includes shortcuts for faster navigation:
 | `Ctrl+F` | Focus Filter Bar |
 | `Ctrl+O` | Import Results |
 | `Ctrl+E` | Export Results |
-| `Ctrl+V` | Import from Clipboard |
+| `Ctrl+V` | Import Results from Clipboard |
+| `Ctrl+Shift+E` | Copy as Command Line |
 | **Scan Actions** | |
 | `Ctrl+Shift+O` | Scan File(s) |
 | `Ctrl+Shift+U` | Scan URL |
@@ -99,20 +100,31 @@ The scanner includes shortcuts for faster navigation:
 | `Ctrl+Shift+S` | Scan System Services |
 | **Results List** | |
 | `Space` / `Enter` | View Details |
-| `F5` | Rescan |
+| `F5` / `r` | Rescan |
 | `Delete` | Exclude |
 | `Ctrl+A` | Select All |
 | `Ctrl+C` | Copy File Path |
+| `Ctrl+Shift+C` | Copy as Markdown Table |
+| `Ctrl+H` | Copy SHA-256 Hash |
+| `Ctrl+S` | Copy Code Snippet |
+| `Ctrl+J` | Copy Results as JSON |
+| `Ctrl+G` | Analyze Selected with AI |
 | `Shift+Enter` | Open File |
 | `Ctrl+Enter` | Reveal in Folder |
 | `Ctrl+T` | Check on VirusTotal |
 | `Ctrl+L` | View Online |
 | **Details Window** | |
+| `Esc` | Close Window |
+| `Left` / `Right` | Previous / Next Result |
+| `F5` / `r` | Rescan |
+| `Delete` | Exclude |
 | `Ctrl+U` | Toggle Full Source |
 | `Ctrl+S` | Copy Code Snippet |
 | `Ctrl+Shift+C` | Copy AI Analysis |
 | `Ctrl+J` | Copy JSON Data |
 | `Ctrl+L` | View Online |
+| `Shift+Enter` | Open File |
+| `Ctrl+Enter` | Reveal in Folder |
 
 *Note: macOS users should use `Command` instead of `Ctrl` for most shortcuts.*
 
