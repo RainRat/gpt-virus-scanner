@@ -6296,25 +6296,25 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     git_var = tk.BooleanVar(value=Config.git_changes_only)
     git_checkbox = ttk.Checkbutton(options_frame, text="Git changes only", variable=git_var)
-    git_checkbox.grid(row=0, column=0, sticky='w', padx=10, pady=2)
+    git_checkbox.grid(row=0, column=0, sticky='w', padx=10, pady=(2, 10))
     bind_hover_message(git_checkbox, "Only scan files that have been modified or are untracked in Git.")
 
     deep_var = tk.BooleanVar(value=Config.deep_scan)
     deep_checkbox = ttk.Checkbutton(options_frame, text="Deep scan", variable=deep_var)
-    deep_checkbox.grid(row=0, column=1, sticky='w', padx=10, pady=2)
+    deep_checkbox.grid(row=0, column=1, sticky='w', padx=10, pady=(2, 10))
     bind_hover_message(deep_checkbox, "Scan the whole file. This is slower but more thorough. Normally, the scanner only checks the beginning and end.")
 
     scan_all_var = tk.BooleanVar(value=Config.scan_all_files)
     scan_all_checkbox = ttk.Checkbutton(options_frame, text="Scan all files", variable=scan_all_var)
-    scan_all_checkbox.grid(row=1, column=0, sticky='w', padx=10, pady=2)
+    scan_all_checkbox.grid(row=1, column=0, sticky='w', padx=10, pady=5)
     bind_hover_message(scan_all_checkbox, "Scan all files regardless of their extension or whether they contain a script starting line (like #!/bin/bash).")
 
     dry_checkbox = ttk.Checkbutton(options_frame, text="Dry Run", variable=dry_var, command=toggle_dry_run)
-    dry_checkbox.grid(row=1, column=1, sticky='w', padx=10, pady=2)
+    dry_checkbox.grid(row=1, column=1, sticky='w', padx=10, pady=5)
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
     size_frame = ttk.Frame(options_frame)
-    size_frame.grid(row=2, column=0, columnspan=2, sticky='w', padx=10, pady=2)
+    size_frame.grid(row=2, column=0, columnspan=2, sticky='w', padx=10, pady=5)
     ttk.Label(size_frame, text="Max File Size (MB):").pack(side=tk.LEFT)
 
     def on_max_size_change():
@@ -6336,7 +6336,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
 
     copy_cmd_button = ttk.Button(options_frame, text="Copy CLI Command", command=copy_cli_command)
-    copy_cmd_button.grid(row=3, column=0, columnspan=2, sticky='ew', padx=10, pady=(5, 0), ipady=5)
+    copy_cmd_button.grid(row=3, column=0, columnspan=2, sticky='ew', padx=10, pady=5, ipady=5)
     bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
 
     provider_frame.columnconfigure(1, weight=1)
@@ -6352,22 +6352,22 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         messagebox.showwarning("AI Disabled",
                                        "The scanner cannot find 'task.txt'. You cannot use AI analysis.")
 
-    ttk.Label(provider_frame, text="Provider:").grid(row=1, column=0, sticky='w', padx=(10, 5), pady=2)
+    ttk.Label(provider_frame, text="Provider:").grid(row=1, column=0, sticky='w', padx=(10, 5), pady=5)
     provider_var = tk.StringVar(value=Config.provider)
     provider_combo = ttk.Combobox(provider_frame, textvariable=provider_var, values=["openai", "openrouter", "ollama"], state="readonly", width=12)
-    provider_combo.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
+    provider_combo.grid(row=1, column=1, sticky='ew', padx=5, pady=5)
     bind_hover_message(provider_combo, "Select the AI service provider (OpenAI, OpenRouter, or local Ollama).")
 
-    ttk.Label(provider_frame, text="Model:").grid(row=1, column=2, sticky='w', padx=(15, 5), pady=2)
+    ttk.Label(provider_frame, text="Model:").grid(row=1, column=2, sticky='w', padx=(15, 5), pady=5)
     model_var = tk.StringVar(value=Config.model_name)
     model_combo = ttk.Combobox(provider_frame, textvariable=model_var, width=20)
-    model_combo.grid(row=1, column=3, sticky='ew', padx=(5, 10), pady=2)
+    model_combo.grid(row=1, column=3, sticky='ew', padx=(5, 10), pady=5)
     bind_hover_message(model_combo, "Choose the specific AI model to use for analysis.")
 
-    ttk.Label(provider_frame, text="API Key:").grid(row=2, column=0, sticky='w', padx=(10, 5), pady=2)
+    ttk.Label(provider_frame, text="API Key:").grid(row=2, column=0, sticky='w', padx=(10, 5), pady=5)
 
     key_container = ttk.Frame(provider_frame)
-    key_container.grid(row=2, column=1, columnspan=3, sticky='ew', padx=(5, 10), pady=2)
+    key_container.grid(row=2, column=1, columnspan=3, sticky='ew', padx=(5, 10), pady=5)
 
     api_key_var = tk.StringVar(value=Config.apikey)
     api_key_entry = ttk.Entry(key_container, show="*", textvariable=api_key_var)
@@ -6393,9 +6393,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     api_key_var.trace_add("write", on_api_key_change)
 
-    ttk.Label(provider_frame, text="API Base URL:").grid(row=3, column=0, sticky='w', padx=(10, 5), pady=2)
+    ttk.Label(provider_frame, text="API Base URL:").grid(row=3, column=0, sticky='w', padx=(10, 5), pady=5)
     api_entry = ttk.Entry(provider_frame)
-    api_entry.grid(row=3, column=1, columnspan=3, sticky='ew', padx=(5, 10), pady=2)
+    api_entry.grid(row=3, column=1, columnspan=3, sticky='ew', padx=(5, 10), pady=5)
     bind_hover_message(api_entry, "Set a custom URL for the AI service (e.g., http://localhost:11434/v1 for Ollama).")
 
     api_base_var = tk.StringVar(value=Config.api_base or "")
