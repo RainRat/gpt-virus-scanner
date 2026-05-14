@@ -1438,6 +1438,57 @@ def get_git_hooks_paths(path: str = ".") -> List[str]:
     return sorted(list(set(paths)))
 
 
+def get_git_config_snippets() -> List[Tuple[str, bytes]]:
+    """Identify potentially dangerous Git configuration settings (aliases, editors, etc.)."""
+    snippets = []
+    configs = [("--global", "Global Git Config")]
+
+    # Check if we are in a Git repository to include local config
+    try:
+        subprocess.check_output(["git", "rev-parse", "--is-inside-work-tree"], stderr=subprocess.DEVNULL)
+        configs.append(("--local", "Local Git Config"))
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+
+    # Keys that are known to contain executable commands or script-like content
+    dangerous_patterns = [
+        r'^core\.editor$',
+        r'^core\.sshcommand$',
+        r'^core\.pager$',
+        r'^sequence\.editor$',
+        r'^credential\.helper$',
+        r'^diff\..*?\.command$',
+        r'^merge\..*?\.driver$',
+        r'^pager\.',
+    ]
+
+    for flag, label in configs:
+        try:
+            output = subprocess.check_output(
+                ["git", "config", flag, "--list"],
+                stderr=subprocess.PIPE,
+                universal_newlines=True
+            )
+            for line in output.splitlines():
+                if '=' in line:
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    # For aliases, if it starts with !, it's a shell command
+                    if key.lower().startswith('alias.') and value.startswith('!'):
+                        snippet = value[1:].strip()
+                        if snippet:
+                            snippets.append((f"{label} [Alias: {key[6:]}]", snippet.encode('utf-8')))
+                    elif any(re.match(pattern, key, re.IGNORECASE) for pattern in dangerous_patterns):
+                        # For other dangerous keys, the whole value is the command/script
+                        if value:
+                            snippets.append((f"{label} [{key}]", value.encode('utf-8')))
+        except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+            continue
+
+    return snippets
+
+
 def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
     """Resolve the Git toplevel directory and the relative path of the target."""
     abs_path = os.path.abspath(path)
@@ -2163,6 +2214,18 @@ def scan_git_hooks_click():
         messagebox.showwarning("Git Hooks Error", f"Could not scan Git hooks: {e}")
 
 
+def scan_git_config_click():
+    """Scan potentially dangerous Git configuration settings."""
+    try:
+        snippets = get_git_config_snippets()
+        if snippets:
+            button_click(extra_snippets=snippets)
+        else:
+            messagebox.showinfo("Git Configuration", "No potentially dangerous Git configuration settings were found.")
+    except Exception as e:
+        messagebox.showwarning("Git Configuration Error", f"Could not scan Git configuration: {e}")
+
+
 def scan_git_revision_click():
     """Scan files changed in a specific Git revision."""
     try:
@@ -2309,6 +2372,7 @@ def scan_system_audit_click():
         all_snippets.extend(get_scheduled_task_commands())
         all_snippets.extend(get_startup_item_commands())
         all_snippets.extend(get_system_service_commands())
+        all_snippets.extend(get_git_config_snippets())
 
         if all_paths or all_snippets:
             _set_scan_target(all_paths)
@@ -6339,6 +6403,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click, accelerator="Ctrl+Shift+V")
     browse_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
     browse_menu.add_command(label="Scan Git Hooks", command=scan_git_hooks_click, accelerator="Ctrl+Shift+G")
+    browse_menu.add_command(label="Scan Git Configuration", command=scan_git_config_click)
     browse_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
     browse_menu.add_command(label="System Audit", command=scan_system_audit_click, accelerator="Ctrl+Shift+I")
     browse_menu.add_command(label="Scan Shell Profiles", command=scan_shell_profiles_click, accelerator="Ctrl+Shift+B")
@@ -6808,6 +6873,8 @@ def main():
                "  python gptscan.py --audit --cli\n\n"
                "  # Scan local and global Git hooks\n"
                "  python gptscan.py --git-hooks --cli\n\n"
+               "  # Scan potentially dangerous Git configuration settings\n"
+               "  python gptscan.py --git-config --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -6854,6 +6921,11 @@ def main():
         '--git-hooks',
         action='store_true',
         help='Scan local and global Git hooks.'
+    )
+    scan_group.add_argument(
+        '--git-config',
+        action='store_true',
+        help='Scan potentially dangerous Git configuration settings.'
     )
     scan_group.add_argument(
         '--all-files',
@@ -6988,7 +7060,7 @@ def main():
         # If we ONLY wanted to clear cache, exit now.
         if not any([
             args.target, args.path, args.stdin, args.import_results, args.files,
-            args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks,
+            args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
             args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
             args.system_services, args.audit
@@ -7072,7 +7144,10 @@ def main():
             for root_dir in git_roots:
                 scan_targets.extend(get_git_hooks_paths(root_dir))
 
-        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not extra_snippets:
+        if args.git_config:
+            extra_snippets.extend(get_git_config_snippets())
+
+        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not extra_snippets:
             # Default to current directory if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
@@ -7185,6 +7260,7 @@ def main():
             extra_snippets.extend(get_scheduled_task_commands())
             extra_snippets.extend(get_startup_item_commands())
             extra_snippets.extend(get_system_service_commands())
+            extra_snippets.extend(get_git_config_snippets())
 
         threats = run_cli(
             scan_targets,
