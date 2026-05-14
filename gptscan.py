@@ -3610,7 +3610,7 @@ def scan_files(
 
     def handle_scan_result(path: str, maxconf: float, max_window_bytes: bytes, line_num: Union[int, str], full_content: Optional[str] = None, force: bool = False) -> Generator[Tuple[str, Any], None, None]:
         if maxconf >= 0:
-            percent = f"{maxconf:.0%}"
+            percent = format_percent(int(maxconf * 100))
             snippet = ''.join(map(chr, max_window_bytes)).strip()
             cleaned_snippet = _clean_snippet_for_ai(snippet)
 
