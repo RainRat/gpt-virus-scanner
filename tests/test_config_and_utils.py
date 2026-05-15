@@ -1,7 +1,7 @@
 import tkinter.font
 import pytest
 from unittest.mock import MagicMock
-from gptscan import Config, load_file, parse_percent, get_effective_threat_level, adjust_newlines, sort_column
+from gptscan import Config, load_file, parse_percent, get_effective_threat_level, adjust_newlines, sort_column, format_percent
 
 
 # --- Config Tests ---
@@ -67,6 +67,23 @@ def test_load_file_permission_error_multi_line(tmp_path):
         assert result == []
     finally:
         f.chmod(0o644)
+
+# --- format_percent Tests ---
+
+@pytest.mark.parametrize("input_val, expected", [
+    (85, "85%"),
+    (85.5, "86%"),
+    ("85", "85%"),
+    ("85.5", "86%"),
+    (0, "0%"),
+    (100, "100%"),
+    (None, "Error"),
+    ("invalid", "Error"),
+    ("", "Error"),
+])
+def test_format_percent(input_val, expected):
+    assert format_percent(input_val) == expected
+
 
 # --- parse_percent Tests ---
 

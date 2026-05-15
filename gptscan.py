@@ -1738,7 +1738,7 @@ def parse_percent(val: str, default: float = -1.0) -> float:
 def format_percent(val: Any) -> str:
     """Format a numeric threat level (0-100) as a percentage string (e.g., 85 to "85%")."""
     try:
-        return "{:.0%}".format(int(val) / 100.)
+        return "{:.0%}".format(float(val) / 100.)
     except (ValueError, TypeError):
         return "Error"
 
