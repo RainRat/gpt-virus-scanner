@@ -2957,13 +2957,13 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                     header_match = re.match(r'^\[\s*([^\]]+)\s*\](?:\s*#.*)?$', line)
                     if header_match:
                         section = header_match.group(1).strip()
-                        # Flat script sections: [project.scripts], [tool.pdm.scripts], etc.
-                        if re.match(r'^(?:.*?\.)?scripts$', section, re.IGNORECASE) or \
+                        # Flat script sections: [project.scripts], [tool.pdm.scripts], [tool.poe.tasks], etc.
+                        if re.match(r'^(?:.*?\.)?(?:scripts|tasks)$', section, re.IGNORECASE) or \
                            section.lower() == 'tool.pdm.dev-dependencies':
                             in_script_section = True
                             current_nested_script = None
-                        # Nested script sections: [tool.pdm.scripts.test]
-                        elif match := re.match(r'^(?:.*?\.)?scripts\.(.+)$', section, re.IGNORECASE):
+                        # Nested script sections: [tool.pdm.scripts.test], [tool.poe.tasks.test]
+                        elif match := re.match(r'^(?:.*?\.)?(?:scripts|tasks)\.(.+)$', section, re.IGNORECASE):
                             in_script_section = True
                             current_nested_script = match.group(1).strip()
                         else:
@@ -3000,15 +3000,15 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                     command_val = "\n".join(multiline_lines)
 
                             if current_nested_script:
-                                # Inside a nested section like [tool.pdm.scripts.test]
-                                if script_key.lower() in ('cmd', 'shell', 'command', 'composite'):
+                                # Inside a nested section like [tool.pdm.scripts.test] or [tool.poe.tasks.test]
+                                if script_key.lower() in ('cmd', 'shell', 'command', 'composite', 'script', 'expr'):
                                     yield from yield_pyproject_scripts(current_nested_script, command_val)
                                     in_script_section = False
                             else:
-                                # Inside a flat section like [project.scripts]
+                                # Inside a flat section like [project.scripts] or [tool.poe.tasks]
                                 if command_val.startswith('{'):
                                     # Inline table
-                                    cmd_match = re.search(r'(?:cmd|command|shell|composite)\s*=\s*("[^"]*"|\'[^\']*\'|\[[^\]]*\])', command_val)
+                                    cmd_match = re.search(r'(?:cmd|command|shell|composite|script|expr)\s*=\s*("[^"]*"|\'[^\']*\'|\[[^\]]*\])', command_val)
                                     if cmd_match:
                                         yield from yield_pyproject_scripts(script_key, cmd_match.group(1).strip())
                                 else:
