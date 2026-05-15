@@ -1687,7 +1687,7 @@ def _normalize_targets(targets: Union[str, List[str], Path]) -> List[str]:
     return list(dict.fromkeys(str(t) for t in targets))
 
 
-def collect_files(targets: Union[str, List[str]]) -> List[Path]:
+def collect_files(targets: Union[str, List[str]], modified_since: Optional[float] = None) -> List[Path]:
     """Collect files from a single path or a list of paths (files, directories, or globs).
 
     Parameters
@@ -1695,6 +1695,8 @@ def collect_files(targets: Union[str, List[str]]) -> List[Path]:
     targets : Union[str, List[str]]
         A single directory path or a list of file/directory paths or glob patterns.
         Multiple targets can be provided in a single space-separated string.
+    modified_since : float, optional
+        A timestamp. If provided, only files modified after this time are returned.
 
     Returns
     -------
@@ -1717,7 +1719,19 @@ def collect_files(targets: Union[str, List[str]]) -> List[Path]:
                 results.extend([f for f in p.rglob('*') if f.is_file()])
 
     # Use dict keys to remove duplicates while preserving insertion order.
-    return list(dict.fromkeys(results))
+    unique_files = list(dict.fromkeys(results))
+
+    if modified_since:
+        filtered_files = []
+        for f in unique_files:
+            try:
+                if f.stat().st_mtime >= modified_since:
+                    filtered_files.append(f)
+            except (OSError, FileNotFoundError):
+                pass
+        return filtered_files
+
+    return unique_files
 
 
 def parse_percent(val: str, default: float = -1.0) -> float:
@@ -1741,6 +1755,44 @@ def format_percent(val: Any) -> str:
         return "{:.0%}".format(int(val) / 100.)
     except (ValueError, TypeError):
         return "Error"
+
+
+def parse_duration(duration_str: str) -> Optional[float]:
+    """Convert a duration string (e.g., "1h", "24h", "7d") to seconds.
+
+    Args:
+        duration_str: The duration string to parse.
+
+    Returns:
+        The duration in seconds as a float, or None if the format is invalid.
+    """
+    if not duration_str:
+        return None
+
+    match = re.match(r'^(\d+(?:\.\d+)?)\s*([a-zA-Z]*)$', duration_str.strip())
+    if not match:
+        return None
+
+    value_str, unit = match.groups()
+    value = float(value_str)
+    unit = unit.lower()
+
+    units = {
+        's': 1,
+        'm': 60,
+        'h': 3600,
+        'd': 86400,
+        'w': 604800,
+    }
+
+    if not unit:
+        # Default to hours if no unit is provided
+        return value * 3600
+
+    if unit not in units:
+        return None
+
+    return value * units[unit]
 
 
 def parse_size_string(size_str: str) -> int:
@@ -2343,6 +2395,18 @@ def scan_system_services_click():
         messagebox.showwarning("System Services Error", f"Could not scan system services: {e}")
 
 
+def scan_recently_modified_click():
+    """Scan files modified within a user-specified duration."""
+    duration_str = simpledialog.askstring("Scan Recently Modified", "Enter duration (e.g., 24h, 1h, 7d):", initialvalue="24h")
+    if duration_str:
+        duration = parse_duration(duration_str)
+        if duration is None:
+            messagebox.showerror("Error", f"Invalid duration format: {duration_str}")
+            return
+        modified_since = time.time() - duration
+        button_click(modified_since=modified_since)
+
+
 def scan_env_vars_click():
     """Scan all non-empty environment variables."""
     try:
@@ -2383,13 +2447,17 @@ def scan_system_audit_click():
         messagebox.showwarning("System Audit Error", f"Could not perform system audit: {e}")
 
 
-def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None) -> None:
+def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None, modified_since: Optional[float] = None) -> None:
     """Trigger a scan in a background thread using the selected path.
 
     Parameters
     ----------
     extra_snippets : List[Tuple[str, bytes]], optional
         List of (name, content) tuples to scan as in-memory buffers.
+    fail_threshold : int, optional
+        Threat level threshold to trigger a failure count.
+    modified_since : float, optional
+        A timestamp. If provided, only files modified after this time are scanned.
 
     Returns
     -------
@@ -2454,7 +2522,8 @@ def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_
         dry_var.get(),
         Config.ignore_patterns,
         extra_snippets,
-        fail_threshold
+        fail_threshold,
+        modified_since
     )
     scan_thread = threading.Thread(target=run_scan, args=scan_args, daemon=True)
     scan_thread.start()
@@ -3522,6 +3591,7 @@ def scan_files(
     exclude_patterns: Optional[List[str]] = None,
     extra_snippets: Optional[List[Tuple[str, bytes]]] = None,
     fail_threshold: Optional[int] = None,
+    modified_since: Optional[float] = None,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for dangerous content and optionally request GPT analysis.
 
@@ -3545,6 +3615,8 @@ def scan_files(
         List of glob patterns to exclude from the scan.
     extra_snippets : List[Tuple[str, bytes]], optional
         List of (name, content) tuples to scan as in-memory buffers.
+    modified_since : float, optional
+        A timestamp. If provided, only files modified after this time are scanned.
 
     Yields
     ------
@@ -3577,7 +3649,10 @@ def scan_files(
     explicit_targets = {Path(t) for t in local_targets}
     explicit_files = {f for f in explicit_targets if f.is_file()}
 
-    file_list = collect_files(local_targets)
+    if modified_since is not None:
+        file_list = collect_files(local_targets, modified_since=modified_since)
+    else:
+        file_list = collect_files(local_targets)
 
     if exclude_patterns:
         file_list = [
@@ -4141,6 +4216,7 @@ def run_scan(
     exclude_patterns: Optional[List[str]] = None,
     extra_snippets: Optional[List[Tuple[str, bytes]]] = None,
     fail_threshold: Optional[int] = None,
+    modified_since: Optional[float] = None,
 ) -> None:
     """Consume scan events and forward them to the UI thread.
 
@@ -4171,6 +4247,7 @@ def run_scan(
         exclude_patterns=exclude_patterns,
         extra_snippets=extra_snippets,
         fail_threshold=fail_threshold,
+        modified_since=modified_since,
     )
 
     def scan_handler(data: Tuple[Any, ...]) -> bool:
@@ -4591,7 +4668,7 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None) -> int:
     """Run scans and stream results to the terminal or a file.
 
     Parameters
@@ -4620,6 +4697,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         List of (name, content) tuples to scan as in-memory buffers.
     import_file : str, optional
         Path to a previous scan report to import and process.
+    modified_since : float, optional
+        A timestamp. If provided, only files modified after this time are scanned.
     """
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
 
@@ -4664,6 +4743,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             exclude_patterns=exclude_patterns,
             extra_snippets=extra_snippets,
             fail_threshold=fail_threshold,
+            modified_since=modified_since,
         )
 
     for event_type, data in event_gen:
@@ -6397,6 +6477,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu = tk.Menu(browse_button, tearoff=0)
     browse_menu.add_command(label="Scan File(s)...", command=browse_file_click, accelerator="Ctrl+Shift+O")
     browse_menu.add_command(label="Scan Folder...", command=browse_dir_click)
+    browse_menu.add_command(label="Scan Recently Modified...", command=scan_recently_modified_click)
     browse_menu.add_separator()
     browse_menu.add_command(label="Scan URL...", command=select_url_click, accelerator="Ctrl+Shift+U")
     browse_menu.add_command(label="Scan File List...", command=browse_file_list_click)
@@ -6876,6 +6957,8 @@ def main():
                "  python gptscan.py --git-hooks --cli\n\n"
                "  # Scan potentially dangerous Git configuration settings\n"
                "  python gptscan.py --git-config --cli\n\n"
+               "  # Scan files modified in the last 24 hours\n"
+               "  python gptscan.py --modified 24h --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -7003,6 +7086,11 @@ def main():
         '--max-size',
         type=str,
         help='The maximum file size to scan (for example: "10MB"). The default is 10MB.'
+    )
+    scan_group.add_argument(
+        '--modified',
+        type=str,
+        help='Only scan files modified within this duration (e.g., "24h", "1h", "7d").'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
@@ -7263,6 +7351,13 @@ def main():
             extra_snippets.extend(get_system_service_commands())
             extra_snippets.extend(get_git_config_snippets())
 
+        modified_since = None
+        if args.modified:
+            duration = parse_duration(args.modified)
+            if duration is None:
+                parser.error(f"Invalid duration format for --modified: {args.modified}")
+            modified_since = time.time() - duration
+
         threats = run_cli(
             scan_targets,
             args.deep,
@@ -7275,7 +7370,8 @@ def main():
             fail_threshold=args.fail_threshold,
             output_file=args.output,
             extra_snippets=extra_snippets,
-            import_file=args.import_results
+            import_file=args.import_results,
+            modified_since=modified_since
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)

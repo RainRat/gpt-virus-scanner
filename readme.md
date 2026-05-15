@@ -55,6 +55,7 @@ Run `python3 gptscan.py` to open the scanner window.
 Access these options from the **Browse** menu:
 *   **Scan File(s)...:** Choose one or more scripts to scan.
 *   **Scan Folder...:** Choose a whole directory to scan.
+*   **Scan Recently Modified...:** Scan files that have been changed within a certain timeframe (e.g., last 24 hours).
 *   **Scan URL...:** Scan scripts or archives directly from a web link.
 *   **Scan File List...:** Read a list of files to scan from a text file.
 *   **Scan Clipboard:** Scan code currently in your clipboard.
@@ -178,6 +179,11 @@ python3 gptscan.py --git-config --cli
 To scan all shell profiles and RC files:
 ```bash
 python3 gptscan.py --shell-profiles --cli
+```
+
+To scan files modified in the last 24 hours:
+```bash
+python3 gptscan.py --modified 24h --cli
 ```
 
 You can also scan multiple files, folders, or web links:
