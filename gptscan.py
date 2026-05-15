@@ -5297,7 +5297,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     header_frame.columnconfigure(1, weight=1)
 
     conf_frame = ttk.Frame(header_frame)
-    conf_frame.grid(row=2, column=0, columnspan=5, sticky="w", pady=(5, 0))
+    conf_frame.grid(row=2, column=0, columnspan=5, sticky="ew", pady=(5, 0))
+    conf_frame.columnconfigure(4, weight=1)
 
     ttk.Label(conf_frame, text="Local Threat:").grid(row=0, column=0, sticky="w")
     own_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
@@ -5329,7 +5330,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     snippet_frame = ttk.LabelFrame(paned_window, text="Code Snippet", padding=5)
     paned_window.add(snippet_frame, weight=1)
 
-    snippet_text = scrolledtext.ScrolledText(snippet_frame, height=8, font=('Courier', 10), wrap=tk.NONE)
+    snippet_text = scrolledtext.ScrolledText(snippet_frame, height=8, font='TkFixedFont', wrap=tk.NONE)
     snippet_text.pack(fill=tk.BOTH, expand=True)
     snippet_text.tag_configure("highlight", background="yellow", foreground="black")
 
