@@ -5368,22 +5368,22 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     header_frame.columnconfigure(1, weight=1)
 
     conf_frame = ttk.Frame(header_frame)
-    conf_frame.grid(row=2, column=0, columnspan=5, sticky="ew", pady=(5, 0))
-    conf_frame.columnconfigure(4, weight=1)
+    conf_frame.grid(row=2, column=0, columnspan=8, sticky="ew", pady=(5, 0))
+    conf_frame.columnconfigure(5, weight=1)
 
-    ttk.Label(conf_frame, text="Local Threat:").grid(row=0, column=0, sticky="w")
+    risk_badge = tk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'), padx=8, pady=2)
+    risk_badge.grid(row=0, column=0, sticky="w", padx=(0, 20))
+
+    ttk.Label(conf_frame, text="Local Threat:").grid(row=0, column=1, sticky="w")
     own_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
-    own_conf_label.grid(row=0, column=1, sticky="w", padx=(5, 20))
+    own_conf_label.grid(row=0, column=2, sticky="w", padx=(5, 20))
 
     ai_conf_prefix = ttk.Label(conf_frame, text="AI Threat:")
     gpt_conf_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
 
-    ttk.Label(conf_frame, text="Detected Line:").grid(row=0, column=5, sticky="w", padx=(20, 5))
+    ttk.Label(conf_frame, text="Detected Line:").grid(row=0, column=6, sticky="w", padx=(20, 5))
     line_label = ttk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'))
-    line_label.grid(row=0, column=6, sticky="w")
-
-    risk_badge = tk.Label(conf_frame, font=('TkDefaultFont', 9, 'bold'), padx=8, pady=2)
-    risk_badge.grid(row=0, column=7, sticky="w", padx=(20, 0))
+    line_label.grid(row=0, column=7, sticky="w")
 
     ttk.Separator(main_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
 
@@ -5597,6 +5597,22 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             root.clipboard_append(js)
             set_local_status("Result copied as JSON.", temporary=True)
 
+    def copy_sha256_details():
+        path = path_entry.get()
+        h = ""
+        if path.startswith("["):
+            snippet = snippet_text.get("1.0", tk.END).strip()
+            h = get_file_sha256(snippet.encode('utf-8'))
+        else:
+            h = get_file_sha256(path)
+
+        if h:
+            root.clipboard_clear()
+            root.clipboard_append(h)
+            set_local_status(f"SHA256 copied: {h[:8]}...", temporary=True)
+        else:
+            messagebox.showwarning("Error", "Could not calculate file hash.", parent=details_win)
+
     def on_exclude():
         """Exclude current file and move to next."""
         nonlocal current_item_id
@@ -5662,6 +5678,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     copy_menu = tk.Menu(copy_menu_btn, tearoff=0)
     copy_menu.add_command(label="Copy Analysis", command=copy_analysis, accelerator="Ctrl+Shift+C")
+    copy_menu.add_command(label="Copy Path", command=copy_path_details, accelerator="Ctrl+Shift+P")
+    copy_menu.add_command(label="Copy SHA256", command=copy_sha256_details, accelerator="Ctrl+H")
     copy_menu.add_command(label="Copy as JSON", command=copy_as_json_details, accelerator="Ctrl+J")
     copy_menu.add_command(label="Copy Code", command=copy_code, accelerator="Ctrl+S")
     copy_menu_btn["menu"] = copy_menu
@@ -5740,8 +5758,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             risk_badge.config(text="LOW RISK", background="lightgrey", foreground="grey")
 
         if gpt_conf:
-            ai_conf_prefix.grid(row=0, column=2, sticky="w")
-            gpt_conf_label.grid(row=0, column=3, sticky="w", padx=(5, 0))
+            ai_conf_prefix.grid(row=0, column=3, sticky="w")
+            gpt_conf_label.grid(row=0, column=4, sticky="w", padx=(5, 0))
             gpt_conf_label.config(text=gpt_conf)
         else:
             ai_conf_prefix.grid_forget()
@@ -5824,6 +5842,10 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Command-s>', lambda e: copy_code())
     details_win.bind('<Control-j>', lambda e: copy_as_json_details())
     details_win.bind('<Command-j>', lambda e: copy_as_json_details())
+    details_win.bind('<Control-Shift-P>', lambda e: copy_path_details())
+    details_win.bind('<Command-Shift-P>', lambda e: copy_path_details())
+    details_win.bind('<Control-h>', lambda e: copy_sha256_details())
+    details_win.bind('<Command-h>', lambda e: copy_sha256_details())
     details_win.bind('<Control-g>', lambda e: on_analyze_now())
     details_win.bind('<Command-g>', lambda e: on_analyze_now())
     details_win.bind('<Control-l>', lambda e: view_online(path_entry.get(), line=line_label.cget("text")))
