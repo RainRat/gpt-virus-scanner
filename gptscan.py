@@ -2355,24 +2355,31 @@ def scan_env_vars_click():
         messagebox.showwarning("Environment Variables Error", f"Could not scan environment variables: {e}")
 
 
+def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
+    """Collect all paths and snippets for a comprehensive system audit."""
+    all_paths = []
+    all_paths.extend(get_shell_profile_paths())
+    all_paths.extend(get_shell_history_paths())
+    all_paths.extend(get_system_path_directories())
+    all_paths.extend(get_ssh_config_paths())
+    all_paths.extend(get_system_service_paths())
+    all_paths.extend(get_git_hooks_paths())
+
+    all_snippets = []
+    all_snippets.extend(get_running_process_commands())
+    all_snippets.extend(get_environment_variable_snippets())
+    all_snippets.extend(get_scheduled_task_commands())
+    all_snippets.extend(get_startup_item_commands())
+    all_snippets.extend(get_system_service_commands())
+    all_snippets.extend(get_git_config_snippets())
+
+    return all_paths, all_snippets
+
+
 def scan_system_audit_click():
     """Perform a comprehensive system audit scan (Profiles, History, Path, SSH, Processes, Tasks, Startup, Services, EnvVars)."""
     try:
-        all_paths = []
-        all_paths.extend(get_shell_profile_paths())
-        all_paths.extend(get_shell_history_paths())
-        all_paths.extend(get_system_path_directories())
-        all_paths.extend(get_ssh_config_paths())
-        all_paths.extend(get_system_service_paths())
-        all_paths.extend(get_git_hooks_paths())
-
-        all_snippets = []
-        all_snippets.extend(get_running_process_commands())
-        all_snippets.extend(get_environment_variable_snippets())
-        all_snippets.extend(get_scheduled_task_commands())
-        all_snippets.extend(get_startup_item_commands())
-        all_snippets.extend(get_system_service_commands())
-        all_snippets.extend(get_git_config_snippets())
+        all_paths, all_snippets = get_system_audit_data()
 
         if all_paths or all_snippets:
             _set_scan_target(all_paths)
@@ -7250,18 +7257,9 @@ def main():
                 print("No non-empty environment variables were found.", file=sys.stderr)
 
         if args.audit:
-            scan_targets.extend(get_shell_profile_paths())
-            scan_targets.extend(get_shell_history_paths())
-            scan_targets.extend(get_system_path_directories())
-            scan_targets.extend(get_ssh_config_paths())
-            scan_targets.extend(get_system_service_paths())
-            scan_targets.extend(get_git_hooks_paths())
-            extra_snippets.extend(get_running_process_commands())
-            extra_snippets.extend(get_environment_variable_snippets())
-            extra_snippets.extend(get_scheduled_task_commands())
-            extra_snippets.extend(get_startup_item_commands())
-            extra_snippets.extend(get_system_service_commands())
-            extra_snippets.extend(get_git_config_snippets())
+            paths, snippets = get_system_audit_data()
+            scan_targets.extend(paths)
+            extra_snippets.extend(snippets)
 
         threats = run_cli(
             scan_targets,
