@@ -91,6 +91,7 @@ The scanner includes shortcuts for faster navigation:
 | `Ctrl+Shift+V` | Scan Clipboard |
 | `Ctrl+Shift+D` | Scan Git Diff |
 | `Ctrl+Shift+G` | Scan Git Hooks |
+| `Ctrl+Shift+B` | Scan Shell Profiles |
 | `Ctrl+Shift+I` | System Audit |
 | `Ctrl+Shift+H` | Scan Shell History |
 | `Ctrl+Shift+P` | Scan System PATH |
