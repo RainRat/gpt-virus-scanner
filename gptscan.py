@@ -58,6 +58,7 @@ results_button: Optional[ttk.Menubutton] = None
 browse_button: Optional[ttk.Menubutton] = None
 show_key_btn: Optional[ttk.Button] = None
 copy_cmd_button: Optional[ttk.Button] = None
+clear_target_btn: Optional[ttk.Button] = None
 git_checkbox: Optional[ttk.Checkbutton] = None
 deep_checkbox: Optional[ttk.Checkbutton] = None
 scan_all_checkbox: Optional[ttk.Checkbutton] = None
@@ -2159,7 +2160,7 @@ def set_scanning_state(is_scanning: bool) -> None:
 
     # Disable/Enable configuration widgets during scan
     config_widgets = [
-        textbox, browse_button,
+        textbox, clear_target_btn, browse_button,
         git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox,
         gpt_checkbox, provider_combo, model_combo, api_entry, show_key_btn,
         copy_cmd_button, all_checkbox, threshold_spin
@@ -6435,7 +6436,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, view_online_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, view_online_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, clear_target_btn, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -6482,14 +6483,22 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     path_to_use = initial_path if initial_path else (Config.last_path if Config.last_path else os.getcwd())
     textbox.insert(0, path_to_use)
     textbox.select_range(0, tk.END)
-    textbox.grid(row=0, column=1, sticky="ew", padx=5)
+    textbox.grid(row=0, column=1, sticky="ew", padx=(5, 2))
     textbox.bind('<Return>', lambda event: button_click())
     textbox.focus_set()
     bind_hover_message(textbox, "Enter one or more files, folders, or glob patterns (e.g., src/**/*.py) to scan. Separate multiple targets with spaces.")
 
+    def clear_target():
+        textbox.delete(0, tk.END)
+        textbox.focus_set()
+
+    clear_target_btn = ttk.Button(input_frame, text="×", width=3, command=clear_target)
+    clear_target_btn.grid(row=0, column=2, padx=(0, 5))
+    bind_hover_message(clear_target_btn, "Clear the scan target.")
+
     root.bind('<Escape>', lambda event: cancel_scan())
     button_box = ttk.Frame(input_frame)
-    button_box.grid(row=0, column=2, sticky="e")
+    button_box.grid(row=0, column=3, sticky="e")
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
