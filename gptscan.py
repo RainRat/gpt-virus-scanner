@@ -724,8 +724,8 @@ def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
 
     # Handle multiple paths or a single path string
     if isinstance(path, (list, tuple)):
-        # Join multiple targets with appropriate quoting
-        formatted_path = shlex.join(path)
+        # Join multiple targets with appropriate quoting, ensuring all are strings
+        formatted_path = shlex.join(str(p) for p in path)
     else:
         # For a single path, use quote if it's not a list, for safety
         formatted_path = shlex.quote(str(path))
