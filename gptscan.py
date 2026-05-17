@@ -367,7 +367,8 @@ class Config:
         # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
         if basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml',
-                            'dockerfile', 'makefile', 'docker-compose.yml', 'docker-compose.yaml')):
+                            'dockerfile', 'makefile', 'docker-compose.yml', 'docker-compose.yaml',
+                            'tasks.json', 'launch.json')):
             return True
         return False
 
@@ -3040,9 +3041,10 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             pass
 
     # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc, pyproject.toml)
+    # Also handle VS Code configuration files (tasks.json, launch.json)
     lowered_check = check_name.lower()
     check_basename = os.path.basename(lowered_check)
-    if check_basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml')):
+    if check_basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'tasks.json', 'launch.json')):
         try:
             text = content.decode('utf-8', errors='ignore')
             if check_basename.endswith('pyproject.toml'):
@@ -3156,7 +3158,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                     yield from yield_pyproject_scripts(script_key, command_val)
                 return
 
-            if lowered_check.endswith('.jsonc'):
+            if lowered_check.endswith(('.jsonc', 'tasks.json', 'launch.json')):
                 # Strip single-line and multi-line comments for JSONC support
                 # This regex strips /* ... */ comments and // ... comments while attempting to ignore
                 # // if it appears inside a double-quoted string (to avoid mangling URLs).
@@ -3177,6 +3179,52 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             if 'deno.json' in lowered_check:
                 key = 'tasks'
                 label = 'Task'
+
+            # Special handling for VS Code tasks.json and launch.json
+            if check_basename.endswith('tasks.json'):
+                yielded_any = False
+                vscode_tasks = manifest.get('tasks', [])
+                if isinstance(vscode_tasks, list):
+                    for task in vscode_tasks:
+                        if not isinstance(task, dict):
+                            continue
+                        label_name = task.get('label', 'Unknown Task')
+                        command = task.get('command')
+                        if command and isinstance(command, str) and command.strip():
+                            yield (f"{name} [Task: {label_name}]", command.encode('utf-8'))
+                            yielded_any = True
+                        args = task.get('args')
+                        if args:
+                            args_str = " ".join(args) if isinstance(args, list) else str(args)
+                            if args_str.strip():
+                                yield (f"{name} [Task Args: {label_name}]", args_str.encode('utf-8'))
+                                yielded_any = True
+                if yielded_any:
+                    return
+            elif check_basename.endswith('launch.json'):
+                yielded_any = False
+                vscode_configs = manifest.get('configurations', [])
+                if isinstance(vscode_configs, list):
+                    for config in vscode_configs:
+                        if not isinstance(config, dict):
+                            continue
+                        config_name = config.get('name', 'Unknown Config')
+                        program = config.get('program')
+                        if program and isinstance(program, str) and program.strip():
+                            yield (f"{name} [Launch: {config_name}]", program.encode('utf-8'))
+                            yielded_any = True
+                        args = config.get('args')
+                        if args:
+                            args_str = " ".join(args) if isinstance(args, list) else str(args)
+                            if args_str.strip():
+                                yield (f"{name} [Launch Args: {config_name}]", args_str.encode('utf-8'))
+                                yielded_any = True
+                        pre_task = config.get('preLaunchTask')
+                        if pre_task and isinstance(pre_task, str) and pre_task.strip():
+                            yield (f"{name} [PreLaunch: {config_name}]", pre_task.encode('utf-8'))
+                            yielded_any = True
+                if yielded_any:
+                    return
 
             scripts = manifest.get(key, {})
             if isinstance(scripts, dict):
