@@ -372,13 +372,13 @@ class Config:
         return False
 
     apikey_missing_message = (
-        "No API key found. You cannot use OpenAI or OpenRouter, but local scans and Ollama still work."
+        "API key not found. Local scans and Ollama will continue to work, but OpenAI and OpenRouter require a key."
     )
     task_missing_message = (
-        "The 'task.txt' file is missing. The scanner will not use AI analysis."
+        "'task.txt' is missing. AI analysis will be disabled."
     )
     extensions_missing_message = (
-        f"The 'extensions.txt' file is missing. The scanner will use these default types: {', '.join(DEFAULT_EXTENSIONS)}"
+        f"'extensions.txt' is missing. The scanner will use default types: {', '.join(DEFAULT_EXTENSIONS)}."
     )
 
     @classmethod
@@ -6973,28 +6973,14 @@ def main():
         epilog="Examples:\n"
                "  # Scan a folder and use AI for deep analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
-               "  # Scan one file and save the results as JSON\n"
-               "  python gptscan.py ./my_script.py --cli --json\n\n"
-               "  # Scan only files changed in Git and stop if threats are found\n"
+               "  # Scan Git changes and stop if threats are found\n"
                "  python gptscan.py --git-changes --cli --fail-threshold 50\n\n"
-               "  # Scan current Git changes (staged and unstaged)\n"
+               "  # Scan current Git changes as a diff\n"
                "  python gptscan.py --git-diff --cli\n\n"
-               "  # Scan a code snippet from the terminal\n"
-               "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n\n"
-               "  # Scan a GitHub project from a web link\n"
+               "  # Scan a code snippet from a web link (GitHub, GitLab, Pastebin, etc.)\n"
                "  python gptscan.py https://github.com/user/repo --cli\n\n"
-               "  # Scan a GitHub Pull Request directly\n"
-               "  python gptscan.py https://github.com/user/repo/pull/123 --cli\n\n"
-               "  # Scan a Pastebin paste or a Hugging Face script directly\n"
-               "  python gptscan.py https://pastebin.com/abcdefgh --cli\n\n"
-               "  # Scan all environment variables\n"
-               "  python gptscan.py --env-vars --cli\n\n"
                "  # Perform a comprehensive system audit\n"
                "  python gptscan.py --audit --cli\n\n"
-               "  # Scan local and global Git hooks\n"
-               "  python gptscan.py --git-hooks --cli\n\n"
-               "  # Scan potentially dangerous Git configuration settings\n"
-               "  python gptscan.py --git-config --cli\n\n"
                "  # Scan files modified in the last 24 hours\n"
                "  python gptscan.py --modified 24h --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
@@ -7010,17 +6996,17 @@ def main():
 
     scan_group = parser.add_argument_group("Scan Options")
     scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or web link to scan.')
-    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. This is slower but more thorough.')
-    scan_group.add_argument('--dry-run', action='store_true', help='Show which files would be scanned without checking them.')
+    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the entire file instead of just the beginning and end.')
+    scan_group.add_argument('--dry-run', action='store_true', help='Preview which files will be scanned without actually checking them.')
     scan_group.add_argument(
         '--extensions',
         type=str,
-        help='Only scan these file types (for example: "py,js").'
+        help="Only scan these file types (e.g., 'py,js')."
     )
     scan_group.add_argument(
         '-e', '--exclude',
         nargs='*',
-        help='Ignore files or folders that match these patterns (for example: "node_modules/*").'
+        help="Ignore files or folders matching these patterns (e.g., 'node_modules/*')."
     )
     scan_group.add_argument(
         '--file-list',
@@ -7063,7 +7049,7 @@ def main():
         '--threshold', '-t',
         type=int,
         default=50,
-        help='Show all results with a threat level at or above this number (0-100). If no results meet the threshold, only the most suspicious one is shown. The default is 50.'
+        help='Set the minimum threat level (0-100) to display in results. Default is 50.'
     )
     scan_group.add_argument(
         '--stdin',
@@ -7128,11 +7114,11 @@ def main():
     scan_group.add_argument(
         '--modified',
         type=str,
-        help='Only scan files modified within this duration (e.g., "24h", "1h", "7d").'
+        help="Only scan files modified within this duration (e.g., '24h', '1h', '7d')."
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
-    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Use AI to analyze suspicious files. Cloud providers need an API key; Ollama does not.')
+    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Use AI to analyze suspicious files. Cloud providers require an API key; Ollama does not.')
     ai_group.add_argument(
         '--provider',
         type=str,
