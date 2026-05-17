@@ -7190,7 +7190,7 @@ def main():
             args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
             args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
-            args.system_services, args.audit
+            args.system_services, args.audit, args.modified
         ]):
             sys.exit(0)
 
