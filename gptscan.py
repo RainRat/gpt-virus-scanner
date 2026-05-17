@@ -3067,7 +3067,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
 
                     if val.startswith('['):
                         # Array of commands: ["a", "b"]
-                        items = re.findall(r'"([^"]*)"|\'([^\']*)\'', val)
+                        items = re.findall(r'"((?:\\.|[^"\\])*)"|\'((?:\\.|[^\'\\])*)\'', val)
                         for idx, item in enumerate(items, 1):
                             cmd = item[0] or item[1]
                             if cmd.strip():
@@ -3139,6 +3139,21 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                             multiline_lines[-1] = curr_line[:end_pos + 3]
                                             break
                                     command_val = "\n".join(multiline_lines)
+                            # Handle multiline arrays
+                            elif command_val.startswith('[') and not command_val.endswith(']'):
+                                array_lines = [command_val]
+                                while i < len(lines):
+                                    curr_line = lines[i].strip()
+                                    # Strip inline comments from array lines
+                                    comment_match = re.search(r'^(?:[^"\'#]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*(#.*)', curr_line)
+                                    if comment_match:
+                                        curr_line = curr_line[:comment_match.start(1)].strip()
+
+                                    array_lines.append(curr_line)
+                                    i += 1
+                                    if curr_line.endswith(']'):
+                                        break
+                                command_val = "".join(array_lines)
 
                             if current_nested_script:
                                 # Inside a nested section like [tool.pdm.scripts.test] or [tool.poe.tasks.test]
