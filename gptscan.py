@@ -3789,6 +3789,56 @@ def scan_files(
                     )
                 )
 
+    def _scan_fh(fh, name: str, size: int, raw_content: Optional[bytes] = None, is_virtual: bool = False) -> Generator[Tuple[str, Any], None, None]:
+        maxconf = -1.0
+        max_window_bytes = b""
+        max_offset = 0
+        hits_found = 0
+        content_for_lines = raw_content
+        decoded_content = None
+
+        for offset, window in iter_windows(fh, size, deep_scan):
+            if cancel_event.is_set():
+                break
+            result, padded_bytes = predict_window(window)
+            if result > maxconf:
+                maxconf = result
+                max_window_bytes = padded_bytes
+                max_offset = offset
+
+            if result >= threshold_val:
+                hits_found += 1
+                if is_virtual:
+                    # For virtual sources, we need to pass full content for source view
+                    if decoded_content is None:
+                        decoded_content = content_for_lines.decode('utf-8', errors='ignore')
+                    line_num = content_for_lines[:offset].count(b'\n') + 1
+                    yield from handle_scan_result(name, result, padded_bytes, line_num, full_content=decoded_content)
+                else:
+                    # For physical files, we don't pass full content, and calculate line number efficiently
+                    if content_for_lines is None:
+                        curr_pos = fh.tell()
+                        fh.seek(0)
+                        content_for_lines = fh.read()
+                        fh.seek(curr_pos)
+                    line_num = content_for_lines[:offset].count(b'\n') + 1
+                    yield from handle_scan_result(name, result, padded_bytes, line_num)
+
+        if not cancel_event.is_set() and hits_found == 0:
+            if is_virtual:
+                if decoded_content is None:
+                    decoded_content = content_for_lines.decode('utf-8', errors='ignore')
+                line_num = content_for_lines[:max_offset].count(b'\n') + 1
+                yield from handle_scan_result(name, maxconf, max_window_bytes, line_num, full_content=decoded_content, force=True)
+            else:
+                line_num = 1
+                try:
+                    fh.seek(0)
+                    line_num = fh.read(max_offset).count(b'\n') + 1
+                except Exception:
+                    pass
+                yield from handle_scan_result(name, maxconf, max_window_bytes, line_num, force=True)
+
     for file_path in file_list:
         if cancel_event.is_set():
             break
@@ -3849,40 +3899,11 @@ def scan_files(
                 )
             )
         else:
-            print(file_path, file=sys.stderr)
             if file_size is not None:
-                maxconf = -1.0
-                max_window_bytes = b""
-                max_offset = 0
-                hits_found = 0
-                file_content_for_lines = None
-                error_message: Optional[str] = None
-
                 try:
                     with open(file_path, 'rb') as f:
-                        for offset, window in iter_windows(f, file_size, deep_scan):
-                            if cancel_event.is_set():
-                                break
-                            print("Scanning at:", offset if offset > 0 else 0, file=sys.stderr)
-                            result, padded_bytes = predict_window(window)
-                            if result > maxconf:
-                                maxconf = result
-                                max_window_bytes = padded_bytes
-                                max_offset = offset
-
-                            if result >= threshold_val:
-                                hits_found += 1
-                                if file_content_for_lines is None:
-                                    curr_pos = f.tell()
-                                    f.seek(0)
-                                    file_content_for_lines = f.read()
-                                    f.seek(curr_pos)
-                                line_num = file_content_for_lines[:offset].count(b'\n') + 1
-                                yield from handle_scan_result(str(file_path), result, padded_bytes, line_num)
+                        yield from _scan_fh(f, str(file_path), file_size, is_virtual=False)
                 except OSError as err:
-                    error_message = f"Error reading file: {err}"
-
-                if error_message is not None:
                     yield (
                         'result',
                         (
@@ -3891,19 +3912,10 @@ def scan_files(
                             '',
                             '',
                             '',
-                            error_message,
+                            f"Error reading file: {err}",
                             '-',
                         )
                     )
-                elif hits_found == 0:
-                    # Calculate line number for best hit
-                    line_num = 1
-                    try:
-                        with open(file_path, 'rb') as f:
-                            line_num = f.read(max_offset).count(b'\n') + 1
-                    except Exception:
-                        pass
-                    yield from handle_scan_result(str(file_path), maxconf, max_window_bytes, line_num, force=True)
 
     for name, content in extra_snippets:
         if cancel_event.is_set():
@@ -3930,30 +3942,8 @@ def scan_files(
                 )
             )
         else:
-            maxconf = -1.0
-            max_window_bytes = b""
-            max_offset = 0
-            hits_found = 0
-            decoded_content = content.decode('utf-8', errors='ignore')
             with io.BytesIO(content) as f:
-                for offset, window in iter_windows(f, file_size, deep_scan):
-                    if cancel_event.is_set():
-                        break
-                    result, padded_bytes = predict_window(window)
-                    if result > maxconf:
-                        maxconf = result
-                        max_window_bytes = padded_bytes
-                        max_offset = offset
-
-                    if result >= threshold_val:
-                        hits_found += 1
-                        line_num = content[:offset].count(b'\n') + 1
-                        yield from handle_scan_result(name, result, padded_bytes, line_num, full_content=decoded_content)
-
-            if hits_found == 0:
-                # Calculate line number for best hit
-                line_num = content[:max_offset].count(b'\n') + 1
-                yield from handle_scan_result(name, maxconf, max_window_bytes, line_num, full_content=decoded_content, force=True)
+                yield from _scan_fh(f, name, file_size, raw_content=content, is_virtual=True)
 
     if cancel_event.is_set():
         return
