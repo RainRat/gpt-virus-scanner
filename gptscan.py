@@ -3547,10 +3547,15 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
 
 
 def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
-    """Yield file chunks for scanning.
+    """Yield file chunks for the local scanner.
 
-    Balance speed and thoroughness by checking the beginning and end of files
-    where script headers and dangerous payloads are usually found.
+    By default, this function only reads the beginning and end of a file.
+    This approach is fast and effective because most dangerous payloads and
+    script headers are found in these locations. If deep_scan is True, the
+    function reads the entire file instead.
+
+    The window size defaults to 1024 bytes (maxlen) to match the input
+    requirements of the pre-trained scripts.h5 model.
     """
     if maxlen is None:
         maxlen = Config.MAXLEN
