@@ -1200,6 +1200,28 @@ def get_running_process_commands() -> List[Tuple[str, bytes]]:
     return processes
 
 
+def get_python_package_paths() -> List[str]:
+    """Identify site-packages directories for the current Python environment."""
+    import site
+    paths = []
+
+    try:
+        # Global site-packages
+        if hasattr(site, 'getsitepackages'):
+            for p in site.getsitepackages():
+                if os.path.exists(p):
+                    paths.append(p)
+
+        # User site-packages
+        user_site = site.getusersitepackages()
+        if user_site and os.path.exists(user_site):
+            paths.append(user_site)
+    except Exception:
+        pass
+
+    return sorted(list(set(paths)))
+
+
 def get_system_service_paths() -> List[str]:
     """Identify common systemd service and user service configuration files."""
     paths = []
@@ -2369,6 +2391,19 @@ def scan_scheduled_tasks_click():
         messagebox.showwarning("Scheduled Tasks Error", f"Could not scan scheduled tasks: {e}")
 
 
+def scan_python_packages_click():
+    """Scan all installed Python packages in site-packages."""
+    try:
+        paths = get_python_package_paths()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo("Python Packages", "No site-packages directories were found.")
+    except Exception as e:
+        messagebox.showwarning("Python Packages Error", f"Could not scan Python packages: {e}")
+
+
 def scan_startup_items_click():
     """Scan all system startup items and LaunchAgents."""
     try:
@@ -2429,6 +2464,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_ssh_config_paths())
     all_paths.extend(get_system_service_paths())
     all_paths.extend(get_git_hooks_paths())
+    all_paths.extend(get_python_package_paths())
 
     all_snippets = []
     all_snippets.extend(get_running_process_commands())
@@ -6502,7 +6538,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A/S).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -6531,6 +6567,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan System PATH", command=scan_system_path_click, accelerator="Ctrl+Shift+P")
     browse_menu.add_command(label="Scan Running Processes", command=scan_running_processes_click, accelerator="Ctrl+Shift+K")
     browse_menu.add_command(label="Scan Environment Variables", command=scan_env_vars_click, accelerator="Ctrl+Shift+N")
+    browse_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click)
     browse_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
     browse_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
     browse_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
@@ -7111,6 +7148,11 @@ def main():
         help='Scan all non-empty environment variables.'
     )
     scan_group.add_argument(
+        '--python-packages',
+        action='store_true',
+        help='Scan all installed Python packages in site-packages.'
+    )
+    scan_group.add_argument(
         '--audit',
         action='store_true',
         help='Perform a comprehensive system audit scan.'
@@ -7374,6 +7416,13 @@ def main():
                 extra_snippets.extend(snippets)
             else:
                 print("No non-empty environment variables were found.", file=sys.stderr)
+
+        if args.python_packages:
+            package_paths = get_python_package_paths()
+            if package_paths:
+                scan_targets.extend(package_paths)
+            else:
+                print("No site-packages directories were found.", file=sys.stderr)
 
         if args.audit:
             paths, snippets = get_system_audit_data()

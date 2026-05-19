@@ -69,6 +69,7 @@ Access these options from the **Browse** menu:
 *   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
 *   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
 *   **Scan Environment Variables:** Scan all non-empty environment variables for suspicious scripts or commands (Ctrl+Shift+N).
+*   **Scan Python Packages:** Scan all installed Python packages in your site-packages directories for malicious code.
 *   **Scan Scheduled Tasks:** Scan all scheduled tasks (Windows) and Cron jobs (Linux/macOS) to identify dangerous persistence (Ctrl+Shift+T).
 *   **Scan Startup Items:** Scan all system startup items and LaunchAgents to find malicious persistence (Ctrl+Shift+A).
 *   **Scan System Services:** Scan all system services (systemd files on Linux, Service PathName on Windows) to identify dangerous persistence (Ctrl+Shift+S).
@@ -170,6 +171,11 @@ python3 gptscan.py --system-services --cli
 To scan all environment variables:
 ```bash
 python3 gptscan.py --env-vars --cli
+```
+
+To scan all installed Python packages:
+```bash
+python3 gptscan.py --python-packages --cli
 ```
 
 To scan potentially dangerous Git configuration settings:
