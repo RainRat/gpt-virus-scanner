@@ -368,18 +368,18 @@ class Config:
         # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
         if basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml',
-                            'dockerfile', 'makefile', 'docker-compose.yml', 'docker-compose.yaml')):
+                            'tasks.json', 'launch.json', 'dockerfile', 'makefile', 'docker-compose.yml', 'docker-compose.yaml')):
             return True
         return False
 
     apikey_missing_message = (
-        "No API key found. You cannot use OpenAI or OpenRouter, but local scans and Ollama still work."
+        "API key not found. Local scans and Ollama will continue to work, but OpenAI and OpenRouter require a key."
     )
     task_missing_message = (
-        "The 'task.txt' file is missing. The scanner will not use AI analysis."
+        "'task.txt' is missing. AI analysis will be disabled."
     )
     extensions_missing_message = (
-        f"The 'extensions.txt' file is missing. The scanner will use these default types: {', '.join(DEFAULT_EXTENSIONS)}"
+        f"'extensions.txt' is missing. The scanner will use default types: {', '.join(DEFAULT_EXTENSIONS)}."
     )
 
     @classmethod
@@ -2446,9 +2446,10 @@ def scan_python_packages_click():
         messagebox.showwarning("Python Packages Error", f"Could not scan Python packages: {e}")
 
 
-def scan_recently_modified_click():
+def scan_recently_modified_click(duration_str: Optional[str] = None):
     """Scan files modified within a user-specified duration."""
-    duration_str = simpledialog.askstring("Scan Recently Modified", "Enter duration (e.g., 24h, 1h, 7d):", initialvalue="24h")
+    if duration_str is None:
+        duration_str = simpledialog.askstring("Scan Recently Modified", "Enter duration (e.g., 24h, 1h, 7d):", initialvalue="24h")
     if duration_str:
         duration = parse_duration(duration_str)
         if duration is None:
@@ -3090,10 +3091,10 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc, pyproject.toml)
+    # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc, pyproject.toml, tasks.json, launch.json)
     lowered_check = check_name.lower()
     check_basename = os.path.basename(lowered_check)
-    if check_basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml')):
+    if check_basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'tasks.json', 'launch.json')):
         try:
             text = content.decode('utf-8', errors='ignore')
             if check_basename.endswith('pyproject.toml'):
@@ -3118,7 +3119,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
 
                     if val.startswith('['):
                         # Array of commands: ["a", "b"]
-                        items = re.findall(r'"([^"]*)"|\'([^\']*)\'', val)
+                        items = re.findall(r'"((?:\\.|[^"\\])*)"|\'((?:\\.|[^\'\\])*)\'', val)
                         for idx, item in enumerate(items, 1):
                             cmd = item[0] or item[1]
                             if cmd.strip():
@@ -3190,6 +3191,21 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                             multiline_lines[-1] = curr_line[:end_pos + 3]
                                             break
                                     command_val = "\n".join(multiline_lines)
+                            # Handle multiline arrays
+                            elif command_val.startswith('[') and not command_val.endswith(']'):
+                                array_lines = [command_val]
+                                while i < len(lines):
+                                    curr_line = lines[i].strip()
+                                    # Strip inline comments from array lines
+                                    comment_match = re.search(r'^(?:[^"\'#]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*(#.*)', curr_line)
+                                    if comment_match:
+                                        curr_line = curr_line[:comment_match.start(1)].strip()
+
+                                    array_lines.append(curr_line)
+                                    i += 1
+                                    if curr_line.endswith(']'):
+                                        break
+                                command_val = "".join(array_lines)
 
                             if current_nested_script:
                                 # Inside a nested section like [tool.pdm.scripts.test] or [tool.poe.tasks.test]
@@ -3207,16 +3223,16 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                     yield from yield_pyproject_scripts(script_key, command_val)
                 return
 
-            if lowered_check.endswith('.jsonc'):
-                # Strip single-line and multi-line comments for JSONC support
-                # This regex strips /* ... */ comments and // ... comments while attempting to ignore
-                # // if it appears inside a double-quoted string (to avoid mangling URLs).
-                text = re.sub(
-                    r'(/\*.*?\*/)|("(?:\\.|[^"\\])*")|(//[^\n]*)',
-                    lambda m: m.group(2) if m.group(2) else " ",
-                    text,
-                    flags=re.DOTALL
-                )
+            # Strip single-line and multi-line comments for JSONC support
+            # This regex strips /* ... */ comments and // ... comments while attempting to ignore
+            # // if it appears inside a double-quoted string (to avoid mangling URLs).
+            # Many manifests (deno.json, tasks.json, launch.json) support comments.
+            text = re.sub(
+                r'(/\*.*?\*/)|("(?:\\.|[^"\\])*")|(//[^\n]*)',
+                lambda m: m.group(2) if m.group(2) else " ",
+                text,
+                flags=re.DOTALL
+            )
 
             manifest = json.loads(text)
             if not isinstance(manifest, dict):
@@ -3228,6 +3244,68 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             if 'deno.json' in lowered_check:
                 key = 'tasks'
                 label = 'Task'
+
+            # Special handling for VS Code tasks.json
+            if check_basename == 'tasks.json':
+                yielded_any = False
+                # Tasks can be in a 'tasks' array
+                tasks = manifest.get('tasks', [])
+                if isinstance(tasks, list):
+                    for task in tasks:
+                        if not isinstance(task, dict): continue
+                        task_label = task.get('label') or task.get('taskName') or "Unnamed Task"
+                        cmd = task.get('command')
+                        args = task.get('args')
+                        if isinstance(cmd, str) and cmd.strip():
+                            full_cmd = cmd
+                            if isinstance(args, list):
+                                full_cmd += " " + " ".join(str(a) for a in args)
+                            yield (f"{name} [Task: {task_label}]", full_cmd.encode('utf-8'))
+                            yielded_any = True
+
+                # VS Code also supports 'inputs' which can have default values or commands
+                inputs = manifest.get('inputs', [])
+                if isinstance(inputs, list):
+                    for inp in inputs:
+                        if not isinstance(inp, dict): continue
+                        inp_id = inp.get('id', 'Unnamed Input')
+                        if inp.get('type') == 'command':
+                            cmd = inp.get('command')
+                            if isinstance(cmd, str) and cmd.strip():
+                                yield (f"{name} [Input Command: {inp_id}]", cmd.encode('utf-8'))
+                                yielded_any = True
+
+                if yielded_any:
+                    return
+
+            # Special handling for VS Code launch.json
+            if check_basename == 'launch.json':
+                yielded_any = False
+                configs = manifest.get('configurations', [])
+                if isinstance(configs, list):
+                    for config in configs:
+                        if not isinstance(config, dict): continue
+                        config_name = config.get('name', 'Unnamed Config')
+                        # Extract program, args, and preLaunchTask
+                        parts = []
+                        if config.get('program'): parts.append(str(config.get('program')))
+                        if config.get('args'):
+                            args = config.get('args')
+                            if isinstance(args, list):
+                                parts.extend(str(a) for a in args)
+                            else:
+                                parts.append(str(args))
+                        if parts:
+                            yield (f"{name} [Launch: {config_name}]", " ".join(parts).encode('utf-8'))
+                            yielded_any = True
+
+                        pre_task = config.get('preLaunchTask')
+                        if isinstance(pre_task, str) and pre_task.strip():
+                            yield (f"{name} [PreLaunchTask: {config_name}]", pre_task.encode('utf-8'))
+                            yielded_any = True
+
+                if yielded_any:
+                    return
 
             scripts = manifest.get(key, {})
             if isinstance(scripts, dict):
@@ -3598,10 +3676,15 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
 
 
 def iter_windows(fh, size: int, deep_scan: bool, maxlen: Optional[int] = None) -> Generator[Tuple[int, bytes], None, None]:
-    """Yield file chunks for scanning.
+    """Yield file chunks for the local scanner.
 
-    Balance speed and thoroughness by checking the beginning and end of files
-    where script headers and dangerous payloads are usually found.
+    By default, this function only reads the beginning and end of a file.
+    This approach is fast and effective because most dangerous payloads and
+    script headers are found in these locations. If deep_scan is True, the
+    function reads the entire file instead.
+
+    The window size defaults to 1024 bytes (maxlen) to match the input
+    requirements of the pre-trained scripts.h5 model.
     """
     if maxlen is None:
         maxlen = Config.MAXLEN
@@ -3808,7 +3891,7 @@ def scan_files(
 
     def handle_scan_result(path: str, maxconf: float, max_window_bytes: bytes, line_num: Union[int, str], full_content: Optional[str] = None, force: bool = False) -> Generator[Tuple[str, Any], None, None]:
         if maxconf >= 0:
-            percent = format_percent(int(maxconf * 100))
+            percent = format_percent(maxconf * 100.0)
             snippet = ''.join(map(chr, max_window_bytes)).strip()
             cleaned_snippet = _clean_snippet_for_ai(snippet)
 
@@ -3839,6 +3922,55 @@ def scan_files(
                         line_num,
                     )
                 )
+
+    def _scan_fh(fh, name: str, size: int, is_virtual: bool = False) -> Generator[Tuple[str, Any], None, None]:
+        maxconf = -1.0
+        max_window_bytes = b""
+        max_offset = 0
+        hits_found = 0
+        full_bytes = None
+        decoded_content = None
+
+        if is_virtual:
+            curr_pos = fh.tell()
+            fh.seek(0)
+            full_bytes = fh.read()
+            fh.seek(curr_pos)
+            decoded_content = full_bytes.decode('utf-8', errors='ignore')
+
+        for offset, window in iter_windows(fh, size, deep_scan):
+            if cancel_event.is_set():
+                break
+            result, padded_bytes = predict_window(window)
+            if result > maxconf:
+                maxconf = result
+                max_window_bytes = padded_bytes
+                max_offset = offset
+
+            if result >= threshold_val:
+                hits_found += 1
+                if not is_virtual and full_bytes is None:
+                    curr_pos = fh.tell()
+                    fh.seek(0)
+                    full_bytes = fh.read()
+                    fh.seek(curr_pos)
+
+                line_num = full_bytes[:offset].count(b'\n') + 1
+                yield from handle_scan_result(name, result, padded_bytes, line_num, full_content=decoded_content)
+
+        if not cancel_event.is_set() and hits_found == 0:
+            if is_virtual:
+                line_num = full_bytes[:max_offset].count(b'\n') + 1
+            else:
+                line_num = 1
+                try:
+                    curr_pos = fh.tell()
+                    fh.seek(0)
+                    line_num = fh.read(max_offset).count(b'\n') + 1
+                    fh.seek(curr_pos)
+                except Exception:
+                    pass
+            yield from handle_scan_result(name, maxconf, max_window_bytes, line_num, full_content=decoded_content, force=True)
 
     for file_path in file_list:
         if cancel_event.is_set():
@@ -3899,62 +4031,23 @@ def scan_files(
                     '-',
                 )
             )
-        else:
-            print(file_path, file=sys.stderr)
-            if file_size is not None:
-                maxconf = -1.0
-                max_window_bytes = b""
-                max_offset = 0
-                hits_found = 0
-                file_content_for_lines = None
-                error_message: Optional[str] = None
-
-                try:
-                    with open(file_path, 'rb') as f:
-                        for offset, window in iter_windows(f, file_size, deep_scan):
-                            if cancel_event.is_set():
-                                break
-                            print("Scanning at:", offset if offset > 0 else 0, file=sys.stderr)
-                            result, padded_bytes = predict_window(window)
-                            if result > maxconf:
-                                maxconf = result
-                                max_window_bytes = padded_bytes
-                                max_offset = offset
-
-                            if result >= threshold_val:
-                                hits_found += 1
-                                if file_content_for_lines is None:
-                                    curr_pos = f.tell()
-                                    f.seek(0)
-                                    file_content_for_lines = f.read()
-                                    f.seek(curr_pos)
-                                line_num = file_content_for_lines[:offset].count(b'\n') + 1
-                                yield from handle_scan_result(str(file_path), result, padded_bytes, line_num)
-                except OSError as err:
-                    error_message = f"Error reading file: {err}"
-
-                if error_message is not None:
-                    yield (
-                        'result',
-                        (
-                            str(file_path),
-                            'Error',
-                            '',
-                            '',
-                            '',
-                            error_message,
-                            '-',
-                        )
+        elif file_size is not None:
+            try:
+                with open(file_path, 'rb') as f:
+                    yield from _scan_fh(f, str(file_path), file_size, is_virtual=False)
+            except OSError as err:
+                yield (
+                    'result',
+                    (
+                        str(file_path),
+                        'Error',
+                        '',
+                        '',
+                        '',
+                        f"Error reading file: {err}",
+                        '-',
                     )
-                elif hits_found == 0:
-                    # Calculate line number for best hit
-                    line_num = 1
-                    try:
-                        with open(file_path, 'rb') as f:
-                            line_num = f.read(max_offset).count(b'\n') + 1
-                    except Exception:
-                        pass
-                    yield from handle_scan_result(str(file_path), maxconf, max_window_bytes, line_num, force=True)
+                )
 
     for name, content in extra_snippets:
         if cancel_event.is_set():
@@ -3981,30 +4074,8 @@ def scan_files(
                 )
             )
         else:
-            maxconf = -1.0
-            max_window_bytes = b""
-            max_offset = 0
-            hits_found = 0
-            decoded_content = content.decode('utf-8', errors='ignore')
             with io.BytesIO(content) as f:
-                for offset, window in iter_windows(f, file_size, deep_scan):
-                    if cancel_event.is_set():
-                        break
-                    result, padded_bytes = predict_window(window)
-                    if result > maxconf:
-                        maxconf = result
-                        max_window_bytes = padded_bytes
-                        max_offset = offset
-
-                    if result >= threshold_val:
-                        hits_found += 1
-                        line_num = content[:offset].count(b'\n') + 1
-                        yield from handle_scan_result(name, result, padded_bytes, line_num, full_content=decoded_content)
-
-            if hits_found == 0:
-                # Calculate line number for best hit
-                line_num = content[:max_offset].count(b'\n') + 1
-                yield from handle_scan_result(name, maxconf, max_window_bytes, line_num, full_content=decoded_content, force=True)
+                yield from _scan_fh(f, name, file_size, is_virtual=True)
 
     if cancel_event.is_set():
         return
@@ -6566,7 +6637,15 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu = tk.Menu(browse_button, tearoff=0)
     browse_menu.add_command(label="Scan File(s)...", command=browse_file_click, accelerator="Ctrl+Shift+O")
     browse_menu.add_command(label="Scan Folder...", command=browse_dir_click)
-    browse_menu.add_command(label="Scan Recently Modified...", command=scan_recently_modified_click)
+
+    recent_menu = tk.Menu(browse_menu, tearoff=0)
+    recent_menu.add_command(label="Last Hour", command=lambda: scan_recently_modified_click("1h"))
+    recent_menu.add_command(label="Last 24 Hours", command=lambda: scan_recently_modified_click("24h"))
+    recent_menu.add_command(label="Last 7 Days", command=lambda: scan_recently_modified_click("7d"))
+    recent_menu.add_separator()
+    recent_menu.add_command(label="Custom...", command=scan_recently_modified_click)
+    browse_menu.add_cascade(label="Scan Recently Modified", menu=recent_menu)
+
     browse_menu.add_separator()
     browse_menu.add_command(label="Scan URL...", command=select_url_click, accelerator="Ctrl+Shift+U")
     browse_menu.add_command(label="Scan File List...", command=browse_file_list_click)
@@ -6748,9 +6827,10 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     def clear_filter():
         filter_var.set("")
         _apply_filter()
+        filter_entry.focus_set()
 
-    clear_filter_btn = ttk.Button(filter_frame, text="Clear", width=8, command=clear_filter)
-    clear_filter_btn.grid(row=0, column=2, padx=(5, 10), ipady=5)
+    clear_filter_btn = ttk.Button(filter_frame, text="×", width=3, command=clear_filter)
+    clear_filter_btn.grid(row=0, column=2, padx=(0, 5))
     bind_hover_message(clear_filter_btn, "Clear the filter.")
 
     ttk.Separator(filter_frame, orient=tk.VERTICAL).grid(row=0, column=3, sticky="ns", padx=10)
@@ -7025,28 +7105,14 @@ def main():
         epilog="Examples:\n"
                "  # Scan a folder and use AI for deep analysis\n"
                "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
-               "  # Scan one file and save the results as JSON\n"
-               "  python gptscan.py ./my_script.py --cli --json\n\n"
-               "  # Scan only files changed in Git and stop if threats are found\n"
+               "  # Scan Git changes and stop if threats are found\n"
                "  python gptscan.py --git-changes --cli --fail-threshold 50\n\n"
-               "  # Scan current Git changes (staged and unstaged)\n"
+               "  # Scan current Git changes as a diff\n"
                "  python gptscan.py --git-diff --cli\n\n"
-               "  # Scan a code snippet from the terminal\n"
-               "  echo \"print('hello')\" | python gptscan.py --cli --stdin\n\n"
-               "  # Scan a GitHub project from a web link\n"
+               "  # Scan a code snippet from a web link (GitHub, GitLab, Pastebin, etc.)\n"
                "  python gptscan.py https://github.com/user/repo --cli\n\n"
-               "  # Scan a GitHub Pull Request directly\n"
-               "  python gptscan.py https://github.com/user/repo/pull/123 --cli\n\n"
-               "  # Scan a Pastebin paste or a Hugging Face script directly\n"
-               "  python gptscan.py https://pastebin.com/abcdefgh --cli\n\n"
-               "  # Scan all environment variables\n"
-               "  python gptscan.py --env-vars --cli\n\n"
                "  # Perform a comprehensive system audit\n"
                "  python gptscan.py --audit --cli\n\n"
-               "  # Scan local and global Git hooks\n"
-               "  python gptscan.py --git-hooks --cli\n\n"
-               "  # Scan potentially dangerous Git configuration settings\n"
-               "  python gptscan.py --git-config --cli\n\n"
                "  # Scan files modified in the last 24 hours\n"
                "  python gptscan.py --modified 24h --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
@@ -7062,17 +7128,17 @@ def main():
 
     scan_group = parser.add_argument_group("Scan Options")
     scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or web link to scan.')
-    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. This is slower but more thorough.')
-    scan_group.add_argument('--dry-run', action='store_true', help='Show which files would be scanned without checking them.')
+    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the entire file instead of just the beginning and end.')
+    scan_group.add_argument('--dry-run', action='store_true', help='Preview which files will be scanned without actually checking them.')
     scan_group.add_argument(
         '--extensions',
         type=str,
-        help='Only scan these file types (for example: "py,js").'
+        help="Only scan these file types (e.g., 'py,js')."
     )
     scan_group.add_argument(
         '-e', '--exclude',
         nargs='*',
-        help='Ignore files or folders that match these patterns (for example: "node_modules/*").'
+        help="Ignore files or folders matching these patterns (e.g., 'node_modules/*')."
     )
     scan_group.add_argument(
         '--file-list',
@@ -7115,7 +7181,7 @@ def main():
         '--threshold', '-t',
         type=int,
         default=50,
-        help='Show all results with a threat level at or above this number (0-100). If no results meet the threshold, only the most suspicious one is shown. The default is 50.'
+        help='Set the minimum threat level (0-100) to display in results. Default is 50.'
     )
     scan_group.add_argument(
         '--stdin',
@@ -7185,11 +7251,11 @@ def main():
     scan_group.add_argument(
         '--modified',
         type=str,
-        help='Only scan files modified within this duration (e.g., "24h", "1h", "7d").'
+        help="Only scan files modified within this duration (e.g., '24h', '1h', '7d')."
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
-    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Use AI to analyze suspicious files. Cloud providers need an API key; Ollama does not.')
+    ai_group.add_argument('-g', '--use-gpt', action='store_true', help='Use AI to analyze suspicious files. Cloud providers require an API key; Ollama does not.')
     ai_group.add_argument(
         '--provider',
         type=str,
@@ -7247,7 +7313,7 @@ def main():
             args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
             args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
-            args.system_services, args.audit
+            args.system_services, args.audit, args.modified
         ]):
             sys.exit(0)
 
