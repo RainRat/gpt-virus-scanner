@@ -367,7 +367,7 @@ class Config:
         # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
         if basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml',
-                            'dockerfile', 'makefile', 'docker-compose.yml', 'docker-compose.yaml')):
+                            'tasks.json', 'launch.json', 'dockerfile', 'makefile', 'docker-compose.yml', 'docker-compose.yaml')):
             return True
         return False
 
@@ -3039,10 +3039,10 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc, pyproject.toml)
+    # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc, pyproject.toml, tasks.json, launch.json)
     lowered_check = check_name.lower()
     check_basename = os.path.basename(lowered_check)
-    if check_basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml')):
+    if check_basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'tasks.json', 'launch.json')):
         try:
             text = content.decode('utf-8', errors='ignore')
             if check_basename.endswith('pyproject.toml'):
@@ -3171,16 +3171,16 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                     yield from yield_pyproject_scripts(script_key, command_val)
                 return
 
-            if lowered_check.endswith('.jsonc'):
-                # Strip single-line and multi-line comments for JSONC support
-                # This regex strips /* ... */ comments and // ... comments while attempting to ignore
-                # // if it appears inside a double-quoted string (to avoid mangling URLs).
-                text = re.sub(
-                    r'(/\*.*?\*/)|("(?:\\.|[^"\\])*")|(//[^\n]*)',
-                    lambda m: m.group(2) if m.group(2) else " ",
-                    text,
-                    flags=re.DOTALL
-                )
+            # Strip single-line and multi-line comments for JSONC support
+            # This regex strips /* ... */ comments and // ... comments while attempting to ignore
+            # // if it appears inside a double-quoted string (to avoid mangling URLs).
+            # Many manifests (deno.json, tasks.json, launch.json) support comments.
+            text = re.sub(
+                r'(/\*.*?\*/)|("(?:\\.|[^"\\])*")|(//[^\n]*)',
+                lambda m: m.group(2) if m.group(2) else " ",
+                text,
+                flags=re.DOTALL
+            )
 
             manifest = json.loads(text)
             if not isinstance(manifest, dict):
@@ -3192,6 +3192,68 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             if 'deno.json' in lowered_check:
                 key = 'tasks'
                 label = 'Task'
+
+            # Special handling for VS Code tasks.json
+            if check_basename == 'tasks.json':
+                yielded_any = False
+                # Tasks can be in a 'tasks' array
+                tasks = manifest.get('tasks', [])
+                if isinstance(tasks, list):
+                    for task in tasks:
+                        if not isinstance(task, dict): continue
+                        task_label = task.get('label') or task.get('taskName') or "Unnamed Task"
+                        cmd = task.get('command')
+                        args = task.get('args')
+                        if isinstance(cmd, str) and cmd.strip():
+                            full_cmd = cmd
+                            if isinstance(args, list):
+                                full_cmd += " " + " ".join(str(a) for a in args)
+                            yield (f"{name} [Task: {task_label}]", full_cmd.encode('utf-8'))
+                            yielded_any = True
+
+                # VS Code also supports 'inputs' which can have default values or commands
+                inputs = manifest.get('inputs', [])
+                if isinstance(inputs, list):
+                    for inp in inputs:
+                        if not isinstance(inp, dict): continue
+                        inp_id = inp.get('id', 'Unnamed Input')
+                        if inp.get('type') == 'command':
+                            cmd = inp.get('command')
+                            if isinstance(cmd, str) and cmd.strip():
+                                yield (f"{name} [Input Command: {inp_id}]", cmd.encode('utf-8'))
+                                yielded_any = True
+
+                if yielded_any:
+                    return
+
+            # Special handling for VS Code launch.json
+            if check_basename == 'launch.json':
+                yielded_any = False
+                configs = manifest.get('configurations', [])
+                if isinstance(configs, list):
+                    for config in configs:
+                        if not isinstance(config, dict): continue
+                        config_name = config.get('name', 'Unnamed Config')
+                        # Extract program, args, and preLaunchTask
+                        parts = []
+                        if config.get('program'): parts.append(str(config.get('program')))
+                        if config.get('args'):
+                            args = config.get('args')
+                            if isinstance(args, list):
+                                parts.extend(str(a) for a in args)
+                            else:
+                                parts.append(str(args))
+                        if parts:
+                            yield (f"{name} [Launch: {config_name}]", " ".join(parts).encode('utf-8'))
+                            yielded_any = True
+
+                        pre_task = config.get('preLaunchTask')
+                        if isinstance(pre_task, str) and pre_task.strip():
+                            yield (f"{name} [PreLaunchTask: {config_name}]", pre_task.encode('utf-8'))
+                            yielded_any = True
+
+                if yielded_any:
+                    return
 
             scripts = manifest.get(key, {})
             if isinstance(scripts, dict):
