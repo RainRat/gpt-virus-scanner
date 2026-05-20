@@ -2396,9 +2396,10 @@ def scan_system_services_click():
         messagebox.showwarning("System Services Error", f"Could not scan system services: {e}")
 
 
-def scan_recently_modified_click():
+def scan_recently_modified_click(duration_str: Optional[str] = None):
     """Scan files modified within a user-specified duration."""
-    duration_str = simpledialog.askstring("Scan Recently Modified", "Enter duration (e.g., 24h, 1h, 7d):", initialvalue="24h")
+    if duration_str is None:
+        duration_str = simpledialog.askstring("Scan Recently Modified", "Enter duration (e.g., 24h, 1h, 7d):", initialvalue="24h")
     if duration_str:
         duration = parse_duration(duration_str)
         if duration is None:
@@ -6515,7 +6516,15 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu = tk.Menu(browse_button, tearoff=0)
     browse_menu.add_command(label="Scan File(s)...", command=browse_file_click, accelerator="Ctrl+Shift+O")
     browse_menu.add_command(label="Scan Folder...", command=browse_dir_click)
-    browse_menu.add_command(label="Scan Recently Modified...", command=scan_recently_modified_click)
+
+    recent_menu = tk.Menu(browse_menu, tearoff=0)
+    recent_menu.add_command(label="Last Hour", command=lambda: scan_recently_modified_click("1h"))
+    recent_menu.add_command(label="Last 24 Hours", command=lambda: scan_recently_modified_click("24h"))
+    recent_menu.add_command(label="Last 7 Days", command=lambda: scan_recently_modified_click("7d"))
+    recent_menu.add_separator()
+    recent_menu.add_command(label="Custom...", command=scan_recently_modified_click)
+    browse_menu.add_cascade(label="Scan Recently Modified", menu=recent_menu)
+
     browse_menu.add_separator()
     browse_menu.add_command(label="Scan URL...", command=select_url_click, accelerator="Ctrl+Shift+U")
     browse_menu.add_command(label="Scan File List...", command=browse_file_list_click)
