@@ -6,6 +6,7 @@ import html
 import io
 import json
 import plistlib
+import site
 import os
 import queue
 import re
@@ -1227,6 +1228,42 @@ def get_system_service_paths() -> List[str]:
     return sorted(list(set(paths)))
 
 
+def get_python_package_paths() -> List[str]:
+    """Identify all directories containing installed Python packages (site-packages)."""
+    paths = []
+    # 1. Standard site-packages
+    if hasattr(site, 'getsitepackages'):
+        try:
+            paths.extend(site.getsitepackages())
+        except Exception:
+            pass
+
+    # 2. User site-packages
+    if hasattr(site, 'getusersitepackages'):
+        try:
+            paths.append(site.getusersitepackages())
+        except Exception:
+            pass
+
+    # 3. Fallback/Environment-specific paths from sys.path
+    for p in sys.path:
+        if 'site-packages' in p:
+            paths.append(p)
+
+    # Filter out non-existent directories and deduplicate
+    unique_paths = []
+    seen = set()
+    for p in paths:
+        if not p:
+            continue
+        abs_p = os.path.abspath(p)
+        if abs_p not in seen and os.path.isdir(abs_p):
+            unique_paths.append(abs_p)
+            seen.add(abs_p)
+
+    return sorted(unique_paths)
+
+
 def get_system_service_commands() -> List[Tuple[str, bytes]]:
     """Collect command lines of all system services (Windows Service PathName)."""
     items = []
@@ -2396,6 +2433,19 @@ def scan_system_services_click():
         messagebox.showwarning("System Services Error", f"Could not scan system services: {e}")
 
 
+def scan_python_packages_click():
+    """Scan all directories containing installed Python packages (site-packages)."""
+    try:
+        package_paths = get_python_package_paths()
+        if package_paths:
+            _set_scan_target(package_paths)
+            button_click()
+        else:
+            messagebox.showinfo("Python Packages", "No Python site-packages directories were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Python Packages Error", f"Could not scan Python packages: {e}")
+
+
 def scan_recently_modified_click():
     """Scan files modified within a user-specified duration."""
     duration_str = simpledialog.askstring("Scan Recently Modified", "Enter duration (e.g., 24h, 1h, 7d):", initialvalue="24h")
@@ -2429,6 +2479,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_ssh_config_paths())
     all_paths.extend(get_system_service_paths())
     all_paths.extend(get_git_hooks_paths())
+    all_paths.extend(get_python_package_paths())
 
     all_snippets = []
     all_snippets.extend(get_running_process_commands())
@@ -6502,7 +6553,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A/S).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -6534,6 +6585,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
     browse_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
     browse_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
+    browse_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click)
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -7106,6 +7158,11 @@ def main():
         help='Scan all system services (systemd files on Linux, Service PathName on Windows).'
     )
     scan_group.add_argument(
+        '--python-packages',
+        action='store_true',
+        help='Scan all directories containing installed Python packages (site-packages).'
+    )
+    scan_group.add_argument(
         '--env-vars',
         action='store_true',
         help='Scan all non-empty environment variables.'
@@ -7367,6 +7424,13 @@ def main():
                 extra_snippets.extend(service_cmds)
             if not service_paths and not service_cmds:
                 print("No system services or systemd units were found.", file=sys.stderr)
+
+        if args.python_packages:
+            package_paths = get_python_package_paths()
+            if package_paths:
+                scan_targets.extend(package_paths)
+            else:
+                print("No Python site-packages directories were found.", file=sys.stderr)
 
         if args.env_vars:
             snippets = get_environment_variable_snippets()

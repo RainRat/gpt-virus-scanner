@@ -3,14 +3,21 @@ from unittest.mock import patch, MagicMock
 import gptscan
 from pathlib import Path
 
-def test_get_ssh_config_paths(mocker):
+def test_get_ssh_config_paths(monkeypatch):
     home = Path("/home/user")
-    mocker.patch("pathlib.Path.home", return_value=home)
+    monkeypatch.setattr("pathlib.Path.home", lambda: home)
 
-    # Mock Path object and its exists method
-    mock_exists = mocker.patch("pathlib.Path.exists")
-    # Make everything exist
-    mock_exists.return_value = True
+    # Mock Path.exists to return True for our expected paths
+    original_exists = Path.exists
+    def mock_exists(self):
+        if str(self) in ["/home/user/.ssh/config", "/home/user/.ssh/authorized_keys", "/etc/ssh/sshd_config", "/etc/ssh/ssh_config"]:
+            return True
+        if ".ssh" in str(self) or "etc/ssh" in str(self):
+             return True
+        return False
+
+    monkeypatch.setattr(Path, "exists", mock_exists)
+    monkeypatch.setattr(Path, "is_dir", lambda self: True)
 
     paths = gptscan.get_ssh_config_paths()
     assert "/home/user/.ssh/config" in paths
@@ -18,50 +25,77 @@ def test_get_ssh_config_paths(mocker):
     assert "/etc/ssh/sshd_config" in paths
     assert "/etc/ssh/ssh_config" in paths
 
-def test_scan_system_audit_click(mocker):
-    mocker.patch("gptscan.get_shell_profile_paths", return_value=["/p1"])
-    mocker.patch("gptscan.get_shell_history_paths", return_value=["/h1"])
-    mocker.patch("gptscan.get_system_path_directories", return_value=["/bin"])
-    mocker.patch("gptscan.get_ssh_config_paths", return_value=["/s1"])
-    mocker.patch("gptscan.get_running_process_commands", return_value=[("proc", b"cmd")])
-    mocker.patch("gptscan.get_environment_variable_snippets", return_value=[("env", b"val")])
-    mocker.patch("gptscan.get_scheduled_task_commands", return_value=[("task", b"run")])
-    mocker.patch("gptscan.get_startup_item_commands", return_value=[("start", b"up")])
+def test_scan_system_audit_click(monkeypatch):
+    monkeypatch.setattr("gptscan.get_shell_profile_paths", lambda: ["/p1"])
+    monkeypatch.setattr("gptscan.get_shell_history_paths", lambda: ["/h1"])
+    monkeypatch.setattr("gptscan.get_system_path_directories", lambda: ["/bin"])
+    monkeypatch.setattr("gptscan.get_ssh_config_paths", lambda: ["/s1"])
+    monkeypatch.setattr("gptscan.get_running_process_commands", lambda: [("proc", b"cmd")])
+    monkeypatch.setattr("gptscan.get_environment_variable_snippets", lambda: [("env", b"val")])
+    monkeypatch.setattr("gptscan.get_scheduled_task_commands", lambda: [("task", b"run")])
+    monkeypatch.setattr("gptscan.get_startup_item_commands", lambda: [("start", b"up")])
+    monkeypatch.setattr("gptscan.get_system_service_paths", lambda: ["/ser1"])
+    monkeypatch.setattr("gptscan.get_system_service_commands", lambda: [("ser", b"cmd")])
+    monkeypatch.setattr("gptscan.get_git_hooks_paths", lambda: ["/hook1"])
+    monkeypatch.setattr("gptscan.get_git_config_snippets", lambda: [("git", b"conf")])
+    monkeypatch.setattr("gptscan.get_python_package_paths", lambda: ["/pkg1"])
 
-    mock_set_target = mocker.patch("gptscan._set_scan_target")
-    mock_button_click = mocker.patch("gptscan.button_click")
+    target_paths = []
+    def mock_set_target(paths):
+        nonlocal target_paths
+        target_paths = paths
+
+    monkeypatch.setattr("gptscan._set_scan_target", mock_set_target)
+
+    clicked = False
+    snippets_count = 0
+    def mock_button_click(extra_snippets=None, **kwargs):
+        nonlocal clicked, snippets_count
+        clicked = True
+        if extra_snippets:
+            snippets_count = len(extra_snippets)
+
+    monkeypatch.setattr("gptscan.button_click", mock_button_click)
 
     gptscan.scan_system_audit_click()
 
-    mock_set_target.assert_called_once()
-    args, _ = mock_set_target.call_args
-    assert "/p1" in args[0]
-    assert "/h1" in args[0]
-    assert "/bin" in args[0]
-    assert "/s1" in args[0]
+    assert "/p1" in target_paths
+    assert "/h1" in target_paths
+    assert "/bin" in target_paths
+    assert "/s1" in target_paths
+    assert "/ser1" in target_paths
+    assert "/hook1" in target_paths
+    assert "/pkg1" in target_paths
 
-    mock_button_click.assert_called_once()
-    _, kwargs = mock_button_click.call_args
-    snippets = kwargs["extra_snippets"]
-    assert len(snippets) == 4
+    assert clicked
+    assert snippets_count == 6
 
-def test_cli_audit_flag(mocker):
-    mocker.patch("gptscan.get_shell_profile_paths", return_value=["/p1"])
-    mocker.patch("gptscan.get_shell_history_paths", return_value=[])
-    mocker.patch("gptscan.get_system_path_directories", return_value=[])
-    mocker.patch("gptscan.get_ssh_config_paths", return_value=[])
-    mocker.patch("gptscan.get_running_process_commands", return_value=[])
-    mocker.patch("gptscan.get_environment_variable_snippets", return_value=[])
-    mocker.patch("gptscan.get_scheduled_task_commands", return_value=[])
-    mocker.patch("gptscan.get_startup_item_commands", return_value=[])
+def test_cli_audit_flag(monkeypatch):
+    monkeypatch.setattr("gptscan.get_shell_profile_paths", lambda: ["/p1"])
+    monkeypatch.setattr("gptscan.get_shell_history_paths", lambda: [])
+    monkeypatch.setattr("gptscan.get_system_path_directories", lambda: [])
+    monkeypatch.setattr("gptscan.get_ssh_config_paths", lambda: [])
+    monkeypatch.setattr("gptscan.get_running_process_commands", lambda: [])
+    monkeypatch.setattr("gptscan.get_environment_variable_snippets", lambda: [])
+    monkeypatch.setattr("gptscan.get_scheduled_task_commands", lambda: [])
+    monkeypatch.setattr("gptscan.get_startup_item_commands", lambda: [])
+    monkeypatch.setattr("gptscan.get_system_service_paths", lambda: [])
+    monkeypatch.setattr("gptscan.get_system_service_commands", lambda: [])
+    monkeypatch.setattr("gptscan.get_git_hooks_paths", lambda: [])
+    monkeypatch.setattr("gptscan.get_git_config_snippets", lambda: [])
+    monkeypatch.setattr("gptscan.get_python_package_paths", lambda: [])
 
-    mock_run_cli = mocker.patch("gptscan.run_cli", return_value=0)
+    cli_args = []
+    def mock_run_cli(targets, *args, **kwargs):
+        nonlocal cli_args
+        cli_args = targets
+        return 0
+
+    monkeypatch.setattr("gptscan.run_cli", mock_run_cli)
 
     import sys
     test_args = ["gptscan.py", "--audit", "--cli"]
     with patch.object(sys, 'argv', test_args):
         gptscan.main()
 
-    mock_run_cli.assert_called_once()
-    args, _ = mock_run_cli.call_args
-    assert "/p1" in args[0]
+    assert "/p1" in cli_args
