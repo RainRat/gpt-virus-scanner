@@ -3637,31 +3637,49 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
     if check_basename.endswith('makefile'):
         try:
             text = content.decode('utf-8', errors='ignore')
-            # Extract recipes (lines starting with a tab) with multi-line support
-            recipes = []
-            current_recipe = []
+            yielded_any = False
+            recipes_count = 0
+            vars_count = 0
 
-            def finalize_recipe():
-                if current_recipe:
-                    recipes.append(" ".join([c.rstrip('\\').strip() for c in current_recipe]))
+            lines = text.splitlines()
+            i = 0
+            while i < len(lines):
+                line = lines[i]
+                i += 1
 
-            for line in text.splitlines():
+                if not line.strip() or line.strip().startswith('#'):
+                    continue
+
                 if line.startswith('\t'):
-                    current_recipe.append(line[1:])
-                    # If line doesn't end with \, we've finished this recipe
-                    if not line.rstrip().endswith('\\'):
-                        finalize_recipe()
-                        current_recipe = []
-                elif current_recipe:
-                    finalize_recipe()
-                    current_recipe = []
+                    # Recipe
+                    content_parts = [line[1:]]
+                    while line.rstrip().endswith('\\') and i < len(lines):
+                        line = lines[i]
+                        i += 1
+                        content_parts.append(line[1:] if line.startswith('\t') else line.strip())
 
-            finalize_recipe()
+                    cmd = " ".join([c.rstrip('\\').strip() for c in content_parts])
+                    if cmd.strip():
+                        recipes_count += 1
+                        yield (f"{name} [Recipe {recipes_count}]", cmd.encode('utf-8'))
+                        yielded_any = True
+                else:
+                    # Check for variable assignment: VAR = val, VAR := val, VAR += val, VAR ?= val
+                    var_match = re.match(r'^([\w.-]+)\s*([:+?]?=)\s*(.*)', line)
+                    if var_match:
+                        content_parts = [var_match.group(3)]
+                        while line.rstrip().endswith('\\') and i < len(lines):
+                            line = lines[i]
+                            i += 1
+                            content_parts.append(line.strip())
 
-            if recipes:
-                for i, recipe in enumerate(recipes, 1):
-                    if recipe.strip():
-                        yield (f"{name} [Recipe {i}]", recipe.encode('utf-8'))
+                        val = " ".join([c.rstrip('\\').strip() for c in content_parts])
+                        if val.strip():
+                            vars_count += 1
+                            yield (f"{name} [Variable {vars_count}]", val.encode('utf-8'))
+                            yielded_any = True
+
+            if yielded_any:
                 return
         except Exception:
             pass
