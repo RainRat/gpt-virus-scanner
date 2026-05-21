@@ -2142,12 +2142,13 @@ def update_tree_columns() -> None:
 
     # Check if any row in the tree has AI data (gpt_conf is at index 4)
     has_ai_data = False
-    for item_id in tree.get_children():
-        values = tree.item(item_id, 'values')
-        # values[4] is gpt_conf. Check if it's not empty
-        if values and len(values) > 4 and values[4] and values[4] != "":
-            has_ai_data = True
-            break
+    if not show_ai:
+        for item_id in tree.get_children():
+            values = tree.item(item_id, 'values')
+            # values[4] is gpt_conf. Check if it's not empty
+            if values and len(values) > 4 and values[4] and values[4] != "":
+                has_ai_data = True
+                break
 
     if show_ai or has_ai_data:
         tree["displaycolumns"] = ("path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet")
