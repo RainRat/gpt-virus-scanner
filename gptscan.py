@@ -752,7 +752,7 @@ def _get_initial_dir() -> Optional[str]:
 
     try:
         # Extract the first path if multiple are provided
-        paths = shlex.split(path_str)
+        paths = shlex.split(path_str, posix=(sys.platform != "win32"))
         if not paths:
             return None
         first_path = paths[0]
@@ -1717,7 +1717,7 @@ def _normalize_targets(targets: Union[str, List[str], Path]) -> List[str]:
         targets = [str(targets)]
     elif isinstance(targets, str):
         try:
-            targets = shlex.split(targets)
+            targets = shlex.split(targets, posix=(sys.platform != "win32"))
         except ValueError:
             targets = [targets]
 
@@ -2540,7 +2540,7 @@ def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_
 
     try:
         # Use shlex.split to support multi-target selection with quoting
-        scan_targets = shlex.split(scan_path) if scan_path else []
+        scan_targets = shlex.split(scan_path, posix=(sys.platform != "win32")) if scan_path else []
     except ValueError as e:
         messagebox.showerror("Selection Error", f"Malformed path selection: {e}")
         return
@@ -3253,7 +3253,8 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 tasks = manifest.get('tasks', [])
                 if isinstance(tasks, list):
                     for task in tasks:
-                        if not isinstance(task, dict): continue
+                        if not isinstance(task, dict):
+                            continue
                         task_label = task.get('label') or task.get('taskName') or "Unnamed Task"
                         cmd = task.get('command')
                         args = task.get('args')
@@ -3268,7 +3269,8 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 inputs = manifest.get('inputs', [])
                 if isinstance(inputs, list):
                     for inp in inputs:
-                        if not isinstance(inp, dict): continue
+                        if not isinstance(inp, dict):
+                            continue
                         inp_id = inp.get('id', 'Unnamed Input')
                         if inp.get('type') == 'command':
                             cmd = inp.get('command')
@@ -3285,11 +3287,13 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 configs = manifest.get('configurations', [])
                 if isinstance(configs, list):
                     for config in configs:
-                        if not isinstance(config, dict): continue
+                        if not isinstance(config, dict):
+                            continue
                         config_name = config.get('name', 'Unnamed Config')
                         # Extract program, args, and preLaunchTask
                         parts = []
-                        if config.get('program'): parts.append(str(config.get('program')))
+                        if config.get('program'):
+                            parts.append(str(config.get('program')))
                         if config.get('args'):
                             args = config.get('args')
                             if isinstance(args, list):
@@ -3684,7 +3688,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 9. Fallback: yield as a single snippet if it's a supported file type
+    # 12. Fallback: yield as a single snippet if it's a supported file type
     # If scan_all_files is True, we always yield. Otherwise check extension/shebang.
     if Config.is_supported_file(check_name, content=content, is_member=(depth > 0)):
         yield name, content
@@ -6420,7 +6424,7 @@ def copy_cli_command(event: Optional[tk.Event] = None) -> None:
     if raw_target:
         try:
             # Parse possible multiple targets from the GUI textbox
-            targets = shlex.split(raw_target)
+            targets = shlex.split(raw_target, posix=(sys.platform != "win32"))
             for t in targets:
                 cmd_parts.append(shlex.quote(t))
         except ValueError:
