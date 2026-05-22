@@ -64,7 +64,7 @@ Access these options from the **Browse** menu:
 *   **Scan Git Hooks:** Scan local and global Git hooks for dangerous scripts (Ctrl+Shift+G).
 *   **Scan Git Configuration:** Scan potentially dangerous Git configuration settings (aliases, editors, etc.).
 *   **Scan Git Revision...:** Scan files modified in a specific Git revision or commit.
-*   **System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, startup items, system services, and Git configuration (Ctrl+Shift+I).
+*   **System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, startup items, system services, Git configuration, Git hooks, and installed Python packages (Ctrl+Shift+I).
 *   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for dangerous one-liners.
 *   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
 *   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
@@ -72,6 +72,7 @@ Access these options from the **Browse** menu:
 *   **Scan Scheduled Tasks:** Scan all scheduled tasks (Windows) and Cron jobs (Linux/macOS) to identify dangerous persistence (Ctrl+Shift+T).
 *   **Scan Startup Items:** Scan all system startup items and LaunchAgents to find malicious persistence (Ctrl+Shift+A).
 *   **Scan System Services:** Scan all system services (systemd files on Linux, Service PathName on Windows) to identify dangerous persistence (Ctrl+Shift+S).
+*   **Scan Python Packages:** Scan all directories containing installed Python packages (site-packages).
 
 ### Keyboard Shortcuts
 The scanner includes shortcuts for faster navigation:
@@ -177,9 +178,34 @@ To scan potentially dangerous Git configuration settings:
 python3 gptscan.py --git-config --cli
 ```
 
+To scan all local and global Git hooks:
+```bash
+python3 gptscan.py --git-hooks --cli
+```
+
+To scan current Git changes as a diff:
+```bash
+python3 gptscan.py --git-diff --cli
+```
+
+To scan all installed Python packages:
+```bash
+python3 gptscan.py --python-packages --cli
+```
+
 To scan all shell profiles and RC files:
 ```bash
 python3 gptscan.py --shell-profiles --cli
+```
+
+To perform a comprehensive system audit:
+```bash
+python3 gptscan.py --audit --cli
+```
+
+To scan code sent from another command (piping):
+```bash
+cat script.py | python3 gptscan.py --stdin --cli
 ```
 
 To scan files modified in the last 24 hours:
