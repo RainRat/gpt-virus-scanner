@@ -6647,7 +6647,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A/S).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A/S/Y).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -6687,7 +6687,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
     browse_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
     browse_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
-    browse_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click)
+    browse_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click, accelerator="Ctrl+Shift+Y")
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -7063,6 +7063,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-A>', lambda event: scan_startup_items_click())
     root.bind('<Control-Shift-S>', lambda event: scan_system_services_click())
     root.bind('<Command-Shift-S>', lambda event: scan_system_services_click())
+    root.bind('<Control-Shift-Y>', lambda event: scan_python_packages_click())
+    root.bind('<Command-Shift-Y>', lambda event: scan_python_packages_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
