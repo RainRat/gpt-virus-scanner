@@ -1145,24 +1145,27 @@ def get_shell_history_paths() -> List[str]:
     return paths
 
 
-def get_system_path_directories() -> List[str]:
-    """Identify all directories listed in the system's PATH environment variable."""
-    path_env = os.environ.get("PATH", "")
-    if not path_env:
-        return []
-
-    # Split and filter out empty strings and non-existent directories
+def _normalize_and_filter_dirs(paths: Iterable[Optional[str]]) -> List[str]:
+    """Normalize paths to absolute, filter out non-directories, and deduplicate while preserving order."""
     dirs = []
     seen = set()
-    for p in path_env.split(os.pathsep):
+    for p in paths:
         if not p:
             continue
         abs_p = os.path.abspath(p)
         if abs_p not in seen and os.path.isdir(abs_p):
             dirs.append(abs_p)
             seen.add(abs_p)
-
     return dirs
+
+
+def get_system_path_directories() -> List[str]:
+    """Identify all directories listed in the system's PATH environment variable."""
+    path_env = os.environ.get("PATH", "")
+    if not path_env:
+        return []
+
+    return _normalize_and_filter_dirs(path_env.split(os.pathsep))
 
 
 def get_running_process_commands() -> List[Tuple[str, bytes]]:
@@ -1250,18 +1253,7 @@ def get_python_package_paths() -> List[str]:
         if 'site-packages' in p:
             paths.append(p)
 
-    # Filter out non-existent directories and deduplicate
-    unique_paths = []
-    seen = set()
-    for p in paths:
-        if not p:
-            continue
-        abs_p = os.path.abspath(p)
-        if abs_p not in seen and os.path.isdir(abs_p):
-            unique_paths.append(abs_p)
-            seen.add(abs_p)
-
-    return sorted(unique_paths)
+    return sorted(_normalize_and_filter_dirs(paths))
 
 
 def get_system_service_commands() -> List[Tuple[str, bytes]]:
