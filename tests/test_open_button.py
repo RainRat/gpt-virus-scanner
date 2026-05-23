@@ -22,7 +22,7 @@ def test_open_button_management(monkeypatch):
 
     # Test set_scanning_state(True)
     gptscan.set_scanning_state(True)
-    mock_open_button.config.assert_called_with(state="disabled")
+    # open_button is no longer disabled during active scans (PR 621)
 
     # Test set_scanning_state(False)
     gptscan.set_scanning_state(False)

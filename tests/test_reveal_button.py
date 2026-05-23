@@ -21,11 +21,12 @@ def test_reveal_button_management(monkeypatch):
 
     # Test set_scanning_state(True)
     gptscan.set_scanning_state(True)
-    mock_reveal_button.config.assert_called_with(state="disabled")
+    # reveal_button is no longer disabled during active scans (PR 621)
 
     # Test set_scanning_state(False)
     gptscan.set_scanning_state(False)
-    mock_reveal_button.config.assert_called_with(state="normal")
+    # Note: set_scanning_state(False) calls update_button_states()
+    # which we test below based on selection.
 
     # Test update_button_states with selection
     mock_tree.selection.return_value = ("item1",)
