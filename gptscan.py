@@ -3193,20 +3193,27 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                             break
                                     command_val = "\n".join(multiline_lines)
                             # Handle multiline arrays
-                            elif command_val.startswith('[') and not command_val.endswith(']'):
-                                array_lines = [command_val]
-                                while i < len(lines):
-                                    curr_line = lines[i].strip()
-                                    # Strip inline comments from array lines
-                                    comment_match = re.search(r'^(?:[^"\'#]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*(#.*)', curr_line)
-                                    if comment_match:
-                                        curr_line = curr_line[:comment_match.start(1)].strip()
+                            elif command_val.startswith('['):
+                                # Check if it actually ends on this line (ignoring comments)
+                                temp_val = command_val
+                                comment_match = re.search(r'^(?:[^"\'#]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*(#.*)', temp_val)
+                                if comment_match:
+                                    temp_val = temp_val[:comment_match.start(1)].strip()
 
-                                    array_lines.append(curr_line)
-                                    i += 1
-                                    if curr_line.endswith(']'):
-                                        break
-                                command_val = "".join(array_lines)
+                                if not temp_val.endswith(']'):
+                                    array_lines = [command_val]
+                                    while i < len(lines):
+                                        curr_line = lines[i].strip()
+                                        # Strip inline comments from array lines
+                                        comment_match = re.search(r'^(?:[^"\'#]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*(#.*)', curr_line)
+                                        if comment_match:
+                                            curr_line = curr_line[:comment_match.start(1)].strip()
+
+                                        array_lines.append(curr_line)
+                                        i += 1
+                                        if curr_line.endswith(']'):
+                                            break
+                                    command_val = "".join(array_lines)
 
                             if current_nested_script:
                                 # Inside a nested section like [tool.pdm.scripts.test] or [tool.poe.tasks.test]
