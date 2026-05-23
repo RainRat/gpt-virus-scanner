@@ -2193,16 +2193,15 @@ def set_scanning_state(is_scanning: bool) -> None:
         textbox, clear_target_btn, browse_button,
         git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox,
         gpt_checkbox, provider_combo, model_combo, api_entry, show_key_btn,
-        copy_cmd_button, all_checkbox, threshold_spin
+        copy_cmd_button
     ]
     for widget in config_widgets:
         if widget:
             widget.config(state="disabled" if is_scanning else "normal")
 
-    # Disable all footer buttons during a scan
+    # Disable specific footer buttons during a scan
     footer_buttons = [
-        view_button, rescan_button, open_button, analyze_button, exclude_button,
-        reveal_button, vt_button, view_online_button, results_button
+        rescan_button, analyze_button, exclude_button, results_button
     ]
     for btn in footer_buttons:
         if btn:
@@ -5941,11 +5940,11 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         rescan_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
         analyze_btn.config(state='disabled' if is_scanning or not Config.GPT_ENABLED else 'normal')
         exclude_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
-        open_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
-        vt_btn.config(state='disabled' if is_scanning else 'normal')
-        view_online_btn.config(state='disabled' if is_scanning or is_non_url_virtual else 'normal')
-        path_copy_btn.config(state='disabled' if is_scanning else 'normal')
-        reveal_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
+        open_btn.config(state='disabled' if is_virtual else 'normal')
+        vt_btn.config(state='normal')
+        view_online_btn.config(state='disabled' if is_non_url_virtual else 'normal')
+        path_copy_btn.config(state='normal')
+        reveal_btn.config(state='disabled' if is_virtual else 'normal')
 
         # vals: (path, own_conf, admin, user, gpt_conf, snippet, line)
         path, own_conf, admin, user, gpt_conf, snippet = vals[:6]
@@ -6369,30 +6368,29 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
                     has_non_url_virtual = True
 
     # Define button states based on selection and scan status
-    # 1. Base dependency (must have selection and not be scanning)
-    base_state = "normal" if has_selection and not is_scanning else "disabled"
+    # Base dependencies (selection only, allows interaction during scan)
+    safe_base_state = "normal" if has_selection else "disabled"
+    safe_local_state = "normal" if has_selection and not has_virtual else "disabled"
+    safe_online_state = "normal" if has_selection and not has_non_url_virtual else "disabled"
 
-    # 2. Local-only actions (disable if any virtual item is selected)
-    local_state = "normal" if has_selection and not is_scanning and not has_virtual else "disabled"
-
-    # 3. Actions requiring non-virtual path or URL
-    online_state = "normal" if has_selection and not is_scanning and not has_non_url_virtual else "disabled"
+    # Dependencies requiring no active scan (modifying actions)
+    mod_local_state = "normal" if has_selection and not is_scanning and not has_virtual else "disabled"
 
     # Apply to footer buttons
     if view_button:
-        view_button.config(state=base_state)
+        view_button.config(state=safe_base_state)
     if open_button:
-        open_button.config(state=local_state)
+        open_button.config(state=safe_local_state)
     if rescan_button:
-        rescan_button.config(state=local_state)
+        rescan_button.config(state=mod_local_state)
     if exclude_button:
-        exclude_button.config(state=local_state)
+        exclude_button.config(state=mod_local_state)
     if reveal_button:
-        reveal_button.config(state=local_state)
+        reveal_button.config(state=safe_local_state)
     if vt_button:
-        vt_button.config(state=base_state)
+        vt_button.config(state=safe_base_state)
     if view_online_button:
-        view_online_button.config(state=online_state)
+        view_online_button.config(state=safe_online_state)
 
     if analyze_button:
         ai_available = Config.GPT_ENABLED
@@ -6402,14 +6400,14 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
     if context_menu:
         try:
             # Entry indices can be tricky if separators change, but we target by label for safety
-            context_menu.entryconfig("View Details...", state=base_state)
-            context_menu.entryconfig("Rescan Selected", state=local_state)
+            context_menu.entryconfig("View Details...", state=safe_base_state)
+            context_menu.entryconfig("Rescan Selected", state=mod_local_state)
             context_menu.entryconfig("Analyze with AI", state="normal" if has_selection and Config.GPT_ENABLED and not is_scanning else "disabled")
-            context_menu.entryconfig("Exclude Selected", state=local_state)
-            context_menu.entryconfig("Open", state=local_state)
-            context_menu.entryconfig("Show in Folder", state=local_state)
-            context_menu.entryconfig("Check on VirusTotal", state=base_state)
-            context_menu.entryconfig("View Online", state=online_state)
+            context_menu.entryconfig("Exclude Selected", state=mod_local_state)
+            context_menu.entryconfig("Open", state=safe_local_state)
+            context_menu.entryconfig("Show in Folder", state=safe_local_state)
+            context_menu.entryconfig("Check on VirusTotal", state=safe_base_state)
+            context_menu.entryconfig("View Online", state=safe_online_state)
         except tk.TclError:
             pass # Menu might not be fully initialized or entry labels differ
 
