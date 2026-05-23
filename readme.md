@@ -132,64 +132,100 @@ The scanner includes shortcuts for faster navigation:
 *Note: macOS users should use `Command` instead of `Ctrl` for most shortcuts.*
 
 ### Using the Terminal (CLI)
-To run the scanner in your terminal, use the `--cli` flag:
+To run the scanner in your terminal, use the `--cli` flag.
+
+#### Basic Usage
+Scan a single file or folder:
 ```bash
 python3 gptscan.py path/to/your/script.py --cli
 ```
 
-To scan your shell history from the terminal:
+Scan multiple files, folders, or web links:
 ```bash
-python3 gptscan.py --shell-history --cli
+python3 gptscan.py file1.py folder/ https://github.com/user/repo --cli
 ```
 
-To scan all directories in your system PATH:
-```bash
-python3 gptscan.py --system-path --cli
-```
-
-To scan all running processes:
-```bash
-python3 gptscan.py --running-processes --cli
-```
-
-To scan all scheduled tasks and Cron jobs:
-```bash
-python3 gptscan.py --scheduled-tasks --cli
-```
-
-To scan all system startup items and LaunchAgents:
-```bash
-python3 gptscan.py --startup-items --cli
-```
-
-To scan all system services:
-```bash
-python3 gptscan.py --system-services --cli
-```
-
-To scan all environment variables:
-```bash
-python3 gptscan.py --env-vars --cli
-```
-
-To scan potentially dangerous Git configuration settings:
-```bash
-python3 gptscan.py --git-config --cli
-```
-
-To scan all shell profiles and RC files:
-```bash
-python3 gptscan.py --shell-profiles --cli
-```
-
-To scan files modified in the last 24 hours:
+Scan files modified in the last 24 hours:
 ```bash
 python3 gptscan.py --modified 24h --cli
 ```
 
-You can also scan multiple files, folders, or web links:
+#### System Scans
+Perform a comprehensive system audit:
 ```bash
-python3 gptscan.py file1.py folder/ https://github.com/user/repo --cli
+python3 gptscan.py --audit --cli
+```
+
+Scan all directories containing installed Python packages:
+```bash
+python3 gptscan.py --python-packages --cli
+```
+
+Scan all common shell profile and RC files:
+```bash
+python3 gptscan.py --shell-profiles --cli
+```
+
+Scan your terminal history (Bash, Zsh, PowerShell, etc.):
+```bash
+python3 gptscan.py --shell-history --cli
+```
+
+Scan all directories in your system PATH:
+```bash
+python3 gptscan.py --system-path --cli
+```
+
+Scan command lines of all running processes:
+```bash
+python3 gptscan.py --running-processes --cli
+```
+
+Scan all scheduled tasks and Cron jobs:
+```bash
+python3 gptscan.py --scheduled-tasks --cli
+```
+
+Scan all system startup items and LaunchAgents:
+```bash
+python3 gptscan.py --startup-items --cli
+```
+
+Scan all system services:
+```bash
+python3 gptscan.py --system-services --cli
+```
+
+Scan all environment variables:
+```bash
+python3 gptscan.py --env-vars --cli
+```
+
+#### Git Integration
+Scan changes in your local project as a diff:
+```bash
+python3 gptscan.py --git-diff --cli
+```
+
+Scan local and global Git hooks for dangerous scripts:
+```bash
+python3 gptscan.py --git-hooks --cli
+```
+
+Scan potentially dangerous Git configuration settings:
+```bash
+python3 gptscan.py --git-config --cli
+```
+
+#### Advanced Scans
+Scan code sent from another command in the terminal:
+```bash
+echo "import os; os.system('rm -rf /')" | python3 gptscan.py --stdin --cli
+```
+
+Save scan results to a file (CSV, JSON, HTML, etc.):
+```bash
+python3 gptscan.py ./my_project --output results.html --cli
 ```
 
 ### Setting up AI Analysis
