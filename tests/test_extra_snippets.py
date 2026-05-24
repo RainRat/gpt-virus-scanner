@@ -6,7 +6,7 @@ from gptscan import scan_files, Config, scan_clipboard_click
 
 def test_scan_files_extra_snippets_basic(mock_tf_env, monkeypatch):
     """Test that extra_snippets are correctly processed by scan_files."""
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [])
     snippet_content = b"print('hello world')"
     extra_snippets = [("[Clipboard]", snippet_content)]
 
@@ -29,7 +29,7 @@ def test_scan_files_extra_snippets_basic(mock_tf_env, monkeypatch):
 
 def test_scan_files_boundary_threshold(mock_tf_env, monkeypatch):
     """Verify that a snippet exactly at the threshold is yielded (inclusive check)."""
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [])
     mock_tf_env.predict.return_value = [[0.5]] # Exactly 50%
     Config.THRESHOLD = 50
 
@@ -50,7 +50,7 @@ def test_scan_files_boundary_threshold(mock_tf_env, monkeypatch):
 
 def test_scan_files_below_threshold_ignored(mock_tf_env, monkeypatch):
     """Verify that a snippet below the threshold is ignored when show_all=False."""
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [])
     mock_tf_env.predict.return_value = [[0.49]] # 49%
     Config.THRESHOLD = 50
 
@@ -70,7 +70,7 @@ def test_scan_files_below_threshold_ignored(mock_tf_env, monkeypatch):
 
 def test_scan_files_extra_snippets_gpt_trigger(mock_tf_env, monkeypatch):
     """Test that extra_snippets can trigger GPT analysis."""
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [])
     mock_tf_env.predict.return_value = [[0.9]]
     Config.THRESHOLD = 50
     Config.GPT_ENABLED = True

@@ -28,7 +28,7 @@ def test_fetch_url_content_too_large():
 
 def test_scan_files_with_url_target(mock_tf_env, monkeypatch):
     """Test that URLs in scan_targets are fetched and scanned."""
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [])
     url = "https://example.com/malicious.py"
     mock_content = b"print('malicious')"
 
@@ -56,7 +56,7 @@ def test_scan_files_with_url_target(mock_tf_env, monkeypatch):
 
 def test_scan_files_url_fetch_error(mock_tf_env, monkeypatch):
     """Test handling of URL fetch errors during scan."""
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [])
     url = "https://example.com/missing.sh"
 
     with patch("urllib.request.urlopen", side_effect=Exception("404 Not Found")):

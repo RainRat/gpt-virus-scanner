@@ -25,7 +25,7 @@ def test_scan_files_fallback_when_below_threshold(monkeypatch, tmp_path, mock_sc
     test_file.write_bytes(b"print('hello')")
 
     monkeypatch.setattr(gptscan.Config, "extensions_set", {".py"})
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [test_file])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [test_file])
     monkeypatch.setattr(gptscan.Config, "THRESHOLD", 50)
 
     # Run scan with show_all=False

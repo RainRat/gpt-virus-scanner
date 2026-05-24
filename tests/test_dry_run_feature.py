@@ -19,7 +19,7 @@ def test_dry_run_skips_model_and_yields_results(monkeypatch, tmp_path):
     monkeypatch.setattr(gptscan.Config, "extensions_set", {".py", ".js"})
 
     # Mock collect_files to return these files explicitly
-    monkeypatch.setattr(gptscan, "collect_files", lambda x: [f1, f2])
+    monkeypatch.setattr(gptscan, "collect_files", lambda x, **kwargs: [f1, f2])
 
     # Mock get_model to ensure it's NOT called
     mock_get_model = MagicMock()

@@ -3812,10 +3812,7 @@ def scan_files(
     explicit_targets = {Path(t) for t in local_targets}
     explicit_files = {f for f in explicit_targets if f.is_file()}
 
-    if modified_since is not None:
-        file_list = collect_files(local_targets, modified_since=modified_since)
-    else:
-        file_list = collect_files(local_targets)
+    file_list = collect_files(local_targets, modified_since=modified_since)
 
     if exclude_patterns:
         file_list = [

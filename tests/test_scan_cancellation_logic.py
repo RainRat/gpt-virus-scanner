@@ -23,7 +23,7 @@ def test_scan_files_cancellation_at_file_start(monkeypatch, tmp_path, mock_scan_
     (tmp_path / "file1.py").write_text("content1")
     (tmp_path / "file2.py").write_text("content2")
 
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [tmp_path / "file1.py", tmp_path / "file2.py"])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [tmp_path / "file1.py", tmp_path / "file2.py"])
 
     cancel_event = threading.Event()
 
@@ -47,7 +47,7 @@ def test_scan_files_cancellation_during_windows(monkeypatch, tmp_path, mock_scan
     test_file = tmp_path / "large.py"
     test_file.write_bytes(b"a" * file_size)
 
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [test_file])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [test_file])
 
     cancel_event = threading.Event()
 

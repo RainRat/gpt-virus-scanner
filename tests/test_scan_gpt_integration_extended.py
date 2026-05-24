@@ -25,7 +25,7 @@ def mock_gpt_env(monkeypatch, tmp_path):
     file1.write_text("print('hello')")
     file2 = tmp_path / "test2.py"
     file2.write_text("print('world')")
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [file1, file2])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [file1, file2])
 
     return file1, file2
 

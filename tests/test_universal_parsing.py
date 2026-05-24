@@ -127,7 +127,7 @@ def test_unpack_nested_archives():
 
 def test_scan_files_url_zip_expansion(mock_tf_env, monkeypatch):
     """Test that a ZIP fetched via URL is expanded and scanned."""
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [])
     url = "https://example.com/scripts.zip"
 
     zip_buffer = io.BytesIO()
@@ -155,7 +155,7 @@ def test_scan_files_url_zip_expansion(mock_tf_env, monkeypatch):
 
 def test_scan_files_clipboard_ipynb_expansion(mock_tf_env, monkeypatch):
     """Test that a Notebook in extra_snippets (clipboard) is expanded."""
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [])
     nb_data = {
         "cells": [{"cell_type": "code", "source": ["print('clipboard cell')"]}]
     }

@@ -39,7 +39,7 @@ def test_scan_files_reports_multiple_hits_in_one_file(monkeypatch, tmp_path, moc
     test_file.write_bytes(content)
 
     monkeypatch.setattr(gptscan.Config, "extensions_set", {".py"})
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [test_file])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [test_file])
 
     # Run scan with deep_scan=True to find both windows
     results = list(gptscan.scan_files(
@@ -108,7 +108,7 @@ def test_scan_files_fallback_if_no_multi_hits(monkeypatch, tmp_path, mock_multi_
     test_file.write_bytes(content)
 
     monkeypatch.setattr(gptscan.Config, "extensions_set", {".py"})
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [test_file])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [test_file])
 
     # Run scan with show_all=True
     results = list(gptscan.scan_files(

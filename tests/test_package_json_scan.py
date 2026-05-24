@@ -54,7 +54,7 @@ def test_is_supported_file_package_json():
 def test_scan_files_package_json_expansion(mock_tf_env, monkeypatch):
     """Test that a package.json is expanded and scanned."""
     # mock_tf_env is a fixture from conftest.py (hopefully)
-    monkeypatch.setattr(gptscan, "collect_files", lambda targets: [])
+    monkeypatch.setattr(gptscan, "collect_files", lambda targets, **kwargs: [])
 
     pkg_data = {
         "scripts": {
