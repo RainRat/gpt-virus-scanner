@@ -1256,6 +1256,27 @@ def get_python_package_paths() -> List[str]:
     return sorted(_normalize_and_filter_dirs(paths))
 
 
+def get_node_package_paths() -> List[str]:
+    """Identify all directories containing installed Node.js packages (node_modules)."""
+    paths = []
+    # 1. Global Node.js packages via npm
+    try:
+        global_root = subprocess.check_output(
+            ["npm", "root", "-g"],
+            stderr=subprocess.DEVNULL,
+            universal_newlines=True
+        ).strip()
+        if global_root:
+            paths.append(global_root)
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+
+    # 2. Local node_modules in current directory
+    paths.append(os.path.join(os.getcwd(), "node_modules"))
+
+    return sorted(_normalize_and_filter_dirs(paths))
+
+
 def get_system_service_commands() -> List[Tuple[str, bytes]]:
     """Collect command lines of all system services (Windows Service PathName)."""
     items = []
@@ -2425,6 +2446,19 @@ def scan_system_services_click():
         messagebox.showwarning("System Services Error", f"Could not scan system services: {e}")
 
 
+def scan_node_packages_click():
+    """Scan all directories containing installed Node.js packages (node_modules)."""
+    try:
+        package_paths = get_node_package_paths()
+        if package_paths:
+            _set_scan_target(package_paths)
+            button_click()
+        else:
+            messagebox.showinfo("Node.js Packages", "No Node.js node_modules directories were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Node.js Packages Error", f"Could not scan Node.js packages: {e}")
+
+
 def scan_python_packages_click():
     """Scan all directories containing installed Python packages (site-packages)."""
     try:
@@ -2473,6 +2507,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_system_service_paths())
     all_paths.extend(get_git_hooks_paths())
     all_paths.extend(get_python_package_paths())
+    all_paths.extend(get_node_package_paths())
 
     all_snippets = []
     all_snippets.extend(get_running_process_commands())
@@ -6685,6 +6720,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
     browse_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
     browse_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click, accelerator="Ctrl+Shift+Y")
+    browse_menu.add_command(label="Scan Node.js Packages", command=scan_node_packages_click, accelerator="Ctrl+Shift+M")
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -7062,6 +7098,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-S>', lambda event: scan_system_services_click())
     root.bind('<Control-Shift-Y>', lambda event: scan_python_packages_click())
     root.bind('<Command-Shift-Y>', lambda event: scan_python_packages_click())
+    root.bind('<Control-Shift-M>', lambda event: scan_node_packages_click())
+    root.bind('<Command-Shift-M>', lambda event: scan_node_packages_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
@@ -7249,6 +7287,11 @@ def main():
         '--python-packages',
         action='store_true',
         help='Scan all directories containing installed Python packages (site-packages).'
+    )
+    scan_group.add_argument(
+        '--node-packages',
+        action='store_true',
+        help='Scan all directories containing installed Node.js packages (node_modules).'
     )
     scan_group.add_argument(
         '--env-vars',
@@ -7519,6 +7562,13 @@ def main():
                 scan_targets.extend(package_paths)
             else:
                 print("No Python site-packages directories were found.", file=sys.stderr)
+
+        if args.node_packages:
+            package_paths = get_node_package_paths()
+            if package_paths:
+                scan_targets.extend(package_paths)
+            else:
+                print("No Node.js node_modules directories were found.", file=sys.stderr)
 
         if args.env_vars:
             snippets = get_environment_variable_snippets()

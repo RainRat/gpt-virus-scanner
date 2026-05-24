@@ -64,7 +64,7 @@ Access these options from the **Browse** menu:
 *   **Scan Git Hooks:** Scan local and global Git hooks for dangerous scripts (Ctrl+Shift+G).
 *   **Scan Git Configuration:** Scan potentially dangerous Git configuration settings (aliases, editors, etc.).
 *   **Scan Git Revision...:** Scan files modified in a specific Git revision or commit.
-*   **System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, startup items, system services, Git configuration, Git hooks, and installed Python packages (Ctrl+Shift+I).
+*   **System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, startup items, system services, Git configuration, Git hooks, installed Python packages, and Node.js packages (Ctrl+Shift+I).
 *   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for dangerous one-liners.
 *   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
 *   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
@@ -73,6 +73,7 @@ Access these options from the **Browse** menu:
 *   **Scan Startup Items:** Scan all system startup items and LaunchAgents to find malicious persistence (Ctrl+Shift+A).
 *   **Scan System Services:** Scan all system services (systemd files on Linux, Service PathName on Windows) to identify dangerous persistence (Ctrl+Shift+S).
 *   **Scan Python Packages:** Scan all directories containing installed Python packages (site-packages) for potentially malicious modules (Ctrl+Shift+Y).
+*   **Scan Node.js Packages:** Scan all directories containing installed Node.js packages (node_modules) for potentially malicious modules (Ctrl+Shift+M).
 
 ### Keyboard Shortcuts
 The scanner includes shortcuts for faster navigation:
@@ -103,6 +104,7 @@ The scanner includes shortcuts for faster navigation:
 | `Ctrl+Shift+A` | Scan Startup Items |
 | `Ctrl+Shift+S` | Scan System Services |
 | `Ctrl+Shift+Y` | Scan Python Packages |
+| `Ctrl+Shift+M` | Scan Node.js Packages |
 | **Results List** | |
 | `Space` / `Enter` | View Details |
 | `F5` / `r` | Rescan |
@@ -161,6 +163,11 @@ python3 gptscan.py --audit --cli
 Scan all directories containing installed Python packages:
 ```bash
 python3 gptscan.py --python-packages --cli
+```
+
+Scan all directories containing installed Node.js packages:
+```bash
+python3 gptscan.py --node-packages --cli
 ```
 
 Scan all common shell profile and RC files:
