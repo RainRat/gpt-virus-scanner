@@ -1495,13 +1495,15 @@ def get_git_config_snippets() -> List[Tuple[str, bytes]]:
     for flag, label in configs:
         try:
             output = subprocess.check_output(
-                ["git", "config", flag, "--list"],
+                ["git", "config", flag, "--list", "-z"],
                 stderr=subprocess.PIPE,
                 universal_newlines=True
             )
-            for line in output.splitlines():
-                if '=' in line:
-                    key, value = line.split('=', 1)
+            # git config --list -z uses null bytes to separate entries.
+            # Each entry is key\nvalue.
+            for entry in output.split('\0'):
+                if '\n' in entry:
+                    key, value = entry.split('\n', 1)
                     key = key.strip()
                     value = value.strip()
                     # For aliases, if it starts with !, it's a shell command
