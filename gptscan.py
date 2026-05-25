@@ -7121,44 +7121,44 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, project files, and web links for dangerous code using AI. Supports archives, Notebooks, package manifests, CI/CD workflows, Docker, and Git changes.",
+        description="Scan scripts, project files, and web links for dangerous code using AI. Works with archives, Notebooks, package manifests, CI/CD workflows, Docker, and Git changes.",
         epilog="Examples:\n"
-               "  # Scan a folder and use AI for deep analysis\n"
-               "  python gptscan.py ./my_scripts --cli --use-gpt\n\n"
+               "  # Scan a folder and use AI for analysis\n"
+               "  python3 gptscan.py ./my_scripts --cli --use-gpt\n\n"
                "  # Scan Git changes and stop if threats are found\n"
-               "  python gptscan.py --git-changes --cli --fail-threshold 50\n\n"
+               "  python3 gptscan.py --git-changes --cli --fail-threshold 50\n\n"
                "  # Scan current Git changes as a diff\n"
-               "  python gptscan.py --git-diff --cli\n\n"
-               "  # Scan a code snippet from a web link (GitHub, GitLab, Pastebin, etc.)\n"
-               "  python gptscan.py https://github.com/user/repo --cli\n\n"
-               "  # Perform a comprehensive system audit\n"
-               "  python gptscan.py --audit --cli\n\n"
-               "  # Scan files modified in the last 24 hours\n"
-               "  python gptscan.py --modified 24h --cli\n\n"
+               "  python3 gptscan.py --git-diff --cli\n\n"
+               "  # Scan a link (GitHub, GitLab, Pastebin, etc.)\n"
+               "  python3 gptscan.py https://github.com/user/repo --cli\n\n"
+               "  # Run a full system check\n"
+               "  python3 gptscan.py --audit --cli\n\n"
+               "  # Scan files changed in the last 24 hours\n"
+               "  python3 gptscan.py --modified 24h --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {Config.VERSION}')
-    parser.add_argument('target', nargs='?', help='The folder, file, pattern, or web link to scan.')
+    parser.add_argument('target', nargs='?', help='The folder, file, pattern, or link to scan.')
     parser.add_argument(
         'files',
         nargs='*',
-        help='Other folders, files, patterns, or web links to scan.'
+        help='Other folders, files, patterns, or links to scan.'
     )
 
     scan_group = parser.add_argument_group("Scan Options")
-    scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or web link to scan.')
-    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the entire file instead of just the beginning and end.')
-    scan_group.add_argument('--dry-run', action='store_true', help='Preview which files will be scanned without actually checking them.')
+    scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or link to scan.')
+    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. This is slower but more thorough.')
+    scan_group.add_argument('--dry-run', action='store_true', help='Preview which files would be scanned without actually checking them.')
     scan_group.add_argument(
         '--extensions',
         type=str,
-        help="Only scan these file types (e.g., 'py,js')."
+        help="Only scan these file types (for example: 'py,js')."
     )
     scan_group.add_argument(
         '-e', '--exclude',
         nargs='*',
-        help="Ignore files or folders matching these patterns (e.g., 'node_modules/*')."
+        help="Ignore files or folders matching these patterns (for example: 'node_modules/*')."
     )
     scan_group.add_argument(
         '--file-list',
@@ -7169,13 +7169,13 @@ def main():
         '--git-changes',
         nargs='?',
         const='HEAD',
-        help='Only scan files changed in Git. Optionally provide a revision (e.g., "main").'
+        help='Only scan files changed in Git. Optionally provide a branch or commit (for example: "main").'
     )
     scan_group.add_argument(
         '--git-diff',
         nargs='?',
         const='HEAD',
-        help='Scan current Git changes as a diff. Optionally provide a revision (e.g., "HEAD~1").'
+        help='Scan current Git changes as a diff. Optionally provide a branch or commit (for example: "HEAD~1").'
     )
     scan_group.add_argument(
         '--git-hooks',
@@ -7185,7 +7185,7 @@ def main():
     scan_group.add_argument(
         '--git-config',
         action='store_true',
-        help='Scan potentially dangerous Git configuration settings.'
+        help='Scan for dangerous Git configuration settings.'
     )
     scan_group.add_argument(
         '--all-files',
@@ -7201,7 +7201,7 @@ def main():
         '--threshold', '-t',
         type=int,
         default=50,
-        help='Set the minimum threat level (0-100) to display in results. Default is 50.'
+        help='Set the minimum threat level (0-100) to show in results. Default is 50.'
     )
     scan_group.add_argument(
         '--stdin',
@@ -7241,12 +7241,12 @@ def main():
     scan_group.add_argument(
         '--system-services',
         action='store_true',
-        help='Scan all system services (systemd files on Linux, Service PathName on Windows).'
+        help='Scan all system services.'
     )
     scan_group.add_argument(
         '--python-packages',
         action='store_true',
-        help='Scan all directories containing installed Python packages (site-packages).'
+        help='Scan all directories containing installed Python packages.'
     )
     scan_group.add_argument(
         '--env-vars',
@@ -7256,7 +7256,7 @@ def main():
     scan_group.add_argument(
         '--audit',
         action='store_true',
-        help='Perform a comprehensive system audit scan.'
+        help='Run a full system check.'
     )
     scan_group.add_argument(
         '--import-results', '--import',
@@ -7266,12 +7266,12 @@ def main():
     scan_group.add_argument(
         '--max-size',
         type=str,
-        help='The maximum file size to scan (for example: "10MB"). The default is 10MB.'
+        help='The maximum file size to scan (for example: "10MB"). Default is 10MB.'
     )
     scan_group.add_argument(
         '--modified',
         type=str,
-        help="Only scan files modified within this duration (e.g., '24h', '1h', '7d')."
+        help="Only scan files changed within this timeframe (for example: '24h', '1h', '7d')."
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
@@ -7319,7 +7319,7 @@ def main():
     output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format.')
     output_group.add_argument('--html', action='store_true', help='Create an HTML report.')
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report.')
-    output_group.add_argument('--report', action='store_true', help='Output a friendly report to the terminal.')
+    output_group.add_argument('--report', action='store_true', help='Output a report to the terminal.')
 
     args = parser.parse_args()
 
