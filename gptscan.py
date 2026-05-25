@@ -1256,6 +1256,41 @@ def get_python_package_paths() -> List[str]:
     return sorted(_normalize_and_filter_dirs(paths))
 
 
+def get_nodejs_package_paths() -> List[str]:
+    """Identify all directories containing global Node.js packages."""
+    paths = []
+    # 1. Ask npm for the global root
+    try:
+        # Use shell=True on Windows to find npm command properly
+        is_win = sys.platform == "win32"
+        output = subprocess.check_output(['npm', 'root', '-g'],
+                                        stderr=subprocess.PIPE,
+                                        universal_newlines=True,
+                                        shell=is_win).strip()
+        if output:
+            paths.append(output)
+    except Exception:
+        pass
+
+    # 2. Common system paths (Unix-like)
+    if sys.platform != "win32":
+        paths.extend([
+            "/usr/local/lib/node_modules",
+            "/usr/lib/node_modules"
+        ])
+    else:
+        # Windows common paths
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            paths.append(os.path.join(appdata, "npm", "node_modules"))
+
+        program_files = os.environ.get("ProgramFiles")
+        if program_files:
+            paths.append(os.path.join(program_files, "nodejs", "node_modules"))
+
+    return sorted(_normalize_and_filter_dirs(paths))
+
+
 def get_system_service_commands() -> List[Tuple[str, bytes]]:
     """Collect command lines of all system services (Windows Service PathName)."""
     items = []
@@ -2463,6 +2498,19 @@ def scan_env_vars_click():
         messagebox.showwarning("Environment Variables Error", f"Could not scan environment variables: {e}")
 
 
+def scan_nodejs_packages_click():
+    """Scan all directories containing global Node.js packages."""
+    try:
+        package_paths = get_nodejs_package_paths()
+        if package_paths:
+            _set_scan_target(package_paths)
+            button_click()
+        else:
+            messagebox.showinfo("Node.js Packages", "No global Node.js package directories were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Node.js Packages Error", f"Could not scan Node.js packages: {e}")
+
+
 def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     """Collect all paths and snippets for a comprehensive system audit."""
     all_paths = []
@@ -2473,6 +2521,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_system_service_paths())
     all_paths.extend(get_git_hooks_paths())
     all_paths.extend(get_python_package_paths())
+    all_paths.extend(get_nodejs_package_paths())
 
     all_snippets = []
     all_snippets.extend(get_running_process_commands())
@@ -6644,7 +6693,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A/S/Y).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A/S/Y/M).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -6685,6 +6734,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
     browse_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
     browse_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click, accelerator="Ctrl+Shift+Y")
+    browse_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
     browse_button["menu"] = browse_menu
 
     # --- Settings Container ---
@@ -7062,6 +7112,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-S>', lambda event: scan_system_services_click())
     root.bind('<Control-Shift-Y>', lambda event: scan_python_packages_click())
     root.bind('<Command-Shift-Y>', lambda event: scan_python_packages_click())
+    root.bind('<Control-Shift-M>', lambda event: scan_nodejs_packages_click())
+    root.bind('<Command-Shift-M>', lambda event: scan_nodejs_packages_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
@@ -7249,6 +7301,11 @@ def main():
         '--python-packages',
         action='store_true',
         help='Scan all directories containing installed Python packages (site-packages).'
+    )
+    scan_group.add_argument(
+        '--nodejs-packages',
+        action='store_true',
+        help='Scan all directories containing global Node.js packages.'
     )
     scan_group.add_argument(
         '--env-vars',
@@ -7519,6 +7576,13 @@ def main():
                 scan_targets.extend(package_paths)
             else:
                 print("No Python site-packages directories were found.", file=sys.stderr)
+
+        if args.nodejs_packages:
+            node_paths = get_nodejs_package_paths()
+            if node_paths:
+                scan_targets.extend(node_paths)
+            else:
+                print("No global Node.js package directories were found.", file=sys.stderr)
 
         if args.env_vars:
             snippets = get_environment_variable_snippets()
