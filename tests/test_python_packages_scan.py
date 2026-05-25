@@ -68,8 +68,8 @@ def test_scan_python_packages_click_no_paths(monkeypatch):
         message_box_shown = True
         assert "No Python site-packages" in message
 
-    import tkinter.messagebox
-    monkeypatch.setattr(tkinter.messagebox, "showinfo", mock_showinfo)
+    import gptscan
+    monkeypatch.setattr(gptscan.messagebox, "showinfo", mock_showinfo)
 
     scan_python_packages_click()
     assert message_box_shown
