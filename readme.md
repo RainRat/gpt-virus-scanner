@@ -63,7 +63,7 @@ Access these options from the **Browse** menu:
 *   **Scan Git Hooks:** Scan local and global Git hooks for dangerous scripts (Ctrl+Shift+G).
 *   **Scan Git Configuration:** Scan potentially dangerous Git configuration settings (aliases, editors, etc.).
 *   **Scan Git Revision...:** Scan files modified in a specific Git revision or commit.
-*   **System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, startup items, system services, Git configuration, Git hooks, and installed Python packages (Ctrl+Shift+I).
+*   **Scan System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, startup items, system services, Git configuration, Git hooks, and installed Python packages (Ctrl+Shift+I).
 *   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for dangerous one-liners.
 *   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
 *   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
@@ -93,7 +93,7 @@ The scanner includes shortcuts for faster navigation:
 | `Ctrl+Shift+D` | Scan Git Diff |
 | `Ctrl+Shift+G` | Scan Git Hooks |
 | `Ctrl+Shift+B` | Scan Shell Profiles |
-| `Ctrl+Shift+I` | System Audit |
+| `Ctrl+Shift+I` | Scan System Audit |
 | `Ctrl+Shift+H` | Scan Shell History |
 | `Ctrl+Shift+P` | Scan System PATH |
 | `Ctrl+Shift+K` | Scan Running Processes |
