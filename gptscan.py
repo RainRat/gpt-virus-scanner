@@ -715,6 +715,19 @@ def bind_hover_message(widget: tk.Widget, message: str, label: Optional[ttk.Labe
     widget.bind("<Leave>", on_leave)
 
 
+def _quote_for_ui(path: str) -> str:
+    """Quote a path for use in the GUI or CLI, respecting platform differences."""
+    if sys.platform == "win32":
+        # On Windows, use double quotes if there are spaces or other special chars.
+        # shlex.quote (which uses single quotes) is not well-supported by Windows shells.
+        if any(c in path for c in ' "%&^|<>'):
+            # Escape double quotes by doubling them
+            escaped_path = path.replace('"', '""')
+            return f'"{escaped_path}"'
+        return path
+    return shlex.quote(path)
+
+
 def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
     """Update the scan target textbox and set focus to the scan button.
 
@@ -727,10 +740,10 @@ def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
     # Handle multiple paths or a single path string
     if isinstance(path, (list, tuple)):
         # Join multiple targets with appropriate quoting, ensuring all are strings
-        formatted_path = shlex.join(str(p) for p in path)
+        formatted_path = " ".join(_quote_for_ui(str(p)) for p in path)
     else:
         # For a single path, use quote if it's not a list, for safety
-        formatted_path = shlex.quote(str(path))
+        formatted_path = _quote_for_ui(str(path))
 
     textbox.delete(0, tk.END)
     textbox.insert(0, formatted_path)
@@ -6470,10 +6483,10 @@ def copy_cli_command(event: Optional[tk.Event] = None) -> None:
             # Parse possible multiple targets from the GUI textbox
             targets = shlex.split(raw_target, posix=(sys.platform != "win32"))
             for t in targets:
-                cmd_parts.append(shlex.quote(t))
+                cmd_parts.append(_quote_for_ui(t))
         except ValueError:
             # Fallback to quoting the raw string if parsing fails
-            cmd_parts.append(shlex.quote(raw_target))
+            cmd_parts.append(_quote_for_ui(raw_target))
 
     cmd_parts.append("--cli")
 
