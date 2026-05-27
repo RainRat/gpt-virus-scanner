@@ -6320,42 +6320,51 @@ def copy_as_json(event: Optional[tk.Event] = None) -> None:
 
 def view_online(event_or_path: Union[tk.Event, str, None] = None, line: Optional[Union[int, str]] = None) -> None:
     """Open the selected result in a web browser (GitHub/GitLab/Bitbucket)."""
-    # 1. Resolve path and line number
-    file_path = None
-    line_num = line
+    # List of (path, line_num)
+    targets: List[Tuple[str, Union[int, str]]] = []
 
     if isinstance(event_or_path, str):
-        file_path = event_or_path
+        targets.append((event_or_path, line if line is not None else 1))
     else:
         if not tree:
             return
         selection = tree.selection()
         if not selection:
             return
-        values = _get_item_raw_values(selection[0])
-        if not values:
-            return
-        file_path = str(values[0])
-        if line_num is None:
-            line_num = values[6] if len(values) > 6 else 1
 
-    if not file_path:
-        return
-    if line_num is None:
-        line_num = 1
+        # Avoid accidental mass tab opening
+        if len(selection) > 5:
+            if not messagebox.askyesno("View Online",
+                                        f"You have selected {len(selection)} files. Do you want to open that many browser tabs?"):
+                return
 
-    # 2. Get URL
-    url = get_online_url(file_path, line_num)
+        for item_id in selection:
+            vals = _get_item_raw_values(item_id)
+            if vals:
+                path = str(vals[0])
+                line_num = vals[6] if len(vals) > 6 and vals[6] != "-" else 1
+                targets.append((path, line_num))
 
-    if url:
-        webbrowser.open(url)
-        update_status(f"Opening online view for {os.path.basename(file_path)}...")
-    else:
+    success_count = 0
+    last_path = ""
+    for file_path, line_num in targets:
+        url = get_online_url(file_path, line_num)
+        if url:
+            webbrowser.open(url)
+            success_count += 1
+            last_path = file_path
+
+    if success_count > 0:
+        if success_count == 1:
+            update_status(f"Opening online view for {os.path.basename(last_path)}...")
+        else:
+            update_status(f"Opening online view for {success_count} files...")
+    elif not isinstance(event_or_path, str):
         messagebox.showinfo(
             "Online View Unavailable",
-            "This file could not be resolved to an online repository.\n\n"
-            "Ensure it is part of a Git project with a remote origin (GitHub, GitLab, or Bitbucket) "
-            "or is a remote URL target."
+            "The selected file(s) could not be resolved to an online repository.\n\n"
+            "Ensure they are part of a Git project with a remote origin (GitHub, GitLab, or Bitbucket) "
+            "or are remote URL targets."
         )
 
 
