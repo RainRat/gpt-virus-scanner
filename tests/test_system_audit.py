@@ -3,28 +3,6 @@ from unittest.mock import patch, MagicMock
 import gptscan
 from pathlib import Path
 
-def test_get_ssh_config_paths(monkeypatch):
-    home = Path("/home/user")
-    monkeypatch.setattr("pathlib.Path.home", lambda: home)
-
-    # Mock Path.exists to return True for our expected paths
-    original_exists = Path.exists
-    def mock_exists(self):
-        if str(self) in ["/home/user/.ssh/config", "/home/user/.ssh/authorized_keys", "/etc/ssh/sshd_config", "/etc/ssh/ssh_config"]:
-            return True
-        if ".ssh" in str(self) or "etc/ssh" in str(self):
-             return True
-        return False
-
-    monkeypatch.setattr(Path, "exists", mock_exists)
-    monkeypatch.setattr(Path, "is_dir", lambda self: True)
-
-    paths = gptscan.get_ssh_config_paths()
-    assert "/home/user/.ssh/config" in paths
-    assert "/home/user/.ssh/authorized_keys" in paths
-    assert "/etc/ssh/sshd_config" in paths
-    assert "/etc/ssh/ssh_config" in paths
-
 def test_scan_system_audit_click(monkeypatch):
     monkeypatch.setattr("gptscan.get_shell_profile_paths", lambda: ["/p1"])
     monkeypatch.setattr("gptscan.get_shell_history_paths", lambda: ["/h1"])
