@@ -1269,6 +1269,46 @@ def get_python_package_paths() -> List[str]:
     return sorted(_normalize_and_filter_dirs(paths))
 
 
+def get_editor_extensions_paths() -> List[str]:
+    """Identify common editor extension directories (VS Code, Sublime Text, Vim/Neovim)."""
+    paths = []
+    home = Path.home()
+
+    # 1. VS Code / Insiders / VSCodium
+    vscode_dirs = [".vscode", ".vscode-insiders", ".vscode-oss", ".vscode-remote"]
+    for d in vscode_dirs:
+        p = home / d / "extensions"
+        if p.exists():
+            paths.append(str(p))
+
+    # 2. Sublime Text
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            paths.append(os.path.join(appdata, "Sublime Text", "Packages"))
+            paths.append(os.path.join(appdata, "Sublime Text 3", "Packages"))
+    elif sys.platform == "darwin":
+        paths.append(str(home / "Library" / "Application Support" / "Sublime Text" / "Packages"))
+        paths.append(str(home / "Library" / "Application Support" / "Sublime Text 3" / "Packages"))
+    else:
+        paths.append(str(home / ".config" / "sublime-text" / "Packages"))
+        paths.append(str(home / ".config" / "sublime-text-3" / "Packages"))
+
+    # 3. Vim / Neovim
+    # Vim 8+ native packages
+    paths.append(str(home / ".vim" / "pack"))
+    # Neovim native packages
+    if sys.platform == "win32":
+        local_appdata = os.environ.get("LOCALAPPDATA")
+        if local_appdata:
+            paths.append(os.path.join(local_appdata, "nvim-data", "site", "pack"))
+    else:
+        paths.append(str(home / ".local" / "share" / "nvim" / "site" / "pack"))
+    paths.append(str(home / ".config" / "nvim" / "pack"))
+
+    return sorted(_normalize_and_filter_dirs(paths))
+
+
 def get_nodejs_package_paths() -> List[str]:
     """Identify all directories containing global Node.js packages."""
     paths = []
@@ -2535,6 +2575,19 @@ def scan_nodejs_packages_click():
         messagebox.showwarning("Node.js Packages Error", f"Could not scan Node.js packages: {e}")
 
 
+def scan_editor_extensions_click():
+    """Scan all directories containing editor extensions (VS Code, Sublime Text, Vim)."""
+    try:
+        extension_paths = get_editor_extensions_paths()
+        if extension_paths:
+            _set_scan_target(extension_paths)
+            button_click()
+        else:
+            messagebox.showinfo("Editor Extensions", "No editor extension directories were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Editor Extensions Error", f"Could not scan editor extensions: {e}")
+
+
 def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     """Collect all paths and snippets for a comprehensive system audit."""
     all_paths = []
@@ -2546,6 +2599,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_git_hooks_paths())
     all_paths.extend(get_python_package_paths())
     all_paths.extend(get_nodejs_package_paths())
+    all_paths.extend(get_editor_extensions_paths())
 
     all_snippets = []
     all_snippets.extend(get_running_process_commands())
@@ -6723,7 +6777,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A/S/Y/M).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A/S/Y/M/X).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -6769,6 +6823,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
     system_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click, accelerator="Ctrl+Shift+Y")
     system_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
+    system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
     browse_menu.add_cascade(label="System Scans", menu=system_menu)
     browse_button["menu"] = browse_menu
 
@@ -7149,6 +7204,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-Y>', lambda event: scan_python_packages_click())
     root.bind('<Control-Shift-M>', lambda event: scan_nodejs_packages_click())
     root.bind('<Command-Shift-M>', lambda event: scan_nodejs_packages_click())
+    root.bind('<Control-Shift-X>', lambda event: scan_editor_extensions_click())
+    root.bind('<Command-Shift-X>', lambda event: scan_editor_extensions_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
@@ -7222,6 +7279,8 @@ def main():
                "  python3 gptscan.py https://github.com/user/repo --cli\n\n"
                "  # Run a full system audit\n"
                "  python3 gptscan.py --audit --cli\n\n"
+               "  # Scan all installed editor extensions\n"
+               "  python3 gptscan.py --editor-extensions --cli\n\n"
                "  # Scan files changed in the last 24 hours\n"
                "  python3 gptscan.py --modified 24h --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
@@ -7341,6 +7400,11 @@ def main():
         '--nodejs-packages',
         action='store_true',
         help='Scan all directories containing global Node.js packages.'
+    )
+    scan_group.add_argument(
+        '--editor-extensions',
+        action='store_true',
+        help='Scan all common editor extension directories.'
     )
     scan_group.add_argument(
         '--env-vars',
@@ -7618,6 +7682,13 @@ def main():
                 scan_targets.extend(node_paths)
             else:
                 print("No global Node.js package directories were found.", file=sys.stderr)
+
+        if args.editor_extensions:
+            extension_paths = get_editor_extensions_paths()
+            if extension_paths:
+                scan_targets.extend(extension_paths)
+            else:
+                print("No editor extension directories were found.", file=sys.stderr)
 
         if args.env_vars:
             snippets = get_environment_variable_snippets()
