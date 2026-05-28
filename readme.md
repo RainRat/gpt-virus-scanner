@@ -52,27 +52,34 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 Run `python3 gptscan.py` to open the scanner window.
 
 Access these options from the **Browse** menu:
-*   **Scan File(s)...:** Choose one or more scripts to scan.
-*   **Scan Folder...:** Choose a whole directory to scan.
-*   **Scan Recently Modified...:** Scan files that have been changed within a certain timeframe (e.g., last 24 hours).
+
+#### Common Scans
+*   **Scan File(s)...:** Choose specific scripts or files to scan.
+*   **Scan Folder...:** Scan an entire directory and its subfolders.
+*   **Scan Recently Modified:** Scan files changed recently (e.g., in the last 24 hours).
 *   **Scan URL...:** Scan scripts or archives directly from a web link.
-*   **Scan File List...:** Read a list of files to scan from a text file.
-*   **Scan Clipboard:** Scan code currently in your clipboard.
-*   **Scan Shell Profiles:** Scan your shell configuration files (.bashrc, .zshrc, etc.) and PowerShell profiles for dangerous aliases or functions (Ctrl+Shift+B).
-*   **Scan Git Diff:** Scan changes in your local project.
-*   **Scan Git Hooks:** Scan local and global Git hooks for dangerous scripts (Ctrl+Shift+G).
-*   **Scan Git Configuration:** Scan potentially dangerous Git configuration settings (aliases, editors, etc.).
-*   **Scan Git Revision...:** Scan files modified in a specific Git revision or commit.
-*   **Scan System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, startup items, system services, Git configuration, Git hooks, and installed Python packages (Ctrl+Shift+I).
-*   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for dangerous one-liners.
-*   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
-*   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
-*   **Scan Environment Variables:** Scan all non-empty environment variables for suspicious scripts or commands (Ctrl+Shift+N).
-*   **Scan Scheduled Tasks:** Scan all scheduled tasks (Windows) and Cron jobs (Linux/macOS) to identify dangerous persistence (Ctrl+Shift+T).
-*   **Scan Startup Items:** Scan all system startup items and LaunchAgents to find malicious persistence (Ctrl+Shift+A).
-*   **Scan System Services:** Scan all system services (systemd files on Linux, Service PathName on Windows) to identify dangerous persistence (Ctrl+Shift+S).
-*   **Scan Python Packages:** Scan all directories containing installed Python packages (site-packages) for potentially malicious modules (Ctrl+Shift+Y).
-*   **Scan Editor Extensions:** Scan all directories containing editor extensions (VS Code, Sublime Text, Vim) for potentially malicious scripts (Ctrl+Shift+X).
+*   **Scan File List...:** Scan a list of files from a text file.
+*   **Scan Clipboard:** Scan code you have copied to your clipboard (Ctrl+Shift+V).
+
+#### Git Integration
+*   **Scan Git Diff:** Scan changes you have made in your local project (Ctrl+Shift+D).
+*   **Scan Git Hooks:** Scan your project's Git hooks for dangerous scripts (Ctrl+Shift+G).
+*   **Scan Git Configuration:** Scan Git settings for suspicious aliases or editors.
+*   **Scan Git Revision...:** Scan files from a specific branch or commit.
+
+#### System Scans
+*   **Scan System Audit:** Run a full check of your system, including all items below (Ctrl+Shift+I).
+*   **Scan Shell Profiles:** Scan configuration files like `.bashrc` or `.zshrc` (Ctrl+Shift+B).
+*   **Scan Shell History:** Scan your terminal history for dangerous commands (Ctrl+Shift+H).
+*   **Scan System PATH:** Scan folders in your system PATH for suspicious files (Ctrl+Shift+P).
+*   **Scan Running Processes:** Scan the command lines of all active processes (Ctrl+Shift+K).
+*   **Scan Environment Variables:** Scan system variables for hidden scripts (Ctrl+Shift+N).
+*   **Scan Scheduled Tasks:** Scan tasks and Cron jobs for ways to stay on your system (Ctrl+Shift+T).
+*   **Scan Startup Items:** Scan apps that start automatically with your computer (Ctrl+Shift+A).
+*   **Scan System Services:** Scan background services for suspicious code (Ctrl+Shift+S).
+*   **Scan Python Packages:** Scan your installed Python libraries (Ctrl+Shift+Y).
+*   **Scan Node.js Packages:** Scan your globally installed Node.js modules (Ctrl+Shift+M).
+*   **Scan Editor Extensions:** Scan plugins for VS Code, Sublime Text, and Vim (Ctrl+Shift+X).
 
 ### Keyboard Shortcuts
 The scanner includes shortcuts for faster navigation:
