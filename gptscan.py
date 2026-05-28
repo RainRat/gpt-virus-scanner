@@ -7188,7 +7188,7 @@ def main():
                "  python3 gptscan.py --git-diff --cli\n\n"
                "  # Scan a link (GitHub, GitLab, Pastebin, etc.)\n"
                "  python3 gptscan.py https://github.com/user/repo --cli\n\n"
-               "  # Run a full system check\n"
+               "  # Run a full system audit\n"
                "  python3 gptscan.py --audit --cli\n\n"
                "  # Scan files changed in the last 24 hours\n"
                "  python3 gptscan.py --modified 24h --cli\n\n"
@@ -7318,7 +7318,7 @@ def main():
     scan_group.add_argument(
         '--audit',
         action='store_true',
-        help='Run a full system check.'
+        help='Run a full system audit.'
     )
     scan_group.add_argument(
         '--import-results', '--import',
