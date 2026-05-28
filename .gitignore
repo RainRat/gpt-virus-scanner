@@ -6,3 +6,4 @@ __pycache__/
 .coverage
 .pytest_cache/
 .gptscan_settings.json
+.gptscan_cache.json
