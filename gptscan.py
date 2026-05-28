@@ -1636,32 +1636,6 @@ def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
         return None, None
 
 
-def _get_git_remote_url(toplevel: str) -> Optional[str]:
-    """Get the remote origin URL for the Git repository."""
-    try:
-        return subprocess.check_output(
-            ["git", "remote", "get-url", "origin"],
-            cwd=toplevel,
-            stderr=subprocess.PIPE,
-            universal_newlines=True
-        ).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
-        return None
-
-
-def _get_git_revision(toplevel: str) -> Optional[str]:
-    """Get the current Git revision (SHA) for the repository."""
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"],
-            cwd=toplevel,
-            stderr=subprocess.PIPE,
-            universal_newlines=True
-        ).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
-        return None
-
-
 def get_online_url(path: str, line: Union[int, str] = 1) -> Optional[str]:
     """Construct a web URL for a local Git-tracked file or a remote target.
 
@@ -1704,11 +1678,25 @@ def get_online_url(path: str, line: Union[int, str] = 1) -> Optional[str]:
     if not toplevel or not rel_path:
         return None
 
-    remote = _get_git_remote_url(toplevel)
-    if not remote:
+    try:
+        remote = subprocess.check_output(
+            ["git", "remote", "get-url", "origin"],
+            cwd=toplevel,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         return None
 
-    rev = _get_git_revision(toplevel) or "HEAD"
+    try:
+        rev = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=toplevel,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        rev = "HEAD"
 
     # Normalize Remote URL (Convert SSH to HTTPS, remove .git suffix)
     # git@host:user/repo.git -> https://host/user/repo
