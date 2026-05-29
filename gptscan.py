@@ -6260,8 +6260,8 @@ def copy_sha256(event: Optional[tk.Event] = None) -> None:
             continue
         file_path = str(values[0])
 
-        if file_path.startswith("["):
-            # For virtual paths, hash the snippet content
+        if file_path.startswith("[") or not os.path.exists(file_path):
+            # For virtual paths or non-existent files (like archive members), hash the snippet content
             snippet = str(values[5])
             h = get_file_sha256(snippet.encode('utf-8'))
         else:
