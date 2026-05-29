@@ -2562,6 +2562,19 @@ def scan_env_vars_click():
         messagebox.showwarning("Environment Variables Error", f"Could not scan environment variables: {e}")
 
 
+def scan_ssh_config_click():
+    """Scan common SSH configuration and authorized_keys files."""
+    try:
+        ssh_paths = get_ssh_config_paths()
+        if ssh_paths:
+            _set_scan_target(ssh_paths)
+            button_click()
+        else:
+            messagebox.showinfo("SSH Configuration", "No common SSH configuration files were found on this system.")
+    except Exception as e:
+        messagebox.showwarning("SSH Configuration Error", f"Could not scan SSH configuration: {e}")
+
+
 def scan_nodejs_packages_click():
     """Scan all directories containing global Node.js packages."""
     try:
@@ -6821,6 +6834,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
     system_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
     system_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
+    system_menu.add_command(label="Scan SSH Configuration", command=scan_ssh_config_click)
     system_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click, accelerator="Ctrl+Shift+Y")
     system_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
     system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
@@ -7412,6 +7426,11 @@ def main():
         help='Scan all non-empty environment variables.'
     )
     scan_group.add_argument(
+        '--ssh-config',
+        action='store_true',
+        help='Scan common SSH configuration and authorized_keys files.'
+    )
+    scan_group.add_argument(
         '--audit',
         action='store_true',
         help='Run a full system audit.'
@@ -7696,6 +7715,13 @@ def main():
                 extra_snippets.extend(snippets)
             else:
                 print("No non-empty environment variables were found.", file=sys.stderr)
+
+        if args.ssh_config:
+            ssh_paths = get_ssh_config_paths()
+            if ssh_paths:
+                scan_targets.extend(ssh_paths)
+            else:
+                print("No common SSH configuration files were found.", file=sys.stderr)
 
         if args.audit:
             paths, snippets = get_system_audit_data()
