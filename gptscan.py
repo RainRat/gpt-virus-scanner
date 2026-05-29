@@ -4625,31 +4625,35 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         else:
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
-        lines.append(f"{BOLD}[{i}] {risk_label} - {path}{RESET}")
-        lines.append(f"    {BOLD}Threat Level:{RESET} Local: {own_conf}" + (f", AI: {gpt_conf}" if gpt_conf else ""))
-        lines.append(f"    {BOLD}Location:{RESET}   Line {line_num}")
+        # Header with compact location
+        lines.append(f"{BOLD}[{i}] {risk_label} - {path}:{line_num}{RESET}")
 
-        # Links
+        # Threat Level and Links on a single line
+        conf_line = f"    {BOLD}Threat:{RESET} {own_conf}" + (f" (AI: {gpt_conf})" if gpt_conf else "")
         vt_url = get_virustotal_url(path, snippet)
         online_url = get_online_url(path, line_num)
-
         if vt_url:
-            lines.append(f"    {BOLD}VirusTotal:{RESET} {vt_url}")
+            conf_line += f" | {BOLD}VT:{RESET} {vt_url}"
         if online_url:
-            lines.append(f"    {BOLD}Online View:{RESET} {online_url}")
+            conf_line += f" | {BOLD}Online:{RESET} {online_url}"
+        lines.append(conf_line)
 
+        # Compact AI Analysis
         if admin or user:
-            lines.append(f"    {BOLD}AI Analysis:{RESET}")
-            if admin:
-                lines.append(f"        {GRAY}Admin:{RESET} {admin}")
-            if user:
-                lines.append(f"        {GRAY}User:{RESET}  {user}")
+            analysis = []
+            if admin: analysis.append(f"[{admin}]")
+            if user: analysis.append(user)
+            combined_analysis = " ".join(analysis).replace('\n', ' ')
+            if len(combined_analysis) > 200:
+                combined_analysis = combined_analysis[:197] + "..."
+            lines.append(f"    {BOLD}AI:{RESET} {combined_analysis}")
 
-        # Snippet preview (first line or first 100 chars)
+        # Snippet preview (one line, high density)
         clean_snippet = snippet.strip().split('\n')[0]
-        if len(clean_snippet) > 80:
-            clean_snippet = clean_snippet[:77] + "..."
-        lines.append(f"    {BOLD}Snippet:{RESET}    {GRAY}{clean_snippet}{RESET}")
+        if len(clean_snippet) > 120:
+            clean_snippet = clean_snippet[:117] + "..."
+        if clean_snippet:
+            lines.append(f"    {GRAY}> {clean_snippet}{RESET}")
         lines.append("")
 
     return "\n".join(lines)
