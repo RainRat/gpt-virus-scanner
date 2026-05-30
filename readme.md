@@ -66,12 +66,14 @@ Access these options from the **Browse** menu:
 *   **Scan System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, startup items, system services, Git configuration, Git hooks, and installed Python packages (Ctrl+Shift+I).
 *   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for dangerous one-liners.
 *   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
+*   **Scan SSH Configuration:** Scan your SSH configuration and authorized_keys files for suspicious settings (Ctrl+Shift+Z).
 *   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
 *   **Scan Environment Variables:** Scan all non-empty environment variables for suspicious scripts or commands (Ctrl+Shift+N).
 *   **Scan Scheduled Tasks:** Scan all scheduled tasks (Windows) and Cron jobs (Linux/macOS) to identify dangerous persistence (Ctrl+Shift+T).
 *   **Scan Startup Items:** Scan all system startup items and LaunchAgents to find malicious persistence (Ctrl+Shift+A).
 *   **Scan System Services:** Scan all system services (systemd files on Linux, Service PathName on Windows) to identify dangerous persistence (Ctrl+Shift+S).
 *   **Scan Python Packages:** Scan all directories containing installed Python packages (site-packages) for potentially malicious modules (Ctrl+Shift+Y).
+*   **Scan Node.js Packages:** Scan all directories containing global Node.js packages for potentially malicious modules.
 *   **Scan Editor Extensions:** Scan all directories containing editor extensions (VS Code, Sublime Text, Vim) for potentially malicious scripts (Ctrl+Shift+X).
 
 ### Keyboard Shortcuts
@@ -104,6 +106,7 @@ The scanner includes shortcuts for faster navigation:
 | `Ctrl+Shift+S` | Scan System Services |
 | `Ctrl+Shift+Y` | Scan Python Packages |
 | `Ctrl+Shift+X` | Scan Editor Extensions |
+| `Ctrl+Shift+Z` | Scan SSH Configuration |
 | **Results List** | |
 | `Space` / `Enter` | View Details |
 | `F5` / `r` | Rescan |
@@ -162,6 +165,16 @@ python3 gptscan.py --audit --cli
 Scan all directories containing installed Python packages:
 ```bash
 python3 gptscan.py --python-packages --cli
+```
+
+Scan all directories containing global Node.js packages:
+```bash
+python3 gptscan.py --nodejs-packages --cli
+```
+
+Scan SSH configuration and authorized_keys files:
+```bash
+python3 gptscan.py --ssh-config --cli
 ```
 
 Scan all directories containing editor extensions:
