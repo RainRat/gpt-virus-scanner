@@ -8,7 +8,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 
 ### Core Capabilities
 *   **Two-step analysis:**
-    1.  **Fast Local Scan:** A quick check finds suspicious patterns in milliseconds.
+    1.  **Fast Local Scan:** A quick check finds suspicious patterns quickly.
     2.  **AI Analysis (Optional):** Get a detailed report from OpenAI, OpenRouter, or Ollama explaining why a file is suspicious.
 *   **Flexible Interface:** Use the friendly window interface or the command line for automation.
 *   **Git Integration:** Scan only the files you have changed in your project.
@@ -30,8 +30,8 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 ## Installation
 
 ### Prerequisites
-*   **Python:** Install **Python 3.9, 3.10, or 3.11**. Newer versions like 3.12 are not yet supported.
-*   **Data files:** The repository already includes the `scripts.h5` model and `task.txt` instruction files. Keep these in the project folder.
+*   **Python:** Install **Python 3.9, 3.10, or 3.11**. These specific versions are required for AI model compatibility. Newer versions (like 3.12+) are not yet supported.
+*   **Data files:** The repository includes the `scripts.h5` model and `task.txt` instruction files. These files **must stay in the project folder** for the scanner to work.
 
 ### Setup
 1.  **Clone the repository:**
@@ -43,9 +43,9 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
     ```bash
     python3 -m pip install "tensorflow<2.16" openai numpy
     ```
-3.  **Install optional packages (if needed):**
-    *   **python3-tk:** Install this if you use Linux and want the window (GUI) interface.
-    *   **PyYAML:** Install this if you want to train your own models.
+3.  **Install optional packages:**
+    *   **python3-tk:** If you are on Linux, you may need this to use the window (GUI) interface.
+    *   **PyYAML:** This is only needed if you want to train your own models.
 
 ## How to use
 ### Using the Window (GUI)
@@ -53,7 +53,7 @@ Run `python3 gptscan.py` to open the scanner window.
 
 Access these options from the **Browse** menu:
 *   **Scan File(s)...:** Choose one or more scripts to scan.
-*   **Scan Folder...:** Choose a whole directory to scan.
+*   **Scan Folder...:** Choose a whole folder to scan.
 *   **Scan Recently Modified...:** Scan files that have been changed within a certain timeframe (e.g., last 24 hours).
 *   **Scan URL...:** Scan scripts or archives directly from a web link.
 *   **Scan File List...:** Read a list of files to scan from a text file.
@@ -65,17 +65,19 @@ Access these options from the **Browse** menu:
 *   **Scan Git Revision...:** Scan files modified in a specific Git revision or commit.
 *   **Scan System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, startup items, system services, Git configuration, Git hooks, and installed Python packages (Ctrl+Shift+I).
 *   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for dangerous one-liners.
-*   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
+*   **Scan System PATH:** Scan all folders in your system PATH for suspicious executables or scripts.
 *   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
 *   **Scan Environment Variables:** Scan all non-empty environment variables for suspicious scripts or commands (Ctrl+Shift+N).
 *   **Scan Scheduled Tasks:** Scan all scheduled tasks (Windows) and Cron jobs (Linux/macOS) to identify dangerous persistence (Ctrl+Shift+T).
 *   **Scan Startup Items:** Scan all system startup items and LaunchAgents to find malicious persistence (Ctrl+Shift+A).
 *   **Scan System Services:** Scan all system services (systemd files on Linux, Service PathName on Windows) to identify dangerous persistence (Ctrl+Shift+S).
-*   **Scan Python Packages:** Scan all directories containing installed Python packages (site-packages) for potentially malicious modules (Ctrl+Shift+Y).
-*   **Scan Editor Extensions:** Scan all directories containing editor extensions (VS Code, Sublime Text, Vim) for potentially malicious scripts (Ctrl+Shift+X).
+*   **Scan Python Packages:** Scan all folders containing installed Python packages (site-packages) for potentially malicious modules (Ctrl+Shift+Y).
+*   **Scan Editor Extensions:** Scan all folders containing editor extensions (VS Code, Sublime Text, Vim) for potentially malicious scripts (Ctrl+Shift+X).
 
 ### Keyboard Shortcuts
-The scanner includes shortcuts for faster navigation:
+The scanner includes shortcuts for faster navigation.
+
+*Note: macOS users should use `Command` instead of `Ctrl` for most shortcuts.*
 
 | Shortcut | Action |
 | :--- | :--- |
@@ -132,8 +134,6 @@ The scanner includes shortcuts for faster navigation:
 | `Shift+Enter` | Open File |
 | `Ctrl+Enter` | Reveal in Folder |
 
-*Note: macOS users should use `Command` instead of `Ctrl` for most shortcuts.*
-
 ### Using the Terminal (CLI)
 To run the scanner in your terminal, use the `--cli` flag.
 
@@ -159,12 +159,12 @@ Perform a comprehensive system audit:
 python3 gptscan.py --audit --cli
 ```
 
-Scan all directories containing installed Python packages:
+Scan all folders containing installed Python packages:
 ```bash
 python3 gptscan.py --python-packages --cli
 ```
 
-Scan all directories containing editor extensions:
+Scan all folders containing editor extensions:
 ```bash
 python3 gptscan.py --editor-extensions --cli
 ```
@@ -179,7 +179,7 @@ Scan your terminal history (Bash, Zsh, PowerShell, etc.):
 python3 gptscan.py --shell-history --cli
 ```
 
-Scan all directories in your system PATH:
+Scan all folders in your system PATH:
 ```bash
 python3 gptscan.py --system-path --cli
 ```
@@ -278,6 +278,14 @@ You can tailor the scanner to your needs:
 ### Training the Model
 You can train the local "quick scan" model on your own data. This requires `pyyaml` to be installed.
 See [Training the Local Scanner](train.md) for more information.
+
+## Development
+### Running Tests
+This project uses `pytest` for testing. To run the test suite, install the development dependencies and run the following command from the project folder:
+```bash
+python3 -m pytest
+```
+Developers should always run the tests before submitting changes to ensure the scanner remains stable.
 
 ## How it works
 1.  **Local Filter:** The tool uses a quick scan model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
