@@ -2588,6 +2588,19 @@ def scan_editor_extensions_click():
         messagebox.showwarning("Editor Extensions Error", f"Could not scan editor extensions: {e}")
 
 
+def scan_ssh_config_click():
+    """Scan SSH configuration and authorized_keys files."""
+    try:
+        paths = get_ssh_config_paths()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo("SSH Configuration", "No common SSH configuration files were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("SSH Configuration Error", f"Could not scan SSH configuration: {e}")
+
+
 def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     """Collect all paths and snippets for a comprehensive system audit."""
     all_paths = []
@@ -6816,6 +6829,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan Shell Profiles", command=scan_shell_profiles_click, accelerator="Ctrl+Shift+B")
     system_menu.add_command(label="Scan Shell History", command=scan_shell_history_click, accelerator="Ctrl+Shift+H")
     system_menu.add_command(label="Scan System PATH", command=scan_system_path_click, accelerator="Ctrl+Shift+P")
+    system_menu.add_command(label="Scan SSH Configuration", command=scan_ssh_config_click, accelerator="Ctrl+Shift+Z")
     system_menu.add_command(label="Scan Running Processes", command=scan_running_processes_click, accelerator="Ctrl+Shift+K")
     system_menu.add_command(label="Scan Environment Variables", command=scan_env_vars_click, accelerator="Ctrl+Shift+N")
     system_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
@@ -7206,6 +7220,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-M>', lambda event: scan_nodejs_packages_click())
     root.bind('<Control-Shift-X>', lambda event: scan_editor_extensions_click())
     root.bind('<Command-Shift-X>', lambda event: scan_editor_extensions_click())
+    root.bind('<Control-Shift-Z>', lambda event: scan_ssh_config_click())
+    root.bind('<Command-Shift-Z>', lambda event: scan_ssh_config_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
@@ -7407,6 +7423,11 @@ def main():
         help='Scan all common editor extension directories.'
     )
     scan_group.add_argument(
+        '--ssh-config',
+        action='store_true',
+        help='Scan SSH configuration and authorized_keys files.'
+    )
+    scan_group.add_argument(
         '--env-vars',
         action='store_true',
         help='Scan all non-empty environment variables.'
@@ -7488,7 +7509,7 @@ def main():
         # If we ONLY wanted to clear cache, exit now.
         if not any([
             args.target, args.path, args.stdin, args.import_results, args.files,
-            args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
+            args.ssh_config, args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
             args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
             args.system_services, args.audit, args.modified
@@ -7689,6 +7710,13 @@ def main():
                 scan_targets.extend(extension_paths)
             else:
                 print("No editor extension directories were found.", file=sys.stderr)
+
+        if args.ssh_config:
+            ssh_paths = get_ssh_config_paths()
+            if ssh_paths:
+                scan_targets.extend(ssh_paths)
+            else:
+                print("No common SSH configuration files were found.", file=sys.stderr)
 
         if args.env_vars:
             snippets = get_environment_variable_snippets()
