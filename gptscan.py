@@ -1412,6 +1412,31 @@ def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
                                 tasks.append(("[Cron] User", parts[1].encode('utf-8')))
             except (subprocess.CalledProcessError, FileNotFoundError):
                 pass
+
+            # Linux/macOS - Collect from system crontabs
+            system_cron_files = [Path("/etc/crontab")]
+            cron_d = Path("/etc/cron.d")
+            if cron_d.is_dir():
+                try:
+                    system_cron_files.extend(list(cron_d.iterdir()))
+                except OSError:
+                    pass
+
+            for cron_file in system_cron_files:
+                if cron_file.is_file():
+                    try:
+                        with open(cron_file, "r", encoding="utf-8", errors="ignore") as f:
+                            for line in f:
+                                line = line.strip()
+                                if line and not line.startswith(('#', '@')) and '=' not in line:
+                                    # System crontab format: min hour day month dow user command
+                                    # Try to skip the first 6 fields
+                                    parts = line.split(None, 6)
+                                    if len(parts) > 6:
+                                        command = parts[6]
+                                        tasks.append((f"[Cron] {cron_file.name}", command.encode('utf-8')))
+                    except (OSError, PermissionError):
+                        pass
     except Exception:
         pass
 
