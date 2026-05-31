@@ -1425,29 +1425,26 @@ def get_ssh_config_paths() -> List[str]:
 
     # User-level SSH files
     user_ssh = home / ".ssh"
-    if user_ssh.exists():
-        for f in ["config", "authorized_keys"]:
-            p = user_ssh / f
-            if p.exists():
-                paths.append(str(p))
+    for f in ["config", "authorized_keys"]:
+        p = user_ssh / f
+        if p.exists():
+            paths.append(str(p))
 
     # System-level SSH files
     if sys.platform == "win32":
         program_data = os.environ.get("ProgramData")
         if program_data:
             win_system_ssh = Path(program_data) / "ssh"
-            if win_system_ssh.exists():
-                for f in ["sshd_config", "ssh_config"]:
-                    p = win_system_ssh / f
-                    if p.exists():
-                        paths.append(str(p))
-    else:
-        system_ssh_dir = Path("/etc/ssh")
-        if system_ssh_dir.exists():
             for f in ["sshd_config", "ssh_config"]:
-                p = system_ssh_dir / f
+                p = win_system_ssh / f
                 if p.exists():
                     paths.append(str(p))
+    else:
+        system_ssh_dir = Path("/etc/ssh")
+        for f in ["sshd_config", "ssh_config"]:
+            p = system_ssh_dir / f
+            if p.exists():
+                paths.append(str(p))
 
     return sorted(list(set(paths)))
 
