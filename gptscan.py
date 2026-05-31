@@ -1309,6 +1309,40 @@ def get_editor_extensions_paths() -> List[str]:
     return sorted(_normalize_and_filter_dirs(paths))
 
 
+def get_browser_extensions_paths() -> List[str]:
+    """Identify common browser extension directories (Chrome, Chromium, Firefox)."""
+    paths = []
+    home = Path.home()
+
+    # 1. Chromium-based (Chrome, Chromium)
+    if sys.platform == "win32":
+        local_appdata = os.environ.get("LOCALAPPDATA")
+        if local_appdata:
+            la_path = Path(local_appdata)
+            paths.extend(la_path.glob("Google/Chrome/User Data/*/Extensions"))
+            paths.extend(la_path.glob("Chromium/User Data/*/Extensions"))
+    elif sys.platform == "darwin":
+        support = home / "Library" / "Application Support"
+        paths.extend(support.glob("Google/Chrome/*/Extensions"))
+        paths.extend(support.glob("Chromium/*/Extensions"))
+    else:
+        config = home / ".config"
+        paths.extend(config.glob("google-chrome/*/Extensions"))
+        paths.extend(config.glob("chromium/*/Extensions"))
+
+    # 2. Firefox
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            paths.extend(Path(appdata).glob("Mozilla/Firefox/Profiles/*/extensions"))
+    elif sys.platform == "darwin":
+        paths.extend(home.glob("Library/Application Support/Firefox/Profiles/*/extensions"))
+    else:
+        paths.extend(home.glob(".mozilla/firefox/*/extensions"))
+
+    return sorted(_normalize_and_filter_dirs([str(p) for p in paths]))
+
+
 def get_nodejs_package_paths() -> List[str]:
     """Identify all directories containing global Node.js packages."""
     paths = []
@@ -2588,6 +2622,19 @@ def scan_editor_extensions_click():
         messagebox.showwarning("Editor Extensions Error", f"Could not scan editor extensions: {e}")
 
 
+def scan_browser_extensions_click():
+    """Scan all common browser extension directories for suspicious scripts."""
+    try:
+        extension_paths = get_browser_extensions_paths()
+        if extension_paths:
+            _set_scan_target(extension_paths)
+            button_click()
+        else:
+            messagebox.showinfo("Browser Extensions", "No browser extension directories were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Browser Extensions Error", f"Could not scan browser extensions: {e}")
+
+
 def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     """Collect all paths and snippets for a comprehensive system audit."""
     all_paths = []
@@ -2600,6 +2647,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_python_package_paths())
     all_paths.extend(get_nodejs_package_paths())
     all_paths.extend(get_editor_extensions_paths())
+    all_paths.extend(get_browser_extensions_paths())
 
     all_snippets = []
     all_snippets.extend(get_running_process_commands())
@@ -6777,7 +6825,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A/S/Y/M/X).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A/S/Y/M/X/W).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -6824,6 +6872,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click, accelerator="Ctrl+Shift+Y")
     system_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
     system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
+    system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
     browse_menu.add_cascade(label="System Scans", menu=system_menu)
     browse_button["menu"] = browse_menu
 
@@ -7206,6 +7255,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-M>', lambda event: scan_nodejs_packages_click())
     root.bind('<Control-Shift-X>', lambda event: scan_editor_extensions_click())
     root.bind('<Command-Shift-X>', lambda event: scan_editor_extensions_click())
+    root.bind('<Control-Shift-W>', lambda event: scan_browser_extensions_click())
+    root.bind('<Command-Shift-W>', lambda event: scan_browser_extensions_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
@@ -7281,6 +7332,8 @@ def main():
                "  python3 gptscan.py --audit --cli\n\n"
                "  # Scan all installed editor extensions\n"
                "  python3 gptscan.py --editor-extensions --cli\n\n"
+               "  # Scan all installed browser extensions\n"
+               "  python3 gptscan.py --browser-extensions --cli\n\n"
                "  # Scan files changed in the last 24 hours\n"
                "  python3 gptscan.py --modified 24h --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
@@ -7405,6 +7458,11 @@ def main():
         '--editor-extensions',
         action='store_true',
         help='Scan all common editor extension directories.'
+    )
+    scan_group.add_argument(
+        '--browser-extensions',
+        action='store_true',
+        help='Scan all common browser extension directories.'
     )
     scan_group.add_argument(
         '--env-vars',
@@ -7689,6 +7747,13 @@ def main():
                 scan_targets.extend(extension_paths)
             else:
                 print("No editor extension directories were found.", file=sys.stderr)
+
+        if args.browser_extensions:
+            browser_paths = get_browser_extensions_paths()
+            if browser_paths:
+                scan_targets.extend(browser_paths)
+            else:
+                print("No browser extension directories were found.", file=sys.stderr)
 
         if args.env_vars:
             snippets = get_environment_variable_snippets()

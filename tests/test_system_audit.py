@@ -17,6 +17,7 @@ def test_scan_system_audit_click(monkeypatch):
     monkeypatch.setattr("gptscan.get_git_hooks_paths", lambda: ["/hook1"])
     monkeypatch.setattr("gptscan.get_git_config_snippets", lambda: [("git", b"conf")])
     monkeypatch.setattr("gptscan.get_python_package_paths", lambda: ["/pkg1"])
+    monkeypatch.setattr("gptscan.get_browser_extensions_paths", lambda: ["/browser1"])
 
     target_paths = []
     def mock_set_target(paths):
@@ -44,6 +45,7 @@ def test_scan_system_audit_click(monkeypatch):
     assert "/ser1" in target_paths
     assert "/hook1" in target_paths
     assert "/pkg1" in target_paths
+    assert "/browser1" in target_paths
 
     assert clicked
     assert snippets_count == 6
@@ -62,6 +64,7 @@ def test_cli_audit_flag(monkeypatch):
     monkeypatch.setattr("gptscan.get_git_hooks_paths", lambda: [])
     monkeypatch.setattr("gptscan.get_git_config_snippets", lambda: [])
     monkeypatch.setattr("gptscan.get_python_package_paths", lambda: [])
+    monkeypatch.setattr("gptscan.get_browser_extensions_paths", lambda: ["/browser-cli"])
 
     cli_args = []
     def mock_run_cli(targets, *args, **kwargs):
@@ -77,3 +80,4 @@ def test_cli_audit_flag(monkeypatch):
         gptscan.main()
 
     assert "/p1" in cli_args
+    assert "/browser-cli" in cli_args
