@@ -1394,24 +1394,54 @@ def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
                     if command and command.strip() and command.lower() != "n/a":
                         tasks.append((f"[Task] {name}", command.encode('utf-8')))
         else:
-            # Linux/macOS - Collect from user crontab
+            # Linux/macOS - Collect from user and system crontabs
+
+            # 1. User crontab
             try:
                 output = subprocess.check_output(["crontab", "-l"], stderr=subprocess.PIPE, universal_newlines=True)
                 for line in output.splitlines():
                     line = line.strip()
                     if line and not line.startswith('#'):
-                        # Crontab format: min hour day month dow command
-                        # Try to skip the first 5 fields
+                        # User crontab: min hour day month dow command
                         parts = line.split(None, 5)
                         if len(parts) > 5:
-                            command = parts[5]
-                            tasks.append(("[Cron] User", command.encode('utf-8')))
+                            tasks.append(("[Cron] User", parts[5].encode('utf-8')))
                         elif line.startswith('@'):
                             parts = line.split(None, 1)
                             if len(parts) > 1:
                                 tasks.append(("[Cron] User", parts[1].encode('utf-8')))
             except (subprocess.CalledProcessError, FileNotFoundError):
                 pass
+
+            # 2. System crontabs
+            cron_files = ["/etc/crontab"]
+            cron_d = Path("/etc/cron.d")
+            if cron_d.exists() and cron_d.is_dir():
+                try:
+                    for p in cron_d.iterdir():
+                        if p.is_file():
+                            cron_files.append(str(p))
+                except Exception:
+                    pass
+
+            for cron_path in cron_files:
+                if os.path.exists(cron_path):
+                    try:
+                        with open(cron_path, "r", encoding="utf-8", errors="ignore") as f:
+                            for line in f:
+                                line = line.strip()
+                                if line and not line.startswith('#') and '=' not in line:
+                                    # System crontab: min hour day month dow user command
+                                    parts = line.split(None, 6)
+                                    if len(parts) > 6:
+                                        tasks.append((f"[Cron] System ({os.path.basename(cron_path)})", parts[6].encode('utf-8')))
+                                    elif line.startswith('@'):
+                                        # @reboot user command
+                                        parts = line.split(None, 2)
+                                        if len(parts) > 2:
+                                            tasks.append((f"[Cron] System ({os.path.basename(cron_path)})", parts[2].encode('utf-8')))
+                    except Exception:
+                        pass
     except Exception:
         pass
 
