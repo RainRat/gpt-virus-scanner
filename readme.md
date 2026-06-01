@@ -72,6 +72,7 @@ Access these options from the **Browse** menu:
 *   **Scan Startup Items:** Scan all system startup items and LaunchAgents to find malicious persistence (Ctrl+Shift+A).
 *   **Scan System Services:** Scan all system services (systemd files on Linux, Service PathName on Windows) to identify dangerous persistence (Ctrl+Shift+S).
 *   **Scan Python Packages:** Scan all directories containing installed Python packages (site-packages) for potentially malicious modules (Ctrl+Shift+Y).
+*   **Scan Browser Extensions:** Scan all common browser extension directories for potentially malicious scripts (Ctrl+Shift+W).
 *   **Scan Editor Extensions:** Scan all directories containing editor extensions (VS Code, Sublime Text, Vim) for potentially malicious scripts (Ctrl+Shift+X).
 
 ### Keyboard Shortcuts
@@ -103,6 +104,8 @@ The scanner includes shortcuts for faster navigation:
 | `Ctrl+Shift+A` | Scan Startup Items |
 | `Ctrl+Shift+S` | Scan System Services |
 | `Ctrl+Shift+Y` | Scan Python Packages |
+| `Ctrl+Shift+M` | Scan Node.js Packages |
+| `Ctrl+Shift+W` | Scan Browser Extensions |
 | `Ctrl+Shift+X` | Scan Editor Extensions |
 | **Results List** | |
 | `Space` / `Enter` | View Details |
@@ -162,6 +165,11 @@ python3 gptscan.py --audit --cli
 Scan all directories containing installed Python packages:
 ```bash
 python3 gptscan.py --python-packages --cli
+```
+
+Scan all common browser extension directories:
+```bash
+python3 gptscan.py --browser-extensions --cli
 ```
 
 Scan all directories containing editor extensions:

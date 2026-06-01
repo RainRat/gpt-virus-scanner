@@ -1269,6 +1269,70 @@ def get_python_package_paths() -> List[str]:
     return sorted(_normalize_and_filter_dirs(paths))
 
 
+def get_browser_extensions_paths() -> List[str]:
+    """Identify common browser extension directories (Chrome, Firefox, Edge)."""
+    paths = []
+    home = Path.home()
+
+    if sys.platform == "win32":
+        local_appdata = os.environ.get("LOCALAPPDATA")
+        appdata = os.environ.get("APPDATA")
+        if local_appdata:
+            # Chrome
+            chrome_base = Path(local_appdata) / "Google" / "Chrome" / "User Data"
+            paths.append(str(chrome_base / "Default" / "Extensions"))
+            for p in chrome_base.glob("Profile */Extensions"):
+                paths.append(str(p))
+            # Edge
+            edge_base = Path(local_appdata) / "Microsoft" / "Edge" / "User Data"
+            paths.append(str(edge_base / "Default" / "Extensions"))
+            for p in edge_base.glob("Profile */Extensions"):
+                paths.append(str(p))
+        if appdata:
+            # Firefox
+            ff_base = Path(appdata) / "Mozilla" / "Firefox" / "Profiles"
+            if ff_base.exists():
+                for p in ff_base.glob("*/extensions"):
+                    paths.append(str(p))
+    elif sys.platform == "darwin":
+        lib_support = home / "Library" / "Application Support"
+        # Chrome
+        chrome_base = lib_support / "Google" / "Chrome"
+        paths.append(str(chrome_base / "Default" / "Extensions"))
+        for p in chrome_base.glob("Profile */Extensions"):
+            paths.append(str(p))
+        # Edge
+        edge_base = lib_support / "Microsoft Edge"
+        paths.append(str(edge_base / "Default" / "Extensions"))
+        for p in edge_base.glob("Profile */Extensions"):
+            paths.append(str(p))
+        # Firefox
+        ff_base = lib_support / "Firefox" / "Profiles"
+        if ff_base.exists():
+            for p in ff_base.glob("*/extensions"):
+                paths.append(str(p))
+    else:
+        # Linux
+        config = home / ".config"
+        # Chrome
+        chrome_base = config / "google-chrome"
+        paths.append(str(chrome_base / "Default" / "Extensions"))
+        for p in chrome_base.glob("Profile */Extensions"):
+            paths.append(str(p))
+        # Chromium
+        chromium_base = config / "chromium"
+        paths.append(str(chromium_base / "Default" / "Extensions"))
+        for p in chromium_base.glob("Profile */Extensions"):
+            paths.append(str(p))
+        # Firefox
+        ff_base = home / ".mozilla" / "firefox"
+        if ff_base.exists():
+            for p in ff_base.glob("*/extensions"):
+                paths.append(str(p))
+
+    return sorted(_normalize_and_filter_dirs(paths))
+
+
 def get_editor_extensions_paths() -> List[str]:
     """Identify common editor extension directories (VS Code, Sublime Text, Vim/Neovim)."""
     paths = []
@@ -2575,6 +2639,19 @@ def scan_nodejs_packages_click():
         messagebox.showwarning("Node.js Packages Error", f"Could not scan Node.js packages: {e}")
 
 
+def scan_browser_extensions_click():
+    """Scan all common browser extension directories."""
+    try:
+        extension_paths = get_browser_extensions_paths()
+        if extension_paths:
+            _set_scan_target(extension_paths)
+            button_click()
+        else:
+            messagebox.showinfo("Browser Extensions", "No browser extension directories were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Browser Extensions Error", f"Could not scan browser extensions: {e}")
+
+
 def scan_editor_extensions_click():
     """Scan all directories containing editor extensions (VS Code, Sublime Text, Vim)."""
     try:
@@ -2599,6 +2676,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_git_hooks_paths())
     all_paths.extend(get_python_package_paths())
     all_paths.extend(get_nodejs_package_paths())
+    all_paths.extend(get_browser_extensions_paths())
     all_paths.extend(get_editor_extensions_paths())
 
     all_snippets = []
@@ -6823,6 +6901,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
     system_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click, accelerator="Ctrl+Shift+Y")
     system_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
+    system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
     system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
     browse_menu.add_cascade(label="System Scans", menu=system_menu)
     browse_button["menu"] = browse_menu
@@ -7204,6 +7283,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-Y>', lambda event: scan_python_packages_click())
     root.bind('<Control-Shift-M>', lambda event: scan_nodejs_packages_click())
     root.bind('<Command-Shift-M>', lambda event: scan_nodejs_packages_click())
+    root.bind('<Control-Shift-W>', lambda event: scan_browser_extensions_click())
+    root.bind('<Command-Shift-W>', lambda event: scan_browser_extensions_click())
     root.bind('<Control-Shift-X>', lambda event: scan_editor_extensions_click())
     root.bind('<Command-Shift-X>', lambda event: scan_editor_extensions_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
@@ -7400,6 +7481,11 @@ def main():
         '--nodejs-packages',
         action='store_true',
         help='Scan all directories containing global Node.js packages.'
+    )
+    scan_group.add_argument(
+        '--browser-extensions',
+        action='store_true',
+        help='Scan all common browser extension directories.'
     )
     scan_group.add_argument(
         '--editor-extensions',
@@ -7682,6 +7768,13 @@ def main():
                 scan_targets.extend(node_paths)
             else:
                 print("No global Node.js package directories were found.", file=sys.stderr)
+
+        if args.browser_extensions:
+            extension_paths = get_browser_extensions_paths()
+            if extension_paths:
+                scan_targets.extend(extension_paths)
+            else:
+                print("No browser extension directories were found.", file=sys.stderr)
 
         if args.editor_extensions:
             extension_paths = get_editor_extensions_paths()
