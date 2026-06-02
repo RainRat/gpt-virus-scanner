@@ -7080,21 +7080,21 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     view_button.grid(row=0, column=0, padx=2, ipady=5)
     bind_hover_message(view_button, "Show full analysis and code for the selected result. (Space or Enter)")
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=1, sticky="ns", padx=5)
+    analyze_button = ttk.Button(footer_frame, text="Analyze with AI", width=18, command=analyze_selected_with_ai, style='Primary.TButton')
+    analyze_button.grid(row=0, column=1, padx=2, ipady=5)
+    bind_hover_message(analyze_button, "Use AI to analyze the currently selected items. (Ctrl+G)")
+
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=2, sticky="ns", padx=10)
 
     rescan_button = ttk.Button(footer_frame, text="Rescan", width=10, command=rescan_selected)
-    rescan_button.grid(row=0, column=2, padx=2, ipady=5)
+    rescan_button.grid(row=0, column=3, padx=2, ipady=5)
     bind_hover_message(rescan_button, "Re-scan the currently selected items. (F5 or R)")
-
-    analyze_button = ttk.Button(footer_frame, text="Analyze with AI", width=18, command=analyze_selected_with_ai)
-    analyze_button.grid(row=0, column=3, padx=2, ipady=5)
-    bind_hover_message(analyze_button, "Use AI to analyze the currently selected items. (Ctrl+G)")
 
     exclude_button = ttk.Button(footer_frame, text="Exclude", width=10, command=exclude_selected)
     exclude_button.grid(row=0, column=4, padx=2, ipady=5)
     bind_hover_message(exclude_button, "Exclude the selected items from future scans. (Delete)")
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=5, sticky="ns", padx=5)
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=5, sticky="ns", padx=10)
 
     open_button = ttk.Button(footer_frame, text="Open", width=10, command=open_file)
     open_button.grid(row=0, column=6, padx=2, ipady=5)
@@ -7112,7 +7112,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     view_online_button.grid(row=0, column=9, padx=2, ipady=5)
     bind_hover_message(view_online_button, "View the selected file in its online repository. (Ctrl+L)")
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=10, sticky="ns", padx=5)
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=10, sticky="ns", padx=10)
 
     # Spacer
     ttk.Frame(footer_frame).grid(row=0, column=11, sticky="ew")
