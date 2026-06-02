@@ -4723,40 +4723,39 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         else:
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
-        # 1. Header: [Index] RISK - path:line
         lines.append(f"{BOLD}[{i}] {risk_label} - {path}:{line_num}{RESET}")
 
-        # 2. Threat & Links: Threat: X (Local) | Y (AI) | VT: url | Online: url
-        threat_line = f"    {BOLD}Threat:{RESET} {own_conf} (Local)"
+        # Consolidate scores and links
+        meta_parts = [f"Scores: {own_conf}"]
         if gpt_conf:
-            threat_line += f" | {gpt_conf} (AI)"
+            meta_parts.append(f"AI: {gpt_conf}")
 
         vt_url = get_virustotal_url(path, snippet)
         if vt_url:
-            threat_line += f" | {BOLD}VT:{RESET} {vt_url}"
+            meta_parts.append(f"VT: {vt_url}")
 
         online_url = get_online_url(path, line_num)
         if online_url:
-            threat_line += f" | {BOLD}Online:{RESET} {online_url}"
-        lines.append(threat_line)
+            meta_parts.append(f"Online: {online_url}")
 
-        # 3. AI Notes: Notes: Admin: ... | User: ...
+        lines.append(f"    {GRAY}{' | '.join(meta_parts)}{RESET}")
+
+        # Consolidate AI analysis
         if admin or user:
-            notes = []
+            analysis_parts = []
             if admin:
-                # Replace newlines with spaces for single-line representation
-                clean_admin = admin.replace("\n", " ").strip()
-                notes.append(f"{BOLD}Admin:{RESET} {clean_admin}")
+                clean_admin = admin.strip().replace('\n', ' ')
+                analysis_parts.append(f"{BOLD}Admin:{RESET} {clean_admin}")
             if user:
-                clean_user = user.replace("\n", " ").strip()
-                notes.append(f"{BOLD}User:{RESET} {clean_user}")
-            lines.append(f"    {BOLD}Notes:{RESET} {' | '.join(notes)}")
+                clean_user = user.strip().replace('\n', ' ')
+                analysis_parts.append(f"{BOLD}User:{RESET} {clean_user}")
+            lines.append(f"    {' | '.join(analysis_parts)}")
 
-        # 4. Snippet: > code
+        # Snippet preview
         clean_snippet = snippet.strip().split('\n')[0]
-        if len(clean_snippet) > 80:
-            clean_snippet = clean_snippet[:77] + "..."
-        lines.append(f"    {GRAY}> {clean_snippet}{RESET}")
+        if len(clean_snippet) > 100:
+            clean_snippet = clean_snippet[:97] + "..."
+        lines.append(f"    > {GRAY}{clean_snippet}{RESET}")
         lines.append("")
 
     return "\n".join(lines)
