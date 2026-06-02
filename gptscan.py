@@ -3891,8 +3891,8 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                         yield (f"{name} [Recipe {recipes_count}]", cmd.encode('utf-8'))
                         yielded_any = True
                 else:
-                    # Check for variable assignment: VAR = val, VAR := val, VAR += val, VAR ?= val
-                    var_match = re.match(r'^([\w.-]+)\s*([:+?]?=)\s*(.*)', line)
+                    # Check for variable assignment: VAR = val, VAR := val, VAR += val, VAR ?= val, VAR != cmd
+                    var_match = re.match(r'^([\w.-]+)\s*([:+?!]?=)\s*(.*)', line)
                     if var_match:
                         content_parts = [var_match.group(3)]
                         while line.rstrip().endswith('\\') and i < len(lines):
