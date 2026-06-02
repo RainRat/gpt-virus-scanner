@@ -1610,49 +1610,56 @@ def get_startup_item_commands() -> List[Tuple[str, bytes]]:
 
 
 def get_git_hooks_paths(path: str = ".") -> List[str]:
-    """Identify local and global Git hooks for scanning."""
+    """Identify Git hooks for scanning, respecting local and global core.hooksPath."""
     paths = []
-
-    # 1. Local Hooks
     toplevel, _ = _get_git_info(path)
-    if toplevel:
-        try:
-            # We try to resolve the hooks directory using rev-parse
-            # Fallback to .git/hooks if rev-parse --git-path is not supported or returns /dev/null
+
+    # 1. Resolve Hooks Directory
+    hooks_dir = None
+    try:
+        # Check for core.hooksPath (captures both local and global)
+        # Use subprocess.run to avoid raising on exit code 1 (not set)
+        res = subprocess.run(
+            ["git", "config", "--get", "core.hooksPath"],
+            cwd=toplevel if toplevel else None,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+        hooks_config = res.stdout.strip()
+
+        if hooks_config:
+            hooks_dir_path = Path(hooks_config).expanduser()
+            if not hooks_dir_path.is_absolute() and toplevel:
+                hooks_dir_path = Path(toplevel) / hooks_dir_path
+            hooks_dir = str(hooks_dir_path)
+        elif toplevel:
+            # Fallback to default hooks directory using git rev-parse
             git_dir = subprocess.check_output(
                 ["git", "rev-parse", "--git-dir"],
                 cwd=toplevel,
                 stderr=subprocess.PIPE,
                 universal_newlines=True
             ).strip()
-
-            hooks_dir = os.path.join(toplevel, git_dir, "hooks")
-            if os.path.isdir(hooks_dir):
-                # Only scan files that are not samples
-                for entry in os.listdir(hooks_dir):
-                    if not entry.endswith(".sample"):
-                        p = os.path.join(hooks_dir, entry)
-                        if os.path.isfile(p):
-                            paths.append(p)
-        except (subprocess.CalledProcessError, FileNotFoundError, OSError):
-            pass
-
-    # 2. Global Hooks
-    try:
-        global_hooks = subprocess.check_output(
-            ["git", "config", "--get", "core.hooksPath"],
-            stderr=subprocess.PIPE,
-            universal_newlines=True
-        ).strip()
-        if global_hooks:
-            # Expand ~ if present
-            global_hooks_path = Path(global_hooks).expanduser()
-            if global_hooks_path.is_dir():
-                for entry in global_hooks_path.iterdir():
-                    if entry.is_file() and not entry.name.endswith(".sample"):
-                        paths.append(str(entry))
+            git_dir_path = Path(git_dir)
+            if not git_dir_path.is_absolute():
+                git_dir_path = Path(toplevel) / git_dir_path
+            hooks_dir = str(git_dir_path / "hooks")
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
-        pass
+        # Fallback for non-git directories or environments without git
+        if toplevel:
+            hooks_dir = os.path.join(toplevel, ".git", "hooks")
+
+    # 2. Collect Hooks from Identified Directory
+    if hooks_dir and os.path.isdir(hooks_dir):
+        try:
+            for entry in os.listdir(hooks_dir):
+                if not entry.endswith(".sample"):
+                    p = os.path.join(hooks_dir, entry)
+                    if os.path.isfile(p):
+                        paths.append(p)
+        except OSError:
+            pass
 
     return sorted(list(set(paths)))
 
