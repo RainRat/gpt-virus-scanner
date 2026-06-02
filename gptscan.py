@@ -4623,31 +4623,40 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         else:
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
-        lines.append(f"{BOLD}[{i}] {risk_label} - {path}{RESET}")
-        lines.append(f"    {BOLD}Threat Level:{RESET} Local: {own_conf}" + (f", AI: {gpt_conf}" if gpt_conf else ""))
-        lines.append(f"    {BOLD}Location:{RESET}   Line {line_num}")
+        # 1. Header: [Index] RISK - path:line
+        lines.append(f"{BOLD}[{i}] {risk_label} - {path}:{line_num}{RESET}")
 
-        # Links
+        # 2. Threat & Links: Threat: X (Local) | Y (AI) | VT: url | Online: url
+        threat_line = f"    {BOLD}Threat:{RESET} {own_conf} (Local)"
+        if gpt_conf:
+            threat_line += f" | {gpt_conf} (AI)"
+
         vt_url = get_virustotal_url(path, snippet)
-        online_url = get_online_url(path, line_num)
-
         if vt_url:
-            lines.append(f"    {BOLD}VirusTotal:{RESET} {vt_url}")
+            threat_line += f" | {BOLD}VT:{RESET} {vt_url}"
+
+        online_url = get_online_url(path, line_num)
         if online_url:
-            lines.append(f"    {BOLD}Online View:{RESET} {online_url}")
+            threat_line += f" | {BOLD}Online:{RESET} {online_url}"
+        lines.append(threat_line)
 
+        # 3. AI Notes: Notes: Admin: ... | User: ...
         if admin or user:
-            lines.append(f"    {BOLD}AI Analysis:{RESET}")
+            notes = []
             if admin:
-                lines.append(f"        {GRAY}Admin:{RESET} {admin}")
+                # Replace newlines with spaces for single-line representation
+                clean_admin = admin.replace("\n", " ").strip()
+                notes.append(f"{BOLD}Admin:{RESET} {clean_admin}")
             if user:
-                lines.append(f"        {GRAY}User:{RESET}  {user}")
+                clean_user = user.replace("\n", " ").strip()
+                notes.append(f"{BOLD}User:{RESET} {clean_user}")
+            lines.append(f"    {BOLD}Notes:{RESET} {' | '.join(notes)}")
 
-        # Snippet preview (first line or first 100 chars)
+        # 4. Snippet: > code
         clean_snippet = snippet.strip().split('\n')[0]
         if len(clean_snippet) > 80:
             clean_snippet = clean_snippet[:77] + "..."
-        lines.append(f"    {BOLD}Snippet:{RESET}    {GRAY}{clean_snippet}{RESET}")
+        lines.append(f"    {GRAY}> {clean_snippet}{RESET}")
         lines.append("")
 
     return "\n".join(lines)
