@@ -5766,6 +5766,32 @@ def _resolve_file_path(event_or_path: Union[tk.Event, str, None], verify: bool =
     return file_path
 
 
+def _resolve_file_paths(event_or_path: Union[tk.Event, str, None], verify: bool = True) -> List[str]:
+    """Retrieve and optionally verify multiple file paths from an event or direct argument."""
+    targets = []
+    if isinstance(event_or_path, str):
+        targets.append(event_or_path)
+    else:
+        if not tree:
+            return []
+        selection = tree.selection()
+        for item_id in selection:
+            values = _get_item_raw_values(item_id)
+            if values:
+                targets.append(str(values[0]))
+
+    valid_paths = []
+    for path in targets:
+        if verify and not path.startswith("[") and not path.startswith(("http://", "https://")) and not os.path.exists(path):
+            continue
+        valid_paths.append(path)
+
+    if verify and targets and not valid_paths:
+        messagebox.showwarning("Files Not Found", "The selected file(s) could not be located on disk.")
+
+    return valid_paths
+
+
 def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None) -> None:
     """Open a detailed view of the selected scan result.
 
@@ -6315,20 +6341,31 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
 
 def open_file(event_or_path: Union[tk.Event, str, None] = None) -> None:
-    """Open the selected or specified file in the system's default application."""
-    file_path = _resolve_file_path(event_or_path)
-    if not file_path:
+    """Open the selected or specified file(s) in the system's default application."""
+    file_paths = _resolve_file_paths(event_or_path)
+    if not file_paths:
         return
 
-    try:
-        if sys.platform == "win32":
-            os.startfile(file_path)
-        elif sys.platform == "darwin":
-            subprocess.run(["open", file_path])
-        else:
-            subprocess.run(["xdg-open", file_path])
-    except Exception as e:
-        messagebox.showerror("Error", f"Could not open file: {e}")
+    if len(file_paths) > 5:
+        if not messagebox.askyesno("Open Files", f"Are you sure you want to open {len(file_paths)} files?"):
+            return
+
+    opened_count = 0
+    for file_path in file_paths:
+        try:
+            if sys.platform == "win32":
+                os.startfile(file_path)
+            elif sys.platform == "darwin":
+                subprocess.run(["open", file_path])
+            else:
+                subprocess.run(["xdg-open", file_path])
+            opened_count += 1
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open file '{file_path}': {e}")
+
+    if opened_count > 0:
+        file_text = "file" if opened_count == 1 else "files"
+        update_status(f"Opened {opened_count} {file_text}.")
 
 
 def copy_path(event: Optional[tk.Event] = None) -> None:
@@ -6552,21 +6589,43 @@ def view_online(event_or_path: Union[tk.Event, str, None] = None, line: Optional
 
 
 def show_in_folder(event_or_path: Union[tk.Event, str, None] = None) -> None:
-    """Show the selected or specified file in the system file manager."""
-    file_path = _resolve_file_path(event_or_path)
-    if not file_path:
+    """Show the selected or specified file(s) in the system file manager."""
+    file_paths = _resolve_file_paths(event_or_path)
+    if not file_paths:
         return
 
-    try:
-        if sys.platform == "win32":
-            subprocess.run(['explorer', '/select,', os.path.normpath(file_path)])
-        elif sys.platform == "darwin":
-            subprocess.run(["open", "-R", file_path])
+    if len(file_paths) > 5:
+        if not messagebox.askyesno("Show in Folder", f"Are you sure you want to show {len(file_paths)} files?"):
+            return
+
+    # On Linux, we deduplicate directories to avoid opening the same window multiple times
+    linux_dirs = set()
+    revealed_count = 0
+    for file_path in file_paths:
+        try:
+            if sys.platform == "win32":
+                subprocess.run(['explorer', '/select,', os.path.normpath(file_path)])
+                revealed_count += 1
+            elif sys.platform == "darwin":
+                subprocess.run(["open", "-R", file_path])
+                revealed_count += 1
+            else:
+                # Linux: xdg-open opens the directory. Deduplicate to avoid excessive windows.
+                folder = os.path.dirname(os.path.abspath(file_path))
+                if folder not in linux_dirs:
+                    subprocess.run(["xdg-open", folder])
+                    linux_dirs.add(folder)
+                    revealed_count += 1
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not reveal file '{file_path}': {e}")
+
+    if revealed_count > 0:
+        if sys.platform == "linux":
+            folder_text = "folder" if revealed_count == 1 else "folders"
+            update_status(f"Opened {revealed_count} {folder_text}.")
         else:
-            # On Linux, just open the directory
-            subprocess.run(["xdg-open", os.path.dirname(os.path.abspath(file_path))])
-    except Exception as e:
-        messagebox.showerror("Error", f"Could not reveal file: {e}")
+            file_text = "file" if revealed_count == 1 else "files"
+            update_status(f"Revealed {revealed_count} {file_text}.")
 
 
 def show_context_menu(event: tk.Event) -> None:
