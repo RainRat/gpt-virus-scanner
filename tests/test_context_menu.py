@@ -137,7 +137,7 @@ def test_open_file_not_found(mock_tree, monkeypatch):
     monkeypatch.setattr(gptscan, 'messagebox', mock_msgbox)
 
     gptscan.open_file()
-    mock_msgbox.showwarning.assert_called_with("File Not Found", "The file 'ghost.py' could not be located.")
+    mock_msgbox.showwarning.assert_called_with("Files Not Found", "The selected file(s) could not be located on disk.")
 
 def test_open_file_with_explicit_path(monkeypatch):
     """Test that open_file uses the provided path when passed as a string."""
