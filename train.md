@@ -16,12 +16,12 @@ This tool trains the local model (the file classifier) used by the GPT Virus Sca
 1.  **Install Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet because of model compatibility.
 2.  **Install requirements:** Open your terminal and run:
     ```bash
-    pip install "tensorflow<2.16" numpy pyyaml
+    python3 -m pip install "tensorflow<2.16" numpy pyyaml
     ```
 
 ## Configuration
 
-The trainer requires a `config.yml` file to run. This file contains settings for the model, the training process, and the AI settings.
+The trainer requires a `config.yml` file to run. This file contains settings for the model, the training process, and the optimization settings.
 
 ### Example `config.yml`
 
@@ -48,7 +48,7 @@ prediction:
 weights:
   positive_sample_weight: 1.0 # Importance of dangerous examples during training
 
-# AI settings for the automatic optimization process.
+# Optimization settings (Hyperparameters) for the local model.
 # These values (0.0 to 1.0) control how the model is built.
 # The script will automatically adjust and improve these over time.
 hyperparameters:
@@ -95,7 +95,7 @@ project/
 Train a model using the config file:
 
 ```bash
-python train.py --config config.yml --mode train
+python3 train.py --config config.yml --mode train
 ```
 
 ### Basic Prediction
@@ -103,7 +103,7 @@ python train.py --config config.yml --mode train
 Run predictions on files:
 
 ```bash
-python train.py --config config.yml --mode predict
+python3 train.py --config config.yml --mode predict
 ```
 
 ### Advanced Options
@@ -112,13 +112,13 @@ python train.py --config config.yml --mode predict
 
 ```bash
 # Use different model name
-python train.py --config config.yml --model-name my_model
+python3 train.py --config config.yml --model-name my_model
 
 # Change training parameters
-python train.py --config config.yml --epochs 50 --batch-size 64
+python3 train.py --config config.yml --epochs 50 --batch-size 64
 
 # Specify custom data directories
-python train.py --config config.yml \
+python3 train.py --config config.yml \
     --positive-dir /path/to/positive \
     --negative-dir /path/to/negative
 ```
@@ -126,7 +126,7 @@ python train.py --config config.yml \
 #### Custom prediction directories:
 
 ```bash
-python train.py --config config.yml \
+python3 train.py --config config.yml \
     --mode predict \
     --predict-dir /path/to/input \
     --output-dir /path/to/output
@@ -136,24 +136,24 @@ python train.py --config config.yml \
 
 **Train a new model:**
 ```bash
-python train.py --config config.yml --mode train
+python3 train.py --config config.yml --mode train
 ```
 
-**Continue training from the best AI settings:**
+**Continue training from the best optimization settings:**
 ```bash
 # The script automatically loads scripts_best_hp.yml if it exists
-python train.py --config config.yml --mode train
+python3 train.py --config config.yml --mode train
 ```
 
 **Predict with custom threshold:**
 ```bash
 # Edit config.yml to set prediction.threshold: 0.9
-python train.py --config config.yml --mode predict
+python3 train.py --config config.yml --mode predict
 ```
 
 **Train with different data layout:**
 ```bash
-python train.py --config config.yml \
+python3 train.py --config config.yml \
     --mode train \
     --positive-dir data/malware \
     --negative-dir data/benign \
@@ -188,12 +188,12 @@ python train.py --config config.yml \
 
 ### Training Process
 
-1. **Gathers Examples:** The script looks at your folders of "safe" and "dangerous" files.
-2. **Prepares Data:** It converts the files into a standard format.
+1. **Gathers Examples:** The trainer scans your folders for "safe" and "dangerous" files.
+2. **Prepares Data:** The trainer converts the files into a standard format.
    - If a file is too small, it adds extra data to reach the required size.
-   - If a file is too large, it takes parts from the beginning and the end.
-3. **Tests Settings:** It starts with the settings you provided.
-4. **Improves Automatically:** The script constantly tries new combinations of settings.
+   - If a file is too large, the trainer takes pieces from the beginning and the end to fit the model's size limit.
+3. **Tests Settings:** The trainer starts with the settings you provided.
+4. **Improves Automatically:** The trainer constantly tries new combinations of settings.
    - It changes two random settings at a time to see if the results get better.
    - If a new combination is more accurate, it becomes the new standard.
    - It saves the best version of the model automatically.
@@ -201,25 +201,25 @@ python train.py --config config.yml \
 
 ### Prediction Process
 
-1. **Loads the Model:** The script loads your trained model.
-2. **Scans New Files:** It looks at all files in your input folder.
-3. **Assigns Scores:** It calculates the threat level of each file.
+1. **Loads the Model:** The trainer loads your trained model.
+2. **Scans New Files:** It scans all files in your input folder.
+3. **Assigns Scores:** It calculates the threat level for each file.
 4. **Filters Results:** Any file that crosses your "threat" threshold is copied to the output folder for you to review.
 
 ## Automatic Setting Optimization
 
-The script automatically tries different ways to build and train the model:
+The trainer automatically tries different ways to build and train the model:
 
 - **Structure:** How the model is organized and how much it can remember.
 - **Learning Style:** How it learns from its mistakes and how it processes information.
 - **Special Layers:** Optional parts that can help it see patterns in the data more clearly.
 - **Training Method:** The specific mathematical approaches used to improve the model's accuracy.
 
-The script uses numbers between 0 and 1 to represent these settings. You can find the full list of how these numbers are used in `config.yml`.
+The trainer uses numbers between 0 and 1 to represent these settings. You can find the full list of how these numbers are used in `config.yml`.
 
 ## Tips
 
-- Start with the default AI settings.
+- Start with the default optimization settings.
 - Let training run for several hours to find the best settings.
 - Watch the terminal for "New Best Model!" messages.
 - Use the saved `*_best_hp.yml` file to resume training from the best settings.
@@ -228,4 +228,4 @@ The script uses numbers between 0 and 1 to represent these settings. You can fin
 
 ## Stopping Training
 
-Press `Ctrl+C` to stop training. The best model and AI settings are already saved, so you can resume at any time.
+Press `Ctrl+C` to stop training. The trainer already saved the best model and optimization settings, so you can resume at any time.
