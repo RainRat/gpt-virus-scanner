@@ -1373,6 +1373,36 @@ def get_editor_extensions_paths() -> List[str]:
     return sorted(_normalize_and_filter_dirs(paths))
 
 
+def get_downloads_path() -> List[str]:
+    """Identify the user's Downloads folder across different platforms."""
+    paths = []
+    home = Path.home()
+
+    # Standard location for Windows, macOS and many Linux distros
+    paths.append(str(home / "Downloads"))
+
+    # Linux (XDG user-dirs) fallback if Downloads is not in standard location
+    if sys.platform != "win32" and sys.platform != "darwin":
+        try:
+            config_file = home / ".config" / "user-dirs.dirs"
+            if config_file.exists():
+                with open(config_file, "r") as f:
+                    for line in f:
+                        if line.startswith("XDG_DOWNLOAD_DIR"):
+                            # Format: XDG_DOWNLOAD_DIR="$HOME/Downloads"
+                            path_match = re.search(r'="?\$HOME/([^"]+)"?', line)
+                            if path_match:
+                                paths.append(str(home / path_match.group(1)))
+                            else:
+                                path_match = re.search(r'="?(/[^"]+)"?', line)
+                                if path_match:
+                                    paths.append(path_match.group(1))
+        except Exception:
+            pass
+
+    return _normalize_and_filter_dirs(paths)
+
+
 def get_nodejs_package_paths() -> List[str]:
     """Identify all directories containing global Node.js packages."""
     paths = []
@@ -2678,6 +2708,19 @@ def scan_browser_extensions_click():
         messagebox.showwarning("Browser Extensions Error", f"Could not scan browser extensions: {e}")
 
 
+def scan_downloads_click():
+    """Scan the user's Downloads folder."""
+    try:
+        downloads_path = get_downloads_path()
+        if downloads_path:
+            _set_scan_target(downloads_path)
+            button_click()
+        else:
+            messagebox.showinfo("Downloads", "Could not find a valid Downloads folder to scan.")
+    except Exception as e:
+        messagebox.showwarning("Downloads Error", f"Could not scan Downloads folder: {e}")
+
+
 def scan_editor_extensions_click():
     """Scan all directories containing editor extensions (VS Code, Sublime Text, Vim)."""
     try:
@@ -2704,6 +2747,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_nodejs_package_paths())
     all_paths.extend(get_browser_extensions_paths())
     all_paths.extend(get_editor_extensions_paths())
+    all_paths.extend(get_downloads_path())
 
     all_snippets = []
     all_snippets.extend(get_running_process_commands())
@@ -6997,6 +7041,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
     system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
     system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
+    system_menu.add_command(label="Scan Downloads", command=scan_downloads_click, accelerator="Ctrl+Shift+L")
     browse_menu.add_cascade(label="System Scans", menu=system_menu)
     browse_button["menu"] = browse_menu
 
@@ -7381,6 +7426,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-W>', lambda event: scan_browser_extensions_click())
     root.bind('<Control-Shift-X>', lambda event: scan_editor_extensions_click())
     root.bind('<Command-Shift-X>', lambda event: scan_editor_extensions_click())
+    root.bind('<Control-Shift-L>', lambda event: scan_downloads_click())
+    root.bind('<Command-Shift-L>', lambda event: scan_downloads_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
@@ -7585,6 +7632,11 @@ def main():
         '--editor-extensions',
         action='store_true',
         help='Scan all common editor extension directories.'
+    )
+    scan_group.add_argument(
+        '--downloads',
+        action='store_true',
+        help="Scan the user's Downloads folder."
     )
     scan_group.add_argument(
         '--env-vars',
@@ -7876,6 +7928,13 @@ def main():
                 scan_targets.extend(extension_paths)
             else:
                 print("No editor extension directories were found.", file=sys.stderr)
+
+        if args.downloads:
+            downloads_path = get_downloads_path()
+            if downloads_path:
+                scan_targets.extend(downloads_path)
+            else:
+                print("Could not find a valid Downloads folder to scan.", file=sys.stderr)
 
         if args.env_vars:
             snippets = get_environment_variable_snippets()

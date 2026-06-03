@@ -63,7 +63,8 @@ Access these options from the **Browse** menu:
 *   **Scan Git Hooks:** Scan local and global Git hooks for dangerous scripts (Ctrl+Shift+G).
 *   **Scan Git Configuration:** Scan potentially dangerous Git configuration settings (aliases, editors, etc.).
 *   **Scan Git Revision...:** Scan files modified in a specific Git revision or commit.
-*   **Scan System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, startup items, system services, Git configuration, Git hooks, installed Python packages, global Node.js packages, and editor extensions (Ctrl+Shift+I).
+*   **Scan System Audit:** Perform a comprehensive scan of your system including shell profiles, history, system PATH, SSH configurations, running processes, environment variables, scheduled tasks, startup items, system services, Git configuration, Git hooks, installed Python packages, global Node.js packages, editor extensions, and your Downloads folder (Ctrl+Shift+I).
+*   **Scan Downloads:** Automatically find and scan your user Downloads folder for potentially malicious files (Ctrl+Shift+L).
 *   **Scan Shell History:** Automatically find and scan your terminal history (Bash, Zsh, PowerShell, etc.) for dangerous one-liners.
 *   **Scan System PATH:** Scan all directories in your system PATH for suspicious executables or scripts.
 *   **Scan Running Processes:** Scan command lines of all running processes to find potentially dangerous execution strings (Ctrl+Shift+K).
@@ -108,6 +109,7 @@ The scanner includes shortcuts for faster navigation:
 | `Ctrl+Shift+M` | Scan Node.js Packages |
 | `Ctrl+Shift+W` | Scan Browser Extensions |
 | `Ctrl+Shift+X` | Scan Editor Extensions |
+| `Ctrl+Shift+L` | Scan Downloads |
 | **Results List** | |
 | `Space` / `Enter` | View Details |
 | `F5` / `r` | Rescan |
@@ -176,6 +178,11 @@ python3 gptscan.py --nodejs-packages --cli
 Scan all common browser extension directories:
 ```bash
 python3 gptscan.py --browser-extensions --cli
+```
+
+Scan your Downloads folder:
+```bash
+python3 gptscan.py --downloads --cli
 ```
 
 Scan all directories containing editor extensions:
