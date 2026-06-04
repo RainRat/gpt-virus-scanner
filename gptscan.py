@@ -4733,17 +4733,17 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         lines.append(f"{BOLD}[{i}] {risk_label} - {path}:{line_num}{RESET}")
 
         # Consolidate scores and links
-        meta_parts = [f"Scores: {own_conf}"]
+        meta_parts = [f"{BOLD}Local:{RESET}{GRAY} {own_conf}"]
         if gpt_conf:
-            meta_parts.append(f"AI: {gpt_conf}")
+            meta_parts.append(f"{BOLD}AI:{RESET}{GRAY} {gpt_conf}")
 
         vt_url = get_virustotal_url(path, snippet)
         if vt_url:
-            meta_parts.append(f"VT: {vt_url}")
+            meta_parts.append(f"{BOLD}VT:{RESET}{GRAY} {vt_url}")
 
         online_url = get_online_url(path, line_num)
         if online_url:
-            meta_parts.append(f"Online: {online_url}")
+            meta_parts.append(f"{BOLD}Online:{RESET}{GRAY} {online_url}")
 
         lines.append(f"    {GRAY}{' | '.join(meta_parts)}{RESET}")
 
