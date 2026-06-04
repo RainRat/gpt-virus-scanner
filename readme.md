@@ -75,6 +75,7 @@ Access these options from the **Browse** menu:
 *   **Scan Node.js Packages:** Scan all directories containing global Node.js packages (global node_modules) for potentially malicious modules (Ctrl+Shift+M).
 *   **Scan Browser Extensions:** Scan all common browser extension directories for potentially malicious scripts (Ctrl+Shift+W).
 *   **Scan Editor Extensions:** Scan all directories containing editor extensions (VS Code, Sublime Text, Vim) for potentially malicious scripts (Ctrl+Shift+X).
+*   **Scan SSH Configuration:** Scan all common SSH configuration files for suspicious commands or settings (Ctrl+Shift+R).
 
 ### Keyboard Shortcuts
 The scanner includes shortcuts for faster navigation:
@@ -108,6 +109,7 @@ The scanner includes shortcuts for faster navigation:
 | `Ctrl+Shift+M` | Scan Node.js Packages |
 | `Ctrl+Shift+W` | Scan Browser Extensions |
 | `Ctrl+Shift+X` | Scan Editor Extensions |
+| `Ctrl+Shift+R` | Scan SSH Configuration |
 | **Results List** | |
 | `Space` / `Enter` | View Details |
 | `F5` / `r` | Rescan |
@@ -181,6 +183,11 @@ python3 gptscan.py --browser-extensions --cli
 Scan all directories containing editor extensions:
 ```bash
 python3 gptscan.py --editor-extensions --cli
+```
+
+Scan all common SSH configuration files:
+```bash
+python3 gptscan.py --ssh-config --cli
 ```
 
 Scan all common shell profile and RC files:

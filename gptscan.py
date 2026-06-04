@@ -2691,6 +2691,19 @@ def scan_editor_extensions_click():
         messagebox.showwarning("Editor Extensions Error", f"Could not scan editor extensions: {e}")
 
 
+def scan_ssh_config_click():
+    """Scan all common SSH configuration files."""
+    try:
+        ssh_paths = get_ssh_config_paths()
+        if ssh_paths:
+            _set_scan_target(ssh_paths)
+            button_click()
+        else:
+            messagebox.showinfo("SSH Configuration", "No common SSH configuration files were found on this system.")
+    except Exception as e:
+        messagebox.showwarning("SSH Configuration Error", f"Could not scan SSH configuration: {e}")
+
+
 def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     """Collect all paths and snippets for a comprehensive system audit."""
     all_paths = []
@@ -6997,6 +7010,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
     system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
     system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
+    system_menu.add_command(label="Scan SSH Configuration", command=scan_ssh_config_click, accelerator="Ctrl+Shift+R")
     browse_menu.add_cascade(label="System Scans", menu=system_menu)
     browse_button["menu"] = browse_menu
 
@@ -7381,6 +7395,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-W>', lambda event: scan_browser_extensions_click())
     root.bind('<Control-Shift-X>', lambda event: scan_editor_extensions_click())
     root.bind('<Command-Shift-X>', lambda event: scan_editor_extensions_click())
+    root.bind('<Control-Shift-R>', lambda event: scan_ssh_config_click())
+    root.bind('<Command-Shift-R>', lambda event: scan_ssh_config_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
@@ -7585,6 +7601,11 @@ def main():
         '--editor-extensions',
         action='store_true',
         help='Scan all common editor extension directories.'
+    )
+    scan_group.add_argument(
+        '--ssh-config',
+        action='store_true',
+        help='Scan all common SSH configuration files.'
     )
     scan_group.add_argument(
         '--env-vars',
@@ -7876,6 +7897,13 @@ def main():
                 scan_targets.extend(extension_paths)
             else:
                 print("No editor extension directories were found.", file=sys.stderr)
+
+        if args.ssh_config:
+            ssh_paths = get_ssh_config_paths()
+            if ssh_paths:
+                scan_targets.extend(ssh_paths)
+            else:
+                print("No common SSH configuration files were found.", file=sys.stderr)
 
         if args.env_vars:
             snippets = get_environment_variable_snippets()
