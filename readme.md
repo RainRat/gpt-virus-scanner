@@ -71,6 +71,7 @@ Access these options from the **Browse** menu:
 *   **Scan Scheduled Tasks:** Scan all scheduled tasks (Windows) and Cron jobs (Linux/macOS) to identify dangerous ways for programs to stay on your system (Ctrl+Shift+T).
 *   **Scan Startup Items:** Scan all system startup items and LaunchAgents to find malicious ways for programs to stay on your system (Ctrl+Shift+A).
 *   **Scan System Services:** Scan all system services (systemd files on Linux, Service PathName on Windows) to identify dangerous ways for programs to stay on your system (Ctrl+Shift+S).
+*   **Scan SSH Configuration:** Scan all common SSH configuration and authorized_keys files (Ctrl+Shift+R).
 *   **Scan Python Packages:** Scan all directories containing installed Python packages (site-packages) for potentially malicious modules (Ctrl+Shift+Y).
 *   **Scan Node.js Packages:** Scan all directories containing global Node.js packages (global node_modules) for potentially malicious modules (Ctrl+Shift+M).
 *   **Scan Browser Extensions:** Scan all common browser extension directories for potentially malicious scripts (Ctrl+Shift+W).
@@ -104,6 +105,7 @@ The scanner includes shortcuts for faster navigation:
 | `Ctrl+Shift+T` | Scan Scheduled Tasks |
 | `Ctrl+Shift+A` | Scan Startup Items |
 | `Ctrl+Shift+S` | Scan System Services |
+| `Ctrl+Shift+R` | Scan SSH Configuration |
 | `Ctrl+Shift+Y` | Scan Python Packages |
 | `Ctrl+Shift+M` | Scan Node.js Packages |
 | `Ctrl+Shift+W` | Scan Browser Extensions |
@@ -216,6 +218,11 @@ python3 gptscan.py --startup-items --cli
 Scan all system services:
 ```bash
 python3 gptscan.py --system-services --cli
+```
+
+Scan SSH configuration and authorized keys:
+```bash
+python3 gptscan.py --ssh-config --cli
 ```
 
 Scan all environment variables:
