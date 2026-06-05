@@ -129,6 +129,30 @@ def test_adjust_newlines_wrap(monkeypatch):
 def test_adjust_newlines_non_string():
     assert adjust_newlines(123, 100) == 123
 
+def test_adjust_newlines_preserves_trailing_newline():
+    text = "line1\nline2\n"
+    # measure=len for simplicity in testing
+    result = adjust_newlines(text, width=100, measure=len)
+    assert result == text
+
+def test_adjust_newlines_preserves_multiple_trailing_newlines():
+    text = "line1\nline2\n\n"
+    result = adjust_newlines(text, width=100, measure=len)
+    assert result == text
+
+def test_adjust_newlines_preserves_consecutive_newlines():
+    text = "line1\n\nline2"
+    result = adjust_newlines(text, width=100, measure=len)
+    assert result == text
+
+def test_adjust_newlines_only_newlines():
+    text = "\n\n\n"
+    result = adjust_newlines(text, width=100, measure=len)
+    assert result == text
+
+def test_adjust_newlines_empty_string():
+    assert adjust_newlines("", 100) == ""
+
 # --- sort_column Tests ---
 
 def test_sort_column_numeric(monkeypatch):

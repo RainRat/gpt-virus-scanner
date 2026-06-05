@@ -1035,9 +1035,8 @@ def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Calla
         return val
 
     measure = measure or tkinter.font.Font(font='TkDefaultFont').measure
-    original_lines = val.splitlines()
-    if not original_lines:
-        return val
+    # Use split('\n') to preserve all empty lines, including trailing ones
+    original_lines = val.split('\n')
 
     wrapped_lines = []
     for line in original_lines:
