@@ -1,15 +1,15 @@
 # Training the Local Scanner
 
-This tool trains the local model (the file classifier) used by the GPT Virus Scanner. It learns to recognize the difference between safe and dangerous files by studying many examples.
+Train the local model (the file classifier) for the GPT Virus Scanner. It learns to find dangerous files by studying many examples of safe and malicious code.
 
 ## Features
 
-- **Simple settings:** Uses easy-to-read YAML files for configuration.
-- **Smart optimization:** Automatically tries different settings to find the best way to detect threats.
+- **Simple settings:** Use easy-to-read YAML files for configuration.
+- **Smart optimization:** Find the best way to detect threats automatically.
 - **Easy to use:** Run everything from your terminal with simple commands.
-- **Broad support:** Analyzes many different types of files.
-- **Automatic saving:** Keeps your progress safe by saving the best models as it finds them.
-- **Flexible:** Handles files of any size automatically.
+- **Broad support:** Analyze many different types of files.
+- **Automatic saving:** Keep your progress safe with automatic model saves.
+- **Flexible:** Process files of any size automatically.
 
 ## Installation
 
@@ -21,7 +21,7 @@ This tool trains the local model (the file classifier) used by the GPT Virus Sca
 
 ## Configuration
 
-The trainer requires a `config.yml` file to run. This file contains settings for the model, the training process, and the optimization settings.
+The trainer requires a `config.yml` file. This file contains settings for the model, the training process, and the optimization settings.
 
 ### Example `config.yml`
 
@@ -71,9 +71,9 @@ hyperparameters:
   optimizer: 0.5              # How the model learns from its mistakes
 ```
 
-## Directory Structure
+## Folder Structure
 
-The script expects the following directory structure by default:
+The script expects the following folder structure by default:
 
 ```
 project/
@@ -108,22 +108,22 @@ python3 train.py --config config.yml --mode predict
 
 ### Advanced Options
 
-#### Override configuration values:
+#### Override settings:
 
 ```bash
-# Use different model name
+# Use a different model name
 python3 train.py --config config.yml --model-name my_model
 
 # Change training parameters
 python3 train.py --config config.yml --epochs 50 --batch-size 64
 
-# Specify custom data directories
+# Specify custom folders for training data
 python3 train.py --config config.yml \
     --positive-dir /path/to/positive \
     --negative-dir /path/to/negative
 ```
 
-#### Custom prediction directories:
+#### Custom scan folders:
 
 ```bash
 python3 train.py --config config.yml \
@@ -163,15 +163,15 @@ python3 train.py --config config.yml \
 ## Command-Line Options
 
 ```
---config, -c           Path to YAML configuration file (required)
---mode, -m             Mode: train or predict (overrides config)
---model-name           Model name (overrides config)
---positive-dir         Directory with dangerous files
---negative-dir         Directory with safe files
---predict-dir          Directory with files to predict on
---output-dir           Output directory for prediction results
---epochs               Number of training rounds (overrides config)
---batch-size           Number of files processed at once (overrides config)
+--config, -c           Path to the YAML settings file (required).
+--mode, -m             Choose between training a model or making predictions.
+--model-name           Set the model name.
+--positive-dir         Folder containing dangerous files.
+--negative-dir         Folder containing safe files.
+--predict-dir          Folder containing files to scan.
+--output-dir           Folder where suspicious files will be copied.
+--epochs               Number of training rounds.
+--batch-size           Number of files to process at once.
 ```
 
 ## Output Files
