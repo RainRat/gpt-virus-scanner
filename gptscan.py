@@ -7503,28 +7503,6 @@ def main():
         help='Read a list of files to scan from a text file.'
     )
     scan_group.add_argument(
-        '--git-changes',
-        nargs='?',
-        const='HEAD',
-        help='Only scan files changed in Git. Optionally provide a branch or commit (for example: "main").'
-    )
-    scan_group.add_argument(
-        '--git-diff',
-        nargs='?',
-        const='HEAD',
-        help='Scan current Git changes as a diff. Optionally provide a branch or commit (for example: "HEAD~1").'
-    )
-    scan_group.add_argument(
-        '--git-hooks',
-        action='store_true',
-        help='Scan local and global Git hooks.'
-    )
-    scan_group.add_argument(
-        '--git-config',
-        action='store_true',
-        help='Scan for dangerous Git configuration settings.'
-    )
-    scan_group.add_argument(
         '--all-files',
         action='store_true',
         help='Scan every file, even if it is not a script.'
@@ -7546,76 +7524,6 @@ def main():
         help='Scan code sent from another command in the terminal.'
     )
     scan_group.add_argument(
-        '--shell-profiles',
-        action='store_true',
-        help='Scan common shell profile and RC files.'
-    )
-    scan_group.add_argument(
-        '--shell-history',
-        action='store_true',
-        help='Scan common shell history files.'
-    )
-    scan_group.add_argument(
-        '--system-path',
-        action='store_true',
-        help='Scan all directories in the system PATH.'
-    )
-    scan_group.add_argument(
-        '--running-processes',
-        action='store_true',
-        help='Scan command lines of all running processes.'
-    )
-    scan_group.add_argument(
-        '--scheduled-tasks',
-        action='store_true',
-        help='Scan all scheduled tasks and Cron jobs.'
-    )
-    scan_group.add_argument(
-        '--startup-items',
-        action='store_true',
-        help='Scan all system startup items and LaunchAgents.'
-    )
-    scan_group.add_argument(
-        '--system-services',
-        action='store_true',
-        help='Scan all system services.'
-    )
-    scan_group.add_argument(
-        '--python-packages',
-        action='store_true',
-        help='Scan all directories containing installed Python packages.'
-    )
-    scan_group.add_argument(
-        '--nodejs-packages',
-        action='store_true',
-        help='Scan all directories containing global Node.js packages.'
-    )
-    scan_group.add_argument(
-        '--browser-extensions',
-        action='store_true',
-        help='Scan all common browser extension directories.'
-    )
-    scan_group.add_argument(
-        '--editor-extensions',
-        action='store_true',
-        help='Scan all common editor extension directories.'
-    )
-    scan_group.add_argument(
-        '--ssh-config',
-        action='store_true',
-        help='Scan all common SSH configuration and authorized_keys files.'
-    )
-    scan_group.add_argument(
-        '--env-vars',
-        action='store_true',
-        help='Scan all non-empty environment variables.'
-    )
-    scan_group.add_argument(
-        '--audit',
-        action='store_true',
-        help='Run a full system audit.'
-    )
-    scan_group.add_argument(
         '--import-results', '--import',
         type=str,
         help='Import results from a previous scan. Use "-" to read from the terminal.'
@@ -7629,6 +7537,102 @@ def main():
         '--modified',
         type=str,
         help="Only scan files changed within this timeframe (for example: '24h', '1h', '7d')."
+    )
+
+    git_group = parser.add_argument_group("Git Integration")
+    git_group.add_argument(
+        '--git-changes',
+        nargs='?',
+        const='HEAD',
+        help='Only scan files changed in Git. Optionally provide a branch or commit (for example: "main").'
+    )
+    git_group.add_argument(
+        '--git-diff',
+        nargs='?',
+        const='HEAD',
+        help='Scan current Git changes as a diff. Optionally provide a branch or commit (for example: "HEAD~1").'
+    )
+    git_group.add_argument(
+        '--git-hooks',
+        action='store_true',
+        help='Scan local and global Git hooks.'
+    )
+    git_group.add_argument(
+        '--git-config',
+        action='store_true',
+        help='Scan for dangerous Git configuration settings.'
+    )
+
+    system_group = parser.add_argument_group("System Scans")
+    system_group.add_argument(
+        '--audit',
+        action='store_true',
+        help='Run a full system audit.'
+    )
+    system_group.add_argument(
+        '--shell-profiles',
+        action='store_true',
+        help='Scan common shell profile and RC files.'
+    )
+    system_group.add_argument(
+        '--shell-history',
+        action='store_true',
+        help='Scan common shell history files.'
+    )
+    system_group.add_argument(
+        '--system-path',
+        action='store_true',
+        help='Scan all directories in the system PATH.'
+    )
+    system_group.add_argument(
+        '--running-processes',
+        action='store_true',
+        help='Scan command lines of all running processes.'
+    )
+    system_group.add_argument(
+        '--scheduled-tasks',
+        action='store_true',
+        help='Scan all scheduled tasks and Cron jobs.'
+    )
+    system_group.add_argument(
+        '--startup-items',
+        action='store_true',
+        help='Scan all system startup items and LaunchAgents.'
+    )
+    system_group.add_argument(
+        '--system-services',
+        action='store_true',
+        help='Scan all system services.'
+    )
+    system_group.add_argument(
+        '--python-packages',
+        action='store_true',
+        help='Scan all directories containing installed Python packages.'
+    )
+    system_group.add_argument(
+        '--nodejs-packages',
+        action='store_true',
+        help='Scan all directories containing global Node.js packages.'
+    )
+    system_group.add_argument(
+        '--browser-extensions',
+        action='store_true',
+        help='Scan all common browser extension directories.'
+    )
+    system_group.add_argument(
+        '--editor-extensions',
+        action='store_true',
+        help='Scan all common editor extension directories.'
+    )
+    system_group.add_argument(
+        '--ssh-config',
+        action='store_true',
+        help='Scan all common SSH configuration and authorized_keys files.'
+    )
+    system_group.add_argument(
+        '--env-vars',
+        action='store_true',
+        help='Scan all non-empty environment variables.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
