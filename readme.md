@@ -52,7 +52,6 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 Run `python3 gptscan.py` to open the scanner window.
 
 Access these options from the **Browse** menu:
-
 #### Common Scans
 *   **Scan File(s)... (Ctrl+Shift+O):** Select specific files to scan.
 *   **Scan Folder...:** Select an entire folder to scan.
@@ -77,10 +76,12 @@ Access these options from the **Browse** menu:
 *   **Scan Scheduled Tasks (Ctrl+Shift+T):** Scan tasks and Cron jobs for ways programs stay on your system.
 *   **Scan Startup Items (Ctrl+Shift+A):** Scan startup items and LaunchAgents.
 *   **Scan System Services (Ctrl+Shift+S):** Scan system services and background units.
+*   **Scan SSH Configuration (Ctrl+Shift+R):** Scan all common SSH configuration and authorized_keys files.
 *   **Scan Python Packages (Ctrl+Shift+Y):** Scan your installed Python packages for malicious code.
 *   **Scan Node.js Packages (Ctrl+Shift+M):** Scan your global Node.js packages.
 *   **Scan Browser Extensions (Ctrl+Shift+W):** Scan your browser extension folders for malicious scripts.
 *   **Scan Editor Extensions (Ctrl+Shift+X):** Scan extensions for VS Code, Sublime Text, and Vim.
+
 
 ### Keyboard Shortcuts
 The scanner includes shortcuts for faster navigation.
@@ -112,6 +113,7 @@ The scanner includes shortcuts for faster navigation.
 | `Ctrl+Shift+T` | Scan Scheduled Tasks |
 | `Ctrl+Shift+A` | Scan Startup Items |
 | `Ctrl+Shift+S` | Scan System Services |
+| `Ctrl+Shift+R` | Scan SSH Configuration |
 | `Ctrl+Shift+Y` | Scan Python Packages |
 | `Ctrl+Shift+M` | Scan Node.js Packages |
 | `Ctrl+Shift+W` | Scan Browser Extensions |
@@ -222,6 +224,11 @@ python3 gptscan.py --startup-items --cli
 Scan all system services:
 ```bash
 python3 gptscan.py --system-services --cli
+```
+
+Scan SSH configuration and authorized keys:
+```bash
+python3 gptscan.py --ssh-config --cli
 ```
 
 Scan all environment variables:

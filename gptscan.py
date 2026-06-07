@@ -2614,6 +2614,19 @@ def scan_system_services_click():
         messagebox.showwarning("System Services Error", f"Could not scan system services: {e}")
 
 
+def scan_ssh_config_click():
+    """Scan all common SSH configuration and authorized_keys files."""
+    try:
+        paths = get_ssh_config_paths()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo("SSH Configuration", "No SSH configuration or authorized_keys files were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("SSH Configuration Error", f"Could not scan SSH configuration: {e}")
+
+
 def scan_python_packages_click():
     """Scan all directories containing installed Python packages (site-packages)."""
     try:
@@ -6994,6 +7007,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
     system_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
     system_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
+    system_menu.add_command(label="Scan SSH Configuration", command=scan_ssh_config_click, accelerator="Ctrl+Shift+R")
     system_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click, accelerator="Ctrl+Shift+Y")
     system_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
     system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
@@ -7374,6 +7388,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-A>', lambda event: scan_startup_items_click())
     root.bind('<Control-Shift-S>', lambda event: scan_system_services_click())
     root.bind('<Command-Shift-S>', lambda event: scan_system_services_click())
+    root.bind('<Control-Shift-R>', lambda event: scan_ssh_config_click())
+    root.bind('<Command-Shift-R>', lambda event: scan_ssh_config_click())
     root.bind('<Control-Shift-Y>', lambda event: scan_python_packages_click())
     root.bind('<Command-Shift-Y>', lambda event: scan_python_packages_click())
     root.bind('<Control-Shift-M>', lambda event: scan_nodejs_packages_click())
@@ -7457,6 +7473,8 @@ def main():
                "  python3 gptscan.py --audit --cli\n\n"
                "  # Scan all installed editor extensions\n"
                "  python3 gptscan.py --editor-extensions --cli\n\n"
+               "  # Scan SSH configuration and authorized keys\n"
+               "  python3 gptscan.py --ssh-config --cli\n\n"
                "  # Scan files changed in the last 24 hours\n"
                "  python3 gptscan.py --modified 24h --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
@@ -7586,6 +7604,11 @@ def main():
         '--editor-extensions',
         action='store_true',
         help='Scan all common editor extension directories.'
+    )
+    scan_group.add_argument(
+        '--ssh-config',
+        action='store_true',
+        help='Scan all common SSH configuration and authorized_keys files.'
     )
     scan_group.add_argument(
         '--env-vars',
@@ -7877,6 +7900,13 @@ def main():
                 scan_targets.extend(extension_paths)
             else:
                 print("No editor extension directories were found.", file=sys.stderr)
+
+        if args.ssh_config:
+            ssh_paths = get_ssh_config_paths()
+            if ssh_paths:
+                scan_targets.extend(ssh_paths)
+            else:
+                print("No SSH configuration or authorized_keys files were found.", file=sys.stderr)
 
         if args.env_vars:
             snippets = get_environment_variable_snippets()
