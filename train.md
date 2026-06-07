@@ -71,9 +71,9 @@ hyperparameters:
   optimizer: 0.5              # How the model learns from its mistakes
 ```
 
-## Directory Structure
+## Folder Structure
 
-The script expects the following directory structure by default:
+The script expects the following folder structure by default:
 
 ```
 project/
@@ -117,13 +117,13 @@ python3 train.py --config config.yml --model-name my_model
 # Change training parameters
 python3 train.py --config config.yml --epochs 50 --batch-size 64
 
-# Specify custom data directories
+# Specify custom data folders
 python3 train.py --config config.yml \
     --positive-dir /path/to/positive \
     --negative-dir /path/to/negative
 ```
 
-#### Custom prediction directories:
+#### Custom prediction folders:
 
 ```bash
 python3 train.py --config config.yml \
@@ -166,10 +166,10 @@ python3 train.py --config config.yml \
 --config, -c           Path to YAML configuration file (required)
 --mode, -m             Mode: train or predict (overrides config)
 --model-name           Model name (overrides config)
---positive-dir         Directory with dangerous files
---negative-dir         Directory with safe files
---predict-dir          Directory with files to predict on
---output-dir           Output directory for prediction results
+--positive-dir         Folder with dangerous files
+--negative-dir         Folder with safe files
+--predict-dir          Folder with files to predict on
+--output-dir           Output folder for prediction results
 --epochs               Number of training rounds (overrides config)
 --batch-size           Number of files processed at once (overrides config)
 ```
