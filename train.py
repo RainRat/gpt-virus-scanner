@@ -132,7 +132,6 @@ class DataLoader:
         y_train = []
         sample_weights = []
         
-        # Load positive examples
         for file_path in positive_dir.iterdir():
             if file_path.is_file():
                 data = self.load_file(file_path)
@@ -140,7 +139,6 @@ class DataLoader:
                 y_train.append(1)
                 sample_weights.append(self.config.positive_sample_weight)
         
-        # Load negative examples
         for file_path in negative_dir.iterdir():
             if file_path.is_file():
                 data = self.load_file(file_path)
@@ -395,7 +393,6 @@ class Trainer:
                 callbacks=[early_stop]
             )
             
-            # Evaluate results
             val_acc = history.history['val_weighted_acc']
             val_loss = history.history['val_weighted_binary_crossentropy']
             
@@ -504,21 +501,21 @@ def load_config(config_path: str) -> Tuple[ModelConfig, Optional[Hyperparameters
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description='Train or run predictions with a binary file classifier using an automatic optimization process.',
+        description='Train the local classifier or use it to find suspicious files.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Train with config file
-  python train.py --config config.yml --mode train
+  # Train a model using settings from a file
+  python3 train.py --config config.yml --mode train
   
-  # Predict with config file
-  python train.py --config config.yml --mode predict
+  # Use a model to find suspicious files
+  python3 train.py --config config.yml --mode predict
   
-  # Override model name
-  python train.py --config config.yml --model-name my_model
+  # Use a custom model name
+  python3 train.py --config config.yml --model-name my_model
   
-  # Use custom data directories
-  python train.py --config config.yml --positive-dir data/dangerous --negative-dir data/safe
+  # Specify folders for training data
+  python3 train.py --config config.yml --positive-dir data/dangerous --negative-dir data/safe
         """
     )
     
@@ -526,56 +523,56 @@ Examples:
         '--config', '-c',
         type=str,
         required=True,
-        help='Path to YAML settings file'
+        help='Path to the YAML settings file.'
     )
     
     parser.add_argument(
         '--mode', '-m',
         type=str,
         choices=['train', 'predict'],
-        help='Mode: train or predict (overrides config file)'
+        help='Choose between training a model or making predictions.'
     )
     
     parser.add_argument(
         '--model-name',
         type=str,
-        help='Model name (overrides config file)'
+        help='Set the model name.'
     )
     
     parser.add_argument(
         '--positive-dir',
         type=str,
-        help='Directory with dangerous files'
+        help='Folder containing dangerous files.'
     )
     
     parser.add_argument(
         '--negative-dir',
         type=str,
-        help='Directory with safe files'
+        help='Folder containing safe files.'
     )
     
     parser.add_argument(
         '--predict-dir',
         type=str,
-        help='Directory containing files to predict on'
+        help='Folder containing files to scan.'
     )
     
     parser.add_argument(
         '--output-dir',
         type=str,
-        help='Output directory for prediction results'
+        help='Folder where suspicious files will be copied.'
     )
     
     parser.add_argument(
         '--epochs',
         type=int,
-        help='Number of training epochs (overrides config file)'
+        help='Number of training rounds.'
     )
     
     parser.add_argument(
         '--batch-size',
         type=int,
-        help='Batch size (overrides config file)'
+        help='Number of files to process at once.'
     )
     
     return parser.parse_args()
