@@ -2090,6 +2090,15 @@ def get_file_sha256(file_path_or_data: Union[str, Path, bytes]) -> str:
         return ""
 
 
+def get_effective_sha256(path: str, snippet: Optional[str] = None) -> str:
+    """Calculate the effective SHA256 hash, falling back to hashing the snippet for virtual paths."""
+    if path.startswith("[") or not os.path.exists(path):
+        if snippet:
+            return get_file_sha256(snippet.encode('utf-8'))
+        return ""
+    return get_file_sha256(path)
+
+
 def get_virustotal_url(path: str, snippet: Optional[str] = None) -> Optional[str]:
     """Construct a VirusTotal URL for a local file or a virtual snippet.
 
@@ -2100,12 +2109,7 @@ def get_virustotal_url(path: str, snippet: Optional[str] = None) -> Optional[str
     Returns:
         The VirusTotal URL string, or None if the hash could not be calculated.
     """
-    h = ""
-    if path.startswith("[") or not os.path.exists(path):
-        if snippet:
-            h = get_file_sha256(snippet.encode('utf-8'))
-    else:
-        h = get_file_sha256(path)
+    h = get_effective_sha256(path, snippet)
 
     if h:
         return f"https://www.virustotal.com/gui/file/{h}"
@@ -6099,12 +6103,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     def copy_sha256_details():
         path = path_entry.get()
-        h = ""
-        if path.startswith("["):
-            snippet = snippet_text.get("1.0", tk.END).strip()
-            h = get_file_sha256(snippet.encode('utf-8'))
-        else:
-            h = get_file_sha256(path)
+        snippet = snippet_text.get("1.0", tk.END).strip()
+        h = get_effective_sha256(path, snippet)
 
         if h:
             root.clipboard_clear()
@@ -6422,13 +6422,9 @@ def copy_sha256(event: Optional[tk.Event] = None) -> None:
         if not values:
             continue
         file_path = str(values[0])
+        snippet = str(values[5])
 
-        if file_path.startswith("[") or not os.path.exists(file_path):
-            # For virtual paths or non-existent files (like archive members), hash the snippet content
-            snippet = str(values[5])
-            h = get_file_sha256(snippet.encode('utf-8'))
-        else:
-            h = get_file_sha256(file_path)
+        h = get_effective_sha256(file_path, snippet)
 
         if h:
             hashes.append(h)
