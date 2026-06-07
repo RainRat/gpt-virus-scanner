@@ -1180,6 +1180,16 @@ def get_system_path_directories() -> List[str]:
     return _normalize_and_filter_dirs(path_env.split(os.pathsep))
 
 
+def get_downloads_paths() -> List[str]:
+    """Identify the standard Downloads directory."""
+    paths = []
+    home = Path.home()
+    downloads = home / "Downloads"
+    if downloads.exists():
+        paths.append(str(downloads))
+    return paths
+
+
 def get_running_process_commands() -> List[Tuple[str, bytes]]:
     """Collect command lines of all running processes."""
     processes = []
@@ -2707,6 +2717,19 @@ def scan_editor_extensions_click():
         messagebox.showwarning("Editor Extensions Error", f"Could not scan editor extensions: {e}")
 
 
+def scan_downloads_click():
+    """Scan the standard Downloads directory."""
+    try:
+        paths = get_downloads_paths()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo("Downloads", "The standard Downloads folder was not found on this system.")
+    except Exception as e:
+        messagebox.showwarning("Downloads Error", f"Could not scan Downloads: {e}")
+
+
 def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     """Collect all paths and snippets for a comprehensive system audit."""
     all_paths = []
@@ -2720,6 +2743,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_nodejs_package_paths())
     all_paths.extend(get_browser_extensions_paths())
     all_paths.extend(get_editor_extensions_paths())
+    all_paths.extend(get_downloads_paths())
 
     all_snippets = []
     all_snippets.extend(get_running_process_commands())
@@ -7007,6 +7031,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
     system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
     system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
+    system_menu.add_command(label="Scan Downloads", command=scan_downloads_click, accelerator="Ctrl+Shift+J")
     browse_menu.add_cascade(label="System Scans", menu=system_menu)
     browse_button["menu"] = browse_menu
 
@@ -7393,6 +7418,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-W>', lambda event: scan_browser_extensions_click())
     root.bind('<Control-Shift-X>', lambda event: scan_editor_extensions_click())
     root.bind('<Command-Shift-X>', lambda event: scan_editor_extensions_click())
+    root.bind('<Control-Shift-J>', lambda event: scan_downloads_click())
+    root.bind('<Command-Shift-J>', lambda event: scan_downloads_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
@@ -7537,6 +7564,11 @@ def main():
         '--modified',
         type=str,
         help="Only scan files changed within this timeframe (for example: '24h', '1h', '7d')."
+    )
+    scan_group.add_argument(
+        '--downloads',
+        action='store_true',
+        help='Scan the standard Downloads folder.'
     )
 
     git_group = parser.add_argument_group("Git Integration")
@@ -7918,6 +7950,9 @@ def main():
             paths, snippets = get_system_audit_data()
             scan_targets.extend(paths)
             extra_snippets.extend(snippets)
+
+        if args.downloads:
+            scan_targets.extend(get_downloads_paths())
 
         modified_since = None
         if args.modified:

@@ -81,6 +81,7 @@ Access these options from the **Browse** menu:
 *   **Scan Node.js Packages (Ctrl+Shift+M):** Scan your global Node.js packages.
 *   **Scan Browser Extensions (Ctrl+Shift+W):** Scan your browser extension folders for malicious scripts.
 *   **Scan Editor Extensions (Ctrl+Shift+X):** Scan extensions for VS Code, Sublime Text, and Vim.
+*   **Scan Downloads (Ctrl+Shift+J):** Scan your standard Downloads folder for suspicious files.
 
 
 ### Keyboard Shortcuts
@@ -118,6 +119,7 @@ The scanner includes shortcuts for faster navigation.
 | `Ctrl+Shift+M` | Scan Node.js Packages |
 | `Ctrl+Shift+W` | Scan Browser Extensions |
 | `Ctrl+Shift+X` | Scan Editor Extensions |
+| `Ctrl+Shift+J` | Scan Downloads |
 | **Results List** | |
 | `Space` / `Enter` | View Details |
 | `F5` / `r` | Rescan |
@@ -194,6 +196,11 @@ python3 gptscan.py --editor-extensions --cli
 Scan all common shell profile and RC files:
 ```bash
 python3 gptscan.py --shell-profiles --cli
+```
+
+Scan the standard Downloads folder:
+```bash
+python3 gptscan.py --downloads --cli
 ```
 
 Scan your terminal history (Bash, Zsh, PowerShell, etc.):
