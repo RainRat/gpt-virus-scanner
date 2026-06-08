@@ -1,43 +1,127 @@
 import os
-import subprocess
 import pytest
-from gptscan import get_git_hooks_paths, run_cli
+from unittest.mock import patch, MagicMock
+from pathlib import Path
+from gptscan import get_git_hooks_paths
 
-def test_get_git_hooks_paths(tmp_path):
-    # Setup test repo
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    subprocess.run(["git", "init"], cwd=repo)
-    hooks = repo / ".git" / "hooks"
+def test_get_git_hooks_paths_default_location():
+    with patch("gptscan._get_git_info") as mock_info, \
+         patch("subprocess.run") as mock_run, \
+         patch("subprocess.check_output") as mock_check, \
+         patch("os.path.isdir") as mock_isdir, \
+         patch("os.listdir") as mock_listdir, \
+         patch("os.path.isfile") as mock_isfile:
 
-    pre_commit = hooks / "pre-commit"
-    pre_commit.write_text("#!/bin/sh\necho 'hello'")
+        mock_info.return_value = ("/repo", "rel")
 
-    sample = hooks / "pre-push.sample"
-    sample.write_text("#!/bin/sh\necho 'sample'")
+        # git config --get core.hooksPath -> not set
+        mock_run.return_value = MagicMock(stdout="", returncode=1)
 
-    paths = get_git_hooks_paths(str(repo))
-    assert any(str(pre_commit) == p for p in paths)
-    assert not any(str(sample) == p for p in paths)
+        # git rev-parse --git-dir -> .git
+        mock_check.return_value = ".git"
 
-def test_cli_git_hooks(tmp_path, monkeypatch):
-    # Setup test repo
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    subprocess.run(["git", "init"], cwd=repo)
-    hooks = repo / ".git" / "hooks"
+        mock_isdir.return_value = True
+        mock_listdir.return_value = ["pre-commit", "pre-push.sample", "post-checkout"]
+        mock_isfile.side_effect = lambda p: not p.endswith(".sample")
 
-    pre_commit = hooks / "pre-commit"
-    pre_commit.write_text("#!/bin/sh\necho 'hello'")
+        paths = get_git_hooks_paths("/repo")
 
-    # Mocking get_git_hooks_paths to ensure it returns our test hook
-    monkeypatch.setattr("gptscan.get_git_hooks_paths", lambda x: [str(pre_commit)])
+        assert len(paths) == 2
+        assert any(p.endswith("pre-commit") for p in paths)
+        assert any(p.endswith("post-checkout") for p in paths)
+        assert not any(p.endswith(".sample") for p in paths)
 
-    # Simulate CLI logic for --git-hooks
-    paths = [str(repo)]
-    git_roots = paths
-    scan_targets = []
-    for root_dir in git_roots:
-        scan_targets.extend(get_git_hooks_paths(root_dir))
+def test_get_git_hooks_paths_custom_absolute_path():
+    with patch("gptscan._get_git_info") as mock_info, \
+         patch("subprocess.run") as mock_run, \
+         patch("os.path.isdir") as mock_isdir, \
+         patch("os.listdir") as mock_listdir, \
+         patch("os.path.isfile") as mock_isfile:
 
-    assert str(pre_commit) in scan_targets
+        mock_info.return_value = ("/repo", ".")
+
+        # git config --get core.hooksPath -> /custom/hooks
+        mock_run.return_value = MagicMock(stdout="/custom/hooks\n", returncode=0)
+
+        mock_isdir.side_effect = lambda p: p == "/custom/hooks"
+        mock_listdir.return_value = ["hook1"]
+        mock_isfile.return_value = True
+
+        paths = get_git_hooks_paths("/repo")
+
+        assert paths == ["/custom/hooks/hook1"]
+
+def test_get_git_hooks_paths_custom_relative_path():
+    with patch("gptscan._get_git_info") as mock_info, \
+         patch("subprocess.run") as mock_run, \
+         patch("os.path.isdir") as mock_isdir, \
+         patch("os.listdir") as mock_listdir, \
+         patch("os.path.isfile") as mock_isfile:
+
+        repo_root = os.path.abspath("/repo")
+        mock_info.return_value = (repo_root, ".")
+
+        # git config --get core.hooksPath -> myhooks
+        mock_run.return_value = MagicMock(stdout="myhooks\n", returncode=0)
+
+        expected_dir = os.path.join(repo_root, "myhooks")
+        mock_isdir.side_effect = lambda p: p == expected_dir
+        mock_listdir.return_value = ["hook2"]
+        mock_isfile.return_value = True
+
+        paths = get_git_hooks_paths("/repo")
+
+        assert paths == [os.path.join(expected_dir, "hook2")]
+
+def test_get_git_hooks_paths_tilde_expansion():
+    with patch("gptscan._get_git_info") as mock_info, \
+         patch("subprocess.run") as mock_run, \
+         patch("pathlib.Path.expanduser") as mock_expand, \
+         patch("os.path.isdir") as mock_isdir, \
+         patch("os.listdir") as mock_listdir, \
+         patch("os.path.isfile") as mock_isfile:
+
+        mock_info.return_value = ("/repo", ".")
+        mock_run.return_value = MagicMock(stdout="~/hooks\n", returncode=0)
+
+        expanded_path = Path("/home/user/hooks")
+        mock_expand.return_value = expanded_path
+
+        mock_isdir.side_effect = lambda p: str(p) == str(expanded_path)
+        mock_listdir.return_value = ["hook3"]
+        mock_isfile.return_value = True
+
+        paths = get_git_hooks_paths("/repo")
+
+        assert paths == [str(expanded_path / "hook3")]
+
+def test_get_git_hooks_paths_no_repo():
+    with patch("gptscan._get_git_info") as mock_info:
+        mock_info.return_value = (None, None)
+
+        # When not in a repo and no global hooksPath set, should return empty
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="", returncode=1)
+            paths = get_git_hooks_paths("/not/a/repo")
+            assert paths == []
+
+def test_get_git_hooks_paths_exception_fallback():
+    with patch("gptscan._get_git_info") as mock_info, \
+         patch("subprocess.run") as mock_run, \
+         patch("os.path.isdir") as mock_isdir, \
+         patch("os.listdir") as mock_listdir, \
+         patch("os.path.isfile") as mock_isfile:
+
+        mock_info.return_value = ("/repo", ".")
+
+        # git config fails or raises
+        mock_run.side_effect = OSError("git not found")
+
+        expected_dir = os.path.join("/repo", ".git", "hooks")
+        mock_isdir.side_effect = lambda p: p == expected_dir
+        mock_listdir.return_value = ["fallback-hook"]
+        mock_isfile.return_value = True
+
+        paths = get_git_hooks_paths("/repo")
+
+        assert paths == [os.path.join(expected_dir, "fallback-hook")]
