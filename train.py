@@ -605,8 +605,8 @@ def main():
         # Prediction mode
         print(f"Running prediction mode")
         print(f"Model: {config.model_name}.h5")
-        print(f"Input directory: {predict_dir}")
-        print(f"Output directory: {output_dir}")
+        print(f"Input folder: {predict_dir}")
+        print(f"Output folder: {output_dir}")
         print(f"Threshold: {config.predict_threshold}")
         
         predictor = Predictor(config)
