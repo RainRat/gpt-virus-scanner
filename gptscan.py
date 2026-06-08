@@ -1190,6 +1190,27 @@ def get_downloads_paths() -> List[str]:
     return paths
 
 
+def get_temp_folders_paths() -> List[str]:
+    """Identify platform-specific temporary folders."""
+    paths = []
+    if sys.platform == "win32":
+        # Windows temporary folders
+        temp_vars = ["TEMP", "TMP"]
+        for var in temp_vars:
+            val = os.environ.get(var)
+            if val:
+                paths.append(val)
+        # System-wide temp
+        win_temp = "C:\\Windows\\Temp"
+        if os.path.exists(win_temp):
+            paths.append(win_temp)
+    else:
+        # Linux/macOS/Unix temporary folders
+        paths.extend(["/tmp", "/var/tmp", "/dev/shm"])
+
+    return _normalize_and_filter_dirs(paths)
+
+
 def get_running_process_commands() -> List[Tuple[str, bytes]]:
     """Collect command lines of all running processes."""
     processes = []
@@ -2730,6 +2751,19 @@ def scan_downloads_click():
         messagebox.showwarning("Downloads Error", f"Could not scan Downloads: {e}")
 
 
+def scan_temp_folders_click():
+    """Scan platform-specific temporary folders."""
+    try:
+        paths = get_temp_folders_paths()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo("Temporary Folders", "No valid temporary folders were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Temporary Folders Error", f"Could not scan temporary folders: {e}")
+
+
 def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     """Collect all paths and snippets for a comprehensive system audit."""
     all_paths = []
@@ -2744,6 +2778,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_browser_extensions_paths())
     all_paths.extend(get_editor_extensions_paths())
     all_paths.extend(get_downloads_paths())
+    all_paths.extend(get_temp_folders_paths())
 
     all_snippets = []
     all_snippets.extend(get_running_process_commands())
@@ -7032,6 +7067,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
     system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
     system_menu.add_command(label="Scan Downloads", command=scan_downloads_click, accelerator="Ctrl+Shift+J")
+    system_menu.add_command(label="Scan Temporary Folders", command=scan_temp_folders_click, accelerator="Ctrl+Shift+L")
     browse_menu.add_cascade(label="System Scans", menu=system_menu)
     browse_button["menu"] = browse_menu
 
@@ -7420,6 +7456,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-X>', lambda event: scan_editor_extensions_click())
     root.bind('<Control-Shift-J>', lambda event: scan_downloads_click())
     root.bind('<Command-Shift-J>', lambda event: scan_downloads_click())
+    root.bind('<Control-Shift-L>', lambda event: scan_temp_folders_click())
+    root.bind('<Command-Shift-L>', lambda event: scan_temp_folders_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
@@ -7665,6 +7703,11 @@ def main():
         '--env-vars',
         action='store_true',
         help='Scan all non-empty environment variables.'
+    )
+    system_group.add_argument(
+        '--temp-folders',
+        action='store_true',
+        help='Scan platform-specific temporary folders.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
@@ -7953,6 +7996,9 @@ def main():
 
         if args.downloads:
             scan_targets.extend(get_downloads_paths())
+
+        if args.temp_folders:
+            scan_targets.extend(get_temp_folders_paths())
 
         modified_since = None
         if args.modified:
