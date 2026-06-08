@@ -1623,43 +1623,28 @@ def get_git_hooks_paths(path: str = ".") -> List[str]:
     paths = []
     toplevel, _ = _get_git_info(path)
 
-    # 1. Resolve Hooks Directory
+    # Resolve Hooks Directory
     hooks_dir = None
     try:
-        # Check for core.hooksPath (captures both local and global)
-        # Use subprocess.run to avoid raising on exit code 1 (not set)
-        res = subprocess.run(
-            ["git", "config", "--get", "core.hooksPath"],
+        hooks_dir = subprocess.check_output(
+            ["git", "rev-parse", "--git-path", "hooks"],
             cwd=toplevel if toplevel else None,
-            stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True
-        )
-        hooks_config = res.stdout.strip()
+        ).strip()
 
-        if hooks_config:
-            hooks_dir_path = Path(hooks_config).expanduser()
-            if not hooks_dir_path.is_absolute() and toplevel:
-                hooks_dir_path = Path(toplevel) / hooks_dir_path
-            hooks_dir = str(hooks_dir_path)
-        elif toplevel:
-            # Fallback to default hooks directory using git rev-parse
-            git_dir = subprocess.check_output(
-                ["git", "rev-parse", "--git-dir"],
-                cwd=toplevel,
-                stderr=subprocess.PIPE,
-                universal_newlines=True
-            ).strip()
-            git_dir_path = Path(git_dir)
-            if not git_dir_path.is_absolute():
-                git_dir_path = Path(toplevel) / git_dir_path
-            hooks_dir = str(git_dir_path / "hooks")
+        # Resolve relative paths against toplevel or current directory
+        hooks_dir_path = Path(hooks_dir)
+        if not hooks_dir_path.is_absolute():
+            base = toplevel if toplevel else os.getcwd()
+            hooks_dir_path = Path(base) / hooks_dir_path
+        hooks_dir = str(hooks_dir_path)
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         # Fallback for non-git directories or environments without git
         if toplevel:
             hooks_dir = os.path.join(toplevel, ".git", "hooks")
 
-    # 2. Collect Hooks from Identified Directory
+    # Collect Hooks from Identified Directory
     if hooks_dir and os.path.isdir(hooks_dir):
         try:
             for entry in os.listdir(hooks_dir):
