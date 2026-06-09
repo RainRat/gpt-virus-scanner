@@ -8,6 +8,8 @@ def test_get_git_hooks_paths(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo)
+    # Ensure local hooks are used by overriding any global core.hooksPath
+    subprocess.run(["git", "config", "core.hooksPath", ""], cwd=repo)
     hooks = repo / ".git" / "hooks"
 
     pre_commit = hooks / "pre-commit"
@@ -25,6 +27,8 @@ def test_cli_git_hooks(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo)
+    # Ensure local hooks are used by overriding any global core.hooksPath
+    subprocess.run(["git", "config", "core.hooksPath", ""], cwd=repo)
     hooks = repo / ".git" / "hooks"
 
     pre_commit = hooks / "pre-commit"
