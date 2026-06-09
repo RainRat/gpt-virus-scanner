@@ -11,7 +11,7 @@ def test_get_system_path_directories(monkeypatch, tmp_path):
     dir2 = tmp_path / "bin2"
     dir2.mkdir()
 
-    # Non-existent directory
+    # Non-existent folder
     dir3 = tmp_path / "nonexistent"
 
     # Mock PATH environment variable
@@ -52,7 +52,7 @@ def test_scan_system_path_click_not_found(monkeypatch):
     gptscan.scan_system_path_click()
 
     mock_info.assert_called_once()
-    assert "No valid directories found" in mock_info.call_args[0][1]
+    assert "No valid folders found" in mock_info.call_args[0][1]
 
 def test_cli_system_path_flag(monkeypatch):
     # This tests that the --system-path flag is accepted by the parser
