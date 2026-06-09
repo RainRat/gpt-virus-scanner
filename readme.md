@@ -82,6 +82,7 @@ Access these options from the **Browse** menu:
 *   **Scan Browser Extensions (Ctrl+Shift+W):** Scan your browser extension folders for malicious scripts.
 *   **Scan Editor Extensions (Ctrl+Shift+X):** Scan extensions for VS Code, Sublime Text, and Vim.
 *   **Scan Downloads (Ctrl+Shift+J):** Scan your standard Downloads folder for suspicious files.
+*   **Scan Temporary Folders (Ctrl+Shift+Z):** Scan common temporary folders for suspicious files.
 
 
 ### Keyboard Shortcuts
@@ -120,6 +121,7 @@ The scanner includes shortcuts for faster navigation.
 | `Ctrl+Shift+W` | Scan Browser Extensions |
 | `Ctrl+Shift+X` | Scan Editor Extensions |
 | `Ctrl+Shift+J` | Scan Downloads |
+| `Ctrl+Shift+Z` | Scan Temporary Folders |
 | **Results List** | |
 | `Space` / `Enter` | View Details |
 | `F5` / `r` | Rescan |
@@ -236,6 +238,11 @@ python3 gptscan.py --system-services --cli
 Scan SSH configuration and authorized keys:
 ```bash
 python3 gptscan.py --ssh-config --cli
+```
+
+Scan common temporary directories:
+```bash
+python3 gptscan.py --temp --cli
 ```
 
 Scan all environment variables:
