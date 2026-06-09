@@ -6982,7 +6982,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/U/V/D/G/I/B/H/P/K/N/T/A/S/Y/M/X).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/F/U/V/D/G/I/B/H/P/K/N/T/A/S/R/Y/M/W/X/J).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -6994,7 +6994,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_menu = tk.Menu(browse_button, tearoff=0)
     browse_menu.add_command(label="Scan File(s)...", command=browse_file_click, accelerator="Ctrl+Shift+O")
-    browse_menu.add_command(label="Scan Folder...", command=browse_dir_click)
+    browse_menu.add_command(label="Scan Folder...", command=browse_dir_click, accelerator="Ctrl+Shift+F")
     browse_menu.add_command(label="Scan URL...", command=select_url_click, accelerator="Ctrl+Shift+U")
     browse_menu.add_command(label="Scan File List...", command=browse_file_list_click)
 
@@ -7384,6 +7384,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-o>', import_results)
     root.bind('<Control-Shift-O>', lambda event: browse_file_click())
     root.bind('<Command-Shift-O>', lambda event: browse_file_click())
+    root.bind('<Control-Shift-F>', lambda event: browse_dir_click())
+    root.bind('<Command-Shift-F>', lambda event: browse_dir_click())
     root.bind('<Control-Shift-U>', lambda event: select_url_click())
     root.bind('<Command-Shift-U>', lambda event: select_url_click())
     root.bind('<Control-Shift-V>', lambda event: scan_clipboard_click())
