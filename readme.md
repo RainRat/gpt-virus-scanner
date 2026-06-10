@@ -54,7 +54,7 @@ Run `python3 gptscan.py` to open the scanner window.
 Access these options from the **Browse** menu:
 #### Common Scans
 *   **Scan File(s)... (Ctrl+Shift+O):** Select specific files to scan.
-*   **Scan Folder...:** Select an entire folder to scan.
+*   **Scan Folder... (Ctrl+Shift+F):** Select an entire folder to scan.
 *   **Scan Recently Modified...:** Scan files changed within a certain time (like the last 24 hours).
 *   **Scan URL... (Ctrl+Shift+U):** Scan code or archives directly from a web link.
 *   **Scan File List...:** Scan a list of files from a text file.
@@ -101,6 +101,7 @@ The scanner includes shortcuts for faster navigation.
 | `Ctrl+Shift+E` | Copy as Command Line |
 | **Scan Actions** | |
 | `Ctrl+Shift+O` | Scan File(s) |
+| `Ctrl+Shift+F` | Scan Folder |
 | `Ctrl+Shift+U` | Scan URL |
 | `Ctrl+Shift+V` | Scan Clipboard |
 | `Ctrl+Shift+D` | Scan Git Diff |
