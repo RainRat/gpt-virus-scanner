@@ -2101,8 +2101,11 @@ def get_file_sha256(file_path_or_data: Union[str, Path, bytes]) -> str:
 
 
 def get_effective_sha256(path: str, snippet: Optional[str] = None) -> str:
-    """Calculate the effective SHA256 hash, falling back to hashing the snippet for virtual paths."""
+    """Calculate the effective SHA256 hash, prioritizing full content cache for virtual paths."""
     if path.startswith("[") or not os.path.exists(path):
+        # Prioritize full content from cache if available
+        if path in _virtual_source_cache:
+            return get_file_sha256(_virtual_source_cache[path].encode('utf-8'))
         if snippet:
             return get_file_sha256(snippet.encode('utf-8'))
         return ""
