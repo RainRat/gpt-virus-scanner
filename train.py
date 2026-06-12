@@ -19,7 +19,7 @@ from tensorflow.keras.backend import clear_session, count_params
 
 @dataclass
 class ModelConfig:
-    """Configuration for model architecture and training."""
+    """Settings for the model and training."""
     model_name: str
     max_length: int
     batch_size: int
@@ -35,7 +35,7 @@ class ModelConfig:
 
 @dataclass
 class Hyperparameters:
-    """Settings that control how the AI model is built and trained."""
+    """Settings for building and training the AI model."""
     embedding_scale: float
     rnn_scale: float
     pooling_type: float
@@ -96,7 +96,7 @@ class Hyperparameters:
 
 
 class DataLoader:
-    """Handles loading and preprocessing of binary file data."""
+    """Loads and prepares files for training."""
     
     def __init__(self, config: ModelConfig):
         self.config = config
@@ -160,7 +160,7 @@ class DataLoader:
 
 
 class ModelBuilder:
-    """Builds neural network models based on AI settings."""
+    """Builds the model using the provided settings."""
     
     def __init__(self, config: ModelConfig):
         self.config = config
@@ -340,7 +340,7 @@ class ModelBuilder:
 
 
 class Trainer:
-    """Handles model training with an automatic optimization process."""
+    """Trains the model using an automatic improvement process."""
     
     def __init__(self, config: ModelConfig):
         self.config = config
@@ -352,7 +352,7 @@ class Trainer:
     
     def train(self, x_train: np.ndarray, y_train: np.ndarray, 
               sample_weights: np.ndarray, initial_hp: Optional[Hyperparameters] = None):
-        """Train models using an automatic optimization process."""
+        """Trains the model while automatically improving its settings."""
         current_hp = initial_hp
         if current_hp is None:
             raise ValueError("No initial AI settings provided. Load from config or provide starting values.")
@@ -361,19 +361,16 @@ class Trainer:
         should_mutate = False
         
         while True:
-            # Mutate hyperparameters
             if should_mutate:
                 current_hp = self.best_hp.mutate()
             should_mutate = True
             
-            # Build model
             self.model_builder.print_architecture(current_hp)
             model = self.model_builder.build_model(current_hp)
             
             if model is None:
                 continue
             
-            # Train model
             model.summary()
             early_stop = EarlyStopping(
                 monitor='val_weighted_binary_crossentropy',
@@ -406,7 +403,6 @@ class Trainer:
             print(f"Loss Final: {val_loss[-1]:.4f}")
             print(f"Loss Best: {min(val_loss):.4f}")
             
-            # Save if improved
             if min(val_loss) < self.best_loss:
                 print("\n" + "*" * 50)
                 print("New Best Model!")
@@ -416,11 +412,9 @@ class Trainer:
                 self.best_loss = min(val_loss)
                 self.best_acc = max(val_acc)
                 
-                # Save model and hyperparameters
                 model.save(f'{self.config.model_name}.h5')
                 self.save_hyperparameters(f'{self.config.model_name}_best_hp.yml')
             
-            # Cleanup
             clear_session()
     
     def save_hyperparameters(self, filepath: str):
@@ -443,14 +437,14 @@ class Trainer:
 
 
 class Predictor:
-    """Handles model prediction."""
+    """Finds suspicious files using a trained model."""
     
     def __init__(self, config: ModelConfig):
         self.config = config
         self.data_loader = DataLoader(config)
     
     def predict(self, model_path: str, input_dir: Path, output_dir: Path):
-        """Run predictions on files and copy high-threat level results."""
+        """Scans files and copies suspicious ones to a folder."""
         model = tf.keras.models.load_model(model_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         
@@ -466,7 +460,7 @@ class Predictor:
 
 
 def load_config(config_path: str) -> Tuple[ModelConfig, Optional[Hyperparameters]]:
-    """Load configuration from YAML file."""
+    """Loads settings from a YAML file."""
     with open(config_path, 'r') as f:
         data = yaml.safe_load(f)
     
