@@ -752,7 +752,7 @@ def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
 
 
 def _get_initial_dir() -> Optional[str]:
-    """Determine a sensible initial directory for file dialogs based on current input."""
+    """Find a starting folder for file dialogs based on what is currently entered."""
     path_str = ""
     if textbox:
         path_str = textbox.get().strip()
@@ -770,7 +770,7 @@ def _get_initial_dir() -> Optional[str]:
             return None
         first_path = paths[0]
 
-        # If it's a URL or virtual path, we can't get a local directory
+        # If it's a URL or virtual path, we can't get a local folder
         if first_path.startswith(("[", "http://", "https://")):
             return None
 
@@ -783,7 +783,7 @@ def _get_initial_dir() -> Optional[str]:
 
 
 def browse_dir_click() -> None:
-    """Handle the directory selection dialog and populate the textbox."""
+    """Open the folder selection dialog and fill the textbox."""
     folder_selected = filedialog.askdirectory(initialdir=_get_initial_dir())
     if folder_selected:
         _set_scan_target(folder_selected)
@@ -1158,7 +1158,7 @@ def get_shell_history_paths() -> List[str]:
 
 
 def _normalize_and_filter_dirs(paths: Iterable[Optional[str]]) -> List[str]:
-    """Normalize paths to absolute form, filter out empty or non-existent directories, and deduplicate."""
+    """Convert paths to absolute form, remove empty or missing folders, and deduplicate."""
     dirs = []
     seen = set()
     for p in paths:
@@ -1172,7 +1172,7 @@ def _normalize_and_filter_dirs(paths: Iterable[Optional[str]]) -> List[str]:
 
 
 def get_system_path_directories() -> List[str]:
-    """Identify all directories listed in the system's PATH environment variable."""
+    """Find all folders listed in the system's PATH environment variable."""
     path_env = os.environ.get("PATH", "")
     if not path_env:
         return []
@@ -1181,7 +1181,7 @@ def get_system_path_directories() -> List[str]:
 
 
 def get_downloads_paths() -> List[str]:
-    """Identify the standard Downloads directory."""
+    """Find the standard Downloads folder."""
     paths = []
     home = Path.home()
     downloads = home / "Downloads"
@@ -1254,7 +1254,7 @@ def get_system_service_paths() -> List[str]:
 
 
 def get_python_package_paths() -> List[str]:
-    """Identify all directories containing installed Python packages (site-packages)."""
+    """Find all folders containing installed Python packages (site-packages)."""
     paths = []
     # 1. Standard site-packages
     if hasattr(site, 'getsitepackages'):
@@ -1279,7 +1279,7 @@ def get_python_package_paths() -> List[str]:
 
 
 def get_browser_extensions_paths() -> List[str]:
-    """Identify common browser extension directories (Chrome, Firefox, Edge)."""
+    """Find common browser extension folders (Chrome, Firefox, Edge)."""
     paths = []
     home = Path.home()
 
@@ -1343,7 +1343,7 @@ def get_browser_extensions_paths() -> List[str]:
 
 
 def get_editor_extensions_paths() -> List[str]:
-    """Identify common editor extension directories (VS Code, Sublime Text, Vim/Neovim)."""
+    """Find common editor extension folders (VS Code, Sublime Text, Vim/Neovim)."""
     paths = []
     home = Path.home()
 
@@ -1383,7 +1383,7 @@ def get_editor_extensions_paths() -> List[str]:
 
 
 def get_nodejs_package_paths() -> List[str]:
-    """Identify all directories containing global Node.js packages."""
+    """Find all folders containing global Node.js packages."""
     paths = []
     # 1. Ask npm for the global root
     try:
@@ -1594,7 +1594,7 @@ def get_startup_item_commands() -> List[Tuple[str, bytes]]:
                         except Exception:
                             pass
         else:
-            # Linux - Scan .desktop files in autostart directories
+            # Linux - Scan .desktop files in autostart folders
             search_dirs = [
                 Path("/etc/xdg/autostart"),
                 Path.home() / ".config" / "autostart"
@@ -1623,7 +1623,7 @@ def get_git_hooks_paths(path: str = ".") -> List[str]:
     paths = []
     toplevel, _ = _get_git_info(path)
 
-    # 1. Resolve Hooks Directory
+    # 1. Resolve Hooks Folder
     hooks_dir = None
     try:
         # Check for core.hooksPath (captures both local and global)
@@ -1643,7 +1643,7 @@ def get_git_hooks_paths(path: str = ".") -> List[str]:
                 hooks_dir_path = Path(toplevel) / hooks_dir_path
             hooks_dir = str(hooks_dir_path)
         elif toplevel:
-            # Fallback to default hooks directory using git rev-parse
+            # Fallback to default hooks folder using git rev-parse
             git_dir = subprocess.check_output(
                 ["git", "rev-parse", "--git-dir"],
                 cwd=toplevel,
@@ -1655,11 +1655,11 @@ def get_git_hooks_paths(path: str = ".") -> List[str]:
                 git_dir_path = Path(toplevel) / git_dir_path
             hooks_dir = str(git_dir_path / "hooks")
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
-        # Fallback for non-git directories or environments without git
+        # Fallback for non-git folders or environments without git
         if toplevel:
             hooks_dir = os.path.join(toplevel, ".git", "hooks")
 
-    # 2. Collect Hooks from Identified Directory
+    # 2. Collect Hooks from Identified Folder
     if hooks_dir and os.path.isdir(hooks_dir):
         try:
             for entry in os.listdir(hooks_dir):
@@ -1726,7 +1726,7 @@ def get_git_config_snippets() -> List[Tuple[str, bytes]]:
 
 
 def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
-    """Resolve the Git toplevel directory and the relative path of the target."""
+    """Find the Git root folder and the relative path of the target."""
     abs_path = os.path.abspath(path)
     search_dir = os.path.dirname(abs_path) if os.path.isfile(abs_path) else abs_path
 
@@ -1834,8 +1834,8 @@ def get_git_changed_files(path: str = ".", ref: str = "HEAD") -> List[str]:
     """Get a list of changed files (staged, unstaged, untracked) from git.
 
     Args:
-        path: The directory or file path.
-        ref: The git revision to compare against. Defaults to "HEAD".
+        path: The folder or file path.
+        ref: The git revision or commit to compare against. Defaults to "HEAD".
     """
     toplevel, rel_target = _get_git_info(path)
     if toplevel is None:
@@ -1875,11 +1875,11 @@ def get_git_changed_files(path: str = ".", ref: str = "HEAD") -> List[str]:
 
 
 def get_git_diff(path: str = ".", ref: str = "HEAD") -> str:
-    """Get the Git diff as a string.
+    """Get the Git changes (diff) as a string.
 
     Args:
-        path: The directory or file path.
-        ref: The git revision to compare against. Defaults to "HEAD".
+        path: The folder or file path.
+        ref: The git revision or commit to compare against. Defaults to "HEAD".
     """
     toplevel, rel_target = _get_git_info(path)
     if toplevel is None:
@@ -1916,12 +1916,12 @@ def _normalize_targets(targets: Union[str, List[str], Path]) -> List[str]:
 
 
 def collect_files(targets: Union[str, List[str]], modified_since: Optional[float] = None) -> List[Path]:
-    """Collect files from a single path or a list of paths (files, directories, or globs).
+    """Collect files from a single path or a list of paths (files, folders, or patterns).
 
     Parameters
     ----------
     targets : Union[str, List[str]]
-        A single directory path or a list of file/directory paths or glob patterns.
+        A single folder path or a list of file/folder paths or glob patterns.
         Multiple targets can be provided in a single space-separated string.
     modified_since : float, optional
         A timestamp. If provided, only files modified after this time are returned.
@@ -2564,14 +2564,14 @@ def scan_shell_history_click():
 
 
 def scan_system_path_click():
-    """Scan all directories in the system's PATH environment variable."""
+    """Scan all folders in the system's PATH environment variable."""
     try:
         path_dirs = get_system_path_directories()
         if path_dirs:
             _set_scan_target(path_dirs)
             button_click()
         else:
-            messagebox.showinfo("System PATH", "No valid directories found in the system PATH.")
+            messagebox.showinfo("System PATH", "No valid folders found in the system PATH.")
     except Exception as e:
         messagebox.showwarning("System PATH Error", f"Could not scan system PATH: {e}")
 
@@ -2641,14 +2641,14 @@ def scan_ssh_config_click():
 
 
 def scan_python_packages_click():
-    """Scan all directories containing installed Python packages (site-packages)."""
+    """Scan all folders containing installed Python packages (site-packages)."""
     try:
         package_paths = get_python_package_paths()
         if package_paths:
             _set_scan_target(package_paths)
             button_click()
         else:
-            messagebox.showinfo("Python Packages", "No Python site-packages directories were found to scan.")
+            messagebox.showinfo("Python Packages", "No Python site-packages folders were found to scan.")
     except Exception as e:
         messagebox.showwarning("Python Packages Error", f"Could not scan Python packages: {e}")
 
@@ -2679,46 +2679,46 @@ def scan_env_vars_click():
 
 
 def scan_nodejs_packages_click():
-    """Scan all directories containing global Node.js packages."""
+    """Scan all folders containing global Node.js packages."""
     try:
         package_paths = get_nodejs_package_paths()
         if package_paths:
             _set_scan_target(package_paths)
             button_click()
         else:
-            messagebox.showinfo("Node.js Packages", "No global Node.js package directories were found to scan.")
+            messagebox.showinfo("Node.js Packages", "No global Node.js package folders were found to scan.")
     except Exception as e:
         messagebox.showwarning("Node.js Packages Error", f"Could not scan Node.js packages: {e}")
 
 
 def scan_browser_extensions_click():
-    """Scan all common browser extension directories."""
+    """Scan all common browser extension folders."""
     try:
         extension_paths = get_browser_extensions_paths()
         if extension_paths:
             _set_scan_target(extension_paths)
             button_click()
         else:
-            messagebox.showinfo("Browser Extensions", "No browser extension directories were found to scan.")
+            messagebox.showinfo("Browser Extensions", "No browser extension folders were found to scan.")
     except Exception as e:
         messagebox.showwarning("Browser Extensions Error", f"Could not scan browser extensions: {e}")
 
 
 def scan_editor_extensions_click():
-    """Scan all directories containing editor extensions (VS Code, Sublime Text, Vim)."""
+    """Scan all folders containing editor extensions (VS Code, Sublime Text, Vim)."""
     try:
         extension_paths = get_editor_extensions_paths()
         if extension_paths:
             _set_scan_target(extension_paths)
             button_click()
         else:
-            messagebox.showinfo("Editor Extensions", "No editor extension directories were found to scan.")
+            messagebox.showinfo("Editor Extensions", "No editor extension folders were found to scan.")
     except Exception as e:
         messagebox.showwarning("Editor Extensions Error", f"Could not scan editor extensions: {e}")
 
 
 def scan_downloads_click():
-    """Scan the standard Downloads directory."""
+    """Scan the standard Downloads folder."""
     try:
         paths = get_downloads_paths()
         if paths:
@@ -2813,7 +2813,7 @@ def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_
             all_git_files.extend(get_git_changed_files(target))
 
         if not all_git_files:
-            messagebox.showinfo("Git Scan", "No git changes detected in the selected directory.")
+            messagebox.showinfo("Git Scan", "No git changes detected in the selected folder.")
             return
         scan_targets = all_git_files
 
@@ -4028,12 +4028,12 @@ def scan_files(
     fail_threshold: Optional[int] = None,
     modified_since: Optional[float] = None,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
-    """Scan files for dangerous content and optionally request GPT analysis.
+    """Scan files for dangerous content and optionally use AI for analysis.
 
     Parameters
     ----------
     scan_targets : Union[str, List[str]]
-        Directory path or list of file/directory paths to search.
+        Folder path or list of file/folder paths to search.
     deep_scan : bool
         Whether to scan overlapping 1024-byte windows beyond the first block.
     show_all : bool
@@ -4638,12 +4638,12 @@ def run_scan(
     fail_threshold: Optional[int] = None,
     modified_since: Optional[float] = None,
 ) -> None:
-    """Consume scan events and forward them to the UI thread.
+    """Read scan results and send them to the UI window.
 
     Parameters
     ----------
     scan_targets : Union[str, List[str]]
-        Directory path or list of files to scan.
+        Folder path or list of files to scan.
     deep_scan : bool
         Whether to evaluate all 1024-byte windows.
     show_all : bool
@@ -4682,7 +4682,7 @@ def run_rescan(
     settings: Dict[str, Any],
     cancel_event: threading.Event
 ) -> None:
-    """Perform background scan for specific paths and update existing UI rows."""
+    """Scan specific folders again in the background and update the results."""
     event_gen = scan_files(
         paths,
         settings['deep'],
@@ -5097,12 +5097,12 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
 
 
 def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None) -> int:
-    """Run scans and stream results to the terminal or a file.
+    """Run scans and show results in the terminal or save them to a file.
 
     Parameters
     ----------
     targets : Union[str, List[str]]
-        Directory or list of files to scan.
+        Folder or list of files to scan.
     deep : bool
         Whether to evaluate all 1024-byte windows.
     show_all : bool
@@ -6638,7 +6638,7 @@ def show_in_folder(event_or_path: Union[tk.Event, str, None] = None) -> None:
         if not messagebox.askyesno("Show in Folder", f"Are you sure you want to show {len(file_paths)} files?"):
             return
 
-    # On Linux, we deduplicate directories to avoid opening the same window multiple times
+    # On Linux, we deduplicate folders to avoid opening the same window multiple times
     linux_dirs = set()
     revealed_count = 0
     for file_path in file_paths:
@@ -6650,7 +6650,7 @@ def show_in_folder(event_or_path: Union[tk.Event, str, None] = None) -> None:
                 subprocess.run(["open", "-R", file_path])
                 revealed_count += 1
             else:
-                # Linux: xdg-open opens the directory. Deduplicate to avoid excessive windows.
+                # Linux: xdg-open opens the folder. Deduplicate to avoid excessive windows.
                 folder = os.path.dirname(os.path.abspath(file_path))
                 if folder not in linux_dirs:
                     subprocess.run(["xdg-open", folder])
@@ -7616,7 +7616,7 @@ def main():
     system_group.add_argument(
         '--system-path',
         action='store_true',
-        help='Scan all directories in the system PATH.'
+        help='Scan all folders in the system PATH.'
     )
     system_group.add_argument(
         '--running-processes',
@@ -7641,22 +7641,22 @@ def main():
     system_group.add_argument(
         '--python-packages',
         action='store_true',
-        help='Scan all directories containing installed Python packages.'
+        help='Scan all folders containing installed Python packages.'
     )
     system_group.add_argument(
         '--nodejs-packages',
         action='store_true',
-        help='Scan all directories containing global Node.js packages.'
+        help='Scan all folders containing global Node.js packages.'
     )
     system_group.add_argument(
         '--browser-extensions',
         action='store_true',
-        help='Scan all common browser extension directories.'
+        help='Scan all common browser extension folders.'
     )
     system_group.add_argument(
         '--editor-extensions',
         action='store_true',
-        help='Scan all common editor extension directories.'
+        help='Scan all common editor extension folders.'
     )
     system_group.add_argument(
         '--ssh-config',
@@ -7873,7 +7873,7 @@ def main():
             if path_dirs:
                 scan_targets.extend(path_dirs)
             else:
-                print("No valid directories found in the system PATH.", file=sys.stderr)
+                print("No valid folders found in the system PATH.", file=sys.stderr)
 
         if args.running_processes:
             processes = get_running_process_commands()
@@ -7911,28 +7911,28 @@ def main():
             if package_paths:
                 scan_targets.extend(package_paths)
             else:
-                print("No Python site-packages directories were found.", file=sys.stderr)
+                print("No Python site-packages folders were found.", file=sys.stderr)
 
         if args.nodejs_packages:
             node_paths = get_nodejs_package_paths()
             if node_paths:
                 scan_targets.extend(node_paths)
             else:
-                print("No global Node.js package directories were found.", file=sys.stderr)
+                print("No global Node.js package folders were found.", file=sys.stderr)
 
         if args.browser_extensions:
             extension_paths = get_browser_extensions_paths()
             if extension_paths:
                 scan_targets.extend(extension_paths)
             else:
-                print("No browser extension directories were found.", file=sys.stderr)
+                print("No browser extension folders were found.", file=sys.stderr)
 
         if args.editor_extensions:
             extension_paths = get_editor_extensions_paths()
             if extension_paths:
                 scan_targets.extend(extension_paths)
             else:
-                print("No editor extension directories were found.", file=sys.stderr)
+                print("No editor extension folders were found.", file=sys.stderr)
 
         if args.ssh_config:
             ssh_paths = get_ssh_config_paths()

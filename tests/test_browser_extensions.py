@@ -66,7 +66,7 @@ def test_scan_browser_extensions_click_no_paths(monkeypatch):
     def mock_showinfo(title, message):
         nonlocal message_box_shown
         message_box_shown = True
-        assert "No browser extension directories" in message
+        assert "No browser extension folders" in message
 
     import gptscan
     monkeypatch.setattr(gptscan.messagebox, "showinfo", mock_showinfo)

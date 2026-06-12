@@ -153,7 +153,7 @@ class DataLoader:
         )
     
     def load_prediction_files(self, directory: Path) -> Tuple[List[Path], np.ndarray]:
-        """Load files for prediction."""
+        """Load files for prediction from a folder."""
         file_paths = sorted([f for f in directory.iterdir() if f.is_file()])
         data = np.array([self.load_file(f) for f in file_paths])
         return file_paths, data
@@ -595,7 +595,7 @@ def main():
     if args.batch_size:
         config.batch_size = args.batch_size
     
-    # Determine directories
+    # Determine folders
     positive_dir = Path(args.positive_dir) if args.positive_dir else Path(config.model_name) / '1'
     negative_dir = Path(args.negative_dir) if args.negative_dir else Path(config.model_name) / '0'
     predict_dir = Path(args.predict_dir) if args.predict_dir else Path(config.model_name) / '0'
@@ -605,8 +605,8 @@ def main():
         # Prediction mode
         print(f"Running prediction mode")
         print(f"Model: {config.model_name}.h5")
-        print(f"Input directory: {predict_dir}")
-        print(f"Output directory: {output_dir}")
+        print(f"Input folder: {predict_dir}")
+        print(f"Output folder: {output_dir}")
         print(f"Threshold: {config.predict_threshold}")
         
         predictor = Predictor(config)

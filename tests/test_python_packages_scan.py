@@ -5,7 +5,7 @@ from gptscan import get_python_package_paths, scan_python_packages_click, Config
 import tkinter as tk
 
 def test_get_python_package_paths():
-    """Verify that get_python_package_paths returns existing site-packages directories."""
+    """Verify that get_python_package_paths returns existing site-packages folders."""
     paths = get_python_package_paths()
     assert isinstance(paths, list)
     # On most systems running tests, there should be at least one site-packages dir

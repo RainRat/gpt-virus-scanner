@@ -58,7 +58,7 @@ def test_scan_editor_extensions_click_no_paths(monkeypatch):
     def mock_showinfo(title, message):
         nonlocal message_box_shown
         message_box_shown = True
-        assert "No editor extension directories" in message
+        assert "No editor extension folders" in message
 
     import gptscan
     monkeypatch.setattr(gptscan.messagebox, "showinfo", mock_showinfo)
