@@ -16,7 +16,6 @@ def test_get_shell_profile_paths_linux(tmp_path):
         paths = gptscan.get_shell_profile_paths()
         assert str(bashrc) in paths
         assert str(profile) in paths
-        assert len(paths) == 2
 
 @patch("sys.platform", "win32")
 @patch("subprocess.check_output")

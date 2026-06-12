@@ -1111,6 +1111,23 @@ def get_shell_profile_paths() -> List[str]:
         if p.exists():
             paths.append(str(p))
 
+    # System-wide POSIX profiles
+    if sys.platform != "win32":
+        system_files = ['/etc/profile', '/etc/bash.bashrc', '/etc/environment']
+        for f in system_files:
+            p = Path(f)
+            if p.exists():
+                paths.append(str(p))
+
+        # profile.d scripts
+        profile_d = Path("/etc/profile.d")
+        if profile_d.exists() and profile_d.is_dir():
+            try:
+                for p in profile_d.glob("*.sh"):
+                    paths.append(str(p))
+            except Exception:
+                pass
+
     # Windows PowerShell Profiles
     if sys.platform == "win32":
         try:
@@ -1119,10 +1136,14 @@ def get_shell_profile_paths() -> List[str]:
             output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, universal_newlines=True)
             if output.strip():
                 data = json.loads(output)
+                profile_list = []
                 if isinstance(data, str):
-                    data = [data]
-                for p_str in data:
-                    if p_str and os.path.exists(p_str):
+                    profile_list = [data]
+                elif isinstance(data, list):
+                    profile_list = data
+
+                for p_str in profile_list:
+                    if p_str and isinstance(p_str, str) and os.path.exists(p_str):
                         paths.append(p_str)
         except Exception:
             pass
