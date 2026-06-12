@@ -110,17 +110,32 @@ def test_check_virustotal_virtual_path(mock_tree):
     expected_url = f"https://www.virustotal.com/gui/file/{expected_hash}"
     mock_open.assert_called_once_with(expected_url)
 
+def test_get_effective_sha256_uses_cache():
+    """Test that get_effective_sha256 prioritizes the virtual source cache."""
+    path = "test.zip[script.py]"
+    full_content = "print('full content')"
+    snippet = "print('snippet')"
+
+    expected_hash = hashlib.sha256(full_content.encode('utf-8')).hexdigest()
+
+    with patch.dict(gptscan._virtual_source_cache, {path: full_content}):
+        h = gptscan.get_effective_sha256(path, snippet)
+        assert h == expected_hash
+
 def test_copy_sha256_archive_member(mock_tree):
-    """Test that copy_sha256 hashes the snippet for archive members."""
+    """Test that copy_sha256 hashes the full content from cache for archive members."""
+    path = "test.zip[malicious.py]"
+    full_content = "print('malicious full')"
     snippet = "print('archive')"
-    expected_hash = hashlib.sha256(snippet.encode('utf-8')).hexdigest()
+    expected_hash = hashlib.sha256(full_content.encode('utf-8')).hexdigest()
 
     mock_tree.selection.return_value = ["item1"]
-    path = "test.zip[malicious.py]"
     raw_values = [path, "50%", "", "", "", snippet]
     mock_tree._item_values["item1"] = (path, "50%", "", "", "", snippet, json.dumps(raw_values))
 
-    with patch('gptscan.update_status'), patch('os.path.exists', return_value=False):
+    with patch('gptscan.update_status'), \
+         patch('os.path.exists', return_value=False), \
+         patch.dict(gptscan._virtual_source_cache, {path: full_content}):
         gptscan.copy_sha256()
 
     mock_tree.clipboard_append.assert_called_with(expected_hash)
