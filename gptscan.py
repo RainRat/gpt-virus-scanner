@@ -14,6 +14,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import tarfile
 import threading
 import time
@@ -1188,6 +1189,12 @@ def get_downloads_paths() -> List[str]:
     if downloads.exists():
         paths.append(str(downloads))
     return paths
+
+
+def get_temp_paths() -> List[str]:
+    """Identify common temporary directories."""
+    paths = [tempfile.gettempdir(), "/tmp", "/var/tmp"]
+    return sorted(_normalize_and_filter_dirs(paths))
 
 
 def get_running_process_commands() -> List[Tuple[str, bytes]]:
@@ -2733,6 +2740,19 @@ def scan_downloads_click():
         messagebox.showwarning("Downloads Error", f"Could not scan Downloads: {e}")
 
 
+def scan_temp_click():
+    """Scan common temporary directories."""
+    try:
+        paths = get_temp_paths()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo("Temporary Folders", "No common temporary folders were found on this system.")
+    except Exception as e:
+        messagebox.showwarning("Temporary Folders Error", f"Could not scan temporary folders: {e}")
+
+
 def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     """Collect all paths and snippets for a comprehensive system audit."""
     all_paths = []
@@ -2747,6 +2767,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_browser_extensions_paths())
     all_paths.extend(get_editor_extensions_paths())
     all_paths.extend(get_downloads_paths())
+    all_paths.extend(get_temp_paths())
 
     all_snippets = []
     all_snippets.extend(get_running_process_commands())
@@ -6985,7 +7006,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/F/U/V/D/G/I/B/H/P/K/N/T/A/S/R/Y/M/W/X/J).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/F/U/V/D/G/I/B/H/P/K/N/T/A/S/R/Y/M/W/X/J/Z).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -7035,6 +7056,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
     system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
     system_menu.add_command(label="Scan Downloads", command=scan_downloads_click, accelerator="Ctrl+Shift+J")
+    system_menu.add_command(label="Scan Temporary Folders", command=scan_temp_click, accelerator="Ctrl+Shift+Z")
     browse_menu.add_cascade(label="System Scans", menu=system_menu)
     browse_button["menu"] = browse_menu
 
@@ -7425,6 +7447,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-X>', lambda event: scan_editor_extensions_click())
     root.bind('<Control-Shift-J>', lambda event: scan_downloads_click())
     root.bind('<Command-Shift-J>', lambda event: scan_downloads_click())
+    root.bind('<Control-Shift-Z>', lambda event: scan_temp_click())
+    root.bind('<Command-Shift-Z>', lambda event: scan_temp_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Command-Shift-I>', lambda event: scan_system_audit_click())
     root.bind('<Control-e>', export_results)
@@ -7670,6 +7694,11 @@ def main():
         '--env-vars',
         action='store_true',
         help='Scan all non-empty environment variables.'
+    )
+    system_group.add_argument(
+        '--temp',
+        action='store_true',
+        help='Scan common temporary directories.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
@@ -7958,6 +7987,9 @@ def main():
 
         if args.downloads:
             scan_targets.extend(get_downloads_paths())
+
+        if args.temp:
+            scan_targets.extend(get_temp_paths())
 
         modified_since = None
         if args.modified:
