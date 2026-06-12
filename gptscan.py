@@ -5452,8 +5452,8 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
                             admin_match = re.search(r'\*\*Admin:\*\*\s*(.*?)(?:\s*<br>\s*\*\*User:\*\*|$)', analysis)
                             user_match = re.search(r'\*\*User:\*\*\s*(.*)', analysis)
 
-                            item['admin_desc'] = admin_match.group(1).replace('<br>', '\n').replace('\\|', '|') if admin_match else ""
-                            item['end-user_desc'] = user_match.group(1).replace('<br>', '\n').replace('\\|', '|') if user_match else ""
+                            item['admin_desc'] = html.unescape(admin_match.group(1).replace('<br>', '\n').replace('\\|', '|')).strip() if admin_match else ""
+                            item['end-user_desc'] = html.unescape(user_match.group(1).replace('<br>', '\n').replace('\\|', '|')).strip() if user_match else ""
                             del item['Analysis']
 
                         if 'Threat Level' in item:
@@ -5472,7 +5472,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
                             del item['Snippet']
 
                         if 'Path' in item:
-                            item['Path'] = item['Path'].replace('\\|', '|')
+                            item['Path'] = html.unescape(item['Path']).replace('\\|', '|')
 
                         data_to_import.append(item)
                 break
