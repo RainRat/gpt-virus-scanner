@@ -1192,7 +1192,7 @@ def get_downloads_paths() -> List[str]:
 
 
 def get_temp_paths() -> List[str]:
-    """Identify common temporary directories."""
+    """Identify common temporary folders."""
     paths = [tempfile.gettempdir(), "/tmp", "/var/tmp"]
     return sorted(_normalize_and_filter_dirs(paths))
 
@@ -2741,7 +2741,7 @@ def scan_downloads_click():
 
 
 def scan_temp_click():
-    """Scan common temporary directories."""
+    """Scan common temporary folders."""
     try:
         paths = get_temp_paths()
         if paths:
@@ -7698,7 +7698,7 @@ def main():
     system_group.add_argument(
         '--temp',
         action='store_true',
-        help='Scan common temporary directories.'
+        help='Scan common temporary folders.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
