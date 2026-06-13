@@ -16,7 +16,9 @@ def test_get_shell_profile_paths_linux(tmp_path):
         paths = gptscan.get_shell_profile_paths()
         assert str(bashrc) in paths
         assert str(profile) in paths
-        assert len(paths) == 2
+        # We check for home-relative paths; system-wide paths may also be present on the actual test runner
+        home_paths = [p for p in paths if p.startswith(str(home))]
+        assert len(home_paths) == 2
 
 @patch("sys.platform", "win32")
 @patch("subprocess.check_output")

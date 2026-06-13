@@ -1111,6 +1111,17 @@ def get_shell_profile_paths() -> List[str]:
         if p.exists():
             paths.append(str(p))
 
+    # System-wide POSIX profiles
+    if sys.platform != "win32":
+        for f in ['/etc/profile', '/etc/bash.bashrc', '/etc/environment']:
+            p = Path(f)
+            if p.exists():
+                paths.append(str(p))
+        profile_d = Path("/etc/profile.d")
+        if profile_d.exists() and profile_d.is_dir():
+            for p in profile_d.glob("*.sh"):
+                paths.append(str(p))
+
     # Windows PowerShell Profiles
     if sys.platform == "win32":
         try:
