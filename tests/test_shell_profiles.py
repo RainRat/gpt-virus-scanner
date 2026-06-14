@@ -14,9 +14,40 @@ def test_get_shell_profile_paths_linux(tmp_path):
 
     with patch("pathlib.Path.home", return_value=home):
         paths = gptscan.get_shell_profile_paths()
-        assert str(bashrc) in paths
-        assert str(profile) in paths
-        assert len(paths) == 2
+        # Filter to home-relative paths for environment-agnostic testing
+        home_paths = [p for p in paths if p.startswith(str(home))]
+        assert str(bashrc) in home_paths
+        assert str(profile) in home_paths
+        assert len(home_paths) == 2
+
+def test_get_shell_profile_paths_system_wide():
+    """Verify discovery of system-wide profile files on POSIX."""
+    # Mocking os.path.exists and Path.glob/exists for system paths
+    with patch("sys.platform", "linux"), \
+         patch("gptscan.Path") as mock_path:
+
+        # Configure mock_path to handle /etc/profile.d
+        mock_profile_d = MagicMock()
+        mock_profile_d.exists.return_value = True
+        mock_profile_d.is_dir.return_value = True
+        mock_profile_d.glob.return_value = [Path("/etc/profile.d/test.sh")]
+
+        def path_side_effect(p):
+            if p == "/etc/profile.d":
+                return mock_profile_d
+            return Path(p)
+
+        mock_path.side_effect = path_side_effect
+        mock_path.home.return_value = Path("/nonexistent/home")
+
+        with patch("os.path.exists") as mock_exists:
+            # We want to match exactly what get_shell_profile_paths checks
+            mock_exists.side_effect = lambda p: p in ["/etc/profile", "/nonexistent/home/.bashrc"]
+
+            paths = gptscan.get_shell_profile_paths()
+
+            assert "/etc/profile" in paths
+            assert "/etc/profile.d/test.sh" in paths
 
 @patch("sys.platform", "win32")
 @patch("subprocess.check_output")
