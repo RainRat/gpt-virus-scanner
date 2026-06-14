@@ -4773,7 +4773,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
     BOLD = "\033[1m" if use_color else ""
     RESET = "\033[0m" if use_color else ""
 
-    lines = [f"{BOLD}--- GPT SCAN TRIAGE REPORT ---{RESET}", ""]
+    lines = [f"{BOLD}--- GPT SCAN - CONSOLE TRIAGE REPORT ---{RESET}", ""]
 
     for i, r in enumerate(results, 1):
         path = r.get("path", "unknown")
@@ -4794,39 +4794,48 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         else:
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
-        lines.append(f"{BOLD}[{i}] {risk_label} - {path}:{line_num}{RESET}")
+        lines.append(f"{BOLD}[{i}] {risk_label}  {path}:{line_num}{RESET}")
+
+        # Helper to colorize score values
+        def color_score(score_str):
+            score = parse_percent(score_str)
+            if score >= 80:
+                return f"{RED}{score_str}{RESET}"
+            if score >= 50:
+                return f"{YELLOW}{score_str}{RESET}"
+            return f"{BOLD}{score_str}{RESET}"
 
         # Consolidate scores and links
-        meta_parts = [f"{BOLD}Local:{RESET} {GRAY}{own_conf}{RESET}"]
+        meta_parts = [f"{GRAY}Local:{RESET} {color_score(own_conf)}"]
         if gpt_conf:
-            meta_parts.append(f"{BOLD}AI:{RESET} {GRAY}{gpt_conf}{RESET}")
+            meta_parts.append(f"{GRAY}AI:{RESET} {color_score(gpt_conf)}")
 
         vt_url = get_virustotal_url(path, snippet)
         if vt_url:
-            meta_parts.append(f"{BOLD}VT:{RESET} {GRAY}{vt_url}{RESET}")
+            meta_parts.append(f"{GRAY}VT:{RESET} {BOLD}{vt_url}{RESET}")
 
         online_url = get_online_url(path, line_num)
         if online_url:
-            meta_parts.append(f"{BOLD}Online:{RESET} {GRAY}{online_url}{RESET}")
+            meta_parts.append(f"{GRAY}Online:{RESET} {BOLD}{online_url}{RESET}")
 
-        lines.append(f"    {' | '.join(meta_parts)}")
+        lines.append(f"    {'  '.join(meta_parts)}")
 
         # Consolidate AI analysis
         if admin or user:
             analysis_parts = []
             if admin:
                 clean_admin = admin.strip().replace('\n', ' ')
-                analysis_parts.append(f"{BOLD}Admin:{RESET} {GRAY}{clean_admin}{RESET}")
+                analysis_parts.append(f"{GRAY}Admin:{RESET} {BOLD}{clean_admin}{RESET}")
             if user:
                 clean_user = user.strip().replace('\n', ' ')
-                analysis_parts.append(f"{BOLD}User:{RESET} {GRAY}{clean_user}{RESET}")
-            lines.append(f"    {' | '.join(analysis_parts)}")
+                analysis_parts.append(f"{GRAY}User:{RESET} {BOLD}{clean_user}{RESET}")
+            lines.append(f"    {'  '.join(analysis_parts)}")
 
-        # Snippet preview
-        clean_snippet = snippet.strip().split('\n')[0]
-        if len(clean_snippet) > 100:
-            clean_snippet = clean_snippet[:97] + "..."
-        lines.append(f"    > {GRAY}{clean_snippet}{RESET}")
+        # Snippet preview (up to 3 lines)
+        preview_lines = snippet.strip().split('\n')[:3]
+        for line in preview_lines:
+            truncated = line[:100] + "..." if len(line) > 100 else line
+            lines.append(f"    {GRAY}> {truncated}{RESET}")
         lines.append("")
 
     return "\n".join(lines)
