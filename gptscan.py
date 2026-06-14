@@ -1095,7 +1095,7 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
 
 
 def get_shell_profile_paths() -> List[str]:
-    """Identify common shell profile and RC files on the current system."""
+    """Identify common shell profile and RC files, including system-wide profiles and aliases."""
     paths = []
     home = Path.home()
 
@@ -1103,13 +1103,29 @@ def get_shell_profile_paths() -> List[str]:
     common_files = [
         '.bashrc', '.bash_profile', '.bash_login', '.profile',
         '.zshrc', '.zprofile', '.zshenv', '.zlogin',
-        '.bash_logout', '.zlogout'
+        '.bash_logout', '.zlogout', '.bash_aliases', '.zsh_aliases'
     ]
 
     for f in common_files:
         p = home / f
         if p.exists():
             paths.append(str(p))
+
+    # System-wide POSIX profiles
+    if sys.platform != "win32":
+        system_files = [
+            '/etc/profile', '/etc/bash.bashrc', '/etc/environment'
+        ]
+        for f in system_files:
+            p = Path(f)
+            if p.exists():
+                paths.append(str(p))
+
+        # /etc/profile.d/*.sh scripts
+        profile_d = Path('/etc/profile.d')
+        if profile_d.exists() and profile_d.is_dir():
+            for script in profile_d.glob('*.sh'):
+                paths.append(str(script))
 
     # Windows PowerShell Profiles
     if sys.platform == "win32":
@@ -7633,7 +7649,7 @@ def main():
     system_group.add_argument(
         '--shell-profiles',
         action='store_true',
-        help='Scan common shell profile and RC files.'
+        help='Scan common shell profile and RC files, including system-wide profiles.'
     )
     system_group.add_argument(
         '--shell-history',
