@@ -4102,8 +4102,15 @@ def scan_files(
     # Identify which files were explicitly passed as targets and deduplicate them
     scan_targets = _normalize_targets(scan_targets)
 
-    url_targets = [str(t) for t in scan_targets if str(t).lower().startswith(('http://', 'https://'))]
-    local_targets = [t for t in scan_targets if str(t) not in url_targets]
+    url_targets = []
+    local_targets = []
+    for t in scan_targets:
+        # Defensive str() conversion ensures robustness even if targets are not strings
+        t_str = str(t)
+        if t_str.lower().startswith(('http://', 'https://')):
+            url_targets.append(t_str)
+        else:
+            local_targets.append(t_str)
 
     explicit_targets = {Path(t) for t in local_targets}
     explicit_files = {f for f in explicit_targets if f.is_file()}
