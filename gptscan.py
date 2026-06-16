@@ -235,7 +235,7 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
         The file content, or an empty result if the file is missing.
     """
     try:
-        with open(filename, 'r') as file:
+        with open(filename, 'r', encoding='utf-8', errors='replace') as file:
             if mode == 'single_line':
                 return file.readline().strip()
             elif mode == 'multi_line':
