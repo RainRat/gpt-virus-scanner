@@ -1191,6 +1191,16 @@ def get_downloads_paths() -> List[str]:
     return paths
 
 
+def get_desktop_paths() -> List[str]:
+    """Find the user's Desktop folder."""
+    paths = []
+    home = Path.home()
+    desktop = home / "Desktop"
+    if desktop.exists():
+        paths.append(str(desktop))
+    return paths
+
+
 def get_temp_paths() -> List[str]:
     """Identify common temporary directories."""
     paths = [tempfile.gettempdir(), "/tmp", "/var/tmp"]
@@ -2740,6 +2750,19 @@ def scan_downloads_click():
         messagebox.showwarning("Downloads Error", f"Could not scan Downloads: {e}")
 
 
+def scan_desktop_click():
+    """Scan the user's Desktop folder."""
+    try:
+        paths = get_desktop_paths()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo("Desktop", "The Desktop folder was not found on this system.")
+    except Exception as e:
+        messagebox.showwarning("Desktop Error", f"Could not scan Desktop: {e}")
+
+
 def scan_temp_click():
     """Scan common temporary directories."""
     try:
@@ -2767,6 +2790,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_browser_extensions_paths())
     all_paths.extend(get_editor_extensions_paths())
     all_paths.extend(get_downloads_paths())
+    all_paths.extend(get_desktop_paths())
     all_paths.extend(get_temp_paths())
 
     all_snippets = []
@@ -7006,7 +7030,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/F/U/V/D/G/I/B/H/P/K/N/T/A/S/R/Y/M/W/X/J/Z).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/F/U/V/D/G/I/B/H/P/K/N/T/A/S/R/Y/M/W/X/J/L/Z).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -7056,6 +7080,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
     system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
     system_menu.add_command(label="Scan Downloads", command=scan_downloads_click, accelerator="Ctrl+Shift+J")
+    system_menu.add_command(label="Scan Desktop", command=scan_desktop_click, accelerator="Ctrl+Shift+L")
     system_menu.add_command(label="Scan Temporary Folders", command=scan_temp_click, accelerator="Ctrl+Shift+Z")
     browse_menu.add_cascade(label="System Scans", menu=system_menu)
     browse_button["menu"] = browse_menu
@@ -7447,6 +7472,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-X>', lambda event: scan_editor_extensions_click())
     root.bind('<Control-Shift-J>', lambda event: scan_downloads_click())
     root.bind('<Command-Shift-J>', lambda event: scan_downloads_click())
+    root.bind('<Control-Shift-L>', lambda event: scan_desktop_click())
+    root.bind('<Command-Shift-L>', lambda event: scan_desktop_click())
     root.bind('<Control-Shift-Z>', lambda event: scan_temp_click())
     root.bind('<Command-Shift-Z>', lambda event: scan_temp_click())
     root.bind('<Control-Shift-I>', lambda event: scan_system_audit_click())
@@ -7598,6 +7625,11 @@ def main():
         '--downloads',
         action='store_true',
         help='Scan the standard Downloads folder.'
+    )
+    scan_group.add_argument(
+        '--desktop',
+        action='store_true',
+        help="Scan the user's Desktop folder."
     )
 
     git_group = parser.add_argument_group("Git Integration")
@@ -7987,6 +8019,9 @@ def main():
 
         if args.downloads:
             scan_targets.extend(get_downloads_paths())
+
+        if args.desktop:
+            scan_targets.extend(get_desktop_paths())
 
         if args.temp:
             scan_targets.extend(get_temp_paths())
