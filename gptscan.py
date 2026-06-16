@@ -1207,7 +1207,7 @@ def get_desktop_paths() -> List[str]:
 
 
 def get_temp_paths() -> List[str]:
-    """Identify common temporary directories."""
+    """Identify common temporary folders."""
     paths = [tempfile.gettempdir(), "/tmp", "/var/tmp"]
     return sorted(_normalize_and_filter_dirs(paths))
 
@@ -2538,7 +2538,7 @@ def scan_clipboard_click():
 def scan_git_diff_click():
     """Scan current Git diff (staged and unstaged changes)."""
     try:
-        # Get path from textbox or default to current directory
+        # Get path from textbox or default to current folder
         target_path = textbox.get().strip() if textbox else "."
         if not target_path:
             target_path = "."
@@ -2555,7 +2555,7 @@ def scan_git_diff_click():
 def scan_git_hooks_click():
     """Scan local and global Git hooks."""
     try:
-        # Get path from textbox or default to current directory
+        # Get path from textbox or default to current folder
         target_path = textbox.get().strip() if textbox else "."
         if not target_path:
             target_path = "."
@@ -2816,7 +2816,7 @@ def scan_desktop_click():
 
 
 def scan_temp_click():
-    """Scan common temporary directories."""
+    """Scan common temporary folders."""
     try:
         paths = get_temp_paths()
         if paths:
@@ -7833,7 +7833,7 @@ def main():
     system_group.add_argument(
         '--temp',
         action='store_true',
-        help='Scan common temporary directories.'
+        help='Scan common temporary folders.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
@@ -7945,7 +7945,7 @@ def main():
                     scan_targets.append(line)
 
         if args.git_changes:
-            # Use specified targets as git roots, or current directory if none.
+            # Use specified targets as git roots, or current folder if none.
             git_roots = scan_targets if scan_targets else ["."]
             git_files = []
             for root_dir in git_roots:
@@ -7958,7 +7958,7 @@ def main():
 
         extra_snippets = []
         if args.git_diff:
-            # Use specified targets as git roots, or current directory if none.
+            # Use specified targets as git roots, or current folder if none.
             git_roots = scan_targets if scan_targets else ["."]
             diff_count = 0
             for root_dir in git_roots:
@@ -7980,7 +7980,7 @@ def main():
             extra_snippets.extend(get_git_config_snippets())
 
         if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not extra_snippets:
-            # Default to current directory if no targets provided and NOT using git-changes
+            # Default to current folder if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
         output_format = 'report' if sys.stdout.isatty() else 'csv'

@@ -248,7 +248,7 @@ Scan SSH configuration and authorized keys:
 python3 gptscan.py --ssh-config --cli
 ```
 
-Scan common temporary directories:
+Scan common temporary folders:
 ```bash
 python3 gptscan.py --temp --cli
 ```

@@ -5,7 +5,7 @@ This project is a security tool that uses both local and cloud-based analysis. I
 
 ## Architecture
 1.  **GUI:** `gptscan.py` uses `tkinter` and `ttk`. It displays a Treeview of scanned files.
-2.  **Input:** The user selects a directory. The app finds files in the folder and all its subfolders matching extensions in `extensions.txt`.
+2.  **Input:** The user selects a folder. The app finds files in the folder and all its subfolders matching extensions in `extensions.txt`.
 3.  **Stage 1 (Local Filter):**
     * Files are read in chunks.
     * A pre-trained Keras model (`scripts.h5`) analyzes 1024-byte windows.
