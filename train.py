@@ -19,7 +19,7 @@ from tensorflow.keras.backend import clear_session, count_params
 
 @dataclass
 class ModelConfig:
-    """Configuration for model architecture and training."""
+    """Holds settings for the model structure and training process."""
     model_name: str
     max_length: int
     batch_size: int
@@ -35,7 +35,7 @@ class ModelConfig:
 
 @dataclass
 class Hyperparameters:
-    """Settings that control how the AI model is built and trained."""
+    """Contains settings that control how the AI model is built and trained."""
     embedding_scale: float
     rnn_scale: float
     pooling_type: float
@@ -55,7 +55,7 @@ class Hyperparameters:
     optimizer: float
 
     def to_list(self) -> List[float]:
-        """Convert to list format for compatibility."""
+        """Converts settings to a list."""
         return [
             self.embedding_scale, self.rnn_scale, self.pooling_type,
             self.dropout1, self.dense_scale, self.activation, self.dropout2,
@@ -67,20 +67,19 @@ class Hyperparameters:
 
     @classmethod
     def from_list(cls, params: List[float]) -> 'Hyperparameters':
-        """Create from list format."""
+        """Creates a new instance from a list of settings."""
         return cls(*params)
 
     def mutate(self) -> 'Hyperparameters':
-        """Create a mutated copy of hyperparameters."""
+        """Creates a slightly different copy of the settings."""
         params = self.to_list()
-        # Ensure we mutate two unique indices
         idx1, idx2 = random.sample(range(len(params)), 2)
         params[idx1] = random.random()
         params[idx2] = random.random()
         return Hyperparameters.from_list(params)
 
     def get_derived_params(self) -> Dict[str, Any]:
-        """Calculate scaled parameters from base hyperparameters."""
+        """Calculates exact mathematical values from base settings."""
         return {
             'embedding_dim': int(self.embedding_scale * 128) + 32,
             'rnn_units': int(self.rnn_scale * 128) + 32,
@@ -96,7 +95,7 @@ class Hyperparameters:
 
 
 class DataLoader:
-    """Handles loading and preprocessing of binary file data."""
+    """Loads and prepares file data for the model."""
     
     def __init__(self, config: ModelConfig):
         self.config = config
@@ -104,13 +103,12 @@ class DataLoader:
         self.pad_value = config.pad_value
     
     def load_file(self, file_path: Path) -> List[int]:
-        """Load and preprocess a single file."""
+        """Loads and prepares a single file."""
         file_size = file_path.stat().st_size
         
         if file_size <= self.max_length:
             with open(file_path, 'rb') as f:
                 data = list(f.read())
-            # Apply padding logic
             if len(data) < self.max_length:
                 num_to_add = self.max_length - len(data)
                 data.extend([self.pad_value] * num_to_add)
@@ -127,7 +125,7 @@ class DataLoader:
         return data
     
     def load_dataset(self, positive_dir: Path, negative_dir: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Load complete dataset with sample weights."""
+        """Loads all safe and dangerous files for training."""
         x_train = []
         y_train = []
         sample_weights = []
@@ -153,21 +151,21 @@ class DataLoader:
         )
     
     def load_prediction_files(self, directory: Path) -> Tuple[List[Path], np.ndarray]:
-        """Load files for prediction from a folder."""
+        """Loads files for analysis from a folder."""
         file_paths = sorted([f for f in directory.iterdir() if f.is_file()])
         data = np.array([self.load_file(f) for f in file_paths])
         return file_paths, data
 
 
 class ModelBuilder:
-    """Builds neural network models based on AI settings."""
+    """Builds the AI model based on provided settings."""
     
     def __init__(self, config: ModelConfig):
         self.config = config
         self.max_length = config.max_length
     
     def _get_activation(self, value: float) -> str:
-        """Map AI setting to activation function."""
+        """Maps an AI setting to a mathematical connection style."""
         if value < 0.25:
             return "relu"
         elif value < 0.5:
@@ -178,7 +176,7 @@ class ModelBuilder:
             return "hard_sigmoid"
     
     def _get_initializer(self, value: float) -> str:
-        """Map AI setting to kernel initializer."""
+        """Maps an AI setting to a starting state for model connections."""
         thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
         initializers = [
             "glorot_normal", "glorot_uniform", "he_normal", "he_uniform",
@@ -191,7 +189,7 @@ class ModelBuilder:
         return initializers[-1]
     
     def _get_optimizer(self, value: float) -> str:
-        """Map AI setting to optimizer."""
+        """Maps an AI setting to a learning method."""
         if value < 0.2:
             return "sgd"
         elif value < 0.4:
@@ -204,7 +202,7 @@ class ModelBuilder:
             return "nadam"
     
     def _get_pooling_type(self, value: float) -> str:
-        """Map AI setting to pooling type."""
+        """Maps an AI setting to a pattern summary method."""
         if value > 0.75:
             return "avg"
         elif value > 0.50:
@@ -215,18 +213,15 @@ class ModelBuilder:
             return "none"
     
     def build_model(self, hp: Hyperparameters) -> Optional[Model]:
-        """Build model from AI settings."""
+        """Builds a model based on the AI settings."""
         try:
-            # Get derived parameters
             dp = hp.get_derived_params()
             
-            # Get categorical parameters
             activation = self._get_activation(hp.activation)
             initializer = self._get_initializer(hp.kernel_init)
             optimizer = self._get_optimizer(hp.optimizer)
             pooling = self._get_pooling_type(hp.pooling_type)
             
-            # Build model
             inp = Input(shape=(self.max_length,))
             x = Embedding(256, dp['embedding_dim'])(inp)
             x = SpatialDropout1D(dp['spatial_dropout'])(x)
@@ -277,13 +272,11 @@ class ModelBuilder:
             else:
                 x = Flatten()(x)
             
-            # Dense layers
             x = Dropout(dp['dropout1'])(x)
             x = Dense(dp['dense_units'], activation=activation)(x)
             x = Dropout(dp['dropout2'])(x)
             x = Dense(1, activation="sigmoid")(x)
             
-            # Compile model
             model = Model(inputs=inp, outputs=x)
             model.compile(
                 loss='binary_crossentropy',
@@ -309,7 +302,7 @@ class ModelBuilder:
             return None
     
     def print_architecture(self, hp: Hyperparameters):
-        """Print human-readable architecture description."""
+        """Prints a simple description of the model structure."""
         dp = hp.get_derived_params()
 
         rnn_type = "BiLSTM" if hp.rnn_type < 0.25 else \
@@ -340,7 +333,7 @@ class ModelBuilder:
 
 
 class Trainer:
-    """Handles model training with an automatic optimization process."""
+    """Trains the model with an automatic improvement process."""
     
     def __init__(self, config: ModelConfig):
         self.config = config
@@ -352,7 +345,7 @@ class Trainer:
     
     def train(self, x_train: np.ndarray, y_train: np.ndarray, 
               sample_weights: np.ndarray, initial_hp: Optional[Hyperparameters] = None):
-        """Train models using an automatic optimization process."""
+        """Trains models using an automatic improvement process."""
         current_hp = initial_hp
         if current_hp is None:
             raise ValueError("No initial AI settings provided. Load from config or provide starting values.")
@@ -361,19 +354,16 @@ class Trainer:
         should_mutate = False
         
         while True:
-            # Mutate hyperparameters
             if should_mutate:
                 current_hp = self.best_hp.mutate()
             should_mutate = True
             
-            # Build model
             self.model_builder.print_architecture(current_hp)
             model = self.model_builder.build_model(current_hp)
             
             if model is None:
                 continue
             
-            # Train model
             model.summary()
             early_stop = EarlyStopping(
                 monitor='val_weighted_binary_crossentropy',
@@ -420,11 +410,10 @@ class Trainer:
                 model.save(f'{self.config.model_name}.h5')
                 self.save_hyperparameters(f'{self.config.model_name}_best_hp.yml')
             
-            # Cleanup
             clear_session()
     
     def save_hyperparameters(self, filepath: str):
-        """Save best hyperparameters to YAML file."""
+        """Saves the best settings to a YAML file."""
         with open(filepath, 'w') as f:
             yaml.dump({
                 'hyperparameters': asdict(self.best_hp),
@@ -436,21 +425,21 @@ class Trainer:
     
     @staticmethod
     def load_hyperparameters(filepath: str) -> Hyperparameters:
-        """Load hyperparameters from YAML file."""
+        """Loads settings from a YAML file."""
         with open(filepath, 'r') as f:
             data = yaml.safe_load(f)
         return Hyperparameters(**data['hyperparameters'])
 
 
 class Predictor:
-    """Handles model prediction."""
+    """Finds suspicious files using the trained model."""
     
     def __init__(self, config: ModelConfig):
         self.config = config
         self.data_loader = DataLoader(config)
     
     def predict(self, model_path: str, input_dir: Path, output_dir: Path):
-        """Run predictions on files and copy high-threat level results."""
+        """Finds suspicious files and copies them to an output folder."""
         model = tf.keras.models.load_model(model_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         
@@ -466,11 +455,10 @@ class Predictor:
 
 
 def load_config(config_path: str) -> Tuple[ModelConfig, Optional[Hyperparameters]]:
-    """Load configuration from YAML file."""
+    """Loads the training and model settings from a YAML file."""
     with open(config_path, 'r') as f:
         data = yaml.safe_load(f)
     
-    # Load model config
     model_data = data['model']
     training_data = data['training']
     prediction_data = data['prediction']
@@ -490,7 +478,6 @@ def load_config(config_path: str) -> Tuple[ModelConfig, Optional[Hyperparameters
         positive_sample_weight=weights_data['positive_sample_weight']
     )
     
-    # Load hyperparameters if present
     hp = None
     if 'hyperparameters' in data:
         hp = Hyperparameters(**data['hyperparameters'])
@@ -499,22 +486,22 @@ def load_config(config_path: str) -> Tuple[ModelConfig, Optional[Hyperparameters
 
 
 def parse_args():
-    """Parse command line arguments."""
+    """Parses command line arguments."""
     parser = argparse.ArgumentParser(
-        description='Train the local classifier or use it to find suspicious files.',
+        description='Train the local detection model or use it to find suspicious files.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Train a model using settings from a file
+  # Trains a model using settings from a file
   python3 train.py --config config.yml --mode train
   
-  # Use a model to find suspicious files
+  # Finds suspicious files using a trained model
   python3 train.py --config config.yml --mode predict
   
-  # Use a custom model name
+  # Uses a custom name for the model
   python3 train.py --config config.yml --model-name my_model
   
-  # Specify folders for training data
+  # Specifies folders for training data
   python3 train.py --config config.yml --positive-dir data/dangerous --negative-dir data/safe
         """
     )
@@ -523,69 +510,67 @@ Examples:
         '--config', '-c',
         type=str,
         required=True,
-        help='Path to the YAML settings file.'
+        help='The path to the YAML settings file.'
     )
     
     parser.add_argument(
         '--mode', '-m',
         type=str,
         choices=['train', 'predict'],
-        help='Choose between training a model or making predictions.'
+        help='Chooses between training a model or finding suspicious files.'
     )
     
     parser.add_argument(
         '--model-name',
         type=str,
-        help='Set the model name.'
+        help='Sets the name of the model.'
     )
     
     parser.add_argument(
         '--positive-dir',
         type=str,
-        help='Folder containing dangerous files.'
+        help='The folder containing dangerous files.'
     )
     
     parser.add_argument(
         '--negative-dir',
         type=str,
-        help='Folder containing safe files.'
+        help='The folder containing safe files.'
     )
     
     parser.add_argument(
         '--predict-dir',
         type=str,
-        help='Folder containing files to scan.'
+        help='The folder containing files to scan.'
     )
     
     parser.add_argument(
         '--output-dir',
         type=str,
-        help='Folder where suspicious files will be copied.'
+        help='The folder where suspicious files will be copied.'
     )
     
     parser.add_argument(
         '--epochs',
         type=int,
-        help='Number of training rounds.'
+        help='The number of training rounds.'
     )
     
     parser.add_argument(
         '--batch-size',
         type=int,
-        help='Number of files to process at once.'
+        help='The number of files to process at once.'
     )
     
     return parser.parse_args()
 
 
 def main():
-    """Main execution function."""
+    """Handles the main execution logic."""
     args = parse_args()
     
-    # Load configuration
     config, initial_hp = load_config(args.config)
     
-    # Apply command line overrides
     if args.mode:
         config.mode = args.mode
     if args.model_name:
@@ -595,14 +580,12 @@ def main():
     if args.batch_size:
         config.batch_size = args.batch_size
     
-    # Determine folders
     positive_dir = Path(args.positive_dir) if args.positive_dir else Path(config.model_name) / '1'
     negative_dir = Path(args.negative_dir) if args.negative_dir else Path(config.model_name) / '0'
     predict_dir = Path(args.predict_dir) if args.predict_dir else Path(config.model_name) / '0'
     output_dir = Path(args.output_dir) if args.output_dir else Path.home() / 'sscript'
     
     if config.mode == 'predict':
-        # Prediction mode
         print(f"Running prediction mode")
         print(f"Model: {config.model_name}.h5")
         print(f"Input folder: {predict_dir}")
@@ -616,7 +599,6 @@ def main():
             output_dir
         )
     else:
-        # Training mode
         print(f"Running training mode")
         print(f"Model: {config.model_name}")
         print(f"Dangerous files: {positive_dir}")
@@ -625,7 +607,6 @@ def main():
         trainer = Trainer(config)
         data_loader = DataLoader(config)
         
-        # Load data
         x_train, y_train, sample_weights = data_loader.load_dataset(
             positive_dir,
             negative_dir
@@ -635,7 +616,6 @@ def main():
         print(f"Dangerous files: {np.sum(y_train)}")
         print(f"Safe files: {len(y_train) - np.sum(y_train)}")
         
-        # Load best hyperparameters if available
         hp_file = f'{config.model_name}_best_hp.yml'
         if Path(hp_file).exists():
             print(f"Loading existing hyperparameters from {hp_file}")
@@ -646,8 +626,7 @@ def main():
                 "No hyperparameters found. Please provide 'hyperparameters' section in config.yml"
             )
         
-        print("Starting training with an automatic optimization process...")
-        # Train
+        print("Starting training with an automatic improvement process...")
         trainer.train(x_train, y_train, sample_weights, initial_hp)
 
 
