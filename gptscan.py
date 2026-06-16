@@ -3986,8 +3986,28 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                         yield (f"{name} [Recipe {recipes_count}]", cmd.encode('utf-8'))
                         yielded_any = True
                 else:
+                    # Check for define block
+                    define_match = re.match(r'^\s*(?:(?:export|unexport|override|private)\s+)*define\s+([\w.-]+)', line, re.IGNORECASE)
+                    if define_match:
+                        block_name = define_match.group(1)
+                        block_parts = []
+                        while i < len(lines):
+                            line = lines[i]
+                            i += 1
+                            if re.match(r'^\s*endef\b', line, re.IGNORECASE):
+                                break
+                            block_parts.append(line)
+
+                        val = "\n".join(block_parts)
+                        if val.strip():
+                            vars_count += 1
+                            yield (f"{name} [Variable {vars_count}: {block_name}]", val.encode('utf-8'))
+                            yielded_any = True
+                        continue
+
                     # Check for variable assignment: VAR = val, VAR := val, VAR += val, VAR ?= val, VAR != cmd
-                    var_match = re.match(r'^([\w.-]+)\s*([:+?!]?=)\s*(.*)', line)
+                    # Support prefixes like export, override, etc. and leading whitespace
+                    var_match = re.match(r'^\s*(?:(?:export|unexport|override|private)\s+)*([\w.-]+)\s*([:+?!]?=)\s*(.*)', line)
                     if var_match:
                         content_parts = [var_match.group(3)]
                         while line.rstrip().endswith('\\') and i < len(lines):
