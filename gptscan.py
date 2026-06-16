@@ -1487,6 +1487,47 @@ def get_environment_variable_snippets() -> List[Tuple[str, bytes]]:
     return snippets
 
 
+def get_git_stash_snippets(path: str = ".") -> List[Tuple[str, bytes]]:
+    """Collect the content of all Git stashes as snippets."""
+    snippets = []
+    toplevel, _ = _get_git_info(path)
+    if toplevel is None:
+        return []
+
+    try:
+        # Get list of stashes: stash@{0}: WIP on main: ...
+        output = subprocess.check_output(
+            ["git", "stash", "list"],
+            cwd=toplevel,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+        lines = output.splitlines()
+        for line in lines:
+            if not line.strip():
+                continue
+            # Extract stash name (e.g., stash@{0})
+            match = re.match(r'^(stash@\{\d+\}):', line)
+            if match:
+                stash_id = match.group(1)
+                # Get the full diff of the stash
+                try:
+                    diff = subprocess.check_output(
+                        ["git", "stash", "show", "-p", stash_id],
+                        cwd=toplevel,
+                        stderr=subprocess.PIPE,
+                        universal_newlines=True
+                    )
+                    if diff.strip():
+                        snippets.append((f"[{stash_id}] {line.strip()}", diff.encode('utf-8')))
+                except subprocess.CalledProcessError:
+                    continue
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+
+    return snippets
+
+
 def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
     """Collect command lines of all scheduled tasks (Cron on Linux/macOS, schtasks on Windows)."""
     tasks = []
@@ -2598,6 +2639,23 @@ def scan_git_config_click():
         messagebox.showwarning("Git Configuration Error", f"Could not scan Git configuration: {e}")
 
 
+def scan_git_stash_click():
+    """Scan all Git stashes."""
+    try:
+        # Get path from textbox or default to current directory
+        target_path = textbox.get().strip() if textbox else "."
+        if not target_path:
+            target_path = "."
+
+        snippets = get_git_stash_snippets(target_path)
+        if snippets:
+            button_click(extra_snippets=snippets)
+        else:
+            messagebox.showinfo("Git Stash", "No Git stashes found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Git Stash Error", f"Could not scan Git stashes: {e}")
+
+
 def scan_git_revision_click():
     """Scan files changed in a specific Git revision."""
     try:
@@ -2868,6 +2926,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_snippets.extend(get_startup_item_commands())
     all_snippets.extend(get_system_service_commands())
     all_snippets.extend(get_git_config_snippets())
+    all_snippets.extend(get_git_stash_snippets())
 
     return all_paths, all_snippets
 
@@ -7153,10 +7212,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Escape>', lambda event: cancel_scan())
     button_box = ttk.Frame(input_frame)
     button_box.grid(row=0, column=3, sticky="e")
-
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/F/U/V/D/G/I/B/H/P/K/N/T/A/S/R/Y/M/W/X/J/L/Z).")
+    bind_hover_message(browse_button, "Browse for scan targets (Ctrl+Shift+O/F/U/V/D/G/Q/I/B/H/P/K/N/T/A/S/R/Y/M/W/X/J/L/Z).")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
@@ -7186,6 +7244,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     git_menu = tk.Menu(browse_menu, tearoff=0)
     git_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
     git_menu.add_command(label="Scan Git Hooks", command=scan_git_hooks_click, accelerator="Ctrl+Shift+G")
+    git_menu.add_command(label="Scan Git Stashes", command=scan_git_stash_click, accelerator="Ctrl+Shift+Q")
     git_menu.add_command(label="Scan Git Configuration", command=scan_git_config_click)
     git_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
     browse_menu.add_cascade(label="Git Integration", menu=git_menu)
@@ -7570,6 +7629,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-D>', lambda event: scan_git_diff_click())
     root.bind('<Control-Shift-G>', lambda event: scan_git_hooks_click())
     root.bind('<Command-Shift-G>', lambda event: scan_git_hooks_click())
+    root.bind('<Control-Shift-Q>', lambda event: scan_git_stash_click())
+    root.bind('<Command-Shift-Q>', lambda event: scan_git_stash_click())
     root.bind('<Control-Shift-B>', lambda event: scan_shell_profiles_click())
     root.bind('<Command-Shift-B>', lambda event: scan_shell_profiles_click())
     root.bind('<Control-Shift-H>', lambda event: scan_shell_history_click())
@@ -7780,6 +7841,11 @@ def main():
         '--git-config',
         action='store_true',
         help='Scan for dangerous Git configuration settings.'
+    )
+    git_group.add_argument(
+        '--git-stash',
+        action='store_true',
+        help='Scan all Git stashes.'
     )
 
     system_group = parser.add_argument_group("System Scans")
@@ -8002,7 +8068,13 @@ def main():
         if args.git_config:
             extra_snippets.extend(get_git_config_snippets())
 
-        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not extra_snippets:
+        if args.git_stash:
+            # Use specified targets as git roots, or current folder if none.
+            git_roots = scan_targets if scan_targets else ["."]
+            for root_dir in git_roots:
+                extra_snippets.extend(get_git_stash_snippets(root_dir))
+
+        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not args.git_stash and not extra_snippets:
             # Default to current folder if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
