@@ -532,6 +532,11 @@ class Config:
         if extension in cls.extensions_set:
             return True
 
+        # Check for suspicious filename patterns (RTLO, double extensions, etc.)
+        filename_score, _ = analyze_filename(path_str)
+        if filename_score >= 0.5:
+            return True
+
         file_path = Path(file_path)
 
         # Check for a script starting line (like #!/bin/bash) for files without a recognized extension
@@ -2093,6 +2098,53 @@ def format_bytes(num: float) -> str:
             return f"{num:3.1f} {unit}"
         num /= 1024.0
     return f"{num:.1f} PiB"
+
+
+def analyze_filename(path: Union[str, Path]) -> Tuple[float, str]:
+    """Analyze a filename for deceptive patterns like RTLO, double extensions, or hidden whitespace.
+
+    Returns:
+        A tuple of (threat_score, message). Score is 0.0 to 1.0.
+    """
+    name = os.path.basename(str(path))
+    if not name:
+        return 0.0, ""
+
+    # 1. RTLO (Right-to-Left Override) detection
+    if '\u202e' in name:
+        return 1.0, "Deceptive filename using Right-to-Left Override (RTLO) character detected."
+
+    # 2. Deceptive Double Extensions
+    # Common deceptive prefixes (document/media)
+    deceptive_prefixes = {'.pdf', '.jpg', '.jpeg', '.png', '.gif', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.zip', '.rar', '.7z', '.mp3', '.mp4'}
+    # Executable extensions
+    exec_extensions = {'.exe', '.bat', '.ps1', '.cmd', '.com', '.scr', '.pif', '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh', '.msc', '.hta', '.cpl', '.msi', '.jar', '.py', '.sh'}
+
+    parts = name.lower().split('.')
+    if len(parts) >= 3:
+        # Check for patterns like file.jpg.exe
+        ext1 = f".{parts[-2]}"
+        ext2 = f".{parts[-1]}"
+        if ext1 in deceptive_prefixes and ext2 in exec_extensions:
+            return 0.9, f"Deceptive double extension detected: '{ext1}{ext2}'."
+
+    # 3. Hidden extension tricks (excessive whitespace)
+    if '  ' in name and any(name.lower().endswith(ext) for ext in exec_extensions):
+        # Check if there's a large gap before the extension
+        # e.g. "invoice.pdf                              .exe"
+        if re.search(r'\.\w+\s{5,}\.\w+$', name):
+            return 0.9, "Suspiciously large whitespace gap found before file extension."
+
+    # 4. Trailing whitespace or dots
+    if name.endswith(' ') or name.endswith('.'):
+        return 0.5, "Filename ends with a suspicious space or dot, often used to bypass filters."
+
+    # 5. Invisible/Control characters (excluding standard ones)
+    for char in name:
+        if ord(char) < 32 or (127 <= ord(char) <= 159):
+            return 0.7, f"Filename contains invisible or control characters (ASCII {ord(char)})."
+
+    return 0.0, ""
 
 
 def get_file_sha256(file_path_or_data: Union[str, Path, bytes]) -> str:
@@ -4249,14 +4301,26 @@ def scan_files(
 
     def handle_scan_result(path: str, maxconf: float, max_window_bytes: bytes, line_num: Union[int, str], full_content: Optional[str] = None, force: bool = False) -> Generator[Tuple[str, Any], None, None]:
         if maxconf >= 0:
-            percent = format_percent(maxconf * 100.0)
+            # Filename analysis for additional threat indicators
+            file_threat, file_msg = analyze_filename(path)
+
+            # Combine threat levels (take the maximum of content and filename threat)
+            effective_maxconf = max(maxconf, file_threat)
+
+            percent = format_percent(effective_maxconf * 100.0)
             snippet = ''.join(map(chr, max_window_bytes)).strip()
             cleaned_snippet = _clean_snippet_for_ai(snippet)
+
+            admin_note = ""
+            user_note = ""
+            if file_threat >= 0.5:
+                admin_note = f"[Filename Warning] {file_msg}"
+                user_note = f"Caution: {file_msg}"
 
             if full_content is not None:
                 _virtual_source_cache[path] = full_content
 
-            if maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
+            if effective_maxconf >= threshold_val and use_gpt and Config.GPT_ENABLED:
                 gpt_requests.append(
                     {
                         "path": path,
@@ -4265,16 +4329,18 @@ def scan_files(
                         "cleaned_snippet": cleaned_snippet,
                         "line": line_num,
                         "full_content": full_content,
+                        "admin_desc": admin_note,
+                        "user_desc": user_note,
                     }
                 )
-            elif maxconf >= threshold_val or show_all or force:
+            elif effective_maxconf >= threshold_val or show_all or force:
                 yield (
                     'result',
                     (
                         path,
                         percent,
-                        '',
-                        '',
+                        admin_note,
+                        user_note,
                         '',
                         cleaned_snippet,
                         line_num,
@@ -4501,6 +4567,12 @@ def scan_files(
                 admin_desc = json_data["administrator"]
                 enduser_desc = json_data["end-user"]
                 chatgpt_conf_percent = format_percent(json_data["threat-level"])
+
+            # Prepend filename warnings to AI analysis if present
+            if request.get("admin_desc"):
+                admin_desc = f"{request['admin_desc']}\n\n{admin_desc}"
+            if request.get("user_desc"):
+                enduser_desc = f"{request['user_desc']}\n\n{enduser_desc}"
 
             if request.get("full_content"):
                 _virtual_source_cache[request["path"]] = request["full_content"]
@@ -7568,7 +7640,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, project files, and web links for dangerous code using AI. Works with archives, Notebooks, package manifests, CI/CD workflows, Docker, and Git changes.",
+        description="Scan scripts, project files, and web links for dangerous code using AI. Works with archives, Notebooks, package manifests, CI/CD workflows, Docker, deceptive filenames, and Git changes.",
         epilog="Examples:\n"
                "  # Scan a folder and use AI for analysis\n"
                "  python3 gptscan.py ./my_scripts --cli --use-gpt\n\n"
