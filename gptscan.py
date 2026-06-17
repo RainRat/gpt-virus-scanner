@@ -4656,9 +4656,6 @@ def scan_files(
             if request.get("user_desc"):
                 enduser_desc = f"{request['user_desc']}\n\n{enduser_desc}"
 
-            if request.get("full_content"):
-                _virtual_source_cache[request["path"]] = request["full_content"]
-
             yield (
                 'result',
                 (
