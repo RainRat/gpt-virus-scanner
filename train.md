@@ -1,6 +1,6 @@
 # Training the Local Scanner
 
-Train the local model (the file classifier) for the GPT Virus Scanner. It learns to find dangerous files by studying many examples of safe and malicious code.
+Train the local model (the detection model) for the GPT Virus Scanner. It learns to find dangerous files by studying many examples of safe and malicious code.
 
 ## Features
 
@@ -164,7 +164,7 @@ python3 train.py --config config.yml \
 
 ```
 --config, -c           Path to the YAML settings file (required).
---mode, -m             Choose between training a model or making predictions.
+--mode, -m             Choose between training a model or finding suspicious files.
 --model-name           Set the model name.
 --positive-dir         Folder containing dangerous files.
 --negative-dir         Folder containing safe files.
