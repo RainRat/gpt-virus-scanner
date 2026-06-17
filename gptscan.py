@@ -4971,7 +4971,9 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
     BOLD = "\033[1m" if use_color else ""
     RESET = "\033[0m" if use_color else ""
 
-    lines = [f"{BOLD}--- GPT SCAN - CONSOLE TRIAGE REPORT ---{RESET}", ""]
+    count = len(results)
+    finding_text = "finding" if count == 1 else "findings"
+    lines = [f"{BOLD}--- GPT SCAN - CONSOLE TRIAGE REPORT ({count} {finding_text}) ---{RESET}", ""]
 
     def color_conf(conf_str):
         if not use_color:
@@ -5002,7 +5004,8 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         else:
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
-        lines.append(f"{BOLD}[{i}] {risk_label} - {path}:{line_num}{RESET}")
+        location = f"{path}:{line_num}" if line_num != "-" else path
+        lines.append(f"{BOLD}[{i}] {risk_label} - {location}{RESET}")
 
         # Consolidate scores and links
         meta_parts = [f"{GRAY}Local:{RESET} {color_conf(own_conf)}"]
@@ -5035,7 +5038,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         for sl in snippet_lines:
             if len(sl) > 100:
                 sl = sl[:97] + "..."
-            lines.append(f"    {GRAY}> {sl}{RESET}")
+            lines.append(f"    {GRAY}> {BOLD}{sl}{RESET}")
         lines.append("")
 
     return "\n".join(lines)
