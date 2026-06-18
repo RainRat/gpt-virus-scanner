@@ -4976,7 +4976,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
             return f"{RED}{BOLD}{conf_str}{RESET}"
         if val >= 50:
             return f"{YELLOW}{BOLD}{conf_str}{RESET}"
-        return f"{BOLD}{conf_str}{RESET}"
+        return f"{conf_str}"
 
     for i, r in enumerate(results, 1):
         path = r.get("path", "unknown")
@@ -4998,7 +4998,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
         location = f"{path}:{line_num}" if line_num != "-" else path
-        lines.append(f"{BOLD}[{i}] {risk_label} - {location}{RESET}")
+        lines.append(f"{GRAY}[{i}]{RESET} {BOLD}{risk_label} - {location}{RESET}")
 
         # Consolidate scores and links
         meta_parts = [f"{GRAY}Local:{RESET} {color_conf(own_conf)}"]
@@ -5007,11 +5007,11 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
 
         vt_url = get_virustotal_url(path, snippet)
         if vt_url:
-            meta_parts.append(f"{GRAY}VT:{RESET} {BOLD}{vt_url}{RESET}")
+            meta_parts.append(f"{GRAY}VT:{RESET} {vt_url}")
 
         online_url = get_online_url(path, line_num)
         if online_url:
-            meta_parts.append(f"{GRAY}Online:{RESET} {BOLD}{online_url}{RESET}")
+            meta_parts.append(f"{GRAY}Online:{RESET} {online_url}")
 
         lines.append(f"    {'  '.join(meta_parts)}")
 
@@ -5020,10 +5020,10 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
             analysis_parts = []
             if admin:
                 clean_admin = admin.strip().replace('\n', ' ')
-                analysis_parts.append(f"{GRAY}Admin:{RESET} {BOLD}{clean_admin}{RESET}")
+                analysis_parts.append(f"{GRAY}Admin:{RESET} {clean_admin}")
             if user:
                 clean_user = user.strip().replace('\n', ' ')
-                analysis_parts.append(f"{GRAY}User:{RESET} {BOLD}{clean_user}{RESET}")
+                analysis_parts.append(f"{GRAY}User:{RESET} {clean_user}")
             lines.append(f"    {'  '.join(analysis_parts)}")
 
         # Snippet preview (up to 3 lines)
@@ -5031,7 +5031,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         for sl in snippet_lines:
             if len(sl) > 100:
                 sl = sl[:97] + "..."
-            lines.append(f"    {GRAY}> {BOLD}{sl}{RESET}")
+            lines.append(f"    {GRAY}> {sl}{RESET}")
         lines.append("")
 
     return "\n".join(lines)
