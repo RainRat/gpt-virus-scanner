@@ -3544,22 +3544,17 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 def yield_pyproject_scripts(label_name, val):
                     # Strip inline comment if not a multiline string
                     if not (val.startswith(('"""', "'''"))):
-                        # Match a hash that is NOT inside a quoted string
-                        # Simple approach: find first # and check if it's outside quotes
-                        comment_match = re.search(r'(?m)(^|[^"\'\\])(#.*)$', val)
-                        if comment_match:
-                            # A more robust regex to match comments outside quotes:
-                            # (?:[^"\'#]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*(#.*)
-                            robust_comment_match = re.search(r'^(?:[^"\'#]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*(#.*)', val)
-                            if robust_comment_match:
-                                comment_start = robust_comment_match.start(1)
-                                val = val[:comment_start].strip()
+                        # A robust regex to match comments outside quotes, including triple quotes
+                        robust_comment_match = re.search(r'^(?:[^"\'#]|"{3}(?:\\.|[^\\])*?"{3}(?!")|(?<!")"(?:\\.|[^"\\])*?"(?!")|\'{3}.*?\'{3}(?!\')|(?<!\')\'(?:\\.|[^\'\\])*?\'(?!\'))*(#.*)', val, re.DOTALL)
+                        if robust_comment_match:
+                            comment_start = robust_comment_match.start(1)
+                            val = val[:comment_start].strip()
 
                     if val.startswith('['):
-                        # Array of commands: ["a", "b"]
-                        items = re.findall(r'"((?:\\.|[^"\\])*)"|\'((?:\\.|[^\'\\])*)\'', val)
+                        # Array of commands: ["a", "b"], handles triple quotes and escaped characters
+                        items = re.findall(r'"{3}((?:\\.|[^\\])*?)"{3}(?!")|\'{3}(.*?)\'{3}(?!\')|"((?:\\.|[^"\\])*)"|\'((?:\\.|[^\'\\])*)\'', val, re.DOTALL)
                         for idx, item in enumerate(items, 1):
-                            cmd = item[0] or item[1]
+                            cmd = item[0] or item[1] or item[2] or item[3]
                             if cmd.strip():
                                 yield (f"{name} [Script: {label_name} ({idx})]", cmd.encode('utf-8'))
                     else:
@@ -3633,7 +3628,8 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                             elif command_val.startswith('['):
                                 # Check if it actually ends on this line (ignoring comments)
                                 temp_val = command_val
-                                comment_match = re.search(r'^(?:[^"\'#]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*(#.*)', temp_val)
+                                # A robust regex to match comments outside quotes, including triple quotes
+                                comment_match = re.search(r'^(?:[^"\'#]|"{3}(?:\\.|[^\\])*?"{3}(?!")|(?<!")"(?:\\.|[^"\\])*?"(?!")|\'{3}.*?\'{3}(?!\')|(?<!\')\'(?:\\.|[^\'\\])*?\'(?!\'))*(#.*)', temp_val)
                                 if comment_match:
                                     temp_val = temp_val[:comment_match.start(1)].strip()
 
@@ -3642,7 +3638,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                     while i < len(lines):
                                         curr_line = lines[i].strip()
                                         # Strip inline comments from array lines
-                                        comment_match = re.search(r'^(?:[^"\'#]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*(#.*)', curr_line)
+                                        comment_match = re.search(r'^(?:[^"\'#]|"{3}(?:\\.|[^\\])*?"{3}(?!")|(?<!")"(?:\\.|[^"\\])*?"(?!")|\'{3}.*?\'{3}(?!\')|(?<!\')\'(?:\\.|[^\'\\])*?\'(?!\'))*(#.*)', curr_line)
                                         if comment_match:
                                             curr_line = curr_line[:comment_match.start(1)].strip()
 
