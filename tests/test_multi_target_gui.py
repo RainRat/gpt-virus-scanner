@@ -31,6 +31,18 @@ def test_set_scan_target_multi(mock_gui_globals):
     expected = shlex.join(paths)
     mock_gui_globals['textbox'].insert.assert_called_with(0, expected)
 
+def test_set_scan_target_set(mock_gui_globals):
+    """Verify that sets of paths are correctly joined in the textbox."""
+    paths = {"file1.py", "/path with spaces/file2.js"}
+    _set_scan_target(paths)
+
+    # Verify that both files are present in the textbox insert call (sets are unordered)
+    call_args = mock_gui_globals['textbox'].insert.call_args
+    assert call_args is not None
+    inserted_str = call_args[0][1]
+    assert "file1.py" in inserted_str
+    assert "'/path with spaces/file2.js'" in inserted_str or '"/path with spaces/file2.js"' in inserted_str
+
 def test_button_click_parsing(mock_gui_globals):
     """Verify that button_click correctly parses multiple targets using shlex.split."""
     targets = ["file1.py", "file2.js"]

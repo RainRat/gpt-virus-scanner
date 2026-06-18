@@ -6,7 +6,7 @@ import shutil
 import argparse
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Any
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from tensorflow.keras.layers import (
     Dense, Input, LSTM, Embedding, Dropout, GRU, concatenate,
     Bidirectional, GlobalMaxPool1D, GlobalAveragePooling1D, 
@@ -577,7 +577,7 @@ def main():
     output_dir = Path(args.output_dir) if args.output_dir else Path.home() / 'sscript'
     
     if config.mode == 'predict':
-        print(f"Running prediction mode")
+        print("Running prediction mode")
         print(f"Model: {config.model_name}.h5")
         print(f"Input folder: {predict_dir}")
         print(f"Output folder: {output_dir}")
@@ -590,7 +590,7 @@ def main():
             output_dir
         )
     else:
-        print(f"Running training mode")
+        print("Running training mode")
         print(f"Model: {config.model_name}")
         print(f"Dangerous files: {positive_dir}")
         print(f"Safe files: {negative_dir}")
