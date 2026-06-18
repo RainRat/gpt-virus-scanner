@@ -744,7 +744,7 @@ def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
         return
 
     # Handle multiple paths or a single path string
-    if isinstance(path, (list, tuple)):
+    if not isinstance(path, str) and isinstance(path, Iterable):
         # Join multiple targets with appropriate quoting, ensuring all are strings
         formatted_path = " ".join(_quote_for_ui(str(p)) for p in path)
     else:
