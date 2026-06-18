@@ -55,7 +55,6 @@ class Hyperparameters:
     optimizer: float
 
     def to_list(self) -> List[float]:
-        """Converts settings to a list."""
         return [
             self.embedding_scale, self.rnn_scale, self.pooling_type,
             self.dropout1, self.dense_scale, self.activation, self.dropout2,
@@ -67,7 +66,6 @@ class Hyperparameters:
 
     @classmethod
     def from_list(cls, params: List[float]) -> 'Hyperparameters':
-        """Creates a new instance from a list of settings."""
         return cls(*params)
 
     def mutate(self) -> 'Hyperparameters':
@@ -103,7 +101,6 @@ class DataLoader:
         self.pad_value = config.pad_value
     
     def load_file(self, file_path: Path) -> List[int]:
-        """Loads and prepares a single file."""
         file_size = file_path.stat().st_size
         
         if file_size <= self.max_length:
@@ -226,7 +223,6 @@ class ModelBuilder:
             x = Embedding(256, dp['embedding_dim'])(inp)
             x = SpatialDropout1D(dp['spatial_dropout'])(x)
             
-            # RNN layer selection
             if hp.rnn_type > 0.75:
                 x = LSTM(
                     dp['rnn_units'], return_sequences=True,
@@ -252,7 +248,6 @@ class ModelBuilder:
                     recurrent_dropout=dp['rnn_recurrent_dropout']
                 ))(x)
             
-            # Optional Conv1D layer
             if hp.use_conv > 0.5:
                 padding = 'same' if hp.conv_padding < 0.5 else 'valid'
                 x = Conv1D(
@@ -260,7 +255,6 @@ class ModelBuilder:
                     padding=padding, kernel_initializer=initializer
                 )(x)
             
-            # Pooling layer selection
             if pooling == "avg":
                 x = GlobalAveragePooling1D()(x)
             elif pooling == "max":
@@ -285,7 +279,6 @@ class ModelBuilder:
                 weighted_metrics=['accuracy', 'binary_crossentropy']
             )
             
-            # Check model size
             trainable_count = np.sum([count_params(w) for w in model.trainable_weights])
             non_trainable_count = np.sum([count_params(w) for w in model.non_trainable_weights])
             
@@ -396,7 +389,6 @@ class Trainer:
             print(f"Loss Final: {val_loss[-1]:.4f}")
             print(f"Loss Best: {min(val_loss):.4f}")
             
-            # Save if improved
             if min(val_loss) < self.best_loss:
                 print("\n" + "*" * 50)
                 print("New Best Model!")
@@ -406,7 +398,6 @@ class Trainer:
                 self.best_loss = min(val_loss)
                 self.best_acc = max(val_acc)
                 
-                # Save model and hyperparameters
                 model.save(f'{self.config.model_name}.h5')
                 self.save_hyperparameters(f'{self.config.model_name}_best_hp.yml')
             
