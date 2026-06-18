@@ -312,24 +312,24 @@ class ModelBuilder:
         pooling = self._get_pooling_type(hp.pooling_type)
         
         print(f"Features: {dp['embedding_dim']}, "
-              f"SpatialDrop: {dp['spatial_dropout']:.3f}, "
+              f"Spatial dropout: {dp['spatial_dropout']:.3f}, "
               f"{rnn_type} Size: {dp['rnn_units']}, "
-              f"Drop: {dp['rnn_dropout']:.3f}, "
-              f"RecDrop: {dp['rnn_recurrent_dropout']:.3f}")
+              f"Dropout: {dp['rnn_dropout']:.3f}, "
+              f"Recurrent dropout: {dp['rnn_recurrent_dropout']:.3f}")
         
         if hp.use_conv > 0.5:
             padding = 'same' if hp.conv_padding < 0.5 else 'valid'
-            print(f"Conv1D Filt: {dp['conv_filters']}, "
-                  f"Pad: {padding}, "
-                  f"Init: {self._get_initializer(hp.kernel_init)}, "
+            print(f"Conv1D Filters: {dp['conv_filters']}, "
+                  f"Padding: {padding}, "
+                  f"Startup method: {self._get_initializer(hp.kernel_init)}, "
                   f"Size: {dp['conv_kernel_size']}")
         
         print(f"Pool: {pooling}, "
               f"Dropout1: {dp['dropout1']:.3f}, "
               f"Dense: {dp['dense_units']}, "
-              f"Activation: {self._get_activation(hp.activation)}, "
+              f"Connection style: {self._get_activation(hp.activation)}, "
               f"Dropout2: {dp['dropout2']:.3f}, "
-              f"Opt: {self._get_optimizer(hp.optimizer)}")
+              f"Learning method: {self._get_optimizer(hp.optimizer)}")
 
 
 class Trainer:
@@ -510,56 +510,56 @@ Examples:
         '--config', '-c',
         type=str,
         required=True,
-        help='The path to the YAML settings file.'
+        help='Provide the path to the YAML settings file.'
     )
     
     parser.add_argument(
         '--mode', '-m',
         type=str,
         choices=['train', 'predict'],
-        help='Chooses between training a model or finding suspicious files.'
+        help='Choose between training a model or finding suspicious files.'
     )
     
     parser.add_argument(
         '--model-name',
         type=str,
-        help='Sets the name of the model.'
+        help='Set the name of the model.'
     )
     
     parser.add_argument(
         '--positive-dir',
         type=str,
-        help='The folder containing dangerous files.'
+        help='Use this folder for dangerous files.'
     )
     
     parser.add_argument(
         '--negative-dir',
         type=str,
-        help='The folder containing safe files.'
+        help='Use this folder for safe files.'
     )
     
     parser.add_argument(
         '--predict-dir',
         type=str,
-        help='The folder containing files to scan.'
+        help='Use this folder for files to scan.'
     )
     
     parser.add_argument(
         '--output-dir',
         type=str,
-        help='The folder where suspicious files will be copied.'
+        help='Use this folder to copy suspicious files.'
     )
     
     parser.add_argument(
         '--epochs',
         type=int,
-        help='The number of training rounds.'
+        help='Set the number of training rounds.'
     )
     
     parser.add_argument(
         '--batch-size',
         type=int,
-        help='The number of files to process at once.'
+        help='Set the number of files to process at once.'
     )
     
     return parser.parse_args()
