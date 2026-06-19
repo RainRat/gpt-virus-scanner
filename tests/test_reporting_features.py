@@ -130,7 +130,7 @@ def test_generate_console_report():
 
     # Without color
     report = gptscan.generate_console_report(results, use_color=False)
-    assert "--- GPT SCAN - CONSOLE TRIAGE REPORT (2 findings) ---" in report
+    assert "--- GPT SCAN - RESULTS SUMMARY (2 findings) ---" in report
     assert "Local: 90%  AI: 95%  VT: https://www.virustotal.com/gui/file/" in report
     assert "Admin: Admin note  User: User note" in report
     assert "> dangerous_code()" in report

@@ -83,7 +83,7 @@ _virtual_source_cache: Dict[str, str] = {}
 
 
 def resolve_remote_url(url: str) -> str:
-    """Resolve GitHub/GitLab/Bitbucket/Pastebin/Hugging Face repository, blob, tag, or PR URLs to their raw content or archive.
+    """Resolve GitHub/GitLab/Bitbucket/Pastebin/Hugging Face repository, file, tag, or pull request URLs to their raw content or archive.
 
     Args:
         url: The original URL to resolve.
@@ -249,10 +249,10 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
 
 
 def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = None) -> bytes:
-    """Fetches content from a URL with safety limits. Automatically resolves GitHub/GitLab links.
+    """Fetches content from a web link with safety limits. Automatically resolves GitHub/GitLab links.
 
     Args:
-        url: The URL to fetch.
+        url: The web link to fetch.
         timeout: Connection timeout in seconds.
         max_size: Maximum download size in bytes. Defaults to Config.MAX_FILE_SIZE.
 
@@ -269,7 +269,7 @@ def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = Non
     # Resolve GitHub/GitLab URLs to raw content/archives
     url = resolve_remote_url(url)
 
-    # Ensure URL scheme is http or https to prevent SSRF/local file access
+    # Ensure link starts with http or https to prevent unauthorized local file access or redirection attacks
     if not url.lower().startswith(('http://', 'https://')):
         raise ValueError(f"Unsupported URL scheme: {url.split(':', 1)[0] if ':' in url else 'unknown'}")
 
@@ -2008,7 +2008,7 @@ def collect_files(targets: Union[str, List[str]], modified_since: Optional[float
     Returns
     -------
     List[Path]
-        A deduplicated list of files to scan.
+        A unique list of files to scan.
     """
     targets = _normalize_targets(targets)
 
@@ -3447,9 +3447,9 @@ def manage_extensions() -> None:
 def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str] = None) -> Generator[Tuple[str, bytes], None, None]:
     """Extract scan-ready snippets from various container formats.
 
-    This function recursively unpacks archives (ZIP, TAR), Jupyter Notebooks,
-    package manifests (package.json, pyproject.toml), Dockerfiles, Makefiles,
-    CI/CD workflows (YAML), web files (HTML, SVG), and Unified Diffs.
+    This function recursively unpacks archives (ZIP, TAR), Jupyter notebooks,
+    project files (package.json, pyproject.toml), Dockerfiles, Makefiles,
+    automation tasks (YAML), web files (HTML, SVG), and Unified Diffs.
     It ensures that only relevant code blocks and scripts are processed.
 
     Args:
@@ -4945,7 +4945,7 @@ def run_batch_ai_analysis(
 
 
 def generate_console_report(results: List[Dict[str, Any]], use_color: bool = False) -> str:
-    """Generate a colorized, human-readable triage report for the console.
+    """Generate a colorized, human-readable results report for the terminal.
 
     Args:
         results: List of standardized result dictionaries.
@@ -4966,7 +4966,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
 
     count = len(results)
     finding_text = "finding" if count == 1 else "findings"
-    lines = [f"{BOLD}--- GPT SCAN - CONSOLE TRIAGE REPORT ({count} {finding_text}) ---{RESET}", ""]
+    lines = [f"{BOLD}--- GPT SCAN - RESULTS SUMMARY ({count} {finding_text}) ---{RESET}", ""]
 
     def color_conf(conf_str):
         if not use_color:
@@ -7720,7 +7720,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, project files, and web links for dangerous code using AI. Works with archives, Notebooks, package manifests, CI/CD workflows, Docker, deceptive filenames, and Git changes.",
+        description="Scan scripts, project files, and web links for dangerous code using AI. Works with archives, notebooks, project files, automation tasks, Docker, deceptive filenames, and Git changes.",
         epilog="Examples:\n"
                "  # Scan a folder and use AI for analysis\n"
                "  python3 gptscan.py ./my_scripts --cli --use-gpt\n\n"
@@ -7802,7 +7802,7 @@ def main():
     scan_group.add_argument(
         '--modified',
         type=str,
-        help="Only scan files changed within this timeframe (for example: '24h', '1h', '7d')."
+        help="Only scan files changed within this time (for example: '24h', '1h', '7d')."
     )
     scan_group.add_argument(
         '--downloads',
