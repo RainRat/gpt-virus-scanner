@@ -5519,10 +5519,14 @@ def standardize_result_dict(item: Any) -> Dict[str, Any]:
     if not isinstance(item, dict):
         return {k: "" for k in REPORT_FIELD_MAPPING}
 
-    res = {
-        key: next((str(item[alt]) for alt in alts if item.get(alt) not in (None, "")), "")
-        for key, alts in REPORT_FIELD_MAPPING.items()
-    }
+    res = {}
+    for key, alts in REPORT_FIELD_MAPPING.items():
+        found_val = ""
+        for alt in alts:
+            if (val := item.get(alt)) not in (None, ""):
+                found_val = str(val)
+                break
+        res[key] = found_val
     # Fallback: if own_conf is empty but gpt_conf has a value, they might be using a report
     # where both mapped to 'Threat Level' (like in Markdown) or 'Confidence'.
     if not res.get('own_conf') and res.get('gpt_conf'):
