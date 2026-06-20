@@ -3898,7 +3898,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         try:
             text = content.decode('utf-8', errors='ignore')
             snippets = []
-            script_keys = ['run', 'script', 'command', 'before_script', 'after_script', 'entrypoint', 'commands', 'entry', 'bash', 'powershell', 'pwsh', 'cmd']
+            script_keys = ['run', 'script', 'command', 'before_script', 'after_script', 'entrypoint', 'commands', 'entry', 'bash', 'powershell', 'pwsh', 'cmd', 'runcmd', 'bootcmd', 'args', 'setup', 'install', 'test']
             # Match keys, optionally prefixed by a dash (common in YAML lists)
             key_pattern = r'^\s*(?:-\s*)?(?:' + '|'.join(script_keys) + r'):\s*(.*)'
             lines = text.splitlines()
@@ -3937,7 +3937,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                 j += 1
                                 continue
                             curr_indent = len(lines[j]) - len(lines[j].lstrip())
-                            if curr_indent <= indent:
+                            if curr_indent < indent:
                                 break
                             list_match = re.match(r'^\s*-\s*(.*)', lines[j])
                             if list_match:
