@@ -1222,6 +1222,16 @@ def get_desktop_paths() -> List[str]:
     return paths
 
 
+def get_documents_paths() -> List[str]:
+    """Find the user's Documents folder."""
+    paths = []
+    home = Path.home()
+    docs = home / "Documents"
+    if docs.exists():
+        paths.append(str(docs))
+    return paths
+
+
 def get_temp_paths() -> List[str]:
     """Identify common temporary folders."""
     paths = [tempfile.gettempdir(), "/tmp", "/var/tmp"]
@@ -1451,6 +1461,115 @@ def get_nodejs_package_paths() -> List[str]:
         program_files = os.environ.get("ProgramFiles")
         if program_files:
             paths.append(os.path.join(program_files, "nodejs", "node_modules"))
+
+    return sorted(_normalize_and_filter_dirs(paths))
+
+
+def get_ruby_gems_paths() -> List[str]:
+    """Find all folders containing installed Ruby gems."""
+    paths = []
+    # 1. Check GEM_HOME environment variable
+    gem_home = os.environ.get("GEM_HOME")
+    if gem_home:
+        paths.append(gem_home)
+
+    # 2. Ask gem for the home path
+    try:
+        is_win = sys.platform == "win32"
+        output = subprocess.check_output(['gem', 'env', 'home'],
+                                        stderr=subprocess.PIPE,
+                                        universal_newlines=True,
+                                        shell=is_win).strip()
+        if output:
+            paths.append(output)
+    except Exception:
+        pass
+
+    # 3. Common paths
+    if sys.platform != "win32":
+        paths.extend([
+            "/usr/local/lib/ruby/gems",
+            "/usr/lib/ruby/gems",
+            str(Path.home() / ".gem")
+        ])
+
+    return sorted(_normalize_and_filter_dirs(paths))
+
+
+def get_php_composer_paths() -> List[str]:
+    """Find all folders containing global PHP Composer packages."""
+    paths = []
+    # 1. Ask composer for the global vendor directory
+    try:
+        is_win = sys.platform == "win32"
+        output = subprocess.check_output(['composer', 'global', 'config', 'vendor-dir', '--absolute'],
+                                        stderr=subprocess.PIPE,
+                                        universal_newlines=True,
+                                        shell=is_win).strip()
+        if output:
+            paths.append(output)
+    except Exception:
+        pass
+
+    # 2. Common paths
+    home = Path.home()
+    paths.extend([
+        str(home / ".composer" / "vendor"),
+        str(home / ".config" / "composer" / "vendor")
+    ])
+
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            paths.append(os.path.join(appdata, "Composer", "vendor"))
+
+    return sorted(_normalize_and_filter_dirs(paths))
+
+
+def get_rust_cargo_paths() -> List[str]:
+    """Find all folders containing Rust Cargo packages (registry and git)."""
+    paths = []
+    # 1. Check CARGO_HOME environment variable
+    cargo_home = os.environ.get("CARGO_HOME")
+    if cargo_home:
+        cargo_home_path = Path(cargo_home)
+        paths.append(str(cargo_home_path / "registry"))
+        paths.append(str(cargo_home_path / "git"))
+
+    # 2. Default location
+    home_cargo = Path.home() / ".cargo"
+    paths.append(str(home_cargo / "registry"))
+    paths.append(str(home_cargo / "git"))
+
+    return sorted(_normalize_and_filter_dirs(paths))
+
+
+def get_go_packages_paths() -> List[str]:
+    """Find all folders containing Go packages (GOPATH)."""
+    paths = []
+    # 1. Check GOPATH environment variable
+    gopath = os.environ.get("GOPATH")
+    if gopath:
+        for p in gopath.split(os.pathsep):
+            if p:
+                paths.append(os.path.join(p, "pkg"))
+
+    # 2. Ask go for the GOPATH
+    try:
+        is_win = sys.platform == "win32"
+        output = subprocess.check_output(['go', 'env', 'GOPATH'],
+                                        stderr=subprocess.PIPE,
+                                        universal_newlines=True,
+                                        shell=is_win).strip()
+        if output:
+            for p in output.split(os.pathsep):
+                if p:
+                    paths.append(os.path.join(p, "pkg"))
+    except Exception:
+        pass
+
+    # 3. Default location
+    paths.append(str(Path.home() / "go" / "pkg"))
 
     return sorted(_normalize_and_filter_dirs(paths))
 
@@ -2837,6 +2956,58 @@ def scan_nodejs_packages_click():
         messagebox.showwarning("Node.js Packages Error", f"Could not scan Node.js packages: {e}")
 
 
+def scan_ruby_gems_click():
+    """Scan all folders containing installed Ruby gems."""
+    try:
+        package_paths = get_ruby_gems_paths()
+        if package_paths:
+            _set_scan_target(package_paths)
+            button_click()
+        else:
+            messagebox.showinfo("Ruby Gems", "No Ruby gems folders were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Ruby Gems Error", f"Could not scan Ruby gems: {e}")
+
+
+def scan_php_packages_click():
+    """Scan all folders containing global PHP Composer packages."""
+    try:
+        package_paths = get_php_composer_paths()
+        if package_paths:
+            _set_scan_target(package_paths)
+            button_click()
+        else:
+            messagebox.showinfo("PHP Packages", "No global PHP Composer package folders were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("PHP Packages Error", f"Could not scan PHP packages: {e}")
+
+
+def scan_rust_packages_click():
+    """Scan all folders containing Rust Cargo packages."""
+    try:
+        package_paths = get_rust_cargo_paths()
+        if package_paths:
+            _set_scan_target(package_paths)
+            button_click()
+        else:
+            messagebox.showinfo("Rust Packages", "No Rust Cargo package folders were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Rust Packages Error", f"Could not scan Rust packages: {e}")
+
+
+def scan_go_packages_click():
+    """Scan all folders containing Go packages (GOPATH)."""
+    try:
+        package_paths = get_go_packages_paths()
+        if package_paths:
+            _set_scan_target(package_paths)
+            button_click()
+        else:
+            messagebox.showinfo("Go Packages", "No Go package folders were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Go Packages Error", f"Could not scan Go packages: {e}")
+
+
 def scan_browser_extensions_click():
     """Scan all common browser extension folders."""
     try:
@@ -2861,6 +3032,19 @@ def scan_editor_extensions_click():
             messagebox.showinfo("Editor Extensions", "No editor extension folders were found to scan.")
     except Exception as e:
         messagebox.showwarning("Editor Extensions Error", f"Could not scan editor extensions: {e}")
+
+
+def scan_documents_click():
+    """Scan the user's Documents folder."""
+    try:
+        paths = get_documents_paths()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo("Documents", "The Documents folder was not found on this system.")
+    except Exception as e:
+        messagebox.showwarning("Documents Error", f"Could not scan Documents: {e}")
 
 
 def scan_downloads_click():
@@ -2913,8 +3097,13 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_git_hooks_paths())
     all_paths.extend(get_python_package_paths())
     all_paths.extend(get_nodejs_package_paths())
+    all_paths.extend(get_ruby_gems_paths())
+    all_paths.extend(get_php_composer_paths())
+    all_paths.extend(get_rust_cargo_paths())
+    all_paths.extend(get_go_packages_paths())
     all_paths.extend(get_browser_extensions_paths())
     all_paths.extend(get_editor_extensions_paths())
+    all_paths.extend(get_documents_paths())
     all_paths.extend(get_downloads_paths())
     all_paths.extend(get_desktop_paths())
     all_paths.extend(get_temp_paths())
@@ -7258,8 +7447,13 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     system_menu.add_command(label="Scan SSH Configuration", command=scan_ssh_config_click, accelerator="Ctrl+Shift+R")
     system_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click, accelerator="Ctrl+Shift+Y")
     system_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
+    system_menu.add_command(label="Scan Ruby Gems", command=scan_ruby_gems_click)
+    system_menu.add_command(label="Scan PHP Packages", command=scan_php_packages_click)
+    system_menu.add_command(label="Scan Rust Packages", command=scan_rust_packages_click)
+    system_menu.add_command(label="Scan Go Packages", command=scan_go_packages_click)
     system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
     system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
+    system_menu.add_command(label="Scan Documents", command=scan_documents_click)
     system_menu.add_command(label="Scan Downloads", command=scan_downloads_click, accelerator="Ctrl+Shift+J")
     system_menu.add_command(label="Scan Desktop", command=scan_desktop_click, accelerator="Ctrl+Shift+L")
     system_menu.add_command(label="Scan Temporary Folders", command=scan_temp_click, accelerator="Ctrl+Shift+Z")
@@ -7896,6 +8090,26 @@ def main():
         help='Scan all folders containing global Node.js packages.'
     )
     system_group.add_argument(
+        '--ruby-gems',
+        action='store_true',
+        help='Scan all folders containing installed Ruby gems.'
+    )
+    system_group.add_argument(
+        '--php-packages',
+        action='store_true',
+        help='Scan all folders containing global PHP Composer packages.'
+    )
+    system_group.add_argument(
+        '--rust-packages',
+        action='store_true',
+        help='Scan all folders containing Rust Cargo packages.'
+    )
+    system_group.add_argument(
+        '--go-packages',
+        action='store_true',
+        help='Scan all folders containing Go packages (GOPATH).'
+    )
+    system_group.add_argument(
         '--browser-extensions',
         action='store_true',
         help='Scan all common browser extension folders.'
@@ -7904,6 +8118,11 @@ def main():
         '--editor-extensions',
         action='store_true',
         help='Scan all common editor extension folders.'
+    )
+    system_group.add_argument(
+        '--documents',
+        action='store_true',
+        help="Scan the user's Documents folder."
     )
     system_group.add_argument(
         '--ssh-config',
@@ -7980,7 +8199,8 @@ def main():
             args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
             args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
-            args.system_services, args.audit, args.modified
+            args.system_services, args.audit, args.modified, args.ruby_gems,
+            args.php_packages, args.rust_packages, args.go_packages, args.documents
         ]):
             sys.exit(0)
 
@@ -8178,6 +8398,34 @@ def main():
             else:
                 print("No global Node.js package folders were found.", file=sys.stderr)
 
+        if args.ruby_gems:
+            ruby_paths = get_ruby_gems_paths()
+            if ruby_paths:
+                scan_targets.extend(ruby_paths)
+            else:
+                print("No Ruby gems folders were found.", file=sys.stderr)
+
+        if args.php_packages:
+            php_paths = get_php_composer_paths()
+            if php_paths:
+                scan_targets.extend(php_paths)
+            else:
+                print("No global PHP Composer package folders were found.", file=sys.stderr)
+
+        if args.rust_packages:
+            rust_paths = get_rust_cargo_paths()
+            if rust_paths:
+                scan_targets.extend(rust_paths)
+            else:
+                print("No Rust Cargo package folders were found.", file=sys.stderr)
+
+        if args.go_packages:
+            go_paths = get_go_packages_paths()
+            if go_paths:
+                scan_targets.extend(go_paths)
+            else:
+                print("No Go package folders were found.", file=sys.stderr)
+
         if args.browser_extensions:
             extension_paths = get_browser_extensions_paths()
             if extension_paths:
@@ -8210,6 +8458,9 @@ def main():
             paths, snippets = get_system_audit_data()
             scan_targets.extend(paths)
             extra_snippets.extend(snippets)
+
+        if args.documents:
+            scan_targets.extend(get_documents_paths())
 
         if args.downloads:
             scan_targets.extend(get_downloads_paths())
