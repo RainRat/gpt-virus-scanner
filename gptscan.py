@@ -83,7 +83,7 @@ _virtual_source_cache: Dict[str, str] = {}
 
 
 def resolve_remote_url(url: str) -> str:
-    """Resolve GitHub/GitLab/Bitbucket/Pastebin/Hugging Face repository, blob, tag, or PR URLs to their raw content or archive.
+    """Resolve GitHub/GitLab/Bitbucket/Pastebin/Hugging Face repository, file, tag, or pull request web links to their raw content or archive.
 
     Args:
         url: The original URL to resolve.
@@ -99,14 +99,14 @@ def resolve_remote_url(url: str) -> str:
     url = re.sub(r'/$', '', url)
     url = re.sub(r'#.*$', '', url)
 
-    # 1. GitHub Blob -> Raw
+    # 1. GitHub file -> Raw
     # Example: https://github.com/user/repo/blob/main/script.py -> https://raw.githubusercontent.com/user/repo/main/script.py
     gh_blob_match = re.match(r'https?://(?:www\.)?github\.com/([^/]+)/([^/]+)/blob/(.+)', url, re.IGNORECASE)
     if gh_blob_match:
         user, repo, path = gh_blob_match.groups()
         return f"https://raw.githubusercontent.com/{user}/{repo}/{path}"
 
-    # 2. GitHub PR/Commit -> Diff
+    # 2. GitHub pull request or commit -> Diff
     # Example: https://github.com/user/repo/pull/1 -> https://github.com/user/repo/pull/1.diff
     # Example: https://github.com/user/repo/commit/abc -> https://github.com/user/repo/commit/abc.diff
     gh_patch_match = re.match(r'(https?://(?:www\.)?github\.com/[^/]+/[^/]+/(?:pull/\d+|commit/[a-f0-9]+))(?:/.*)?$', url, re.IGNORECASE)
@@ -141,14 +141,14 @@ def resolve_remote_url(url: str) -> str:
         if repo.lower() not in ('settings', 'pulls', 'issues', 'actions', 'projects', 'wiki', 'security', 'insights', 'pull'):
             return f"https://github.com/{user}/{repo}/archive/HEAD.zip"
 
-    # 7. GitLab Blob -> Raw
+    # 7. GitLab file -> Raw
     # Example: https://gitlab.com/user/repo/-/blob/main/script.py -> https://gitlab.com/user/repo/-/raw/main/script.py
     gl_blob_match = re.match(r'(https?://(?:www\.)?gitlab\.com/.+?)/-/blob/(.+)', url, re.IGNORECASE)
     if gl_blob_match:
         base, path = gl_blob_match.groups()
         return f"{base}/-/raw/{path}"
 
-    # 8. GitLab MR -> Diff
+    # 8. GitLab merge request -> Diff
     # Example: https://gitlab.com/user/repo/-/merge_requests/1 -> https://gitlab.com/user/repo/-/merge_requests/1.diff
     gl_mr_match = re.match(r'(https?://(?:www\.)?gitlab\.com/(.+)/([^/]+)/-/merge_requests/\d+)(?:/.*)?$', url, re.IGNORECASE)
     if gl_mr_match:
@@ -184,7 +184,7 @@ def resolve_remote_url(url: str) -> str:
         user, repo, ref, path = bb_raw_match.groups()
         return f"https://bitbucket.org/{user}/{repo}/raw/{ref}/{path}"
 
-    # 13. Bitbucket PR/Commit -> Diff
+    # 13. Bitbucket pull request or commit -> Diff
     # Example: https://bitbucket.org/user/repo/pull-requests/1 -> https://bitbucket.org/user/repo/pull-requests/1/diff
     # Example: https://bitbucket.org/user/repo/commits/abc -> https://bitbucket.org/user/repo/commits/abc/diff
     bb_diff_match = re.match(r'(https?://(?:www\.)?bitbucket\.org/[^/]+/[^/]+/(?:pull-requests/\d+|commits/[a-f0-9]+))(?:/.*)?$', url, re.IGNORECASE)
@@ -2642,7 +2642,7 @@ def scan_git_config_click():
 def scan_git_stash_click():
     """Scan all Git stashes."""
     try:
-        # Get path from textbox or default to current directory
+        # Get path from textbox or default to current folder
         target_path = textbox.get().strip() if textbox else "."
         if not target_path:
             target_path = "."
@@ -7720,7 +7720,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, project files, and web links for dangerous code using AI. Works with archives, Notebooks, package manifests, CI/CD workflows, Docker, deceptive filenames, and Git changes.",
+        description="Scan scripts, project and build files, and web links for dangerous code using AI. Works with archives, Notebooks, automation tasks, Docker, deceptive filenames, and Git changes.",
         epilog="Examples:\n"
                "  # Scan a folder and use AI for analysis\n"
                "  python3 gptscan.py ./my_scripts --cli --use-gpt\n\n"
@@ -7802,7 +7802,7 @@ def main():
     scan_group.add_argument(
         '--modified',
         type=str,
-        help="Only scan files changed within this timeframe (for example: '24h', '1h', '7d')."
+        help="Only scan files changed within this time (for example: '24h', '1h', '7d')."
     )
     scan_group.add_argument(
         '--downloads',

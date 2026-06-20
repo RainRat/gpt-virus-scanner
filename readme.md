@@ -16,14 +16,14 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 
 ### Supported Sources
 *   **Scan Local & Web Files:** Scan files on your computer or directly from a web link.
-*   **Remote Repositories:** Scan code from GitHub (including Gists), GitLab, and Bitbucket (including Snippets, PRs, Commits, and Tags).
+*   **Remote Repositories:** Scan code from GitHub (including Gists), GitLab, and Bitbucket (including Snippets, pull requests, Commits, and Tags).
 *   **Web Snippets:** Scan from Pastebin and Hugging Face.
 
 ### File Format Support
 *   **Notebook Support:** Scan cells in `.ipynb` files for dangerous commands.
 *   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, and Docker Compose.
 *   **Archives:** Open `.zip`, `.tar`, and `.tar.gz` files automatically to scan the contents.
-*   **CI/CD Workflows:** Scan GitHub Actions, GitLab CI, and other YAML workflows for suspicious commands.
+*   **Automation Tasks:** Scan GitHub Actions, GitLab CI, and other YAML automation tasks for suspicious commands.
 *   **Web Files:** Scan HTML, SVG, and Markdown files for embedded scripts.
 *   **Unified Diffs:** Scan `.diff` and `.patch` files to review code changes.
 
