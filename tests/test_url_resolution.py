@@ -150,3 +150,54 @@ def test_resolve_bitbucket_snippet():
     url = "https://bitbucket.org/user/snippets/abcxyz"
     expected = "https://bitbucket.org/user/snippets/abcxyz/raw"
     assert resolve_remote_url(url) == expected
+
+def test_resolve_pastebin_url():
+    # Test typical paste
+    url = "https://pastebin.com/abcdefgh"
+    # Expected behavior after implementation
+    assert resolve_remote_url(url) == "https://pastebin.com/raw/abcdefgh"
+
+def test_resolve_huggingface_url():
+    # Test typical HF blob
+    url = "https://huggingface.co/user/repo/blob/main/model.py"
+    # Expected behavior after implementation
+    assert resolve_remote_url(url) == "https://huggingface.co/user/repo/raw/main/model.py"
+
+def test_pastebin_safe_urls():
+    # These should NOT be transformed to /raw/
+    safe_urls = [
+        "https://pastebin.com/archive",
+        "https://pastebin.com/tools",
+        "https://pastebin.com/faq",
+        "https://pastebin.com/contact",
+        "https://pastebin.com/night_mode",
+        "https://pastebin.com/pro",
+        "https://pastebin.com/doc",
+        "https://pastebin.com/signup",
+        "https://pastebin.com/login",
+        "https://pastebin.com/api",
+        "https://pastebin.com/trends",
+        "https://pastebin.com/languages",
+    ]
+    for url in safe_urls:
+        assert resolve_remote_url(url) == url
+
+def test_resolve_repo_with_git_suffix():
+    url = "https://github.com/user/repo.git"
+    expected = "https://github.com/user/repo/archive/HEAD.zip"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_gitlab_commit():
+    url = "https://gitlab.com/user/repo/-/commit/abcdef123456"
+    expected = "https://gitlab.com/user/repo/-/commit/abcdef123456.diff"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_gitlab_branch_tree():
+    url = "https://gitlab.com/user/repo/-/tree/develop"
+    expected = "https://gitlab.com/user/repo/-/archive/develop/repo-develop.zip"
+    assert resolve_remote_url(url) == expected
+
+def test_resolve_bitbucket_branch_src():
+    url = "https://bitbucket.org/user/repo/src/develop/"
+    expected = "https://bitbucket.org/user/repo/get/develop.zip"
+    assert resolve_remote_url(url) == expected
