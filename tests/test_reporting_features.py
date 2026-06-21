@@ -131,10 +131,13 @@ def test_generate_console_report():
     # Without color
     report = gptscan.generate_console_report(results, use_color=False)
     assert "--- GPT SCAN - CONSOLE TRIAGE REPORT (2 findings) ---" in report
-    assert "Local: 90%  AI: 95%  VT: https://www.virustotal.com/gui/file/" in report
-    assert "Admin: Admin note  User: User note" in report
+    assert "Local: 90%  AI: 95%" in report
+    assert "VT: https://www.virustotal.com/gui/file/" in report
+    assert "Admin: Admin note" in report
+    assert "User: User note" in report
     assert "> dangerous_code()" in report
-    assert "[2] LOW RISK - safe.py:1" in report
+    assert "[1] HIGH RISK - suspicious.py:10" in report
+    assert "[2] LOW RISK - safe.py" in report
     assert "Local: 10%" in report
     assert "> print('ok')" in report
 
@@ -144,6 +147,8 @@ def test_generate_console_report():
     assert "\033[0;90mLOW RISK\033[0m" in report_color
     # Verify dimmed index
     assert "\033[0;90m[1]\033[0m" in report_color
+    # Verify bolding on file location
+    assert "\033[1msuspicious.py:10\033[0m" in report_color
     # Verify dimmed labels and emphasized values (scores >= 50%)
     assert "\033[0;90mLocal:\033[0m \033[1;91m\033[1m90%\033[0m" in report_color
     assert "\033[0;90mAI:\033[0m \033[1;91m\033[1m95%\033[0m" in report_color

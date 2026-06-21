@@ -4979,13 +4979,13 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         return f"{conf_str}"
 
     for i, r in enumerate(results, 1):
-        path = r.get("path", "unknown")
+        path = html.unescape(r.get("path", "unknown")).strip()
         own_conf = r.get("own_conf", "0%")
         gpt_conf = r.get("gpt_conf", "")
-        admin = r.get("admin_desc", "")
-        user = r.get("end-user_desc", "")
+        admin = html.unescape(r.get("admin_desc", "")).strip()
+        user = html.unescape(r.get("end-user_desc", "")).strip()
         line_num = r.get("line", "-")
-        snippet = r.get("snippet", "")
+        snippet = html.unescape(r.get("snippet", "")).strip()
 
         conf_val = get_effective_threat_level(own_conf, gpt_conf)
         risk = get_risk_category(conf_val, Config.THRESHOLD)
@@ -4998,36 +4998,35 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
         location = f"{path}:{line_num}" if line_num != "-" else path
-        lines.append(f"{GRAY}[{i}]{RESET} {BOLD}{risk_label} - {location}{RESET}")
+        lines.append(f"{GRAY}[{i}]{RESET} {risk_label} - {BOLD}{location}{RESET}")
 
-        # Consolidate scores and links
-        meta_parts = [f"{GRAY}Local:{RESET} {color_conf(own_conf)}"]
+        # Scores
+        scores = [f"{GRAY}Local:{RESET} {color_conf(own_conf)}"]
         if gpt_conf:
-            meta_parts.append(f"{GRAY}AI:{RESET} {color_conf(gpt_conf)}")
+            scores.append(f"{GRAY}AI:{RESET} {color_conf(gpt_conf)}")
+        lines.append(f"    {'  '.join(scores)}")
 
+        # Links
+        links = []
         vt_url = get_virustotal_url(path, snippet)
         if vt_url:
-            meta_parts.append(f"{GRAY}VT:{RESET} {vt_url}")
+            links.append(f"{GRAY}VT:{RESET} {vt_url}")
 
         online_url = get_online_url(path, line_num)
         if online_url:
-            meta_parts.append(f"{GRAY}Online:{RESET} {online_url}")
+            links.append(f"{GRAY}Online:{RESET} {online_url}")
 
-        lines.append(f"    {'  '.join(meta_parts)}")
+        if links:
+            lines.append(f"    {'  '.join(links)}")
 
-        # Consolidate AI analysis
-        if admin or user:
-            analysis_parts = []
-            if admin:
-                clean_admin = admin.strip().replace('\n', ' ')
-                analysis_parts.append(f"{GRAY}Admin:{RESET} {clean_admin}")
-            if user:
-                clean_user = user.strip().replace('\n', ' ')
-                analysis_parts.append(f"{GRAY}User:{RESET} {clean_user}")
-            lines.append(f"    {'  '.join(analysis_parts)}")
+        # AI analysis
+        if admin:
+            lines.append(f"    {GRAY}Admin:{RESET} {admin.replace('\n', ' ')}")
+        if user:
+            lines.append(f"    {GRAY}User:{RESET} {user.replace('\n', ' ')}")
 
         # Snippet preview (up to 3 lines)
-        snippet_lines = snippet.strip().split('\n')[:3]
+        snippet_lines = snippet.split('\n')[:3]
         for sl in snippet_lines:
             if len(sl) > 100:
                 sl = sl[:97] + "..."
