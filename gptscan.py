@@ -83,13 +83,13 @@ _virtual_source_cache: Dict[str, str] = {}
 
 
 def resolve_remote_url(url: str) -> str:
-    """Resolve GitHub/GitLab/Bitbucket/Pastebin/Hugging Face repository, blob, tag, or PR URLs to their raw content or archive.
+    """Resolve GitHub/GitLab/Bitbucket/Pastebin/Hugging Face repository, file, tag, or pull request web links to their raw content or archive.
 
     Args:
-        url: The original URL to resolve.
+        url: The original web link to resolve.
 
     Returns:
-        A resolved URL pointing to raw content or a downloadable archive.
+        A resolved web link pointing to raw content or a downloadable archive.
     """
     url = url.strip()
     if not url.lower().startswith(('http://', 'https://')):
