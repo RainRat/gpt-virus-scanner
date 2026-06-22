@@ -12,7 +12,7 @@ def test_unpack_diff_single_file():
     assert len(results) == 1
     name, snippet = results[0]
     assert "test.diff [file.py @ line 1]" == name
-    assert b" print(\"hello\")\n+import os; os.system(\"evil\")" == snippet
+    assert b"print(\"hello\")\nimport os; os.system(\"evil\")" == snippet
 
 def test_unpack_diff_multi_file():
     content = b"""--- a/a.py
@@ -29,9 +29,9 @@ def test_unpack_diff_multi_file():
     results = list(unpack_content("test.diff", content))
     assert len(results) == 2
     assert "test.diff [a.py @ line 10]" == results[0][0]
-    assert b"+new" == results[0][1]
+    assert b"new" == results[0][1]
     assert "test.diff [b.js @ line 5]" == results[1][0]
-    assert b"+eval(\"malicious\")\n context" == results[1][1]
+    assert b"eval(\"malicious\")\ncontext" == results[1][1]
 
 def test_unpack_diff_no_additions():
     content = b"""--- a/file.py
@@ -52,7 +52,7 @@ def test_unpack_diff_added_file():
     results = list(unpack_content("test.diff", content))
     assert len(results) == 1
     assert "test.diff [new_script.sh @ line 1]" == results[0][0]
-    assert b"+#!/bin/bash\n+rm -rf /" == results[0][1]
+    assert b"#!/bin/bash\nrm -rf /" == results[0][1]
 
 def test_unpack_diff_complex_header():
     # Diff with tabs and timestamps in header
@@ -64,4 +64,4 @@ def test_unpack_diff_complex_header():
     results = list(unpack_content("patch.patch", content))
     assert len(results) == 1
     assert "patch.patch [new/file.py @ line 42]" == results[0][0]
-    assert b"+suspicious_call()" == results[0][1]
+    assert b"suspicious_call()" == results[0][1]

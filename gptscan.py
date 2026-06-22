@@ -3993,17 +3993,18 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             hunk_info = None
             hunk_lines = []
 
+            has_additions = False
+
             def finalize_hunk():
-                if current_file and hunk_info and hunk_lines:
-                    # Only yield if there's at least one added line in this hunk
-                    if any(line.startswith('+') and not line.startswith('+++') for line in hunk_lines):
-                        hunk_text = "\n".join(hunk_lines)
-                        yield (f"{name} [{current_file} @ {hunk_info}]", hunk_text.encode('utf-8'))
+                nonlocal has_additions
+                if current_file and hunk_info and hunk_lines and has_additions:
+                    hunk_text = "\n".join(hunk_lines)
+                    yield (f"{name} [{current_file} @ {hunk_info}]", hunk_text.encode('utf-8'))
+                has_additions = False
 
             for line in lines:
                 if line.startswith('+++ '):
                     yield from finalize_hunk()
-                    # Extract file path: +++ b/path/to/file.py -> path/to/file.py
                     path_part = line[4:].split('\t')[0].strip()
                     if path_part.startswith(('a/', 'b/')) and '/' in path_part:
                         path_part = path_part[2:]
@@ -4012,15 +4013,23 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                     hunk_lines = []
                 elif line.startswith('@@ ') and current_file:
                     yield from finalize_hunk()
-                    # Extract starting line: @@ -1,1 +1,2 @@ -> line 1
                     match = re.search(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@', line)
                     hunk_info = f"line {match.group(1)}" if match else "unknown"
                     hunk_lines = []
                 elif hunk_info is not None:
-                    if line.startswith((' ', '+')):
-                        hunk_lines.append(line)
-                    elif not line.startswith('-'):
-                        # End of hunk if line doesn't start with context/add/remove
+                    if line.startswith('+'):
+                        if not line.startswith('+++ '):
+                            hunk_lines.append(line[1:])
+                            has_additions = True
+                    elif line.startswith(' '):
+                        hunk_lines.append(line[1:])
+                    elif line.startswith('-'):
+                        if line.startswith('--- '):
+                            yield from finalize_hunk()
+                            hunk_info = None
+                            hunk_lines = []
+                        continue  # Skip deletions
+                    else:
                         yield from finalize_hunk()
                         hunk_info = None
                         hunk_lines = []
