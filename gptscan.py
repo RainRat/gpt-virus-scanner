@@ -4966,7 +4966,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
 
     count = len(results)
     finding_text = "finding" if count == 1 else "findings"
-    lines = [f"{BOLD}--- GPT SCAN - CONSOLE TRIAGE REPORT ({count} {finding_text}) ---{RESET}", ""]
+    lines = [f"{BOLD}--- GPT SCAN - RESULTS SUMMARY ({count} {finding_text}) ---{RESET}", ""]
 
     def color_conf(conf_str):
         if not use_color:
@@ -4979,13 +4979,13 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         return f"{conf_str}"
 
     for i, r in enumerate(results, 1):
-        path = r.get("path", "unknown")
+        path = html.unescape(str(r.get("path", "unknown"))).strip()
         own_conf = r.get("own_conf", "0%")
         gpt_conf = r.get("gpt_conf", "")
-        admin = r.get("admin_desc", "")
-        user = r.get("end-user_desc", "")
+        admin = html.unescape(str(r.get("admin_desc", ""))).strip()
+        user = html.unescape(str(r.get("end-user_desc", ""))).strip()
         line_num = r.get("line", "-")
-        snippet = r.get("snippet", "")
+        snippet = html.unescape(str(r.get("snippet", ""))).strip()
 
         conf_val = get_effective_threat_level(own_conf, gpt_conf)
         risk = get_risk_category(conf_val, Config.THRESHOLD)
@@ -4998,20 +4998,20 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
         location = f"{path}:{line_num}" if line_num != "-" else path
-        lines.append(f"{GRAY}[{i}]{RESET} {BOLD}{risk_label} - {location}{RESET}")
+        lines.append(f"{GRAY}[{i}]{RESET} {BOLD}{risk_label} {BOLD}- {location}{RESET}")
 
         # Consolidate scores and links
-        meta_parts = [f"{GRAY}Local:{RESET} {color_conf(own_conf)}"]
+        meta_parts = [f"{GRAY}Local: {color_conf(own_conf)}{RESET}"]
         if gpt_conf:
-            meta_parts.append(f"{GRAY}AI:{RESET} {color_conf(gpt_conf)}")
+            meta_parts.append(f"{GRAY}AI: {color_conf(gpt_conf)}{RESET}")
 
         vt_url = get_virustotal_url(path, snippet)
         if vt_url:
-            meta_parts.append(f"{GRAY}VT:{RESET} {vt_url}")
+            meta_parts.append(f"{GRAY}VT: {vt_url}{RESET}")
 
         online_url = get_online_url(path, line_num)
         if online_url:
-            meta_parts.append(f"{GRAY}Online:{RESET} {online_url}")
+            meta_parts.append(f"{GRAY}Online: {online_url}{RESET}")
 
         lines.append(f"    {'  '.join(meta_parts)}")
 
@@ -5019,11 +5019,11 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
         if admin or user:
             analysis_parts = []
             if admin:
-                clean_admin = admin.strip().replace('\n', ' ')
-                analysis_parts.append(f"{GRAY}Admin:{RESET} {clean_admin}")
+                clean_admin = admin.replace('\n', ' ')
+                analysis_parts.append(f"{GRAY}Admin: {clean_admin}{RESET}")
             if user:
-                clean_user = user.strip().replace('\n', ' ')
-                analysis_parts.append(f"{GRAY}User:{RESET} {clean_user}")
+                clean_user = user.replace('\n', ' ')
+                analysis_parts.append(f"{GRAY}User: {clean_user}{RESET}")
             lines.append(f"    {'  '.join(analysis_parts)}")
 
         # Snippet preview (up to 3 lines)
