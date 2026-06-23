@@ -4998,7 +4998,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
         location = f"{path}:{line_num}" if line_num != "-" else path
-        lines.append(f"{GRAY}[{i}]{RESET} {BOLD}{risk_label} - {location}{RESET}")
+        lines.append(f"{GRAY}[{i}]{RESET} {BOLD}{risk_label}{BOLD} - {location}{RESET}")
 
         # Consolidate scores and links
         meta_parts = [f"{GRAY}Local:{RESET} {color_conf(own_conf)}"]
