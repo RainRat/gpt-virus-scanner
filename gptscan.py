@@ -3583,13 +3583,13 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                     header_match = re.match(r'^\[\s*([^\]]+)\s*\](?:\s*#.*)?$', line)
                     if header_match:
                         section = header_match.group(1).strip()
-                        # Flat script sections: [project.scripts], [tool.pdm.scripts], [tool.poe.tasks], etc.
-                        if re.match(r'^(?:.*?\.)?(?:scripts|tasks)$', section, re.IGNORECASE) or \
+                        # Flat script sections: [project.scripts], [project.gui-scripts], [tool.pdm.scripts], [tool.poe.tasks], etc.
+                        if re.match(r'^(?:.*?\.)?(?:scripts|tasks|gui-scripts)$', section, re.IGNORECASE) or \
                            section.lower() == 'tool.pdm.dev-dependencies':
                             in_script_section = True
                             current_nested_script = None
                         # Nested script sections: [tool.pdm.scripts.test], [tool.poe.tasks.test]
-                        elif match := re.match(r'^(?:.*?\.)?(?:scripts|tasks)\.(.+)$', section, re.IGNORECASE):
+                        elif match := re.match(r'^(?:.*?\.)?(?:scripts|tasks|gui-scripts)\.(.+)$', section, re.IGNORECASE):
                             in_script_section = True
                             current_nested_script = match.group(1).strip()
                         else:
@@ -3599,7 +3599,8 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
 
                     if in_script_section:
                         # Match key = "value" or key = { ... }
-                        match = re.match(r'^([^=\s]+)\s*=\s*(.*)', line)
+                        # Key can be quoted: "quoted key" = "value"
+                        match = re.match(r'^((?:"[^"]*"|\'[^\']*\'|[^=\s]+))\s*=\s*(.*)', line)
                         if match:
                             script_key = match.group(1).strip().strip('"\'')
                             command_val = match.group(2).strip()
