@@ -83,13 +83,13 @@ _virtual_source_cache: Dict[str, str] = {}
 
 
 def resolve_remote_url(url: str) -> str:
-    """Resolve GitHub/GitLab/Bitbucket/Pastebin/Hugging Face repository, blob, tag, or PR URLs to their raw content or archive.
+    """Resolve GitHub/GitLab/Bitbucket/Pastebin/Hugging Face repository, file, tag, or pull request web links to their raw content or archive.
 
     Args:
-        url: The original URL to resolve.
+        url: The original web link to resolve.
 
     Returns:
-        A resolved URL pointing to raw content or a downloadable archive.
+        A resolved web link pointing to raw content or a downloadable archive.
     """
     url = url.strip()
     if not url.lower().startswith(('http://', 'https://')):
@@ -99,14 +99,14 @@ def resolve_remote_url(url: str) -> str:
     url = re.sub(r'/$', '', url)
     url = re.sub(r'#.*$', '', url)
 
-    # 1. GitHub Blob -> Raw
+    # 1. GitHub File -> Raw
     # Example: https://github.com/user/repo/blob/main/script.py -> https://raw.githubusercontent.com/user/repo/main/script.py
     gh_blob_match = re.match(r'https?://(?:www\.)?github\.com/([^/]+)/([^/]+)/blob/(.+)', url, re.IGNORECASE)
     if gh_blob_match:
         user, repo, path = gh_blob_match.groups()
         return f"https://raw.githubusercontent.com/{user}/{repo}/{path}"
 
-    # 2. GitHub PR/Commit -> Diff
+    # 2. GitHub pull request/Commit -> Diff
     # Example: https://github.com/user/repo/pull/1 -> https://github.com/user/repo/pull/1.diff
     # Example: https://github.com/user/repo/commit/abc -> https://github.com/user/repo/commit/abc.diff
     gh_patch_match = re.match(r'(https?://(?:www\.)?github\.com/[^/]+/[^/]+/(?:pull/\d+|commit/[a-f0-9]+))(?:/.*)?$', url, re.IGNORECASE)
@@ -141,14 +141,14 @@ def resolve_remote_url(url: str) -> str:
         if repo.lower() not in ('settings', 'pulls', 'issues', 'actions', 'projects', 'wiki', 'security', 'insights', 'pull'):
             return f"https://github.com/{user}/{repo}/archive/HEAD.zip"
 
-    # 7. GitLab Blob -> Raw
+    # 7. GitLab File -> Raw
     # Example: https://gitlab.com/user/repo/-/blob/main/script.py -> https://gitlab.com/user/repo/-/raw/main/script.py
     gl_blob_match = re.match(r'(https?://(?:www\.)?gitlab\.com/.+?)/-/blob/(.+)', url, re.IGNORECASE)
     if gl_blob_match:
         base, path = gl_blob_match.groups()
         return f"{base}/-/raw/{path}"
 
-    # 8. GitLab MR -> Diff
+    # 8. GitLab merge request -> Diff
     # Example: https://gitlab.com/user/repo/-/merge_requests/1 -> https://gitlab.com/user/repo/-/merge_requests/1.diff
     gl_mr_match = re.match(r'(https?://(?:www\.)?gitlab\.com/(.+)/([^/]+)/-/merge_requests/\d+)(?:/.*)?$', url, re.IGNORECASE)
     if gl_mr_match:
@@ -184,7 +184,7 @@ def resolve_remote_url(url: str) -> str:
         user, repo, ref, path = bb_raw_match.groups()
         return f"https://bitbucket.org/{user}/{repo}/raw/{ref}/{path}"
 
-    # 13. Bitbucket PR/Commit -> Diff
+    # 13. Bitbucket pull request/Commit -> Diff
     # Example: https://bitbucket.org/user/repo/pull-requests/1 -> https://bitbucket.org/user/repo/pull-requests/1/diff
     # Example: https://bitbucket.org/user/repo/commits/abc -> https://bitbucket.org/user/repo/commits/abc/diff
     bb_diff_match = re.match(r'(https?://(?:www\.)?bitbucket\.org/[^/]+/[^/]+/(?:pull-requests/\d+|commits/[a-f0-9]+))(?:/.*)?$', url, re.IGNORECASE)
@@ -212,7 +212,7 @@ def resolve_remote_url(url: str) -> str:
         if paste_id.lower() not in ('archive', 'tools', 'faq', 'contact', 'night_mode', 'pro', 'doc', 'signup', 'login', 'api', 'trends', 'languages'):
             return f"https://pastebin.com/raw/{paste_id}"
 
-    # 17. Hugging Face Blob -> Raw
+    # 17. Hugging Face File -> Raw
     # Example: https://huggingface.co/user/repo/blob/main/script.py -> https://huggingface.co/user/repo/raw/main/script.py
     hf_blob_match = re.match(r'(https?://(?:www\.)?huggingface\.co/.+)/blob/(.+)', url, re.IGNORECASE)
     if hf_blob_match:
@@ -249,10 +249,10 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
 
 
 def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = None) -> bytes:
-    """Fetches content from a URL with safety limits. Automatically resolves GitHub/GitLab links.
+    """Fetches content from a web link with safety limits. Automatically resolves GitHub/GitLab links.
 
     Args:
-        url: The URL to fetch.
+        url: The web link to fetch.
         timeout: Connection timeout in seconds.
         max_size: Maximum download size in bytes. Defaults to Config.MAX_FILE_SIZE.
 
@@ -797,8 +797,8 @@ def browse_dir_click() -> None:
 
 
 def select_url_click() -> None:
-    """Handle the URL input dialog and populate the textbox."""
-    url_selected = simpledialog.askstring("Scan URL", "Enter a script URL to scan (http/https):")
+    """Handle the web link input dialog and populate the textbox."""
+    url_selected = simpledialog.askstring("Scan Web Link", "Enter a script web link to scan (http/https):")
     if url_selected:
         _set_scan_target(url_selected.strip())
         button_click()
@@ -1823,14 +1823,14 @@ def _get_git_info(path: str) -> Tuple[Optional[str], Optional[str]]:
 
 
 def get_online_url(path: str, line: Union[int, str] = 1) -> Optional[str]:
-    """Construct a web URL for a local Git-tracked file or a remote target.
+    """Construct a web link for a local Git-tracked file or a remote target.
 
     Args:
         path: File path or remote target name.
         line: The line number to link to.
 
     Returns:
-        The online URL string, or None if it could not be resolved.
+        The online web link string, or None if it could not be resolved.
     """
     line_val = int(line) if str(line).isdigit() and int(line) > 0 else None
 
@@ -1838,7 +1838,7 @@ def get_online_url(path: str, line: Union[int, str] = 1) -> Optional[str]:
     if path.startswith("[URL] "):
         url = path[6:].strip()
 
-        # Try to restore blob view from raw URLs for better UX
+        # Try to restore file view from raw web links for better UX
         # GitHub Raw: https://raw.githubusercontent.com/user/repo/rev/path
         gh_raw_match = re.match(r'https?://raw\.githubusercontent\.com/([^/]+)/([^/]+)/(.+)', url, re.IGNORECASE)
         if gh_raw_match:
@@ -1981,7 +1981,7 @@ def get_git_diff(path: str = ".", ref: str = "HEAD") -> str:
 
 
 def _normalize_targets(targets: Union[str, List[str], Path]) -> List[str]:
-    """Normalize scan targets (Path, string, or list) into a deduplicated list of strings."""
+    """Normalize scan targets (Path, string, or list) into a unique list of strings."""
     if isinstance(targets, Path):
         targets = [str(targets)]
     elif isinstance(targets, str):
@@ -2008,7 +2008,7 @@ def collect_files(targets: Union[str, List[str]], modified_since: Optional[float
     Returns
     -------
     List[Path]
-        A deduplicated list of files to scan.
+        A unique list of files to scan.
     """
     targets = _normalize_targets(targets)
 
@@ -2239,14 +2239,14 @@ def get_effective_sha256(path: str, snippet: Optional[str] = None) -> str:
 
 
 def get_virustotal_url(path: str, snippet: Optional[str] = None) -> Optional[str]:
-    """Construct a VirusTotal URL for a local file or a virtual snippet.
+    """Construct a VirusTotal web link for a local file or a virtual snippet.
 
     Args:
         path: File path or virtual target name.
         snippet: The code snippet content (required for virtual paths).
 
     Returns:
-        The VirusTotal URL string, or None if the hash could not be calculated.
+        The VirusTotal web link string, or None if the hash could not be calculated.
     """
     h = get_effective_sha256(path, snippet)
 
@@ -3448,8 +3448,8 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
     """Extract scan-ready snippets from various container formats.
 
     This function recursively unpacks archives (ZIP, TAR), Jupyter Notebooks,
-    package manifests (package.json, pyproject.toml), Dockerfiles, Makefiles,
-    CI/CD workflows (YAML), web files (HTML, SVG), and Unified Diffs.
+    project and build files (package.json, pyproject.toml), Dockerfiles, Makefiles,
+    automation tasks (YAML), web files (HTML, SVG), and Unified Diffs.
     It ensures that only relevant code blocks and scripts are processed.
 
     Args:
@@ -3529,7 +3529,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 4. Check for package manifests (package.json, composer.json, deno.json/jsonc, pyproject.toml, tasks.json, launch.json)
+    # 4. Check for project and build files (package.json, composer.json, deno.json/jsonc, pyproject.toml, tasks.json, launch.json)
     lowered_check = check_name.lower()
     check_basename = os.path.basename(lowered_check)
     if check_basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'tasks.json', 'launch.json')):
@@ -5878,7 +5878,7 @@ def import_from_url() -> None:
     if not tree:
         return
 
-    url = simpledialog.askstring("Import from URL", "Enter the URL of the scan results to import:")
+    url = simpledialog.askstring("Import from Web Link", "Enter the web link of the scan results to import:")
     if not url:
         return
 
@@ -5891,13 +5891,13 @@ def import_from_url() -> None:
         data_to_import = parse_report_content(content, filename_hint=url)
 
         if not data_to_import:
-            messagebox.showwarning("Import Warning", "No valid scan results found at the provided URL.")
+            messagebox.showwarning("Import Warning", "No valid scan results found at the provided web link.")
             return
 
         _finalize_import(data_to_import, url)
 
     except Exception as err:
-        messagebox.showerror("Import Failed", f"Could not import results from URL:\n{err}")
+        messagebox.showerror("Import Failed", f"Could not import results from web link:\n{err}")
 
 
 def clear_ai_cache() -> None:
@@ -7160,7 +7160,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     file_menu = tk.Menu(menubar, tearoff=0)
     file_menu.add_command(label="Import Results...", command=import_results, accelerator="Ctrl+O")
     file_menu.add_command(label="Import from Clipboard", command=import_from_clipboard, accelerator="Ctrl+V")
-    file_menu.add_command(label="Import from URL...", command=import_from_url)
+    file_menu.add_command(label="Import from Web Link...", command=import_from_url)
     file_menu.add_command(label="Export Results...", command=export_results, accelerator="Ctrl+E")
     file_menu.add_command(label="Manage Exclusions...", command=manage_exclusions)
     file_menu.add_command(label="Manage Extensions...", command=manage_extensions)
@@ -7223,7 +7223,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu = tk.Menu(browse_button, tearoff=0)
     browse_menu.add_command(label="Scan File(s)...", command=browse_file_click, accelerator="Ctrl+Shift+O")
     browse_menu.add_command(label="Scan Folder...", command=browse_dir_click, accelerator="Ctrl+Shift+F")
-    browse_menu.add_command(label="Scan URL...", command=select_url_click, accelerator="Ctrl+Shift+U")
+    browse_menu.add_command(label="Scan Web Link...", command=select_url_click, accelerator="Ctrl+Shift+U")
     browse_menu.add_command(label="Scan File List...", command=browse_file_list_click)
 
     recent_menu = tk.Menu(browse_menu, tearoff=0)
@@ -7376,10 +7376,10 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     api_key_var.trace_add("write", on_api_key_change)
 
-    ttk.Label(provider_frame, text="API Base URL:").grid(row=3, column=0, sticky='w', padx=(10, 5), pady=5)
+    ttk.Label(provider_frame, text="API Base Web Link:").grid(row=3, column=0, sticky='w', padx=(10, 5), pady=5)
     api_entry = ttk.Entry(provider_frame)
     api_entry.grid(row=3, column=1, columnspan=3, sticky='ew', padx=(5, 10), pady=5)
-    bind_hover_message(api_entry, "Set a custom URL for the AI service (e.g., http://localhost:11434/v1 for Ollama).")
+    bind_hover_message(api_entry, "Set a custom web link for the AI service (e.g., http://localhost:11434/v1 for Ollama).")
 
     api_base_var = tk.StringVar(value=Config.api_base or "")
     api_entry.config(textvariable=api_base_var)
@@ -7572,7 +7572,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     results_menu = tk.Menu(results_button, tearoff=0)
     results_menu.add_command(label="Import Results...", command=import_results, accelerator="Ctrl+O")
     results_menu.add_command(label="Import from Clipboard", command=import_from_clipboard, accelerator="Ctrl+V")
-    results_menu.add_command(label="Import from URL...", command=import_from_url)
+    results_menu.add_command(label="Import from Web Link...", command=import_from_url)
     results_menu.add_command(label="Export Results...", command=export_results, accelerator="Ctrl+E")
     results_menu.add_separator()
     results_menu.add_command(label="Clear Results", command=clear_results)
@@ -7720,7 +7720,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Scan scripts, project files, and web links for dangerous code using AI. Works with archives, Notebooks, package manifests, CI/CD workflows, Docker, deceptive filenames, and Git changes.",
+        description="Scan scripts, project files, and web links for dangerous code using AI. Works with archives, Notebooks, project and build files, automation tasks, Docker, deceptive filenames, and Git changes.",
         epilog="Examples:\n"
                "  # Scan a folder and use AI for analysis\n"
                "  python3 gptscan.py ./my_scripts --cli --use-gpt\n\n"
@@ -7802,7 +7802,7 @@ def main():
     scan_group.add_argument(
         '--modified',
         type=str,
-        help="Only scan files changed within this timeframe (for example: '24h', '1h', '7d')."
+        help="Only scan files changed within this time (for example: '24h', '1h', '7d')."
     )
     scan_group.add_argument(
         '--downloads',
@@ -7943,7 +7943,7 @@ def main():
     ai_group.add_argument(
         '--api-base',
         type=str,
-        help='A custom URL for the AI service (useful for local servers).'
+        help='A custom web link for the AI service (useful for local servers).'
     )
     ai_group.add_argument(
         '--rate-limit',
