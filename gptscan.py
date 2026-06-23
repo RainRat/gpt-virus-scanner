@@ -4998,7 +4998,8 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
         location = f"{path}:{line_num}" if line_num != "-" else path
-        lines.append(f"{GRAY}[{i}]{RESET} {BOLD}{risk_label} - {location}{RESET}")
+        # Re-apply BOLD after risk_label's RESET to ensure location is bolded
+        lines.append(f"{GRAY}[{i}]{RESET} {BOLD}{risk_label}{BOLD} - {location}{RESET}")
 
         # Consolidate scores and links
         meta_parts = [f"{GRAY}Local:{RESET} {color_conf(own_conf)}"]
@@ -5015,16 +5016,15 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
 
         lines.append(f"    {'  '.join(meta_parts)}")
 
-        # Consolidate AI analysis
+        # AI analysis with preserved newlines
         if admin or user:
-            analysis_parts = []
+            lines.append("")
             if admin:
-                clean_admin = admin.strip().replace('\n', ' ')
-                analysis_parts.append(f"{GRAY}Admin:{RESET} {clean_admin}")
+                for line in admin.strip().splitlines():
+                    lines.append(f"    {GRAY}Admin:{RESET} {line}")
             if user:
-                clean_user = user.strip().replace('\n', ' ')
-                analysis_parts.append(f"{GRAY}User:{RESET} {clean_user}")
-            lines.append(f"    {'  '.join(analysis_parts)}")
+                for line in user.strip().splitlines():
+                    lines.append(f"    {GRAY}User:{RESET} {line}")
 
         # Snippet preview (up to 3 lines)
         snippet_lines = snippet.strip().split('\n')[:3]
