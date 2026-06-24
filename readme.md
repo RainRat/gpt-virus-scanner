@@ -80,8 +80,13 @@ Access these options from the **Browse** menu:
 *   **Scan SSH Configuration (Ctrl+Shift+R):** Scan all common SSH configuration and authorized_keys files.
 *   **Scan Python Packages (Ctrl+Shift+Y):** Scan your installed Python packages for malicious code.
 *   **Scan Node.js Packages (Ctrl+Shift+M):** Scan your global Node.js packages.
+*   **Scan Ruby Gems:** Scan all folders containing installed Ruby gems.
+*   **Scan PHP Packages:** Scan all folders containing global PHP Composer packages.
+*   **Scan Rust Packages:** Scan all folders containing global Rust Cargo packages.
+*   **Scan Go Packages:** Scan all folders containing Go packages.
 *   **Scan Browser Extensions (Ctrl+Shift+W):** Scan your browser extension folders for malicious scripts.
 *   **Scan Editor Extensions (Ctrl+Shift+X):** Scan extensions for VS Code, Sublime Text, and Vim.
+*   **Scan Documents:** Scan your standard Documents folder for suspicious files.
 *   **Scan Downloads (Ctrl+Shift+J):** Scan your standard Downloads folder for suspicious files.
 *   **Scan Desktop (Ctrl+Shift+L):** Scan your standard Desktop folder for suspicious files.
 *   **Scan Temporary Folders (Ctrl+Shift+Z):** Scan common temporary folders for suspicious files.
@@ -190,6 +195,26 @@ Scan all folders containing global Node.js packages:
 python3 gptscan.py --nodejs-packages --cli
 ```
 
+Scan all folders containing installed Ruby gems:
+```bash
+python3 gptscan.py --ruby-gems --cli
+```
+
+Scan all folders containing global PHP Composer packages:
+```bash
+python3 gptscan.py --php-packages --cli
+```
+
+Scan all folders containing global Rust Cargo packages:
+```bash
+python3 gptscan.py --rust-packages --cli
+```
+
+Scan all folders containing Go packages:
+```bash
+python3 gptscan.py --go-packages --cli
+```
+
 Scan all common browser extension folders:
 ```bash
 python3 gptscan.py --browser-extensions --cli
@@ -248,6 +273,11 @@ python3 gptscan.py --system-services --cli
 Scan SSH configuration and authorized keys:
 ```bash
 python3 gptscan.py --ssh-config --cli
+```
+
+Scan your standard Documents folder:
+```bash
+python3 gptscan.py --documents --cli
 ```
 
 Scan common temporary folders:
