@@ -4813,12 +4813,12 @@ def _consume_scan_events(
                 risk = get_risk_category(conf, effective_threshold)
 
                 if result_handler(data):
-                    if risk == 'high':
+                    if risk in ('high', 'medium'):
                         threats_found += 1
-                        high_risk_found += 1
-                    elif risk == 'medium':
-                        threats_found += 1
-                        medium_risk_found += 1
+                        if risk == 'high':
+                            high_risk_found += 1
+                        else:
+                            medium_risk_found += 1
             elif event_type == 'summary':
                 total_files, total_bytes, elapsed_time = data
                 metrics['total_files'] = total_files
