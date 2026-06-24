@@ -5017,14 +5017,16 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
 
         # Consolidate AI analysis
         if admin or user:
-            analysis_parts = []
+            lines.append("")
             if admin:
-                clean_admin = admin.strip().replace('\n', ' ')
-                analysis_parts.append(f"{GRAY}Admin:{RESET} {clean_admin}")
+                for line in admin.strip().splitlines():
+                    lines.append(f"    {GRAY}Admin:{RESET} {line}")
             if user:
-                clean_user = user.strip().replace('\n', ' ')
-                analysis_parts.append(f"{GRAY}User:{RESET} {clean_user}")
-            lines.append(f"    {'  '.join(analysis_parts)}")
+                if admin:
+                    lines.append("")
+                for line in user.strip().splitlines():
+                    lines.append(f"    {GRAY}User:{RESET} {line}")
+            lines.append("")
 
         # Snippet preview (up to 3 lines)
         snippet_lines = snippet.strip().split('\n')[:3]
