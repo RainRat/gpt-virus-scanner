@@ -3320,6 +3320,8 @@ def analyze_selected_with_ai(event: Optional[tk.Event] = None) -> None:
                 "cleaned_snippet": cleaned_snippet,
                 "line": values[6] if len(values) > 6 else 1,
                 "item_id": item_id,
+                "admin_desc": values[2],
+                "user_desc": values[3],
             })
 
     if not gpt_requests:
@@ -4940,6 +4942,12 @@ def batch_ai_analysis_events(
                 enduser_desc = json_data["end-user"]
                 chatgpt_conf_percent = format_percent(json_data["threat-level"])
 
+            # Prepend pre-existing notes if present
+            if request.get("admin_desc"):
+                admin_desc = f"{request['admin_desc']}\n\n{admin_desc}"
+            if request.get("user_desc"):
+                enduser_desc = f"{request['user_desc']}\n\n{enduser_desc}"
+
             result_data = (
                 request["path"],
                 request["percent"],
@@ -6529,8 +6537,18 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
                 if result:
                     # updated_vals: (path, own_conf, admin, user, gpt_conf, snippet)
                     updated_vals = list(vals)
-                    updated_vals[2] = result.get("administrator", "")
-                    updated_vals[3] = result.get("end-user", "")
+
+                    admin_note = result.get("administrator", "")
+                    user_note = result.get("end-user", "")
+
+                    # Prepend pre-existing notes if present
+                    if vals[2]:
+                        admin_note = f"{vals[2]}\n\n{admin_note}"
+                    if vals[3]:
+                        user_note = f"{vals[3]}\n\n{user_note}"
+
+                    updated_vals[2] = admin_note
+                    updated_vals[3] = user_note
                     # Safer extraction of threat-level
                     threat_level = result.get("threat-level", 0)
                     updated_vals[4] = format_percent(threat_level)
