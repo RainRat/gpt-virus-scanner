@@ -3666,7 +3666,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                 if command_val.startswith('{'):
                                     # Inline table
                                     # Robustly handle brackets and quotes within the inline table value
-                                    cmd_match = re.search(r'(?:cmd|command|shell|composite|script|expr)\s*=\s*("(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|\[(?:[^"\'\]]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*\])', command_val)
+                                    cmd_match = re.search(r'(?:cmd|command|shell|composite|script|expr)\s*=\s*("{3}(?:\\.|[^\\])*?"{3}(?!")|\'{3}(?:\\.|[^\\])*?\'{3}(?!\')|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|\[(?:[^"\'\]]|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')*\])', command_val)
                                     if cmd_match:
                                         yield from yield_pyproject_scripts(script_key, cmd_match.group(1).strip())
                                 else:
