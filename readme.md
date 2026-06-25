@@ -16,14 +16,14 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 
 ### Supported Sources
 *   **Scan Local & Web Files:** Scan files on your computer or directly from a web link.
-*   **Remote Repositories:** Scan code from GitHub (including Gists), GitLab, and Bitbucket (including Snippets, PRs, Commits, and Tags).
+*   **Remote Repositories:** Scan code from GitHub (including Gists), GitLab, and Bitbucket (including Snippets, pull requests, Commits, and Tags).
 *   **Web Snippets:** Scan from Pastebin and Hugging Face.
 
 ### File Format Support
 *   **Notebook Support:** Scan cells in `.ipynb` files for dangerous commands.
 *   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, and Docker Compose.
 *   **Archives:** Open `.zip`, `.tar`, and `.tar.gz` files automatically to scan the contents.
-*   **CI/CD Workflows:** Scan GitHub Actions, GitLab CI, and other YAML workflows for suspicious commands.
+*   **Automation Tasks:** Scan GitHub Actions, GitLab CI, and other YAML workflows for suspicious commands.
 *   **Web Files:** Scan HTML, SVG, and Markdown files for embedded scripts.
 *   **Unified Diffs:** Scan `.diff` and `.patch` files to review code changes.
 
@@ -56,7 +56,7 @@ Access these options from the **Browse** menu:
 *   **Scan File(s)... (Ctrl+Shift+O):** Select specific files to scan.
 *   **Scan Folder... (Ctrl+Shift+F):** Select an entire folder to scan.
 *   **Scan Recently Modified...:** Scan files changed within a certain time (like the last 24 hours).
-*   **Scan URL... (Ctrl+Shift+U):** Scan code or archives directly from a web link.
+*   **Scan Web Link... (Ctrl+Shift+U):** Scan code or archives directly from a web link.
 *   **Scan File List...:** Scan a list of files from a text file.
 *   **Scan Clipboard (Ctrl+Shift+V):** Scan code you have copied to your clipboard.
 
@@ -105,7 +105,7 @@ The scanner includes shortcuts for faster navigation.
 | **Scan Actions** | |
 | `Ctrl+Shift+O` | Scan File(s) |
 | `Ctrl+Shift+F` | Scan Folder |
-| `Ctrl+Shift+U` | Scan URL |
+| `Ctrl+Shift+U` | Scan Web Link |
 | `Ctrl+Shift+V` | Scan Clipboard |
 | `Ctrl+Shift+D` | Scan Git Diff |
 | `Ctrl+Shift+G` | Scan Git Hooks |
@@ -304,7 +304,7 @@ You can provide your API key in three ways:
 *Note: Do not share `apikey.txt` or commit it to a public repository.*
 
 #### Custom API Base (Advanced)
-If you use a local proxy or a custom endpoint (like a specific Ollama setup or an OpenAI-compatible server), you can set a custom **API Base** URL in the GUI or with the `--api-base` terminal flag.
+If you use a local proxy or a custom endpoint (like a specific Ollama setup or an OpenAI-compatible server), you can set a custom **API Base** web link in the GUI or with the `--api-base` terminal flag.
 
 ## Reviewing Results
 The scanner provides several ways to analyze and manage your results:
@@ -316,7 +316,7 @@ The scanner provides several ways to analyze and manage your results:
     *   **Rescan:** Scan the file again (useful after making changes).
     *   **Exclude:** Add the file or folder to your ignore list.
     *   **Check on VirusTotal:** Search for the file's hash on VirusTotal.
-    *   **View Online:** Open the source file in your web browser (for Git projects and remote URLs).
+    *   **View Online:** Open the source file in your web browser (for Git projects and remote web links).
 *   **Export & Import:**
     *   **Export Results:** Save your scan to a file (CSV, Markdown, HTML, JSON, or SARIF) via **File > Export Results...**.
     *   **Import Results:** Load previous scan results from any of the supported formats via **File > Import Results...** or by pasting them from your clipboard (`Ctrl+V`).

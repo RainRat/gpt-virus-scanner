@@ -36,7 +36,7 @@ def test_select_url_click_updates_textbox(mock_gui, monkeypatch):
     with patch("gptscan.simpledialog.askstring", return_value=test_url) as mock_ask:
         gptscan.select_url_click()
 
-        mock_ask.assert_called_once_with("Scan URL", "Enter a script URL to scan (http/https):")
+        mock_ask.assert_called_once_with("Scan Web Link", "Enter a script web link to scan (http/https):")
         assert gptscan.textbox.get() == test_url
         mock_button_click.assert_called_once()
 
