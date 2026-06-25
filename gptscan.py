@@ -7998,9 +7998,11 @@ def main():
         if not any([
             args.target, args.path, args.stdin, args.import_results, args.files,
             args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
-            args.shell_profiles, args.shell_history, args.system_path,
+            args.git_stash, args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
-            args.system_services, args.audit, args.modified
+            args.system_services, args.audit, args.modified, args.downloads, args.desktop,
+            args.python_packages, args.nodejs_packages, args.browser_extensions,
+            args.editor_extensions, args.ssh_config, args.temp
         ]):
             sys.exit(0)
 
