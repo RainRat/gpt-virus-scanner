@@ -99,6 +99,9 @@ def resolve_remote_url(url: str) -> str:
     url = re.sub(r'/$', '', url)
     url = re.sub(r'#.*$', '', url)
 
+    # Remove .git suffix from repository URLs
+    url = re.sub(r'\.git$', '', url, flags=re.IGNORECASE)
+
     # 1. GitHub Blob -> Raw
     # Example: https://github.com/user/repo/blob/main/script.py -> https://raw.githubusercontent.com/user/repo/main/script.py
     gh_blob_match = re.match(r'https?://(?:www\.)?github\.com/([^/]+)/([^/]+)/blob/(.+)', url, re.IGNORECASE)
@@ -148,11 +151,12 @@ def resolve_remote_url(url: str) -> str:
         base, path = gl_blob_match.groups()
         return f"{base}/-/raw/{path}"
 
-    # 8. GitLab MR -> Diff
+    # 8. GitLab MR/Commit -> Diff
     # Example: https://gitlab.com/user/repo/-/merge_requests/1 -> https://gitlab.com/user/repo/-/merge_requests/1.diff
-    gl_mr_match = re.match(r'(https?://(?:www\.)?gitlab\.com/(.+)/([^/]+)/-/merge_requests/\d+)(?:/.*)?$', url, re.IGNORECASE)
-    if gl_mr_match:
-        return f"{gl_mr_match.group(1)}.diff"
+    # Example: https://gitlab.com/user/repo/-/commit/abc -> https://gitlab.com/user/repo/-/commit/abc.diff
+    gl_patch_match = re.match(r'(https?://(?:www\.)?gitlab\.com/(.+)/([^/]+)/-/(?:merge_requests/\d+|commit/[a-f0-9]+))(?:/.*)?$', url, re.IGNORECASE)
+    if gl_patch_match:
+        return f"{gl_patch_match.group(1)}.diff"
 
     # 9. GitLab Snippet -> Raw
     # Example: https://gitlab.com/snippets/123 -> https://gitlab.com/snippets/123/raw
@@ -160,12 +164,13 @@ def resolve_remote_url(url: str) -> str:
     if gl_snippet_match:
         return f"{gl_snippet_match.group(1)}/raw"
 
-    # 10. GitLab Tag -> ZIP Archive
+    # 10. GitLab Tag/Branch -> ZIP Archive
     # Example: https://gitlab.com/user/repo/-/tags/v1.0 -> https://gitlab.com/user/repo/-/archive/v1.0/repo-v1.0.zip
-    gl_tag_match = re.match(r'(https?://(?:www\.)?gitlab\.com/(.+)/([^/]+))/-/tags/(.+)', url, re.IGNORECASE)
-    if gl_tag_match:
-        base, group, repo, tag = gl_tag_match.groups()
-        return f"{base}/-/archive/{tag}/{repo}-{tag}.zip"
+    # Example: https://gitlab.com/user/repo/-/tree/main -> https://gitlab.com/user/repo/-/archive/main/repo-main.zip
+    gl_ref_match = re.match(r'(https?://(?:www\.)?gitlab\.com/(.+)/([^/]+))/-/(?:tags|tree)/(.+)', url, re.IGNORECASE)
+    if gl_ref_match:
+        base, group, repo, ref = gl_ref_match.groups()
+        return f"{base}/-/archive/{ref}/{repo}-{ref}.zip"
 
     # 11. GitLab Repo -> ZIP Archive
     # Example: https://gitlab.com/user/repo -> https://gitlab.com/user/repo/-/archive/main/repo-main.zip
@@ -197,12 +202,14 @@ def resolve_remote_url(url: str) -> str:
     if bb_snippet_match:
         return f"{bb_snippet_match.group(1)}/raw"
 
-    # 15. Bitbucket Cloud Repo -> ZIP Archive
+    # 15. Bitbucket Cloud Tag/Branch/Repo -> ZIP Archive
     # Example: https://bitbucket.org/user/repo -> https://bitbucket.org/user/repo/get/HEAD.zip
-    bb_repo_match = re.match(r'https?://(?:www\.)?bitbucket\.org/([^/]+)/([^/]+)$', url, re.IGNORECASE)
-    if bb_repo_match:
-        user, repo = bb_repo_match.groups()
-        return f"https://bitbucket.org/{user}/{repo}/get/HEAD.zip"
+    # Example: https://bitbucket.org/user/repo/src/main/ -> https://bitbucket.org/user/repo/get/main.zip
+    bb_ref_match = re.match(r'https?://(?:www\.)?bitbucket\.org/([^/]+)/([^/]+)(?:/src/([^/]+))?/?$', url, re.IGNORECASE)
+    if bb_ref_match:
+        user, repo, ref = bb_ref_match.groups()
+        ref = ref or "HEAD"
+        return f"https://bitbucket.org/{user}/{repo}/get/{ref}.zip"
 
     # 16. Pastebin -> Raw
     # Example: https://pastebin.com/abcdefgh -> https://pastebin.com/raw/abcdefgh
