@@ -278,7 +278,7 @@ def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = Non
 
     # Ensure URL scheme is http or https to prevent SSRF/local file access
     if not url.lower().startswith(('http://', 'https://')):
-        raise ValueError(f"Unsupported URL scheme: {url.split(':', 1)[0] if ':' in url else 'unknown'}")
+        raise ValueError(f"Unsupported web link scheme: {url.split(':', 1)[0] if ':' in url else 'unknown'}")
 
     with urllib.request.urlopen(url, timeout=timeout) as response:
         content_length = response.getheader('Content-Length')
@@ -5987,7 +5987,7 @@ def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None,
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
         if not content.strip():
-            raise ValueError("File or URL content is empty.")
+            raise ValueError("File or web link content is empty.")
     except Exception as e:
         yield ('progress', (0, 1, f"Error: {e}"))
         return
@@ -7078,7 +7078,7 @@ def view_online(event_or_path: Union[tk.Event, str, None] = None, line: Optional
             "Online View Unavailable",
             "The selected file(s) could not be resolved to an online repository.\n\n"
             "Ensure they are part of a Git project with a remote origin (GitHub, GitLab, or Bitbucket) "
-            "or are remote URL targets."
+            "or are remote web link targets."
         )
 
 
@@ -7448,7 +7448,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     scan_menu.add_separator()
     scan_menu.add_command(label="Scan File(s)...", command=browse_file_click, accelerator="Ctrl+Shift+O")
     scan_menu.add_command(label="Scan Folder...", command=browse_dir_click, accelerator="Ctrl+Shift+F")
-    scan_menu.add_command(label="Scan URL...", command=select_url_click, accelerator="Ctrl+Shift+U")
+    scan_menu.add_command(label="Scan Web Link...", command=select_url_click, accelerator="Ctrl+Shift+U")
     scan_menu.add_command(label="Scan File List...", command=browse_file_list_click)
     scan_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click, accelerator="Ctrl+Shift+V")
     scan_menu.add_separator()
