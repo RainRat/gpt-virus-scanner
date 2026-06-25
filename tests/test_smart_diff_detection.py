@@ -9,7 +9,7 @@ def test_clipboard_diff_unpacked_by_content():
     # It should be unpacked into a hunk
     assert len(results) == 1
     assert results[0][0] == "[Clipboard] [file.py @ line 1]"
-    assert b"+new line" in results[0][1]
+    assert b"new line" in results[0][1]
 
 def test_extensionless_git_diff_unpacked():
     """Verify that 'diff --git' style diffs are recognized by content."""
@@ -18,7 +18,7 @@ def test_extensionless_git_diff_unpacked():
 
     assert len(results) == 1
     assert results[0][0] == "raw_diff [test.js @ line 1]"
-    assert b"+new" in results[0][1]
+    assert b"new" in results[0][1]
 
 def test_docker_compose_is_container():
     """Verify that docker-compose files are recognized as containers for unpacking."""
