@@ -5217,7 +5217,7 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
             risk_label = f"{GRAY}LOW RISK{RESET}"
 
         location = f"{path}:{line_num}" if line_num != "-" else path
-        lines.append(f"{GRAY}[{i}]{RESET} {BOLD}{risk_label} - {location}{RESET}")
+        lines.append(f"{GRAY}[{i}]{RESET} {risk_label} - {BOLD}{location}{RESET}")
 
         # Consolidate scores and links
         meta_parts = [f"{GRAY}Local:{RESET} {color_conf(own_conf)}"]
@@ -5248,11 +5248,13 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
             lines.append("")
 
         # Snippet preview (up to 3 lines)
+        cols = shutil.get_terminal_size((80, 20)).columns
+        max_snippet_len = max(20, cols - 8)
         snippet_lines = snippet.strip().split('\n')[:3]
         for sl in snippet_lines:
-            if len(sl) > 100:
-                sl = sl[:97] + "..."
-            lines.append(f"    {GRAY}> {sl}{RESET}")
+            if len(sl) > max_snippet_len:
+                sl = sl[:max_snippet_len - 3] + "..."
+            lines.append(f"    {GRAY}>{RESET} {sl}")
         lines.append("")
 
     return "\n".join(lines)
