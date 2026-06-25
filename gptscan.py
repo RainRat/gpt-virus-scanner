@@ -1345,6 +1345,35 @@ def get_go_packages_paths() -> List[str]:
     return sorted(_normalize_and_filter_dirs(paths))
 
 
+def get_java_packages_paths() -> List[str]:
+    """Find all folders containing Java package caches (Maven and Gradle)."""
+    paths = []
+    home = Path.home()
+
+    # Maven default repository
+    paths.append(str(home / ".m2" / "repository"))
+
+    # Gradle modules cache
+    paths.append(str(home / ".gradle" / "caches" / "modules-2" / "files-2.1"))
+
+    return sorted(_normalize_and_filter_dirs(paths))
+
+
+def get_dotnet_packages_paths() -> List[str]:
+    """Find all folders containing global .NET NuGet package caches."""
+    paths = []
+    # 1. Check NUGET_PACKAGES environment variable
+    nuget_packages = os.environ.get("NUGET_PACKAGES")
+    if nuget_packages:
+        paths.append(nuget_packages)
+
+    # 2. Default location
+    home = Path.home()
+    paths.append(str(home / ".nuget" / "packages"))
+
+    return sorted(_normalize_and_filter_dirs(paths))
+
+
 def get_documents_paths() -> List[str]:
     """Find the user's Documents folder."""
     paths = []
@@ -3093,6 +3122,32 @@ def scan_go_packages_click():
         messagebox.showwarning("Go Packages Error", f"Could not scan Go packages: {e}")
 
 
+def scan_java_packages_click():
+    """Scan all folders containing Java package caches (Maven and Gradle)."""
+    try:
+        paths = get_java_packages_paths()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo("Java Packages", "No Java package folders were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Java Packages Error", f"Could not scan Java packages: {e}")
+
+
+def scan_dotnet_packages_click():
+    """Scan all folders containing global .NET NuGet package caches."""
+    try:
+        paths = get_dotnet_packages_paths()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo(".NET Packages", "No .NET NuGet package folders were found to scan.")
+    except Exception as e:
+        messagebox.showwarning(".NET Packages Error", f"Could not scan .NET packages: {e}")
+
+
 def scan_documents_click():
     """Scan the user's Documents folder."""
     try:
@@ -3121,6 +3176,8 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_php_packages_paths())
     all_paths.extend(get_rust_packages_paths())
     all_paths.extend(get_go_packages_paths())
+    all_paths.extend(get_java_packages_paths())
+    all_paths.extend(get_dotnet_packages_paths())
     all_paths.extend(get_browser_extensions_paths())
     all_paths.extend(get_editor_extensions_paths())
     all_paths.extend(get_documents_paths())
@@ -7418,6 +7475,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         system_menu.add_command(label="Scan PHP Packages", command=scan_php_packages_click)
         system_menu.add_command(label="Scan Rust Packages", command=scan_rust_packages_click)
         system_menu.add_command(label="Scan Go Packages", command=scan_go_packages_click)
+        system_menu.add_command(label="Scan Java Packages", command=scan_java_packages_click)
+        system_menu.add_command(label="Scan .NET Packages", command=scan_dotnet_packages_click)
         system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
         system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
         system_menu.add_command(label="Scan Documents", command=scan_documents_click)
@@ -8182,6 +8241,16 @@ def main():
         help='Scan all folders containing Go packages.'
     )
     system_group.add_argument(
+        '--java-packages',
+        action='store_true',
+        help='Scan all folders containing Java package caches (Maven and Gradle).'
+    )
+    system_group.add_argument(
+        '--dotnet-packages',
+        action='store_true',
+        help='Scan all folders containing global .NET NuGet package caches.'
+    )
+    system_group.add_argument(
         '--documents',
         action='store_true',
         help="Scan the user's Documents folder."
@@ -8253,8 +8322,8 @@ def main():
             args.running_processes, args.scheduled_tasks, args.startup_items,
             args.system_services, args.audit, args.modified, args.downloads, args.desktop,
             args.python_packages, args.nodejs_packages, args.ruby_gems, args.php_packages,
-            args.rust_packages, args.go_packages, args.browser_extensions,
-            args.editor_extensions, args.ssh_config, args.temp, args.documents
+            args.rust_packages, args.go_packages, args.java_packages, args.dotnet_packages,
+            args.browser_extensions, args.editor_extensions, args.ssh_config, args.temp, args.documents
         ]):
             sys.exit(0)
 
@@ -8500,6 +8569,20 @@ def main():
                 scan_targets.extend(go_paths)
             else:
                 print("No Go package folders were found.", file=sys.stderr)
+
+        if args.java_packages:
+            java_paths = get_java_packages_paths()
+            if java_paths:
+                scan_targets.extend(java_paths)
+            else:
+                print("No Java package folders were found.", file=sys.stderr)
+
+        if args.dotnet_packages:
+            dotnet_paths = get_dotnet_packages_paths()
+            if dotnet_paths:
+                scan_targets.extend(dotnet_paths)
+            else:
+                print("No .NET NuGet package folders were found.", file=sys.stderr)
 
         if args.documents:
             scan_targets.extend(get_documents_paths())
