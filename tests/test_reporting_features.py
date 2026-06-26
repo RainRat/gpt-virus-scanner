@@ -145,10 +145,13 @@ def test_generate_console_report():
     assert "\033[0;90mLOW RISK\033[0m" in report_color
     # Verify dimmed index
     assert "\033[0;90m[1]\033[0m" in report_color
+    # Verify location is bolded
+    assert "\033[1msuspicious.py:10\033[0m" in report_color
     # Verify dimmed labels and emphasized values (scores >= 50%)
     assert "\033[0;90mLocal:\033[0m \033[1;91m\033[1m90%\033[0m" in report_color
     assert "\033[0;90mAI:\033[0m \033[1;91m\033[1m95%\033[0m" in report_color
-    # Verify AI notes and snippets are NOT bolded
+    # Verify AI notes are NOT bolded
     assert "\033[0;90mAdmin:\033[0m Admin note" in report_color
     assert "\033[0;90mUser:\033[0m User note" in report_color
-    assert "\033[0;90m> dangerous_code()\033[0m" in report_color
+    # Verify snippet has dimmed prefix but default color for content
+    assert "\033[0;90m>\033[0m dangerous_code()" in report_color
