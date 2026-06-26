@@ -25,15 +25,15 @@ def test_fetch_url_content_unauthorized_schemes(tmp_path):
     secrets.write_text("secret")
     file_url = f"file://{secrets.absolute()}"
 
-    with pytest.raises(ValueError, match="Unsupported URL scheme: file"):
+    with pytest.raises(ValueError, match="Unsupported web link scheme: file"):
         fetch_url_content(file_url)
 
     # Test ftp://
-    with pytest.raises(ValueError, match="Unsupported URL scheme: ftp"):
+    with pytest.raises(ValueError, match="Unsupported web link scheme: ftp"):
         fetch_url_content("ftp://example.com/file")
 
     # Test data://
-    with pytest.raises(ValueError, match="Unsupported URL scheme: data"):
+    with pytest.raises(ValueError, match="Unsupported web link scheme: data"):
         fetch_url_content("data:text/plain;base64,SGVsbG8sIFdvcmxkIQ==")
 
 def test_fetch_url_content_case_insensitive_scheme():
