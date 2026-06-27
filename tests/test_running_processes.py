@@ -7,17 +7,19 @@ import os
 from gptscan import get_running_process_commands, scan_running_processes_click
 
 def test_get_running_process_commands_linux():
-    mock_output = "ARGS\n/usr/bin/python3 gptscan.py\n[kthreadd]\n/usr/lib/systemd/systemd --user\n"
+    mock_output = "ARGS\n/usr/bin/python3 gptscan.py\n[kthreadd]\n/usr/lib/systemd/systemd --user\n[ -f /etc/passwd ]\n"
     with patch("sys.platform", "linux"):
         with patch("subprocess.check_output", return_value=mock_output):
             processes = get_running_process_commands()
 
-            # Should have python3 and systemd, but not kthreadd (kernel thread) or header
-            assert len(processes) == 2
+            # Should have python3, systemd, and [, but not kthreadd (kernel thread) or header
+            assert len(processes) == 3
             assert processes[0][0] == "[Process] python3"
             assert processes[0][1] == b"/usr/bin/python3 gptscan.py"
             assert processes[1][0] == "[Process] systemd"
             assert processes[1][1] == b"/usr/lib/systemd/systemd --user"
+            assert processes[2][0] == "[Process] ["
+            assert processes[2][1] == b"[ -f /etc/passwd ]"
 
 def test_get_running_process_commands_windows():
     mock_json = json.dumps([

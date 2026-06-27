@@ -7,8 +7,9 @@ from gptscan import get_scheduled_task_commands, scan_scheduled_tasks_click
 
 def test_get_scheduled_task_commands_linux_all():
     mock_crontab_l = "# Some comment\n* * * * * /usr/bin/python3 /path/to/script.py\n@daily /usr/bin/cleanup.sh\n"
-    mock_etc_crontab = "17 *	* * *	root    cd / && run-parts --report /etc/cron.hourly\n"
-    mock_cron_d_file = "30 4	* * *	user    /usr/local/bin/daily_backup.sh\n@reboot root /usr/bin/reboot_task\n"
+    # System crontab with environmental variables and commands containing '='
+    mock_etc_crontab = "PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin\n17 *	* * *	root    cd / && run-parts --report /etc/cron.hourly\n"
+    mock_cron_d_file = "30 4	* * *	user    /usr/local/bin/daily_backup.sh --option=value\n@reboot root /usr/bin/reboot_task\n"
 
     with patch("sys.platform", "linux"):
         with patch("subprocess.check_output", return_value=mock_crontab_l):
@@ -55,7 +56,7 @@ def test_get_scheduled_task_commands_linux_all():
                         assert tasks[0] == ("[Cron] User", b"/usr/bin/python3 /path/to/script.py")
                         assert tasks[1] == ("[Cron] User", b"/usr/bin/cleanup.sh")
                         assert tasks[2] == ("[Cron] System (crontab)", b"cd / && run-parts --report /etc/cron.hourly")
-                        assert tasks[3] == ("[Cron] System (test_task)", b"/usr/local/bin/daily_backup.sh")
+                        assert tasks[3] == ("[Cron] System (test_task)", b"/usr/local/bin/daily_backup.sh --option=value")
                         assert tasks[4] == ("[Cron] System (test_task)", b"/usr/bin/reboot_task")
 
 def test_get_scheduled_task_commands_windows():

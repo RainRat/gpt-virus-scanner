@@ -50,7 +50,32 @@ def test_get_system_service_commands_windows_error():
         results = gptscan.get_system_service_commands()
         assert results == []
 
-def test_get_system_service_commands_non_windows():
-    with patch("sys.platform", "linux"):
+def test_get_system_service_commands_linux(tmp_path):
+    # Mock systemd service files
+    service_dir = tmp_path / "systemd"
+    service_dir.mkdir()
+
+    service_file = service_dir / "test.service"
+    service_file.write_text(
+        "[Unit]\nDescription=Test\n"
+        "[Service]\n"
+        "ExecStart=/usr/bin/test-cmd --arg1 \\\n  --arg2\n"
+        "ExecStartPost=/usr/bin/post-cmd\n"
+        "Environment=FOO=BAR\n"
+    )
+
+    with patch("sys.platform", "linux"), \
+         patch("gptscan.get_system_service_paths", return_value=[str(service_file)]):
+
+        results = gptscan.get_system_service_commands()
+
+        assert len(results) == 2
+        # Check multiline command
+        assert results[0] == ("[Service] test.service", b"/usr/bin/test-cmd --arg1 --arg2")
+        # Check single line command
+        assert results[1] == ("[Service] test.service", b"/usr/bin/post-cmd")
+
+def test_get_system_service_commands_non_supported():
+    with patch("sys.platform", "darwin"):
         results = gptscan.get_system_service_commands()
         assert results == []

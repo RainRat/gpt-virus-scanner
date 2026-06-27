@@ -1422,7 +1422,8 @@ def get_running_process_commands() -> List[Tuple[str, bytes]]:
             lines = output.splitlines()
             for line in lines[1:]:
                 line = line.strip()
-                if line and not line.startswith('[') and not line.endswith(']'): # Filter out kernel threads
+                # Filter out kernel threads, which typically appear as [name] with no spaces
+                if line and not (line.startswith('[') and line.endswith(']') and ' ' not in line):
                     # Use the first part of the command as a name hint
                     name = line.split()[0] if line.split() else "Unknown"
                     processes.append((f"[Process] {os.path.basename(name)}", line.encode('utf-8')))
@@ -1624,7 +1625,7 @@ def get_nodejs_package_paths() -> List[str]:
 
 
 def get_system_service_commands() -> List[Tuple[str, bytes]]:
-    """Collect command lines of all system services (Windows Service PathName)."""
+    """Collect command lines of all system services (Windows Service PathName, Linux systemd Exec)."""
     items = []
     try:
         if sys.platform == "win32":
@@ -1641,6 +1642,31 @@ def get_system_service_commands() -> List[Tuple[str, bytes]]:
                     command = item.get("PathName")
                     if command and command.strip():
                         items.append((f"[Service] {name}", command.encode('utf-8')))
+        elif sys.platform == "linux":
+            # Linux - Scan systemd service files for Exec* commands
+            for p in get_system_service_paths():
+                try:
+                    with open(p, "r", encoding="utf-8", errors="ignore") as f:
+                        current_command = ""
+                        for line in f:
+                            line = line.strip()
+                            if current_command:
+                                if line.endswith("\\"):
+                                    current_command += " " + line[:-1].strip()
+                                else:
+                                    current_command += " " + line
+                                    items.append((f"[Service] {os.path.basename(p)}", current_command.encode('utf-8')))
+                                    current_command = ""
+                            elif line.startswith(("ExecStart=", "ExecStartPre=", "ExecStartPost=", "ExecReload=", "ExecStop=", "ExecStopPost=")):
+                                if line.endswith("\\"):
+                                    val = line.split("=", 1)[1].strip()
+                                    current_command = val[:-1].strip()
+                                else:
+                                    command = line.split("=", 1)[1].strip()
+                                    if command:
+                                        items.append((f"[Service] {os.path.basename(p)}", command.encode('utf-8')))
+                except Exception:
+                    pass
     except Exception:
         pass
     return items
@@ -1750,7 +1776,8 @@ def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
                         with open(cron_path, "r", encoding="utf-8", errors="ignore") as f:
                             for line in f:
                                 line = line.strip()
-                                if line and not line.startswith('#') and '=' not in line:
+                                # Skip comments and environment variable assignments (e.g. PATH=...)
+                                if line and not line.startswith('#') and not re.match(r'^[A-Za-z_][A-Za-z0-9_]*\s*=', line):
                                     # System crontab: min hour day month dow user command
                                     parts = line.split(None, 6)
                                     if len(parts) > 6:
