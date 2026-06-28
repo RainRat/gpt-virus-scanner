@@ -83,7 +83,7 @@ _virtual_source_cache: Dict[str, str] = {}
 
 
 def resolve_remote_url(url: str) -> str:
-    """Resolve GitHub/GitLab/Bitbucket/Pastebin/Hugging Face repository, file, tag, or pull request web links to their raw content or archive.
+    """Resolve GitHub, GitLab, Bitbucket, Pastebin, or Hugging Face repository, file, tag, or pull request web links to their raw content or archive.
 
     Args:
         url: The original web link to resolve.
@@ -99,7 +99,7 @@ def resolve_remote_url(url: str) -> str:
     url = re.sub(r'/$', '', url)
     url = re.sub(r'#.*$', '', url)
 
-    # Remove .git suffix from repository URLs
+    # Remove .git suffix from repository web links
     url = re.sub(r'\.git$', '', url, flags=re.IGNORECASE)
 
     # 1. GitHub File -> Raw
@@ -178,7 +178,7 @@ def resolve_remote_url(url: str) -> str:
     gl_repo_match = re.match(r'https?://(?:www\.)?gitlab\.com/(?!.*/-/)(.+)/([^/]+)$', url, re.IGNORECASE)
     if gl_repo_match:
         group_path, repo = gl_repo_match.groups()
-        # GitLab doesn't have a universal HEAD.zip, but we can try to guess or just return the URL
+        # GitLab doesn't have a universal HEAD.zip, but we can try to guess or just return the web link
         # Common default branches are 'main' or 'master'. We'll try 'main' and let fetch_url_content fallback if it fails.
         return f"https://gitlab.com/{group_path}/{repo}/-/archive/main/{repo}-main.zip"
 
@@ -273,10 +273,10 @@ def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = Non
     if max_size is None:
         max_size = Config.MAX_FILE_SIZE
 
-    # Resolve GitHub/GitLab URLs to raw content/archives
+    # Resolve GitHub/GitLab web links to raw content/archives
     url = resolve_remote_url(url)
 
-    # Ensure URL scheme is http or https to prevent SSRF/local file access
+    # Ensure web link scheme is http or https to prevent SSRF/local file access
     if not url.lower().startswith(('http://', 'https://')):
         raise ValueError(f"Unsupported web link scheme: {url.split(':', 1)[0] if ':' in url else 'unknown'}")
 
@@ -353,7 +353,7 @@ class Config:
 
     @staticmethod
     def is_container(file_path: Union[Path, str], content: Optional[bytes] = None) -> bool:
-        """Check if a file is a container that should be unpacked (archives, notebooks, manifests, etc.)."""
+        """Check if a file is a container that should be unpacked (archives, notebooks, project and build files, etc.)."""
         # 1. Check by magic bytes or content markers if available
         if content:
             if content.startswith(b'PK\x03\x04') or content.startswith(b'\x1f\x8b'):
@@ -373,7 +373,7 @@ class Config:
         if path_s.endswith(('.zip', '.tar', '.tar.gz', '.ipynb', '.md', '.html', '.htm', '.xhtml', '.svg', '.yml', '.yaml',
                             '.diff', '.patch', '.service', '.desktop')):
             return True
-        # Explicit manifest files and build scripts (checked by basename)
+        # Explicit project and build files (checked by basename)
         basename = os.path.basename(path_s)
         if basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml',
                             'tasks.json', 'launch.json', 'dockerfile', 'makefile', 'docker-compose.yml', 'docker-compose.yaml')):
@@ -783,7 +783,7 @@ def _get_initial_dir() -> Optional[str]:
             return None
         first_path = paths[0]
 
-        # If it's a URL or virtual path, we can't get a local folder
+        # If it's a web link or virtual path, we can't get a local folder
         if first_path.startswith(("[", "http://", "https://")):
             return None
 
@@ -1107,7 +1107,7 @@ def motion_handler(tree: ttk.Treeview, event: Optional[tk.Event]) -> None:
 
 
 def get_shell_profile_paths() -> List[str]:
-    """Identify common shell profile and RC files, including system-wide profiles and aliases."""
+    """Identify common shell profile and configuration files (like .bashrc or .zshrc), including system-wide profiles and aliases."""
     paths = []
     home = Path.home()
 
@@ -1243,7 +1243,7 @@ def get_ruby_gems_paths() -> List[str]:
     if gem_home:
         paths.append(gem_home)
 
-    # 2. Ask gem for the home directory
+    # 2. Ask gem for the home folder
     try:
         is_win = sys.platform == "win32"
         output = subprocess.check_output(['gem', 'env', 'home'],
@@ -1268,7 +1268,7 @@ def get_ruby_gems_paths() -> List[str]:
 def get_php_packages_paths() -> List[str]:
     """Find all folders containing global PHP Composer packages."""
     paths = []
-    # 1. Ask composer for the global vendor directory
+    # 1. Ask composer for the global vendor folder
     try:
         is_win = sys.platform == "win32"
         output = subprocess.check_output(['composer', 'global', 'config', 'vendor-dir', '--absolute'],
@@ -1302,7 +1302,7 @@ def get_rust_packages_paths() -> List[str]:
         paths.append(os.path.join(cargo_home, "registry", "src"))
         paths.append(os.path.join(cargo_home, "git", "checkouts"))
 
-    # 2. Default home directory location
+    # 2. Default home folder location
     home = Path.home()
     cargo_default = home / ".cargo"
     paths.append(str(cargo_default / "registry" / "src"))
@@ -2056,7 +2056,7 @@ def get_online_url(path: str, line: Union[int, str] = 1) -> Optional[str]:
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         rev = "HEAD"
 
-    # Normalize Remote URL (Convert SSH to HTTPS, remove .git suffix)
+    # Normalize Remote web link (Convert SSH to HTTPS, remove .git suffix)
     # git@host:user/repo.git -> https://host/user/repo
     remote = re.sub(r'^git@([^:]+):', r'https://\1/', remote)
     remote = re.sub(r'\.git$', '', remote)
@@ -2810,7 +2810,7 @@ def scan_git_config_click():
 def scan_git_stash_click():
     """Scan all Git stashes."""
     try:
-        # Get path from textbox or default to current directory
+        # Get path from textbox or default to current folder
         target_path = textbox.get().strip() if textbox else "."
         if not target_path:
             target_path = "."
@@ -3936,8 +3936,8 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
 
             # Strip single-line and multi-line comments for JSONC support
             # This regex strips /* ... */ comments and // ... comments while attempting to ignore
-            # // if it appears inside a double-quoted string (to avoid mangling URLs).
-            # Many manifests (deno.json, tasks.json, launch.json) support comments.
+            # // if it appears inside a double-quoted string (to avoid mangling web links).
+            # Many project and build files (deno.json, tasks.json, launch.json) support comments.
             text = re.sub(
                 r'(/\*.*?\*/)|("(?:\\.|[^"\\])*")|(//[^\n]*)',
                 lambda m: m.group(2) if m.group(2) else " ",
@@ -3949,7 +3949,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
             if not isinstance(manifest, dict):
                 return
 
-            # Determine key and label based on manifest type
+            # Determine key and label based on the file type
             key = 'scripts'
             label = 'Script'
             if 'deno.json' in lowered_check:
@@ -4039,7 +4039,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 if yielded_any:
                     return
 
-            # If it's a manifest but has no scripts/tasks, we don't want to scan it as a whole file
+            # If it's a project or build file but has no scripts/tasks, we don't want to scan it as a whole file
             return
         except Exception:
             pass
@@ -4162,7 +4162,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 8. Check for CI/CD Workflows (YAML)
+    # 8. Check for automation tasks (YAML)
     if lowered_check.endswith(('.yml', '.yaml')):
         try:
             text = content.decode('utf-8', errors='ignore')
@@ -4573,7 +4573,7 @@ def scan_files(
     # Preserve extra_snippets (from clipboard, stdin)
     original_extra = list(extra_snippets) if extra_snippets else []
 
-    # Unpack extra snippets (URL, Stdin, Clipboard)
+    # Unpack extra snippets (Web Link, Stdin, Clipboard)
     for name, content in original_extra:
         processed_snippets.extend(unpack_content(name, content))
 
@@ -6045,7 +6045,7 @@ def import_results_from_content_generator(content: str, filename_hint: Optional[
 
 
 def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None, None]:
-    """Generator that yields events from an imported report file or URL."""
+    """Generator that yields events from an imported report file or web link."""
     try:
         if file_path.lower().startswith(('http://', 'https://')):
             content_bytes = fetch_url_content(file_path)
@@ -8178,7 +8178,7 @@ def main():
     system_group.add_argument(
         '--shell-profiles',
         action='store_true',
-        help='Scan common shell profile and RC files, including system-wide profiles.'
+        help='Scan common shell profile and configuration files (like .bashrc or .zshrc), including system-wide profiles.'
     )
     system_group.add_argument(
         '--shell-history',

@@ -48,7 +48,7 @@ prediction:
 weights:
   positive_sample_weight: 1.0 # Importance of dangerous examples during training
 
-# Optimization settings (Hyperparameters) for the local model.
+# Optimization settings for the local model.
 # These values (0.0 to 1.0) control how the model is built.
 # The script will automatically adjust and improve these over time.
 hyperparameters:
