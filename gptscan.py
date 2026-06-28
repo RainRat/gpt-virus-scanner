@@ -1750,7 +1750,7 @@ def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
                         with open(cron_path, "r", encoding="utf-8", errors="ignore") as f:
                             for line in f:
                                 line = line.strip()
-                                if line and not line.startswith('#') and '=' not in line:
+                                if line and not line.startswith('#') and not re.match(r'^[A-Za-z_][A-Za-z0-9_]*\s*=', line):
                                     # System crontab: min hour day month dow user command
                                     parts = line.split(None, 6)
                                     if len(parts) > 6:
