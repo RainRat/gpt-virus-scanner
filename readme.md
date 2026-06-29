@@ -23,7 +23,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 *   **Notebook Support:** Scan cells in `.ipynb` files for dangerous commands.
 *   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, and Docker Compose.
 *   **Archives:** Open `.zip`, `.tar`, and `.tar.gz` files automatically to scan the contents.
-*   **Automation Tasks:** Scan GitHub Actions, GitLab CI, and other YAML workflows for suspicious commands.
+*   **Automation Tasks:** Scan GitHub Actions, GitLab CI, and other YAML automation tasks for suspicious commands.
 *   **Web Files:** Scan HTML, SVG, and Markdown files for embedded scripts.
 *   **Unified Diffs:** Scan `.diff` and `.patch` files to review code changes.
 
@@ -225,7 +225,7 @@ Scan all folders containing editor extensions:
 python3 gptscan.py --editor-extensions --cli
 ```
 
-Scan all common shell profile and RC files:
+Scan all common shell profile and configuration files (like .bashrc or .zshrc):
 ```bash
 python3 gptscan.py --shell-profiles --cli
 ```
