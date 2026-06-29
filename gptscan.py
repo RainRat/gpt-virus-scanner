@@ -364,7 +364,7 @@ class Config:
             if content.startswith(b'{') and b'"cells"' in content:
                 return True
             # Detect Unified Diffs by content (e.g. for clipboard scans)
-            if content.startswith(b'--- ') or content.startswith(b'Index: ') or content.startswith(b'diff --git '):
+            if content.startswith(b'--- ') or content.startswith(b'Index: ') or content.startswith(b'diff --git ') or content.startswith(b'commit '):
                 return True
 
         # 2. Check by extension or basename
@@ -1696,6 +1696,29 @@ def get_git_stash_snippets(path: str = ".") -> List[Tuple[str, bytes]]:
     return snippets
 
 
+def get_git_history_snippets(path: str = ".", count: int = 5) -> List[Tuple[str, bytes]]:
+    """Collect patches from the last N commits in Git history."""
+    snippets = []
+    toplevel, _ = _get_git_info(path)
+    if toplevel is None:
+        return []
+
+    try:
+        # Get the full diff for the last N commits
+        output = subprocess.check_output(
+            ["git", "log", "-p", f"-n{count}", "--no-color"],
+            cwd=toplevel,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+        if output.strip():
+            snippets.append(("[Git History]", output.encode('utf-8')))
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+
+    return snippets
+
+
 def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
     """Collect command lines of all scheduled tasks (Cron on Linux/macOS, schtasks on Windows)."""
     tasks = []
@@ -2824,6 +2847,26 @@ def scan_git_stash_click():
         messagebox.showwarning("Git Stash Error", f"Could not scan Git stashes: {e}")
 
 
+def scan_git_history_click():
+    """Scan patches from recent Git commits."""
+    try:
+        target_path = textbox.get().strip() if textbox else "."
+        if not target_path:
+            target_path = "."
+
+        count = simpledialog.askinteger("Scan Recent Commits", "Enter the number of recent commits to scan:", initialvalue=5, minvalue=1)
+        if count is None:
+            return
+
+        snippets = get_git_history_snippets(target_path, count=count)
+        if snippets:
+            button_click(extra_snippets=snippets)
+        else:
+            messagebox.showinfo("Git History", "No Git history found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Git History Error", f"Could not scan Git history: {e}")
+
+
 def scan_git_revision_click():
     """Scan files changed in a specific Git revision."""
     try:
@@ -3193,6 +3236,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_snippets.extend(get_system_service_commands())
     all_snippets.extend(get_git_config_snippets())
     all_snippets.extend(get_git_stash_snippets())
+    all_snippets.extend(get_git_history_snippets())
 
     return all_paths, all_snippets
 
@@ -4254,13 +4298,14 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
 
     # 9. Check for Unified Diff (.diff, .patch, or by content)
     if check_name.lower().endswith(('.diff', '.patch')) or \
-       (content.startswith(b'--- ') or content.startswith(b'Index: ') or content.startswith(b'diff --git ')):
+       (content.startswith(b'--- ') or content.startswith(b'Index: ') or content.startswith(b'diff --git ') or content.startswith(b'commit ')):
         try:
             text = content.decode('utf-8', errors='ignore')
             lines = text.splitlines()
             current_file = None
             hunk_info = None
             hunk_lines = []
+            commit_hash = ""
 
             has_additions = False
 
@@ -4268,11 +4313,20 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 nonlocal has_additions
                 if current_file and hunk_info and hunk_lines and has_additions:
                     hunk_text = "\n".join(hunk_lines)
-                    yield (f"{name} [{current_file} @ {hunk_info}]", hunk_text.encode('utf-8'))
+                    label = f"{name} [{current_file} @ {hunk_info}]"
+                    if commit_hash:
+                        label = f"{name} [{commit_hash}: {current_file} @ {hunk_info}]"
+                    yield (label, hunk_text.encode('utf-8'))
                 has_additions = False
 
             for line in lines:
-                if line.startswith('+++ '):
+                if line.startswith('commit '):
+                    yield from finalize_hunk()
+                    commit_hash = line[7:14].strip()
+                    current_file = None
+                    hunk_info = None
+                    hunk_lines = []
+                elif line.startswith('+++ '):
                     yield from finalize_hunk()
                     path_part = line[4:].split('\t')[0].strip()
                     if path_part.startswith(('a/', 'b/')) and '/' in path_part:
@@ -7474,6 +7528,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         git_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
         git_menu.add_command(label="Scan Git Hooks", command=scan_git_hooks_click, accelerator="Ctrl+Shift+G")
         git_menu.add_command(label="Scan Git Stashes", command=scan_git_stash_click, accelerator="Ctrl+Shift+Q")
+        git_menu.add_command(label="Scan Recent Commits", command=scan_git_history_click)
         git_menu.add_command(label="Scan Git Configuration", command=scan_git_config_click)
         git_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
         parent.add_cascade(label="Git Integration", menu=git_menu)
@@ -8168,6 +8223,13 @@ def main():
         action='store_true',
         help='Scan all Git stashes.'
     )
+    git_group.add_argument(
+        '--git-history',
+        nargs='?',
+        type=int,
+        const=5,
+        help='Scan patches from recent Git commits. Optionally provide the number of commits (default: 5).'
+    )
 
     system_group = parser.add_argument_group("System Scans")
     system_group.add_argument(
@@ -8338,7 +8400,7 @@ def main():
         if not any([
             args.target, args.path, args.stdin, args.import_results, args.files,
             args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
-            args.git_stash, args.shell_profiles, args.shell_history, args.system_path,
+            args.git_stash, args.git_history, args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
             args.system_services, args.audit, args.modified, args.downloads, args.desktop,
             args.python_packages, args.nodejs_packages, args.ruby_gems, args.php_packages,
@@ -8433,7 +8495,13 @@ def main():
             for root_dir in git_roots:
                 extra_snippets.extend(get_git_stash_snippets(root_dir))
 
-        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not args.git_stash and not extra_snippets:
+        if args.git_history:
+            # Use specified targets as git roots, or current folder if none.
+            git_roots = scan_targets if scan_targets else ["."]
+            for root_dir in git_roots:
+                extra_snippets.extend(get_git_history_snippets(root_dir, count=args.git_history))
+
+        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_history and not extra_snippets:
             # Default to current folder if no targets provided and NOT using git-changes
             scan_targets = ["."]
 

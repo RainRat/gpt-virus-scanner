@@ -22,6 +22,7 @@ def test_scan_system_audit_click(monkeypatch):
     monkeypatch.setattr("gptscan.get_rust_packages_paths", lambda: ["/rust1"])
     monkeypatch.setattr("gptscan.get_go_packages_paths", lambda: ["/go1"])
     monkeypatch.setattr("gptscan.get_documents_paths", lambda: ["/docs1"])
+    monkeypatch.setattr("gptscan.get_git_history_snippets", lambda: [])
 
     target_paths = []
     def mock_set_target(paths):
