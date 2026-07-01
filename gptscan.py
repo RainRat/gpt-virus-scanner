@@ -54,8 +54,8 @@ open_button: Optional[ttk.Button] = None
 analyze_button: Optional[ttk.Button] = None
 exclude_button: Optional[ttk.Button] = None
 reveal_button: Optional[ttk.Button] = None
-vt_button: Optional[ttk.Button] = None
-view_online_button: Optional[ttk.Button] = None
+intel_button: Optional[ttk.Menubutton] = None
+intel_menu: Optional[tk.Menu] = None
 results_button: Optional[ttk.Menubutton] = None
 browse_button: Optional[ttk.Menubutton] = None
 show_key_btn: Optional[ttk.Button] = None
@@ -2700,7 +2700,8 @@ def set_scanning_state(is_scanning: bool) -> None:
 
     # Disable specific footer buttons during a scan
     footer_buttons = [
-        rescan_button, analyze_button, exclude_button, results_button
+        rescan_button, analyze_button, exclude_button, results_button,
+        intel_button
     ]
     for btn in footer_buttons:
         if btn:
@@ -6705,13 +6706,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     if not Config.GPT_ENABLED:
         analyze_btn.config(state='disabled')
 
-    vt_btn = ttk.Button(btn_frame, text="VirusTotal", width=12, command=lambda: check_virustotal(path_entry.get()))
-    vt_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(vt_btn, "Check this file's hash on VirusTotal.", label=status_bar)
+    intel_btn = ttk.Menubutton(btn_frame, text="Intel", width=12)
+    intel_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(intel_btn, "Check threat intelligence for this file (VirusTotal, Web).", label=status_bar)
 
-    view_online_btn = ttk.Button(btn_frame, text="View Online", width=14, command=lambda: view_online(path_entry.get(), line=line_label.cget("text")))
-    view_online_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(view_online_btn, "View this file in its online repository. (Ctrl+L)", label=status_bar)
+    intel_details_menu = tk.Menu(intel_btn, tearoff=0)
+    intel_details_menu.add_command(label="Check on VirusTotal", command=lambda: check_virustotal(path_entry.get()), accelerator="Ctrl+T")
+    intel_details_menu.add_command(label="View Online", command=lambda: view_online(path_entry.get(), line=line_label.cget("text")), accelerator="Ctrl+L")
+    intel_btn["menu"] = intel_details_menu
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
@@ -6772,8 +6774,12 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         analyze_btn.config(state='disabled' if is_scanning or not Config.GPT_ENABLED else 'normal')
         exclude_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
         open_btn.config(state='disabled' if is_virtual else 'normal')
-        vt_btn.config(state='normal')
-        view_online_btn.config(state='disabled' if is_non_url_virtual else 'normal')
+        intel_btn.config(state='normal')
+        try:
+            intel_details_menu.entryconfig("Check on VirusTotal", state='normal')
+            intel_details_menu.entryconfig("View Online", state='disabled' if is_non_url_virtual else 'normal')
+        except tk.TclError:
+            pass
         path_copy_btn.config(state='normal')
         reveal_btn.config(state='disabled' if is_virtual else 'normal')
 
@@ -6907,6 +6913,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Command-l>', lambda e: view_online(path_entry.get(), line=line_label.cget("text")))
     details_win.bind('<Control-Shift-C>', lambda e: copy_analysis())
     details_win.bind('<Command-Shift-C>', lambda e: copy_analysis())
+    details_win.bind('<Control-t>', lambda e: check_virustotal(path_entry.get()))
+    details_win.bind('<Command-t>', lambda e: check_virustotal(path_entry.get()))
     details_win.bind('<Control-u>', lambda e: toggle_source())
     details_win.bind('<Command-u>', lambda e: toggle_source())
     details_win.bind('<F5>', lambda e: on_rescan())
@@ -7256,10 +7264,14 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
         exclude_button.config(state=mod_local_state)
     if reveal_button:
         reveal_button.config(state=safe_local_state)
-    if vt_button:
-        vt_button.config(state=safe_base_state)
-    if view_online_button:
-        view_online_button.config(state=safe_online_state)
+    if intel_button:
+        intel_button.config(state=safe_base_state)
+    if intel_menu:
+        try:
+            intel_menu.entryconfig("Check on VirusTotal", state=safe_base_state)
+            intel_menu.entryconfig("View Online", state=safe_online_state)
+        except tk.TclError:
+            pass
 
     if analyze_button:
         ai_available = Config.GPT_ENABLED
@@ -7447,7 +7459,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tk.Tk
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, vt_button, view_online_button, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, clear_target_btn, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, intel_button, intel_menu, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, clear_target_btn, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -7867,15 +7879,16 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     reveal_button.grid(row=0, column=7, padx=2, ipady=5)
     bind_hover_message(reveal_button, "Show the selected file in the system file manager. (Ctrl+Enter)")
 
-    vt_button = ttk.Button(footer_frame, text="VirusTotal", width=12, command=check_virustotal)
-    vt_button.grid(row=0, column=8, padx=2, ipady=5)
-    bind_hover_message(vt_button, "Check the selected files on VirusTotal. (Ctrl+T)")
+    intel_button = ttk.Menubutton(footer_frame, text="Intel", width=12)
+    intel_button.grid(row=0, column=8, padx=2, ipady=5)
+    bind_hover_message(intel_button, "Check threat intelligence for the selection (VirusTotal, Web).")
 
-    view_online_button = ttk.Button(footer_frame, text="View Online", width=14, command=view_online)
-    view_online_button.grid(row=0, column=9, padx=2, ipady=5)
-    bind_hover_message(view_online_button, "View the selected file in its online repository. (Ctrl+L)")
+    intel_menu = tk.Menu(intel_button, tearoff=0)
+    intel_menu.add_command(label="Check on VirusTotal", command=check_virustotal, accelerator="Ctrl+T")
+    intel_menu.add_command(label="View Online", command=view_online, accelerator="Ctrl+L")
+    intel_button["menu"] = intel_menu
 
-    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=10, sticky="ns", padx=10)
+    ttk.Separator(footer_frame, orient=tk.VERTICAL).grid(row=0, column=9, sticky="ns", padx=10)
 
     # Spacer
     ttk.Frame(footer_frame).grid(row=0, column=11, sticky="ew")
