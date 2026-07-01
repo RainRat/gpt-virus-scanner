@@ -111,7 +111,7 @@ python3 train.py --config config.yml --mode predict
 #### Override settings:
 
 ```bash
-# Use a different model name
+# Use a different model name. Note: gptscan.py expects a file named scripts.h5.
 python3 train.py --config config.yml --model-name my_model
 
 # Change training parameters
@@ -177,7 +177,7 @@ python3 train.py --config config.yml \
 ## Output Files
 
 **Training mode produces:**
-- `{model_name}.h5` - The trained detection model.
+- `{model_name}.h5` - The trained detection model. (To use it with gptscan.py, rename it to scripts.h5 and keep it in the project folder.)
 - `{model_name}_best_hp.yml` - The best settings found during training.
 
 **Prediction mode produces:**
