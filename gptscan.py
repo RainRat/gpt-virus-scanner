@@ -8053,7 +8053,7 @@ def main():
                "  python3 gptscan.py --git-changes --cli --fail-threshold 50\n\n"
                "  # Scan current Git changes as a diff\n"
                "  python3 gptscan.py --git-diff --cli\n\n"
-               "  # Scan a link (GitHub, GitLab, Pastebin, etc.)\n"
+               "  # Scan a web link (GitHub, GitLab, Pastebin, etc.)\n"
                "  python3 gptscan.py https://github.com/user/repo --cli\n\n"
                "  # Run a full system audit\n"
                "  python3 gptscan.py --audit --cli\n\n"
@@ -8067,15 +8067,15 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {Config.VERSION}')
-    parser.add_argument('target', nargs='?', help='The folder, file, pattern, or link to scan.')
+    parser.add_argument('target', nargs='?', help='The folder, file, pattern, or web link to scan.')
     parser.add_argument(
         'files',
         nargs='*',
-        help='Other folders, files, patterns, or links to scan.'
+        help='Other folders, files, patterns, or web links to scan.'
     )
 
     scan_group = parser.add_argument_group("Scan Options")
-    scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or link to scan.')
+    scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or web link to scan.')
     scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. This is slower but more thorough.')
     scan_group.add_argument('--dry-run', action='store_true', help='Preview which files would be scanned without actually checking them.')
     scan_group.add_argument(
@@ -8178,7 +8178,7 @@ def main():
     system_group.add_argument(
         '--shell-profiles',
         action='store_true',
-        help='Scan common shell profile and RC files, including system-wide profiles.'
+        help='Scan common shell profile and configuration files (like .bashrc or .zshrc), including system-wide profiles.'
     )
     system_group.add_argument(
         '--shell-history',

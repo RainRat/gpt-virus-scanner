@@ -48,7 +48,7 @@ prediction:
 weights:
   positive_sample_weight: 1.0 # Importance of dangerous examples during training
 
-# Optimization settings (Hyperparameters) for the local model.
+# Optimization settings for the local model.
 # These values (0.0 to 1.0) control how the model is built.
 # The script will automatically adjust and improve these over time.
 hyperparameters:
@@ -178,7 +178,7 @@ python3 train.py --config config.yml \
 
 **Training mode produces:**
 - `{model_name}.h5` - The trained detection model.
-- `{model_name}_best_hp.yml` - The best settings found during training.
+- `{model_name}_best_hp.yml` - The best optimization settings found during training.
 
 **Prediction mode produces:**
 - Copies of suspicious files (those with high threat levels) to your output folder.
@@ -206,7 +206,7 @@ python3 train.py --config config.yml \
 3. **Assigns Scores:** It calculates the threat level for each file.
 4. **Filters Results:** Any file that crosses your "threat" threshold is copied to the output folder for you to review.
 
-## Automatic Setting Optimization
+## Automatic Optimization of Settings
 
 The trainer automatically tries different ways to build and train the model:
 

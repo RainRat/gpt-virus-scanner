@@ -225,7 +225,7 @@ Scan all folders containing editor extensions:
 python3 gptscan.py --editor-extensions --cli
 ```
 
-Scan all common shell profile and RC files:
+Scan all common shell profile and configuration files (like .bashrc or .zshrc):
 ```bash
 python3 gptscan.py --shell-profiles --cli
 ```

@@ -35,7 +35,7 @@ class ModelConfig:
 
 @dataclass
 class Hyperparameters:
-    """Contains settings that control how the AI model is built and trained."""
+    """Contains optimization settings that control how the AI model is built and trained."""
     embedding_scale: float
     rnn_scale: float
     pooling_type: float
@@ -147,9 +147,9 @@ class DataLoader:
             np.array(sample_weights)
         )
     
-    def load_prediction_files(self, directory: Path) -> Tuple[List[Path], np.ndarray]:
+    def load_prediction_files(self, folder: Path) -> Tuple[List[Path], np.ndarray]:
         """Loads files for analysis from a folder."""
-        file_paths = sorted([f for f in directory.iterdir() if f.is_file()])
+        file_paths = sorted([f for f in folder.iterdir() if f.is_file()])
         data = np.array([self.load_file(f) for f in file_paths])
         return file_paths, data
 
@@ -446,7 +446,7 @@ class Predictor:
 
 
 def load_config(config_path: str) -> Tuple[ModelConfig, Optional[Hyperparameters]]:
-    """Loads the training and model settings from a YAML file."""
+    """Loads the training, model, and optimization settings from a YAML file."""
     with open(config_path, 'r') as f:
         data = yaml.safe_load(f)
     
@@ -609,12 +609,12 @@ def main():
         
         hp_file = f'{config.model_name}_best_hp.yml'
         if Path(hp_file).exists():
-            print(f"Loading existing hyperparameters from {hp_file}")
+            print(f"Loading existing optimization settings from {hp_file}")
             initial_hp = Trainer.load_hyperparameters(hp_file)
         
         if initial_hp is None:
             raise ValueError(
-                "No hyperparameters found. Please provide 'hyperparameters' section in config.yml"
+                "No optimization settings found. Please provide 'hyperparameters' section in config.yml"
             )
         
         print("Starting training with an automatic improvement process...")
