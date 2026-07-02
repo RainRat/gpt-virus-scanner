@@ -6313,28 +6313,6 @@ def _get_item_raw_values(item_id: str) -> Optional[List[Any]]:
     return [str(v).replace('\n', ' ') for v in values[:7]]
 
 
-def _resolve_file_path(event_or_path: Union[tk.Event, str, None], verify: bool = True, show_warning: bool = True) -> Optional[str]:
-    """Retrieve and optionally verify a file path from an event or direct argument."""
-    if isinstance(event_or_path, str):
-        file_path = event_or_path
-    else:
-        if not tree:
-            return None
-        selection = tree.selection()
-        if not selection:
-            return None
-        values = _get_item_raw_values(selection[0])
-        if not values:
-            return None
-        file_path = str(values[0])
-
-    if verify and not file_path.startswith("[") and not file_path.startswith(("http://", "https://")) and not os.path.exists(file_path):
-        if show_warning:
-            messagebox.showwarning("File Not Found", f"The file '{file_path}' could not be located.")
-        return None
-    return file_path
-
-
 def _resolve_file_paths(event_or_path: Union[tk.Event, str, None], verify: bool = True) -> List[str]:
     """Retrieve and optionally verify multiple file paths from an event or direct argument."""
     targets = []
@@ -6351,9 +6329,9 @@ def _resolve_file_paths(event_or_path: Union[tk.Event, str, None], verify: bool 
 
     valid_paths = []
     for path in targets:
-        resolved = _resolve_file_path(path, verify=verify, show_warning=False)
-        if resolved is not None:
-            valid_paths.append(resolved)
+        if verify and not path.startswith("[") and not path.startswith(("http://", "https://")) and not os.path.exists(path):
+            continue
+        valid_paths.append(path)
 
     if verify and targets and not valid_paths:
         messagebox.showwarning("Files Not Found", "The selected file(s) could not be located on disk.")
