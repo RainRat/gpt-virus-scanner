@@ -6691,6 +6691,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             root.clipboard_append(js)
             set_local_status("Result copied as JSON.", temporary=True)
 
+    def copy_as_report_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            report = generate_console_report(results, use_color=False)
+            root.clipboard_clear()
+            root.clipboard_append(report)
+            set_local_status("Result copied as Triage Report.", temporary=True)
+
     def copy_sha256_details():
         path = path_entry.get()
         snippet = snippet_text.get("1.0", tk.END).strip()
@@ -6771,6 +6779,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_menu.add_command(label="Copy Path", command=copy_path_details, accelerator="Ctrl+Shift+P")
     copy_menu.add_command(label="Copy SHA256", command=copy_sha256_details, accelerator="Ctrl+H")
     copy_menu.add_command(label="Copy as JSON", command=copy_as_json_details, accelerator="Ctrl+J")
+    copy_menu.add_command(label="Copy as Triage Report", command=copy_as_report_details, accelerator="Ctrl+Shift+R")
     copy_menu.add_command(label="Copy Code", command=copy_code, accelerator="Ctrl+S")
     copy_menu_btn["menu"] = copy_menu
 
@@ -6932,6 +6941,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Command-s>', lambda e: copy_code())
     details_win.bind('<Control-j>', lambda e: copy_as_json_details())
     details_win.bind('<Command-j>', lambda e: copy_as_json_details())
+    details_win.bind('<Control-Shift-R>', lambda e: copy_as_report_details())
+    details_win.bind('<Command-Shift-R>', lambda e: copy_as_report_details())
     details_win.bind('<Control-Shift-P>', lambda e: copy_path_details())
     details_win.bind('<Command-Shift-P>', lambda e: copy_path_details())
     details_win.bind('<Control-h>', lambda e: copy_sha256_details())
@@ -7142,6 +7153,23 @@ def copy_as_json(event: Optional[tk.Event] = None) -> None:
     tree.clipboard_clear()
     tree.clipboard_append(js)
     update_status(f"Copied {len(results)} item(s) as JSON.")
+
+
+def copy_as_report(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as a Triage Report to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+    report = generate_console_report(results, use_color=False)
+
+    tree.clipboard_clear()
+    tree.clipboard_append(report)
+    update_status(f"Copied {len(results)} item(s) as Triage Report.")
 
 
 def view_online(event_or_path: Union[tk.Event, str, None] = None, line: Optional[Union[int, str]] = None) -> None:
@@ -7967,6 +7995,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     copy_submenu.add_command(label="Code Snippet", command=copy_snippet, accelerator="Ctrl+S")
     copy_submenu.add_command(label="As Markdown Table", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
     copy_submenu.add_command(label="As JSON Array", command=copy_as_json, accelerator="Ctrl+J")
+    copy_submenu.add_command(label="As Triage Report", command=copy_as_report, accelerator="Ctrl+Shift+R")
     context_menu.add_cascade(label="Copy", menu=copy_submenu)
 
     context_menu.add_separator()
@@ -8043,6 +8072,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-f>', focus_filter)
     root.bind('<Control-j>', copy_as_json)
     root.bind('<Command-j>', copy_as_json)
+    root.bind('<Control-Shift-R>', copy_as_report)
+    root.bind('<Command-Shift-R>', copy_as_report)
     root.bind('<Control-g>', analyze_selected_with_ai)
     root.bind('<Command-g>', analyze_selected_with_ai)
     tree.bind('<<TreeviewSelect>>', update_button_states)
