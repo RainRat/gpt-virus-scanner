@@ -911,19 +911,13 @@ class AsyncRateLimiter:
 
 
 def extract_data_from_gpt_response(response: Any) -> Union[Dict, str]:
-    """Parse and validate the JSON payload returned from the OpenAI API.
+    """Extract and check the AI's report from the server response.
 
-    Parameters
-    ----------
-    response : Any
-        OpenAI response object expected to contain ``choices[0].message.content``
-        with JSON matching ``Config.EXPECTED_KEYS``.
+    Args:
+        response: The raw response from the AI provider.
 
-    Returns
-    -------
-    Union[Dict, str]
-        Parsed JSON dictionary when valid; otherwise, a human-readable error
-        message describing the parsing failure.
+    Returns:
+        A dictionary with the AI's analysis if successful, or an error message string if the report is invalid or missing information.
     """
     content = response.choices[0].message.content
 
