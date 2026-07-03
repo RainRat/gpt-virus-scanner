@@ -1135,7 +1135,7 @@ def get_shell_profile_paths() -> List[str]:
 
         # /etc/profile.d/*.sh scripts
         profile_d = Path('/etc/profile.d')
-        if profile_d.exists() and profile_d.is_dir():
+        if profile_d.is_dir():
             for script in profile_d.glob('*.sh'):
                 paths.append(str(script))
 
@@ -1736,7 +1736,7 @@ def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
             # 2. System crontabs
             cron_files = ["/etc/crontab"]
             cron_d = Path("/etc/cron.d")
-            if cron_d.exists() and cron_d.is_dir():
+            if cron_d.is_dir():
                 try:
                     for p in cron_d.iterdir():
                         if p.is_file():
