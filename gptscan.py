@@ -2348,14 +2348,14 @@ def analyze_filename(path: Union[str, Path]) -> Tuple[float, str]:
             return 0.9, f"Deceptive double extension detected: '{ext1}{ext2}'."
 
     # 3. Hidden extension tricks (excessive whitespace)
-    if '  ' in name and any(name.lower().endswith(ext) for ext in exec_extensions):
+    if any(name.lower().endswith(ext) for ext in exec_extensions):
         # Check if there's a large gap before the extension
         # e.g. "invoice.pdf                              .exe"
         if re.search(r'\.\w+\s{5,}\.\w+$', name):
             return 0.9, "Suspiciously large whitespace gap found before file extension."
 
     # 4. Trailing whitespace or dots
-    if name.endswith(' ') or name.endswith('.'):
+    if re.search(r'[\s.]$', name):
         return 0.5, "Filename ends with a suspicious space or dot, often used to bypass filters."
 
     # 5. Invisible/Control characters (excluding standard ones)
