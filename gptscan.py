@@ -6748,13 +6748,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     if not Config.GPT_ENABLED:
         analyze_btn.config(state='disabled')
 
-    vt_btn = ttk.Button(btn_frame, text="VirusTotal", width=12, command=lambda: check_virustotal(path_entry.get()))
-    vt_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(vt_btn, "Check this file's hash on VirusTotal.", label=status_bar)
+    intel_menu_btn = ttk.Menubutton(btn_frame, text="Intel", width=12)
+    intel_menu_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(intel_menu_btn, "Threat intelligence for this item (VirusTotal, online repository).", label=status_bar)
 
-    view_online_btn = ttk.Button(btn_frame, text="View Online", width=14, command=lambda: view_online(path_entry.get(), line=line_label.cget("text")))
-    view_online_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(view_online_btn, "View this file in its online repository. (Ctrl+L)", label=status_bar)
+    intel_menu_details = tk.Menu(intel_menu_btn, tearoff=0)
+    intel_menu_details.add_command(label="Check on VirusTotal", command=lambda: check_virustotal(path_entry.get()), accelerator="Ctrl+T")
+    intel_menu_details.add_command(label="View Online", command=lambda: view_online(path_entry.get(), line=line_label.cget("text")), accelerator="Ctrl+L")
+    intel_menu_btn["menu"] = intel_menu_details
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
@@ -6816,8 +6817,12 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         analyze_btn.config(state='disabled' if is_scanning or not Config.GPT_ENABLED else 'normal')
         exclude_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
         open_btn.config(state='disabled' if is_virtual else 'normal')
-        vt_btn.config(state='normal')
-        view_online_btn.config(state='disabled' if is_non_url_virtual else 'normal')
+
+        try:
+            intel_menu_details.entryconfig("Check on VirusTotal", state='normal')
+            intel_menu_details.entryconfig("View Online", state='disabled' if is_non_url_virtual else 'normal')
+        except tk.TclError:
+            pass
         path_copy_btn.config(state='normal')
         reveal_btn.config(state='disabled' if is_virtual else 'normal')
 
