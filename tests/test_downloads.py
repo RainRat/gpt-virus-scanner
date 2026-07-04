@@ -7,14 +7,13 @@ def test_get_downloads_paths_exists(monkeypatch):
     mock_home = Path("/home/testuser")
     monkeypatch.setattr("pathlib.Path.home", lambda: mock_home)
 
-    # Mock Path.exists to return True for the Downloads folder
-    original_exists = Path.exists
-    def mock_exists(self):
-        if str(self) == str(mock_home / "Downloads"):
+    # Mock os.path.isdir to return True for the Downloads folder
+    def mock_isdir(path):
+        if str(path) == str(mock_home / "Downloads"):
             return True
         return False
 
-    monkeypatch.setattr("pathlib.Path.exists", mock_exists)
+    monkeypatch.setattr("os.path.isdir", mock_isdir)
 
     paths = gptscan.get_downloads_paths()
     assert len(paths) == 1
@@ -24,8 +23,8 @@ def test_get_downloads_paths_not_exists(monkeypatch):
     mock_home = Path("/home/testuser")
     monkeypatch.setattr("pathlib.Path.home", lambda: mock_home)
 
-    # Mock Path.exists to return False
-    monkeypatch.setattr("pathlib.Path.exists", lambda self: False)
+    # Mock os.path.isdir to return False
+    monkeypatch.setattr("os.path.isdir", lambda path: False)
 
     paths = gptscan.get_downloads_paths()
     assert len(paths) == 0

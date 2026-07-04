@@ -1205,22 +1205,14 @@ def get_system_path_directories() -> List[str]:
 
 def get_downloads_paths() -> List[str]:
     """Find the standard Downloads folder."""
-    paths = []
-    home = Path.home()
-    downloads = home / "Downloads"
-    if downloads.exists():
-        paths.append(str(downloads))
-    return paths
+    paths = [str(Path.home() / "Downloads")]
+    return _normalize_and_filter_dirs(paths)
 
 
 def get_desktop_paths() -> List[str]:
     """Find the user's Desktop folder."""
-    paths = []
-    home = Path.home()
-    desktop = home / "Desktop"
-    if desktop.exists():
-        paths.append(str(desktop))
-    return paths
+    paths = [str(Path.home() / "Desktop")]
+    return _normalize_and_filter_dirs(paths)
 
 
 def get_temp_paths() -> List[str]:
@@ -1370,11 +1362,7 @@ def get_dotnet_packages_paths() -> List[str]:
 
 def get_documents_paths() -> List[str]:
     """Find the user's Documents folder."""
-    paths = []
-    home = Path.home()
-    docs = home / "Documents"
-    if docs.exists():
-        paths.append(str(docs))
+    paths = [str(Path.home() / "Documents")]
 
     # Windows specific (might be redirected)
     if sys.platform == "win32":
@@ -1440,15 +1428,14 @@ def get_system_service_paths() -> List[str]:
     ]
 
     for d in search_dirs:
-        if d.exists():
-            # Only scan .service files to avoid excessive noise from other systemd units
-            for p in d.rglob("*.service"):
-                try:
-                    # Skip symlinks to avoid duplicate scanning of units
-                    if p.is_file() and not p.is_symlink():
-                        paths.append(str(p))
-                except Exception:
-                    pass
+        # Only scan .service files to avoid excessive noise from other systemd units
+        for p in d.rglob("*.service"):
+            try:
+                # Skip symlinks to avoid duplicate scanning of units
+                if p.is_file() and not p.is_symlink():
+                    paths.append(str(p))
+            except Exception:
+                pass
 
     return sorted(list(set(paths)))
 
@@ -1500,9 +1487,8 @@ def get_browser_extensions_paths() -> List[str]:
         if appdata:
             # Firefox
             ff_base = Path(appdata) / "Mozilla" / "Firefox" / "Profiles"
-            if ff_base.exists():
-                for p in ff_base.glob("*/extensions"):
-                    paths.append(str(p))
+            for p in ff_base.glob("*/extensions"):
+                paths.append(str(p))
     elif sys.platform == "darwin":
         lib_support = home / "Library" / "Application Support"
         # Chrome
@@ -1517,9 +1503,8 @@ def get_browser_extensions_paths() -> List[str]:
             paths.append(str(p))
         # Firefox
         ff_base = lib_support / "Firefox" / "Profiles"
-        if ff_base.exists():
-            for p in ff_base.glob("*/extensions"):
-                paths.append(str(p))
+        for p in ff_base.glob("*/extensions"):
+            paths.append(str(p))
     else:
         # Linux
         config = home / ".config"
@@ -1535,9 +1520,8 @@ def get_browser_extensions_paths() -> List[str]:
             paths.append(str(p))
         # Firefox
         ff_base = home / ".mozilla" / "firefox"
-        if ff_base.exists():
-            for p in ff_base.glob("*/extensions"):
-                paths.append(str(p))
+        for p in ff_base.glob("*/extensions"):
+            paths.append(str(p))
 
     return sorted(_normalize_and_filter_dirs(paths))
 
@@ -1550,9 +1534,7 @@ def get_editor_extensions_paths() -> List[str]:
     # 1. VS Code / Insiders / VSCodium
     vscode_dirs = [".vscode", ".vscode-insiders", ".vscode-oss", ".vscode-remote"]
     for d in vscode_dirs:
-        p = home / d / "extensions"
-        if p.exists():
-            paths.append(str(p))
+        paths.append(str(home / d / "extensions"))
 
     # 2. Sublime Text
     if sys.platform == "win32":
