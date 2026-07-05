@@ -622,10 +622,8 @@ def get_async_openai_client() -> Any:
 def update_status(message: str) -> None:
     """Update the status label with the given message.
 
-    Parameters
-    ----------
-    message : str
-        The message to display in the status label.
+    Args:
+        message: The message to display in the status label.
     """
     if status_label:
         status_label.config(text=message)
@@ -636,10 +634,8 @@ def update_status(message: str) -> None:
 def update_progress(value: int) -> None:
     """Update the progress bar to reflect current progress.
 
-    Parameters
-    ----------
-    value : int
-        Current progress count to display.
+    Args:
+        value: Current progress count to display.
     """
     if progress_bar and root:
         progress_bar['value'] = value
@@ -656,10 +652,8 @@ def update_progress(value: int) -> None:
 def configure_progress(max_value: int) -> None:
     """Initialize progress bar values for a new scan.
 
-    Parameters
-    ----------
-    max_value : int
-        Total number of steps expected for the scan.
+    Args:
+        max_value: Total number of steps expected for the scan.
     """
     if progress_bar and root:
         progress_bar["maximum"] = max_value
@@ -671,14 +665,10 @@ def configure_progress(max_value: int) -> None:
 def enqueue_ui_update(func: Callable, *args: Any, **kwargs: Any) -> None:
     """Add a task to the queue so the main window can update safely.
 
-    Parameters
-    ----------
-    func : Callable
-        Function to execute on the UI thread.
-    *args
-        Positional arguments for ``func``.
-    **kwargs
-        Keyword arguments for ``func``.
+    Args:
+        func: Function to execute on the UI thread.
+        *args: Positional arguments for `func`.
+        **kwargs: Keyword arguments for `func`.
     """
     ui_queue.put((func, args, kwargs))
 
@@ -2159,17 +2149,12 @@ def _normalize_targets(targets: Union[str, List[str], Path]) -> List[str]:
 def collect_files(targets: Union[str, List[str]], modified_since: Optional[float] = None) -> List[Path]:
     """Collect files from a single path or a list of paths (files, folders, or patterns).
 
-    Parameters
-    ----------
-    targets : Union[str, List[str]]
-        A single folder path or a list of file/folder paths or glob patterns.
-        Multiple targets can be provided in a single space-separated string.
-    modified_since : float, optional
-        A timestamp. If provided, only files modified after this time are returned.
+    Args:
+        targets: A single folder path or a list of file/folder paths or glob patterns.
+            Multiple targets can be provided in a single space-separated string.
+        modified_since: A timestamp. If provided, only files modified after this time are returned.
 
-    Returns
-    -------
-    List[Path]
+    Returns:
         A unique list of files to scan.
     """
     targets = _normalize_targets(targets)
@@ -2420,22 +2405,17 @@ def get_virustotal_url(path: str, snippet: Optional[str] = None) -> Optional[str
 def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, use_color: bool = False, high_risk: int = 0, medium_risk: int = 0) -> str:
     """Format a human-readable summary of the scan results.
 
-    Parameters
-    ----------
-    total_scanned : int
-        Total number of files scanned.
-    threats_found : int
-        Total number of suspicious files detected.
-    total_bytes : int, optional
-        Total bytes scanned.
-    elapsed_time : float, optional
-        Time taken for the scan in seconds.
-    use_color : bool, optional
-        Whether to use ANSI color codes in the output.
-    high_risk : int, optional
-        Number of high risk files found.
-    medium_risk : int, optional
-        Number of medium risk files found.
+    Args:
+        total_scanned: Total number of files scanned.
+        threats_found: Total number of suspicious files detected.
+        total_bytes: Total bytes scanned.
+        elapsed_time: Time taken for the scan in seconds.
+        use_color: Whether to use ANSI color codes in the output.
+        high_risk: Number of high risk files found.
+        medium_risk: Number of medium risk files found.
+
+    Returns:
+        A human-readable summary string.
     """
     file_text = "file" if total_scanned == 1 else "files"
     threat_text = "suspicious file" if threats_found == 1 else "suspicious files"
@@ -2484,14 +2464,10 @@ def get_risk_category(conf: float, threshold: int) -> Optional[str]:
 def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
     """Sort a Treeview column, toggling sort order on subsequent clicks.
 
-    Parameters
-    ----------
-    tv : ttk.Treeview
-        Treeview widget containing the data to sort.
-    col : str
-        Column identifier to sort.
-    reverse : bool
-        Sort order; ``True`` for descending and ``False`` for ascending.
+    Args:
+        tv: Treeview widget containing the data to sort.
+        col: Column identifier to sort.
+        reverse: Sort order; `True` for descending and `False` for ascending.
     """
     values_with_ids = [(tv.set(k, col), k) for k in tv.get_children("")]
     if col in {"own_conf", "gpt_conf"}:
@@ -2713,20 +2689,13 @@ def set_scanning_state(is_scanning: bool) -> None:
 def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Optional[int] = None, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, high_risk: int = 0, medium_risk: int = 0) -> None:
     """Reset scanning controls when a scan finishes or is cancelled.
 
-    Parameters
-    ----------
-    total_scanned : int, optional
-        Total number of files scanned.
-    threats_found : int, optional
-        Total number of suspicious files detected.
-    total_bytes : int, optional
-        Total bytes scanned.
-    elapsed_time : float, optional
-        Time taken for the scan in seconds.
-    high_risk : int
-        Number of high risk files found.
-    medium_risk : int
-        Number of medium risk files found.
+    Args:
+        total_scanned: Total number of files scanned.
+        threats_found: Total number of suspicious files detected.
+        total_bytes: Total bytes scanned.
+        elapsed_time: Time taken for the scan in seconds.
+        high_risk: Number of high risk files found.
+        medium_risk: Number of medium risk files found.
     """
 
     global current_cancel_event
@@ -3271,18 +3240,12 @@ def scan_system_audit_click():
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None, modified_since: Optional[float] = None) -> None:
     """Trigger a scan in a background thread using the selected path.
 
-    Parameters
-    ----------
-    extra_snippets : List[Tuple[str, bytes]], optional
-        List of (name, content) tuples to scan as in-memory buffers.
-    fail_threshold : int, optional
-        Threat level threshold to trigger a failure count.
-    modified_since : float, optional
-        A timestamp. If provided, only files modified after this time are scanned.
+    Args:
+        extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
+        fail_threshold: Threat level threshold to trigger a failure count.
+        modified_since: A timestamp. If provided, only files modified after this time are scanned.
 
-    Returns
-    -------
-    None
+    Returns:
         Starts a daemon thread to run the scan.
     """
     global current_cancel_event
@@ -4556,32 +4519,21 @@ def scan_files(
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for dangerous content and optionally use AI for analysis.
 
-    Parameters
-    ----------
-    scan_targets : Union[str, List[str]]
-        Folder path or list of file/folder paths to search.
-    deep_scan : bool
-        Whether to scan overlapping 1024-byte windows beyond the first block.
-    show_all : bool
-        Whether to yield all scanned files regardless of threat level threshold.
-    use_gpt : bool
-        Whether to request GPT analysis when the local model is confident.
-    rate_limit : int
-        Maximum number of GPT requests permitted per minute.
-    max_concurrent_requests : int
-        Maximum number of GPT requests executed concurrently.
-    dry_run : bool
-        Whether to list files that would be scanned without running the model or API.
-    exclude_patterns : List[str], optional
-        List of glob patterns to exclude from the scan.
-    extra_snippets : List[Tuple[str, bytes]], optional
-        List of (name, content) tuples to scan as in-memory buffers.
-    modified_since : float, optional
-        A timestamp. If provided, only files modified after this time are scanned.
+    Args:
+        scan_targets: Folder path or list of file/folder paths to search.
+        deep_scan: Whether to scan overlapping 1024-byte windows beyond the first block.
+        show_all: Whether to yield all scanned files regardless of threat level threshold.
+        use_gpt: Whether to request GPT analysis when the local model is confident.
+        cancel_event: Event used to signal the scan to stop.
+        rate_limit: Maximum number of GPT requests permitted per minute.
+        max_concurrent_requests: Maximum number of GPT requests executed concurrently.
+        dry_run: Whether to list files that would be scanned without running the model or API.
+        exclude_patterns: List of glob patterns to exclude from the scan.
+        extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
+        fail_threshold: Threat level threshold to trigger a failure count.
+        modified_since: A timestamp. If provided, only files modified after this time are scanned.
 
-    Yields
-    ------
-    Generator[Tuple[str, Any], None, None]
+    Yields:
         Tuples indicating events:
         - ('progress', (current: int, total: int, status: Optional[str]))
         - ('result', (path: str, own_conf: str, admin: str, user: str, gpt: str, snippet: str, line: Union[int, str]))
@@ -5196,20 +5148,18 @@ def run_scan(
 ) -> None:
     """Read scan results and send them to the UI window.
 
-    Parameters
-    ----------
-    scan_targets : Union[str, List[str]]
-        Folder path or list of files to scan.
-    deep_scan : bool
-        Whether to evaluate all 1024-byte windows.
-    show_all : bool
-        Whether to display all results regardless of threat level.
-    use_gpt : bool
-        Whether to enrich suspicious files with GPT output.
-    rate_limit : int
-        Maximum allowed GPT requests per minute.
-    dry_run : bool
-        Whether to simulate the scan.
+    Args:
+        scan_targets: Folder path or list of files to scan.
+        deep_scan: Whether to evaluate all 1024-byte windows.
+        show_all: Whether to display all results regardless of threat level.
+        use_gpt: Whether to enrich suspicious files with GPT output.
+        cancel_event: Event used to signal the scan to stop.
+        rate_limit: Maximum allowed GPT requests per minute.
+        dry_run: Whether to simulate the scan.
+        exclude_patterns: List of glob patterns to exclude from the scan.
+        extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
+        fail_threshold: Threat level threshold to trigger a failure count.
+        modified_since: A timestamp. If provided, only files modified after this time are scanned.
     """
     event_gen = scan_files(
         scan_targets,
@@ -5385,14 +5335,10 @@ def generate_console_report(results: List[Dict[str, Any]], use_color: bool = Fal
 def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Generate a SARIF log from the scan results.
 
-    Parameters
-    ----------
-    results : List[Dict[str, Any]]
-        List of result dictionaries.
+    Args:
+        results: List of result dictionaries.
 
-    Returns
-    -------
-    Dict[str, Any]
+    Returns:
         The SARIF log object.
     """
     sarif_results = []
@@ -5464,14 +5410,10 @@ def generate_sarif(results: List[Dict[str, Any]]) -> Dict[str, Any]:
 def generate_html(results: List[Dict[str, Any]]) -> str:
     """Generate an HTML report from the scan results.
 
-    Parameters
-    ----------
-    results : List[Dict[str, Any]]
-        List of result dictionaries.
+    Args:
+        results: List of result dictionaries.
 
-    Returns
-    -------
-    str
+    Returns:
         The HTML report as a string.
     """
     rows = []
@@ -5567,14 +5509,10 @@ def generate_html(results: List[Dict[str, Any]]) -> str:
 def generate_markdown(results: List[Dict[str, Any]]) -> str:
     """Generate a Markdown report from the scan results.
 
-    Parameters
-    ----------
-    results : List[Dict[str, Any]]
-        List of result dictionaries.
+    Args:
+        results: List of result dictionaries.
 
-    Returns
-    -------
-    str
+    Returns:
         The Markdown report as a string.
     """
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -5673,34 +5611,23 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
 def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
-    Parameters
-    ----------
-    targets : Union[str, List[str]]
-        Folder or list of files to scan.
-    deep : bool
-        Whether to evaluate all 1024-byte windows.
-    show_all : bool
-        Whether to emit every scanned file.
-    use_gpt : bool
-        Whether to request GPT analysis for confident detections.
-    rate_limit : int
-        Maximum allowed GPT requests per minute.
-    output_format : str
-        Format of the output ('csv', 'json', 'sarif', 'html', or 'markdown'). Defaults to 'csv'.
-    dry_run : bool
-        Whether to simulate the scan.
-    exclude_patterns : List[str], optional
-        List of glob patterns to exclude from the scan.
-    fail_threshold : int, optional
-        Threat level threshold to trigger a failure count.
-    output_file : str, optional
-        Path to a file where results should be saved.
-    extra_snippets : List[Tuple[str, bytes]], optional
-        List of (name, content) tuples to scan as in-memory buffers.
-    import_file : str, optional
-        Path to a previous scan report to import and process.
-    modified_since : float, optional
-        A timestamp. If provided, only files modified after this time are scanned.
+    Args:
+        targets: Folder or list of files to scan.
+        deep: Whether to evaluate all 1024-byte windows.
+        show_all: Whether to emit every scanned file.
+        use_gpt: Whether to request GPT analysis for confident detections.
+        rate_limit: Maximum allowed GPT requests per minute.
+        output_format: Format of the output ('csv', 'json', 'sarif', 'html', or 'markdown').
+        dry_run: Whether to simulate the scan.
+        exclude_patterns: List of glob patterns to exclude from the scan.
+        fail_threshold: Threat level threshold to trigger a failure count.
+        output_file: Path to a file where results should be saved.
+        extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
+        import_file: Path to a previous scan report to import and process.
+        modified_since: A timestamp. If provided, only files modified after this time are scanned.
+
+    Returns:
+        The number of threats found.
     """
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
 
@@ -7441,14 +7368,10 @@ def select_all_items(event: Optional[tk.Event] = None) -> str:
 def get_model_presets(provider: str) -> List[str]:
     """Return the list of model presets for a given provider.
 
-    Parameters
-    ----------
-    provider : str
-        The AI provider name (e.g., 'openai', 'ollama', 'openrouter').
+    Args:
+        provider: The AI provider name (e.g., 'openai', 'ollama', 'openrouter').
 
-    Returns
-    -------
-    List[str]
+    Returns:
         A list of model names supported by the provider.
     """
     if provider == "openai":
@@ -7505,15 +7428,11 @@ def on_provider_change(event: Optional[tk.Event] = None) -> None:
 def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     """Construct and return the main Tkinter GUI for the scanner.
 
-    Parameters
-    ----------
-    initial_path : str, optional
-        If provided, pre-fill the scan path textbox.
+    Args:
+        initial_path: If provided, pre-fill the scan path textbox.
 
-    Returns
-    -------
-    tk.Tk
-        Initialized Tk root instance ready for ``mainloop``.
+    Returns:
+        Initialized Tk root instance ready for `mainloop`.
     """
     global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, intel_button, intel_menu, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, clear_target_btn, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
 
