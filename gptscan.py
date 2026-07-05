@@ -6601,14 +6601,6 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     path_copy_btn.grid(row=1, column=2, padx=2)
     bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.", label=status_bar)
 
-    reveal_btn = ttk.Button(header_frame, text="Show in Folder", width=14, command=lambda: show_in_folder(path_entry.get()))
-    reveal_btn.grid(row=1, column=3, padx=2)
-    bind_hover_message(reveal_btn, "Show this file in the system file manager. (Ctrl+Enter)", label=status_bar)
-
-    open_btn = ttk.Button(header_frame, text="Open", width=10, command=lambda: open_file(path_entry.get()))
-    open_btn.grid(row=1, column=4, padx=2)
-    bind_hover_message(open_btn, "Open this file in the default application. (Shift+Enter)", label=status_bar)
-
     def on_analyze_now():
         if current_cancel_event is not None:
             return
@@ -6741,20 +6733,12 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             tree.see(new_item_id)
             refresh_content(new_item_id)
 
-    # Group: Actions
+    # Group: AI Analysis
     analyze_btn = ttk.Button(btn_frame, text="Analyze with AI", width=18, command=on_analyze_now, style='Primary.TButton')
     analyze_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(analyze_btn, "Use AI to analyze this code snippet. (Ctrl+G)", label=status_bar)
     if not Config.GPT_ENABLED:
         analyze_btn.config(state='disabled')
-
-    vt_btn = ttk.Button(btn_frame, text="VirusTotal", width=12, command=lambda: check_virustotal(path_entry.get()))
-    vt_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(vt_btn, "Check this file's hash on VirusTotal.", label=status_bar)
-
-    view_online_btn = ttk.Button(btn_frame, text="View Online", width=14, command=lambda: view_online(path_entry.get(), line=line_label.cget("text")))
-    view_online_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(view_online_btn, "View this file in its online repository. (Ctrl+L)", label=status_bar)
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
@@ -6766,6 +6750,26 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     exclude_btn = ttk.Button(btn_frame, text="Exclude", width=10, command=on_exclude)
     exclude_btn.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(exclude_btn, "Exclude this file from future scans. (Delete)", label=status_bar)
+
+    ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
+
+    # Group: Actions
+    open_btn = ttk.Button(btn_frame, text="Open", width=10, command=lambda: open_file(path_entry.get()))
+    open_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(open_btn, "Open this file in the default application. (Shift+Enter)", label=status_bar)
+
+    reveal_btn = ttk.Button(btn_frame, text="Show in Folder", width=14, command=lambda: show_in_folder(path_entry.get()))
+    reveal_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(reveal_btn, "Show this file in the system file manager. (Ctrl+Enter)", label=status_bar)
+
+    intel_menu_details = ttk.Menubutton(btn_frame, text="Intel", width=12)
+    intel_menu_details.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(intel_menu_details, "Threat intelligence for this result (VirusTotal, online repository).", label=status_bar)
+
+    intel_menu_inner = tk.Menu(intel_menu_details, tearoff=0)
+    intel_menu_inner.add_command(label="Check on VirusTotal", command=lambda: check_virustotal(path_entry.get()), accelerator="Ctrl+T")
+    intel_menu_inner.add_command(label="View Online", command=lambda: view_online(path_entry.get(), line=line_label.cget("text")), accelerator="Ctrl+L")
+    intel_menu_details["menu"] = intel_menu_inner
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
@@ -6816,10 +6820,15 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         analyze_btn.config(state='disabled' if is_scanning or not Config.GPT_ENABLED else 'normal')
         exclude_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
         open_btn.config(state='disabled' if is_virtual else 'normal')
-        vt_btn.config(state='normal')
-        view_online_btn.config(state='disabled' if is_non_url_virtual else 'normal')
-        path_copy_btn.config(state='normal')
         reveal_btn.config(state='disabled' if is_virtual else 'normal')
+        intel_menu_details.config(state='normal')
+        try:
+            intel_menu_inner.entryconfig("Check on VirusTotal", state='normal')
+            intel_menu_inner.entryconfig("View Online", state='disabled' if is_non_url_virtual else 'normal')
+        except tk.TclError:
+            pass
+
+        path_copy_btn.config(state='normal')
 
         # vals: (path, own_conf, admin, user, gpt_conf, snippet, line)
         path, own_conf, admin, user, gpt_conf, snippet = vals[:6]
@@ -6949,6 +6958,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Command-h>', lambda e: copy_sha256_details())
     details_win.bind('<Control-g>', lambda e: on_analyze_now())
     details_win.bind('<Command-g>', lambda e: on_analyze_now())
+    details_win.bind('<Control-t>', lambda e: check_virustotal(path_entry.get()))
+    details_win.bind('<Command-t>', lambda e: check_virustotal(path_entry.get()))
     details_win.bind('<Control-l>', lambda e: view_online(path_entry.get(), line=line_label.cget("text")))
     details_win.bind('<Command-l>', lambda e: view_online(path_entry.get(), line=line_label.cget("text")))
     details_win.bind('<Control-Shift-C>', lambda e: copy_analysis())
