@@ -37,11 +37,11 @@ def test_analyze_filename_hidden_whitespace():
 def test_analyze_filename_trailing():
     score, msg = analyze_filename("script.py ")
     assert score == 0.5
-    assert "ends with a suspicious space" in msg
+    assert "ends with a suspicious whitespace" in msg
 
     score, msg = analyze_filename("file.txt.")
     assert score == 0.5
-    assert "ends with a suspicious space or dot" in msg
+    assert "ends with a suspicious whitespace or dot" in msg
 
 def test_analyze_filename_control_chars():
     # ASCII 7 is Bell
