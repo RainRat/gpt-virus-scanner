@@ -65,6 +65,7 @@ Access these options from the **Browse** menu:
 *   **Scan Git Hooks (Ctrl+Shift+G):** Scan your local and global Git hooks for suspicious scripts.
 *   **Scan Git Stashes (Ctrl+Shift+Q):** Scan all Git stashes for suspicious code changes.
 *   **Scan Git Configuration:** Scan Git settings for dangerous aliases or editors.
+*   **Scan Git Reflog...:** Scan recent entries in your Git reflog to find lost code or secrets.
 *   **Scan Git Revision...:** Scan files from a specific Git branch or commit.
 
 #### System Scans
@@ -321,6 +322,11 @@ python3 gptscan.py --git-config --cli
 Scan all Git stashes:
 ```bash
 python3 gptscan.py --git-stash --cli
+```
+
+Scan recent entries in the Git reflog:
+```bash
+python3 gptscan.py --git-reflog 5 --cli
 ```
 
 #### Advanced Scans
