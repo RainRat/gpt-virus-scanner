@@ -158,6 +158,7 @@ The scanner includes shortcuts for faster navigation.
 | `Ctrl+S` | Copy Code Snippet |
 | `Ctrl+Shift+C` | Copy AI Analysis |
 | `Ctrl+J` | Copy JSON Data |
+| `Ctrl+T` | Check on VirusTotal |
 | `Ctrl+L` | View Online |
 | `Shift+Enter` | Open File |
 | `Ctrl+Enter` | Reveal in Folder |
