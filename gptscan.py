@@ -2842,18 +2842,21 @@ def get_git_history_snippets(path: str = ".", count: int = 5) -> List[Tuple[str,
 
         snippets = []
         for commit_hash in hashes:
-            # Get the diff for each commit
-            cmd_show = ["git", "show", "--no-color", commit_hash]
-            show_output = subprocess.check_output(
-                cmd_show,
-                cwd=toplevel,
-                stderr=subprocess.PIPE,
-                universal_newlines=True
-            )
-            if show_output.strip():
-                # Extract short hash for naming
-                short_hash = commit_hash[:7]
-                snippets.append((f"[Git History] commit {short_hash}", show_output.encode('utf-8')))
+            try:
+                # Get the diff for each commit
+                cmd_show = ["git", "show", "--no-color", commit_hash]
+                show_output = subprocess.check_output(
+                    cmd_show,
+                    cwd=toplevel,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True
+                )
+                if show_output.strip():
+                    # Extract short hash for naming
+                    short_hash = commit_hash[:7]
+                    snippets.append((f"[Git History] commit {short_hash}", show_output.encode('utf-8')))
+            except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+                continue
         return snippets
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         return []
