@@ -62,6 +62,8 @@ Access these options from the **Browse** menu:
 
 #### Git Integration
 *   **Scan Git Diff (Ctrl+Shift+D):** Scan your current project changes as a diff.
+*   **Scan Git Changes:** Scan files that have changed in your project.
+*   **Scan Recent Commits...:** Scan files from the most recent commits.
 *   **Scan Git Hooks (Ctrl+Shift+G):** Scan your local and global Git hooks for suspicious scripts.
 *   **Scan Git Stashes (Ctrl+Shift+Q):** Scan all Git stashes for suspicious code changes.
 *   **Scan Git Configuration:** Scan Git settings for dangerous aliases or editors.
@@ -321,6 +323,16 @@ python3 gptscan.py --git-config --cli
 Scan all Git stashes:
 ```bash
 python3 gptscan.py --git-stash --cli
+```
+
+Scan files changed in your project:
+```bash
+python3 gptscan.py --git-changes --cli
+```
+
+Scan the last 5 Git commits:
+```bash
+python3 gptscan.py --git-history --cli
 ```
 
 #### Advanced Scans
