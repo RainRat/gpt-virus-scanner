@@ -117,9 +117,17 @@ def mock_view_details_env(monkeypatch):
             if label:
                 self.items[label] = kwargs.get('command')
                 captured[f"menu_{label}"] = kwargs.get('command')
+                if f"menu_items_{id(self)}" not in captured:
+                    captured[f"menu_items_{id(self)}"] = []
+                captured[f"menu_items_{id(self)}"].append((label, kwargs.get('command')))
         def add_separator(self): pass
         def add_cascade(self, **kwargs): pass
-        def entryconfig(self, index, **kwargs): pass
+        def entryconfig(self, index, **kwargs):
+            if f"menu_entryconfigs_{id(self)}" not in captured:
+                captured[f"menu_entryconfigs_{id(self)}"] = {}
+            if index not in captured[f"menu_entryconfigs_{id(self)}"]:
+                captured[f"menu_entryconfigs_{id(self)}"][index] = {}
+            captured[f"menu_entryconfigs_{id(self)}"][index].update(kwargs)
 
     monkeypatch.setattr(gptscan.tk, 'Menu', MockMenu)
 
@@ -127,7 +135,11 @@ def mock_view_details_env(monkeypatch):
         mb = MagicMock()
         text = kwargs.get('text', '')
         if text:
-            captured[f"mb_{text}"] = mb
+            captured[f"menubtn_{text}"] = (mb, None)
+            def setitem(key, value):
+                if key == "menu":
+                    captured[f"menubtn_{text}"] = (mb, value)
+            mb.__setitem__.side_effect = setitem
         return mb
     monkeypatch.setattr(gptscan.ttk, 'Menubutton', mock_menubutton_init)
 
