@@ -158,7 +158,10 @@ The scanner includes shortcuts for faster navigation.
 | `Ctrl+U` | Toggle Full Source |
 | `Ctrl+S` | Copy Code Snippet |
 | `Ctrl+Shift+C` | Copy AI Analysis |
+| `Ctrl+H` | Copy SHA-256 Hash |
 | `Ctrl+J` | Copy JSON Data |
+| `Ctrl+Shift+R` | Copy as Triage Report |
+| `Ctrl+T` | Check on VirusTotal |
 | `Ctrl+L` | View Online |
 | `Shift+Enter` | Open File |
 | `Ctrl+Enter` | Reveal in Folder |

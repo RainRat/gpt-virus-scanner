@@ -6708,13 +6708,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     if not Config.GPT_ENABLED:
         analyze_btn.config(state='disabled')
 
-    vt_btn = ttk.Button(btn_frame, text="VirusTotal", width=12, command=lambda: check_virustotal(path_entry.get()))
-    vt_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(vt_btn, "Check this file's hash on VirusTotal.", label=status_bar)
+    intel_btn = ttk.Menubutton(btn_frame, text="Intel", width=12)
+    intel_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    bind_hover_message(intel_btn, "Threat intelligence for this item (VirusTotal, online repository).", label=status_bar)
 
-    view_online_btn = ttk.Button(btn_frame, text="View Online", width=14, command=lambda: view_online(path_entry.get(), line=line_label.cget("text")))
-    view_online_btn.pack(side=tk.LEFT, padx=2, ipady=5)
-    bind_hover_message(view_online_btn, "View this file in its online repository. (Ctrl+L)", label=status_bar)
+    intel_menu = tk.Menu(intel_btn, tearoff=0)
+    intel_menu.add_command(label="Check on VirusTotal", command=lambda: check_virustotal(path_entry.get()), accelerator="Ctrl+T")
+    intel_menu.add_command(label="View Online", command=lambda: view_online(path_entry.get(), line=line_label.cget("text")), accelerator="Ctrl+L")
+    intel_btn["menu"] = intel_menu
 
     ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
@@ -6776,8 +6777,12 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         analyze_btn.config(state='disabled' if is_scanning or not Config.GPT_ENABLED else 'normal')
         exclude_btn.config(state='disabled' if is_scanning or is_virtual else 'normal')
         open_btn.config(state='disabled' if is_virtual else 'normal')
-        vt_btn.config(state='normal')
-        view_online_btn.config(state='disabled' if is_non_url_virtual else 'normal')
+        intel_btn.config(state='disabled' if is_scanning else 'normal')
+        try:
+            intel_menu.entryconfig("Check on VirusTotal", state='normal')
+            intel_menu.entryconfig("View Online", state='disabled' if is_non_url_virtual else 'normal')
+        except tk.TclError:
+            pass
         path_copy_btn.config(state='normal')
         reveal_btn.config(state='disabled' if is_virtual else 'normal')
 
@@ -6909,6 +6914,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Command-h>', lambda e: copy_sha256_details())
     details_win.bind('<Control-g>', lambda e: on_analyze_now())
     details_win.bind('<Command-g>', lambda e: on_analyze_now())
+    details_win.bind('<Control-t>', lambda e: check_virustotal(path_entry.get()))
+    details_win.bind('<Command-t>', lambda e: check_virustotal(path_entry.get()))
     details_win.bind('<Control-l>', lambda e: view_online(path_entry.get(), line=line_label.cget("text")))
     details_win.bind('<Command-l>', lambda e: view_online(path_entry.get(), line=line_label.cget("text")))
     details_win.bind('<Control-Shift-C>', lambda e: copy_analysis())
