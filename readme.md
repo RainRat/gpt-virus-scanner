@@ -66,6 +66,7 @@ Access these options from the **Browse** menu:
 *   **Scan Git Stashes (Ctrl+Shift+Q):** Scan all Git stashes for suspicious code changes.
 *   **Scan Git Conflicts:** Scan files with Git merge conflicts for suspicious code introduced during merging.
 *   **Scan Git Configuration:** Scan Git settings for dangerous aliases or editors.
+*   **Scan Git Reflog...:** Scan recent entries in your Git reflog to find lost code or secrets.
 *   **Scan Git Revision...:** Scan files from a specific Git branch or commit.
 
 #### System Scans
@@ -330,6 +331,11 @@ python3 gptscan.py --git-stash --cli
 Scan all files with Git merge conflicts:
 ```bash
 python3 gptscan.py --git-conflicts --cli
+```
+
+Scan recent entries in the Git reflog:
+```bash
+python3 gptscan.py --git-reflog 5 --cli
 ```
 
 #### Advanced Scans
