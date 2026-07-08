@@ -7,6 +7,7 @@ import io
 import json
 import plistlib
 import site
+import sqlite3
 import os
 import queue
 import re
@@ -1453,6 +1454,135 @@ def get_python_package_paths() -> List[str]:
             paths.append(p)
 
     return sorted(_normalize_and_filter_dirs(paths))
+
+
+def get_browser_bookmarks_snippets() -> List[Tuple[str, bytes]]:
+    """Identify common browser bookmark files and extract suspicious bookmarklets (javascript: or data: URLs)."""
+    snippets = []
+    home = Path.home()
+
+    # Discovery logic similar to get_browser_extensions_paths
+    bookmark_paths = []
+
+    if sys.platform == "win32":
+        local_appdata = os.environ.get("LOCALAPPDATA")
+        appdata = os.environ.get("APPDATA")
+        if local_appdata:
+            # Chrome
+            chrome_base = Path(local_appdata) / "Google" / "Chrome" / "User Data"
+            bookmark_paths.append((str(chrome_base / "Default" / "Bookmarks"), "Chrome"))
+            for p in chrome_base.glob("Profile */Bookmarks"):
+                bookmark_paths.append((str(p), "Chrome"))
+            # Edge
+            edge_base = Path(local_appdata) / "Microsoft" / "Edge" / "User Data"
+            bookmark_paths.append((str(edge_base / "Default" / "Bookmarks"), "Edge"))
+            for p in edge_base.glob("Profile */Bookmarks"):
+                bookmark_paths.append((str(p), "Edge"))
+            # Brave
+            brave_base = Path(local_appdata) / "BraveSoftware" / "Brave-Browser" / "User Data"
+            bookmark_paths.append((str(brave_base / "Default" / "Bookmarks"), "Brave"))
+            for p in brave_base.glob("Profile */Bookmarks"):
+                bookmark_paths.append((str(p), "Brave"))
+        if appdata:
+            # Firefox
+            ff_base = Path(appdata) / "Mozilla" / "Firefox" / "Profiles"
+            for p in ff_base.glob("*/places.sqlite"):
+                bookmark_paths.append((str(p), "Firefox"))
+    elif sys.platform == "darwin":
+        lib_support = home / "Library" / "Application Support"
+        # Chrome
+        chrome_base = lib_support / "Google" / "Chrome"
+        bookmark_paths.append((str(chrome_base / "Default" / "Bookmarks"), "Chrome"))
+        for p in chrome_base.glob("Profile */Bookmarks"):
+            bookmark_paths.append((str(p), "Chrome"))
+        # Edge
+        edge_base = lib_support / "Microsoft Edge"
+        bookmark_paths.append((str(edge_base / "Default" / "Bookmarks"), "Edge"))
+        for p in edge_base.glob("Profile */Bookmarks"):
+            bookmark_paths.append((str(p), "Edge"))
+        # Brave
+        brave_base = lib_support / "BraveSoftware" / "Brave-Browser"
+        bookmark_paths.append((str(brave_base / "Default" / "Bookmarks"), "Brave"))
+        for p in brave_base.glob("Profile */Bookmarks"):
+            bookmark_paths.append((str(p), "Brave"))
+        # Firefox
+        ff_base = lib_support / "Firefox" / "Profiles"
+        for p in ff_base.glob("*/places.sqlite"):
+            bookmark_paths.append((str(p), "Firefox"))
+    else:
+        # Linux
+        config = home / ".config"
+        # Chrome
+        chrome_base = config / "google-chrome"
+        bookmark_paths.append((str(chrome_base / "Default" / "Bookmarks"), "Chrome"))
+        for p in chrome_base.glob("Profile */Bookmarks"):
+            bookmark_paths.append((str(p), "Chrome"))
+        # Chromium
+        chromium_base = config / "chromium"
+        bookmark_paths.append((str(chromium_base / "Default" / "Bookmarks"), "Chromium"))
+        for p in chromium_base.glob("Profile */Bookmarks"):
+            bookmark_paths.append((str(p), "Chromium"))
+        # Brave
+        brave_base = config / "BraveSoftware" / "Brave-Browser"
+        bookmark_paths.append((str(brave_base / "Default" / "Bookmarks"), "Brave"))
+        for p in brave_base.glob("Profile */Bookmarks"):
+            bookmark_paths.append((str(p), "Brave"))
+        # Firefox
+        ff_base = home / ".mozilla" / "firefox"
+        for p in ff_base.glob("*/places.sqlite"):
+            bookmark_paths.append((str(p), "Firefox"))
+
+    for path, browser in bookmark_paths:
+        p_obj = Path(path)
+        if not p_obj.exists():
+            continue
+
+        if browser == "Firefox":
+            # Use a temporary copy to avoid locking issues
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                    shutil.copy2(path, tmp.name)
+                    tmp_path = tmp.name
+
+                conn = sqlite3.connect(tmp_path)
+                try:
+                    cursor = conn.cursor()
+                    # Query for bookmarks with javascript: or data: URLs
+                    cursor.execute("SELECT b.title, p.url FROM moz_bookmarks b JOIN moz_places p ON b.fk = p.id WHERE p.url LIKE 'javascript:%' OR p.url LIKE 'data:%'")
+                    for title, url in cursor.fetchall():
+                        snippets.append((f"[{browser} Bookmark] {title or 'Untitled'}", url.encode('utf-8')))
+                finally:
+                    conn.close()
+            except Exception:
+                pass
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+        else:
+            # Chromium-based (JSON)
+            try:
+                with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                    data = json.load(f)
+
+                def find_bookmarklets(nodes):
+                    for node in nodes:
+                        if node.get('type') == 'url':
+                            url = node.get('url', '')
+                            if url.lower().startswith(('javascript:', 'data:')):
+                                title = node.get('name', 'Untitled')
+                                snippets.append((f"[{browser} Bookmark] {title}", url.encode('utf-8')))
+                        elif node.get('type') == 'folder':
+                            find_bookmarklets(node.get('children', []))
+
+                roots = data.get('roots', {})
+                for root_node in roots.values():
+                    if isinstance(root_node, dict):
+                        find_bookmarklets([root_node])
+            except Exception:
+                pass
+
+    return snippets
 
 
 def get_browser_extensions_paths() -> List[str]:
@@ -3141,6 +3271,18 @@ def scan_nodejs_packages_click():
         messagebox.showwarning("Node.js Packages Error", f"Could not scan Node.js packages: {e}")
 
 
+def scan_browser_bookmarks_click():
+    """Scan all common browser bookmark files for suspicious bookmarklets."""
+    try:
+        snippets = get_browser_bookmarks_snippets()
+        if snippets:
+            button_click(extra_snippets=snippets)
+        else:
+            messagebox.showinfo("Browser Bookmarks", "No suspicious browser bookmarklets (javascript: or data: URLs) were found.")
+    except Exception as e:
+        messagebox.showwarning("Browser Bookmarks Error", f"Could not scan browser bookmarks: {e}")
+
+
 def scan_browser_extensions_click():
     """Scan all common browser extension folders."""
     try:
@@ -3329,6 +3471,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_snippets.extend(get_system_service_commands())
     all_snippets.extend(get_git_config_snippets())
     all_snippets.extend(get_git_stash_snippets())
+    all_snippets.extend(get_browser_bookmarks_snippets())
 
     return all_paths, all_snippets
 
@@ -7597,6 +7740,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         system_menu.add_command(label="Scan Go Packages", command=scan_go_packages_click)
         system_menu.add_command(label="Scan Java Packages", command=scan_java_packages_click)
         system_menu.add_command(label="Scan .NET Packages", command=scan_dotnet_packages_click)
+        system_menu.add_command(label="Scan Browser Bookmarks", command=scan_browser_bookmarks_click)
         system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
         system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
         system_menu.add_command(label="Scan Documents", command=scan_documents_click)
@@ -8341,6 +8485,11 @@ def main():
         help='Scan all folders containing installed Python packages.'
     )
     system_group.add_argument(
+        '--browser-bookmarks',
+        action='store_true',
+        help='Scan all common browser bookmark files for suspicious bookmarklets.'
+    )
+    system_group.add_argument(
         '--nodejs-packages',
         action='store_true',
         help='Scan all folders containing global Node.js packages.'
@@ -8676,6 +8825,13 @@ def main():
                 scan_targets.extend(package_paths)
             else:
                 print("No Python site-packages folders were found.", file=sys.stderr)
+
+        if args.browser_bookmarks:
+            bookmarks_snippets = get_browser_bookmarks_snippets()
+            if bookmarks_snippets:
+                extra_snippets.extend(bookmarks_snippets)
+            else:
+                print("No suspicious browser bookmarklets were found.", file=sys.stderr)
 
         if args.nodejs_packages:
             node_paths = get_nodejs_package_paths()
