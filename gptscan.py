@@ -2800,6 +2800,60 @@ def scan_git_stash_click():
         messagebox.showwarning("Git Stash Error", f"Could not scan Git stashes: {e}")
 
 
+def scan_git_conflicts_click():
+    """Scan files with Git merge conflicts."""
+    try:
+        # Get path from textbox or default to current directory
+        target_path = textbox.get().strip() if textbox else "."
+        if not target_path:
+            target_path = "."
+
+        snippets = get_git_conflict_snippets(target_path)
+        if snippets:
+            button_click(extra_snippets=snippets)
+        else:
+            messagebox.showinfo("Git Conflicts", "No Git merge conflicts found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Git Conflicts Error", f"Could not scan Git conflicts: {e}")
+
+
+def get_git_conflict_snippets(path: str = ".") -> List[Tuple[str, bytes]]:
+    """Get the Git changes for files with merge conflicts.
+
+    Args:
+        path: The folder or file path.
+    """
+    toplevel, _ = _get_git_info(path)
+    if toplevel is None:
+        return []
+
+    try:
+        # Find unmerged files (U filter)
+        cmd_files = ["git", "diff", "--name-only", "--diff-filter=U"]
+        output_files = subprocess.check_output(
+            cmd_files,
+            cwd=toplevel,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+        unmerged_files = output_files.splitlines()
+
+        snippets = []
+        for file_path in unmerged_files:
+            # Get the conflict diff for each file as raw bytes
+            cmd_diff = ["git", "diff", "--no-color", "--", file_path]
+            output_diff = subprocess.check_output(
+                cmd_diff,
+                cwd=toplevel,
+                stderr=subprocess.PIPE
+            )
+            if output_diff.strip():
+                snippets.append((f"[Git Conflict] {file_path}", output_diff))
+        return snippets
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return []
+
+
 def get_git_history_snippets(path: str = ".", count: int = 5) -> List[Tuple[str, bytes]]:
     """Get diffs for the last N commits in the Git repository.
 
@@ -7524,6 +7578,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         git_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
         git_menu.add_command(label="Scan Git Hooks", command=scan_git_hooks_click, accelerator="Ctrl+Shift+G")
         git_menu.add_command(label="Scan Git Stashes", command=scan_git_stash_click, accelerator="Ctrl+Shift+Q")
+        git_menu.add_command(label="Scan Git Conflicts", command=scan_git_conflicts_click)
         git_menu.add_command(label="Scan Recent Commits...", command=scan_git_history_click)
         git_menu.add_command(label="Scan Git Configuration", command=scan_git_config_click)
         git_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
@@ -8225,6 +8280,11 @@ def main():
         help='Scan all Git stashes.'
     )
     git_group.add_argument(
+        '--git-conflicts',
+        action='store_true',
+        help='Scan files with Git merge conflicts.'
+    )
+    git_group.add_argument(
         '--git-history',
         type=int,
         nargs='?',
@@ -8401,7 +8461,7 @@ def main():
         if not any([
             args.target, args.path, args.stdin, args.import_results, args.files,
             args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
-            args.git_stash, args.git_history, args.shell_profiles, args.shell_history, args.system_path,
+            args.git_stash, args.git_conflicts, args.git_history, args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
             args.system_services, args.audit, args.modified, args.downloads, args.desktop,
             args.python_packages, args.nodejs_packages, args.ruby_gems, args.php_packages,
@@ -8496,13 +8556,19 @@ def main():
             for root_dir in git_roots:
                 extra_snippets.extend(get_git_stash_snippets(root_dir))
 
+        if args.git_conflicts:
+            # Use specified targets as git roots, or current folder if none.
+            git_roots = scan_targets if scan_targets else ["."]
+            for root_dir in git_roots:
+                extra_snippets.extend(get_git_conflict_snippets(root_dir))
+
         if args.git_history:
             # Use specified targets as git roots, or current folder if none.
             git_roots = scan_targets if scan_targets else ["."]
             for root_dir in git_roots:
                 extra_snippets.extend(get_git_history_snippets(root_dir, count=args.git_history))
 
-        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_history and not extra_snippets:
+        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_conflicts and not args.git_history and not extra_snippets:
             # Default to current folder if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
