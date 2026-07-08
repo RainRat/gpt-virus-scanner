@@ -2301,26 +2301,36 @@ def analyze_filename(path: Union[str, Path]) -> Tuple[float, str]:
         return 1.0, "Deceptive filename using Right-to-Left Override (RTLO) character detected."
 
     # 2. Deceptive Double Extensions
-    # Common deceptive prefixes (document/media)
-    deceptive_prefixes = {'.pdf', '.jpg', '.jpeg', '.png', '.gif', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.zip', '.rar', '.7z', '.mp3', '.mp4'}
+    # Common deceptive prefixes (document/media/web)
+    deceptive_prefixes = {'.pdf', '.jpg', '.jpeg', '.png', '.gif', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.zip', '.rar', '.7z', '.mp3', '.mp4', '.html', '.htm', '.svg'}
     # Executable extensions
-    exec_extensions = {'.exe', '.bat', '.ps1', '.cmd', '.com', '.scr', '.pif', '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh', '.msc', '.hta', '.cpl', '.msi', '.jar', '.py', '.sh'}
+    exec_extensions = {'.exe', '.bat', '.ps1', '.cmd', '.com', '.scr', '.pif', '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh', '.msc', '.hta', '.cpl', '.msi', '.jar', '.py', '.sh', '.lnk', '.inf'}
 
-    parts = name.lower().split('.')
-    if len(parts) >= 3:
-        # Check for patterns like file.jpg.exe
-        ext1 = f".{parts[-2]}"
+    # Split and filter out empty strings from multiple dots (e.g. file...exe)
+    # Also strip whitespace from parts to catch "file.jpg .exe"
+    parts = [p.strip() for p in name.lower().split('.') if p.strip()]
+    if len(parts) >= 2:
         ext2 = f".{parts[-1]}"
-        if ext1 in deceptive_prefixes and ext2 in exec_extensions:
-            return 0.9, f"Deceptive double extension detected: '{ext1}{ext2}'."
+        # If we have at least two non-empty parts, we can check for double extension
+        for i in range(len(parts) - 1):
+            ext1 = f".{parts[i]}"
+            if ext1 in deceptive_prefixes and ext2 in exec_extensions:
+                msg = f"Deceptive double extension detected: '{ext1}{ext2}'."
+                if re.search(r'\s', name):
+                    msg += " (contains deceptive whitespace)"
+                return 0.9, msg
 
     # 3. Hidden extension tricks (excessive whitespace)
     name_stripped = name.rstrip()
-    if ('  ' in name or '\t' in name) and any(name_stripped.lower().endswith(ext) for ext in exec_extensions):
+    if any(name_stripped.lower().endswith(ext) for ext in exec_extensions):
         # Check if there's a large gap before the extension
         # e.g. "invoice.pdf                              .exe" or "malware          .exe"
         if re.search(r'\s{5,}\.[^.]+$', name_stripped):
             return 0.9, "Suspiciously large whitespace gap found before file extension."
+
+        # Check for even a single space/tab before the extension dot
+        if re.search(r'\s\.[^.]+$', name_stripped):
+            return 0.5, "Filename contains suspicious whitespace before the extension."
 
     # 4. Trailing whitespace or dots
     if (name and name[-1].isspace()) or name.endswith('.'):
@@ -2328,8 +2338,9 @@ def analyze_filename(path: Union[str, Path]) -> Tuple[float, str]:
 
     # 5. Invisible/Control characters (excluding standard ones)
     for char in name:
-        if ord(char) < 32 or (127 <= ord(char) <= 159):
-            return 0.7, f"Filename contains invisible or control characters (ASCII {ord(char)})."
+        cp = ord(char)
+        if cp < 32 or (127 <= cp <= 159) or cp in (0x200B, 0x200C, 0x200D, 0xFEFF, 0x00AD):
+            return 0.7, f"Filename contains invisible or control characters (Code {hex(cp)})."
 
     return 0.0, ""
 
