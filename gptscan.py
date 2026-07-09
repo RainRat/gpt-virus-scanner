@@ -2927,10 +2927,11 @@ def get_git_reflog_snippets(path: str = ".", count: int = 5) -> List[Tuple[str, 
         return []
 
 
-def scan_git_history_click():
+def scan_git_history_click(count=None):
     """Scan recent Git commits."""
     try:
-        count = simpledialog.askinteger("Scan Recent Commits", "Enter number of recent commits to scan:", initialvalue=5, minvalue=1, maxvalue=100)
+        if count is None:
+            count = simpledialog.askinteger("Scan Recent Commits", "Enter number of recent commits to scan:", initialvalue=5, minvalue=1, maxvalue=100)
         if count is None:
             return
 
@@ -2949,10 +2950,11 @@ def scan_git_history_click():
         messagebox.showwarning("Git History Error", f"Could not scan Git history: {e}")
 
 
-def scan_git_reflog_click():
+def scan_git_reflog_click(count=None):
     """Scan recent entries in the Git reflog."""
     try:
-        count = simpledialog.askinteger("Scan Git Reflog", "Enter number of recent reflog entries to scan:", initialvalue=5, minvalue=1, maxvalue=100)
+        if count is None:
+            count = simpledialog.askinteger("Scan Git Reflog", "Enter number of recent reflog entries to scan:", initialvalue=5, minvalue=1, maxvalue=100)
         if count is None:
             return
 
@@ -7583,8 +7585,23 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         git_menu.add_command(label="Scan Git Hooks", command=scan_git_hooks_click, accelerator="Ctrl+Shift+G")
         git_menu.add_command(label="Scan Git Stashes", command=scan_git_stash_click, accelerator="Ctrl+Shift+Q")
         git_menu.add_command(label="Scan Git Conflicts", command=scan_git_conflicts_click)
-        git_menu.add_command(label="Scan Recent Commits...", command=scan_git_history_click)
-        git_menu.add_command(label="Scan Git Reflog...", command=scan_git_reflog_click)
+
+        history_menu = tk.Menu(git_menu, tearoff=0)
+        history_menu.add_command(label="Last 5 Commits", command=lambda: scan_git_history_click(5))
+        history_menu.add_command(label="Last 10 Commits", command=lambda: scan_git_history_click(10))
+        history_menu.add_command(label="Last 25 Commits", command=lambda: scan_git_history_click(25))
+        history_menu.add_separator()
+        history_menu.add_command(label="Custom...", command=scan_git_history_click)
+        git_menu.add_cascade(label="Scan Recent Commits", menu=history_menu)
+
+        reflog_menu = tk.Menu(git_menu, tearoff=0)
+        reflog_menu.add_command(label="Last 5 Entries", command=lambda: scan_git_reflog_click(5))
+        reflog_menu.add_command(label="Last 10 Entries", command=lambda: scan_git_reflog_click(10))
+        reflog_menu.add_command(label="Last 25 Entries", command=lambda: scan_git_reflog_click(25))
+        reflog_menu.add_separator()
+        reflog_menu.add_command(label="Custom...", command=scan_git_reflog_click)
+        git_menu.add_cascade(label="Scan Git Reflog", menu=reflog_menu)
+
         git_menu.add_command(label="Scan Git Configuration", command=scan_git_config_click)
         git_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
         parent.add_cascade(label="Git Integration", menu=git_menu)
@@ -7698,8 +7715,6 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Web Link...", command=select_url_click, accelerator="Ctrl+Shift+U")
     browse_menu.add_command(label="Scan File List...", command=browse_file_list_click)
     browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click, accelerator="Ctrl+Shift+V")
-    browse_menu.add_command(label="Scan Recent Commits...", command=scan_git_history_click)
-    browse_menu.add_command(label="Scan Git Reflog...", command=scan_git_reflog_click)
     browse_menu.add_separator()
     add_scan_submenus(browse_menu)
     browse_button["menu"] = browse_menu
