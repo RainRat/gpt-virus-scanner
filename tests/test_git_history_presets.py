@@ -1,15 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-# Mock tkinter before importing gptscan
-import sys
-import tkinter as tk
-sys.modules['tkinter'] = MagicMock()
-sys.modules['tkinter.ttk'] = MagicMock()
-sys.modules['tkinter.filedialog'] = MagicMock()
-sys.modules['tkinter.messagebox'] = MagicMock()
-sys.modules['tkinter.simpledialog'] = MagicMock()
-
 import gptscan
 
 # Mock the global textbox object
