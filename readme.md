@@ -81,7 +81,7 @@ Access these options from the **Browse** menu:
 *   **Scan Scheduled Tasks (Ctrl+Shift+T):** Scan tasks and Cron jobs for ways programs stay on your system.
 *   **Scan Startup Items (Ctrl+Shift+A):** Scan startup items and LaunchAgents.
 *   **Scan System Services (Ctrl+Shift+S):** Scan system services and background units.
-*   **Scan SSH Configuration (Ctrl+Shift+R):** Scan all common SSH configuration and authorized_keys files.
+*   **Scan SSH Configuration:** Scan all common SSH configuration and authorized_keys files.
 *   **Scan Python Packages (Ctrl+Shift+Y):** Scan your installed Python packages for malicious code.
 *   **Scan Node.js Packages (Ctrl+Shift+M):** Scan your global Node.js packages.
 *   **Scan Ruby Gems:** Scan all folders containing installed Ruby gems.
@@ -130,7 +130,6 @@ The scanner includes shortcuts for faster navigation.
 | `Ctrl+Shift+T` | Scan Scheduled Tasks |
 | `Ctrl+Shift+A` | Scan Startup Items |
 | `Ctrl+Shift+S` | Scan System Services |
-| `Ctrl+Shift+R` | Scan SSH Configuration |
 | `Ctrl+Shift+Y` | Scan Python Packages |
 | `Ctrl+Shift+M` | Scan Node.js Packages |
 | `Ctrl+Shift+W` | Scan Browser Extensions |
@@ -149,6 +148,7 @@ The scanner includes shortcuts for faster navigation.
 | `Ctrl+S` | Copy Code Snippet |
 | `Ctrl+J` | Copy Results as JSON |
 | `Ctrl+G` | Analyze Selected with AI |
+| `Ctrl+Shift+R` | Copy as Triage Report |
 | `Shift+Enter` | Open File |
 | `Ctrl+Enter` | Reveal in Folder |
 | `Ctrl+T` | Check on VirusTotal |
