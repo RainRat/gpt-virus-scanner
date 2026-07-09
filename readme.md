@@ -90,6 +90,7 @@ Access these options from the **Browse** menu:
 *   **Scan Go Packages:** Scan all folders containing Go packages.
 *   **Scan Java Packages:** Scan all folders containing Java package caches (Maven and Gradle).
 *   **Scan .NET Packages:** Scan all folders containing global .NET NuGet package caches.
+*   **Scan Browser Bookmarks:** Scan all common browser bookmark files for suspicious bookmarklets (javascript: or data: URLs).
 *   **Scan Browser Extensions (Ctrl+Shift+W):** Scan your browser extension folders for malicious scripts.
 *   **Scan Editor Extensions (Ctrl+Shift+X):** Scan extensions for VS Code, Sublime Text, and Vim.
 *   **Scan Documents:** Scan your standard Documents folder for suspicious files.
@@ -232,6 +233,11 @@ python3 gptscan.py --java-packages --cli
 Scan all folders containing global .NET NuGet package caches:
 ```bash
 python3 gptscan.py --dotnet-packages --cli
+```
+
+Scan all common browser bookmark files for suspicious bookmarklets:
+```bash
+python3 gptscan.py --browser-bookmarks --cli
 ```
 
 Scan all common browser extension folders:
