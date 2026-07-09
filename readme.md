@@ -82,6 +82,7 @@ Access these options from the **Browse** menu:
 *   **Scan Startup Items (Ctrl+Shift+A):** Scan startup items and LaunchAgents.
 *   **Scan System Services (Ctrl+Shift+S):** Scan system services and background units.
 *   **Scan SSH Configuration:** Scan all common SSH configuration and authorized_keys files.
+*   **Scan Network Configuration:** Scan all common network configuration files (hosts, resolv.conf, etc.).
 *   **Scan Python Packages (Ctrl+Shift+Y):** Scan your installed Python packages for malicious code.
 *   **Scan Node.js Packages (Ctrl+Shift+M):** Scan your global Node.js packages.
 *   **Scan Ruby Gems:** Scan all folders containing installed Ruby gems.
@@ -298,6 +299,11 @@ python3 gptscan.py --system-services --cli
 Scan SSH configuration and authorized keys:
 ```bash
 python3 gptscan.py --ssh-config --cli
+```
+
+Scan all common network configuration files:
+```bash
+python3 gptscan.py --network-config --cli
 ```
 
 Scan your standard Documents folder:

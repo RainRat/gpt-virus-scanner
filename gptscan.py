@@ -1895,6 +1895,37 @@ def get_ssh_config_paths() -> List[str]:
     return sorted(list(set(paths)))
 
 
+def get_network_config_paths() -> List[str]:
+    """Identify common network configuration files (hosts, resolv.conf, etc.)."""
+    paths = []
+    if sys.platform == "win32":
+        windir = os.environ.get("WINDIR", "C:\\Windows")
+        paths.append(os.path.join(windir, "System32", "drivers", "etc", "hosts"))
+        paths.append(os.path.join(windir, "System32", "drivers", "etc", "networks"))
+    else:
+        paths.extend([
+            "/etc/hosts",
+            "/etc/resolv.conf",
+            "/etc/network/interfaces",
+            "/etc/networks",
+            "/etc/hostname",
+            "/etc/nsswitch.conf"
+        ])
+        # Add files in common network config directories
+        config_dirs = ["/etc/network/interfaces.d", "/etc/netplan"]
+        for d_str in config_dirs:
+            d = Path(d_str)
+            if d.is_dir():
+                try:
+                    for p in d.iterdir():
+                        if p.is_file():
+                            paths.append(str(p))
+                except OSError:
+                    pass
+
+    return sorted(list(set(str(Path(p).absolute()) for p in paths if os.path.isfile(p))))
+
+
 def get_startup_item_commands() -> List[Tuple[str, bytes]]:
     """Collect command lines of all startup items (Autostart on Linux, LaunchAgents on macOS, StartupCommand on Windows)."""
     items = []
@@ -3233,6 +3264,19 @@ def scan_ssh_config_click():
         messagebox.showwarning("SSH Configuration Error", f"Could not scan SSH configuration: {e}")
 
 
+def scan_network_config_click():
+    """Scan all common network configuration files (hosts, resolv.conf, etc.)."""
+    try:
+        paths = get_network_config_paths()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo("Network Configuration", "No network configuration files were found to scan.")
+    except Exception as e:
+        messagebox.showwarning("Network Configuration Error", f"Could not scan network configuration: {e}")
+
+
 def scan_python_packages_click():
     """Scan all folders containing installed Python packages (site-packages)."""
     try:
@@ -3460,6 +3504,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_system_path_directories())
     all_paths.extend(get_ssh_config_paths())
     all_paths.extend(get_system_service_paths())
+    all_paths.extend(get_network_config_paths())
     all_paths.extend(get_git_hooks_paths())
     all_paths.extend(get_python_package_paths())
     all_paths.extend(get_nodejs_package_paths())
@@ -7759,7 +7804,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         system_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
         system_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
         system_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
-        system_menu.add_command(label="Scan SSH Configuration", command=scan_ssh_config_click, accelerator="Ctrl+Shift+R")
+        system_menu.add_command(label="Scan SSH Configuration", command=scan_ssh_config_click)
+        system_menu.add_command(label="Scan Network Configuration", command=scan_network_config_click)
         system_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click, accelerator="Ctrl+Shift+Y")
         system_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
         system_menu.add_command(label="Scan Ruby Gems", command=scan_ruby_gems_click)
@@ -8242,8 +8288,6 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-A>', lambda event: scan_startup_items_click())
     root.bind('<Control-Shift-S>', lambda event: scan_system_services_click())
     root.bind('<Command-Shift-S>', lambda event: scan_system_services_click())
-    root.bind('<Control-Shift-R>', lambda event: scan_ssh_config_click())
-    root.bind('<Command-Shift-R>', lambda event: scan_ssh_config_click())
     root.bind('<Control-Shift-Y>', lambda event: scan_python_packages_click())
     root.bind('<Command-Shift-Y>', lambda event: scan_python_packages_click())
     root.bind('<Control-Shift-M>', lambda event: scan_nodejs_packages_click())
@@ -8337,6 +8381,8 @@ def main():
                "  python3 gptscan.py --editor-extensions --cli\n\n"
                "  # Scan SSH configuration and authorized keys\n"
                "  python3 gptscan.py --ssh-config --cli\n\n"
+               "  # Scan network configuration files\n"
+               "  python3 gptscan.py --network-config --cli\n\n"
                "  # Scan files changed in the last 24 hours\n"
                "  python3 gptscan.py --modified 24h --cli\n\n"
                "Note: Run the script from its own folder so it can find its data files.",
@@ -8536,6 +8582,11 @@ def main():
         help='Scan all common SSH configuration and authorized_keys files.'
     )
     system_group.add_argument(
+        '--network-config',
+        action='store_true',
+        help='Scan all common network configuration files (hosts, resolv.conf, etc.).'
+    )
+    system_group.add_argument(
         '--env-vars',
         action='store_true',
         help='Scan all non-empty environment variables.'
@@ -8643,7 +8694,7 @@ def main():
             args.system_services, args.audit, args.modified, args.downloads, args.desktop,
             args.python_packages, args.nodejs_packages, args.ruby_gems, args.php_packages,
             args.rust_packages, args.go_packages, args.java_packages, args.dotnet_packages,
-            args.browser_extensions, args.editor_extensions, args.ssh_config, args.temp, args.documents
+            args.browser_extensions, args.editor_extensions, args.ssh_config, args.network_config, args.temp, args.documents
         ]):
             sys.exit(0)
 
@@ -8886,6 +8937,13 @@ def main():
                 scan_targets.extend(ssh_paths)
             else:
                 print("No SSH configuration or authorized_keys files were found.", file=sys.stderr)
+
+        if args.network_config:
+            network_paths = get_network_config_paths()
+            if network_paths:
+                scan_targets.extend(network_paths)
+            else:
+                print("No network configuration files were found.", file=sys.stderr)
 
         if args.ruby_gems:
             gem_paths = get_ruby_gems_paths()
