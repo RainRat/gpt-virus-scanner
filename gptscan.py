@@ -8352,7 +8352,7 @@ def main():
 
     scan_group = parser.add_argument_group("Scan Options")
     scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or web link to scan.')
-    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. This is slower but more thorough.')
+    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the entire file instead of just the beginning and end. This is more thorough but slower.')
     scan_group.add_argument('--dry-run', action='store_true', help='Preview which files would be scanned without actually checking them.')
     scan_group.add_argument(
         '--extensions',
@@ -8372,7 +8372,7 @@ def main():
     scan_group.add_argument(
         '--all-files',
         action='store_true',
-        help='Scan every file, even if it is not a script.'
+        help='Check every file, even if it is not a script.'
     )
     scan_group.add_argument(
         '--fail-threshold',
@@ -8408,12 +8408,12 @@ def main():
     scan_group.add_argument(
         '--downloads',
         action='store_true',
-        help='Scan the standard Downloads folder.'
+        help='Scan your standard Downloads folder for suspicious files.'
     )
     scan_group.add_argument(
         '--desktop',
         action='store_true',
-        help="Scan the user's Desktop folder."
+        help="Scan your standard Desktop folder for suspicious files."
     )
 
     git_group = parser.add_argument_group("Git Integration")
@@ -8421,114 +8421,114 @@ def main():
         '--git-changes',
         nargs='?',
         const='HEAD',
-        help='Only scan files changed in Git. Optionally provide a branch or commit (for example: "main").'
+        help='Scan files that have changed in your project. Optionally provide a branch or commit (for example: "main").'
     )
     git_group.add_argument(
         '--git-diff',
         nargs='?',
         const='HEAD',
-        help='Scan current Git changes as a diff. Optionally provide a branch or commit (for example: "HEAD~1").'
+        help='Scan your current project changes as a diff. Optionally provide a branch or commit (for example: "HEAD~1").'
     )
     git_group.add_argument(
         '--git-hooks',
         action='store_true',
-        help='Scan local and global Git hooks.'
+        help='Scan your local and global Git hooks for dangerous scripts.'
     )
     git_group.add_argument(
         '--git-config',
         action='store_true',
-        help='Scan for dangerous Git configuration settings.'
+        help='Scan Git settings for dangerous aliases or editors.'
     )
     git_group.add_argument(
         '--git-stash',
         action='store_true',
-        help='Scan all Git stashes.'
+        help='Scan all Git stashes for suspicious code changes.'
     )
     git_group.add_argument(
         '--git-conflicts',
         action='store_true',
-        help='Scan files with Git merge conflicts.'
+        help='Scan files with Git merge conflicts for suspicious code introduced during merging.'
     )
     git_group.add_argument(
         '--git-history',
         type=int,
         nargs='?',
         const=5,
-        help='Scan recent Git commits. Optionally provide the number of commits (default is 5).'
+        help='Scan files from the most recent Git commits. Optionally provide the number of commits (default is 5).'
     )
     git_group.add_argument(
         '--git-reflog',
         type=int,
         nargs='?',
         const=5,
-        help='Scan recent entries in the Git reflog. Optionally provide the number of entries (default is 5).'
+        help='Scan recent entries in your Git reflog to find lost code or secrets. Optionally provide the number of entries (default is 5).'
     )
 
     system_group = parser.add_argument_group("System Scans")
     system_group.add_argument(
         '--audit',
         action='store_true',
-        help='Run a full system audit.'
+        help='Run a full check of your system, including all items listed below.'
     )
     system_group.add_argument(
         '--shell-profiles',
         action='store_true',
-        help='Scan common shell profile and configuration files (like .bashrc or .zshrc), including system-wide profiles.'
+        help='Scan your shell configuration files (like .bashrc or .zshrc) for dangerous aliases.'
     )
     system_group.add_argument(
         '--shell-history',
         action='store_true',
-        help='Scan common shell history files.'
+        help='Scan your terminal history for dangerous commands.'
     )
     system_group.add_argument(
         '--system-path',
         action='store_true',
-        help='Scan all folders in the system PATH.'
+        help='Scan folders in your system PATH for suspicious programs.'
     )
     system_group.add_argument(
         '--running-processes',
         action='store_true',
-        help='Scan command lines of all running processes.'
+        help='Scan the command lines of active processes.'
     )
     system_group.add_argument(
         '--scheduled-tasks',
         action='store_true',
-        help='Scan all scheduled tasks and Cron jobs.'
+        help='Scan tasks and Cron jobs for ways programs stay on your system.'
     )
     system_group.add_argument(
         '--startup-items',
         action='store_true',
-        help='Scan all system startup items and LaunchAgents.'
+        help='Scan startup items and LaunchAgents.'
     )
     system_group.add_argument(
         '--system-services',
         action='store_true',
-        help='Scan all system services.'
+        help='Scan system services and background units.'
     )
     system_group.add_argument(
         '--python-packages',
         action='store_true',
-        help='Scan all folders containing installed Python packages.'
+        help='Scan your installed Python packages for malicious code.'
     )
     system_group.add_argument(
         '--browser-bookmarks',
         action='store_true',
-        help='Scan all common browser bookmark files for suspicious bookmarklets.'
+        help='Scan all common browser bookmark files for suspicious bookmarklets (javascript: or data: URLs).'
     )
     system_group.add_argument(
         '--nodejs-packages',
         action='store_true',
-        help='Scan all folders containing global Node.js packages.'
+        help='Scan your global Node.js packages.'
     )
     system_group.add_argument(
         '--browser-extensions',
         action='store_true',
-        help='Scan all common browser extension folders.'
+        help='Scan your browser extension folders for malicious scripts.'
     )
     system_group.add_argument(
         '--editor-extensions',
         action='store_true',
-        help='Scan all common editor extension folders.'
+        help='Scan extensions for VS Code, Sublime Text, and Vim.'
     )
     system_group.add_argument(
         '--ssh-config',
@@ -8573,12 +8573,12 @@ def main():
     system_group.add_argument(
         '--documents',
         action='store_true',
-        help="Scan the user's Documents folder."
+        help="Scan your standard Documents folder for suspicious files."
     )
     system_group.add_argument(
         '--temp',
         action='store_true',
-        help='Scan common temporary folders.'
+        help='Scan common temporary folders for suspicious files.'
     )
 
     ai_group = parser.add_argument_group("AI Analysis")
