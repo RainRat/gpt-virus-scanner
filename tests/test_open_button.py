@@ -18,7 +18,6 @@ def test_open_button_management(monkeypatch):
     monkeypatch.setattr(gptscan, 'reveal_button', MagicMock())
     monkeypatch.setattr(gptscan, 'results_button', MagicMock())
     monkeypatch.setattr(gptscan, 'scan_button', MagicMock())
-    monkeypatch.setattr(gptscan, 'cancel_button', MagicMock())
 
     # Test set_scanning_state(True)
     gptscan.set_scanning_state(True)

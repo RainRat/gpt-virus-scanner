@@ -10,7 +10,6 @@ def test_scan_summary_gui(monkeypatch):
     monkeypatch.setattr(gptscan, 'status_label', mock_status_label, raising=False)
     monkeypatch.setattr(gptscan, 'root', MagicMock(), raising=False)
     monkeypatch.setattr(gptscan, 'scan_button', MagicMock(), raising=False)
-    monkeypatch.setattr(gptscan, 'cancel_button', MagicMock(), raising=False)
 
     # 1 suspicious file (singular)
     gptscan.finish_scan_state(total_scanned=10, threats_found=1, high_risk=0, medium_risk=0)
