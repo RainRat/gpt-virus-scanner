@@ -16,8 +16,10 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 
 ### Supported Sources
 *   **Scan Local & Web Files:** Scan files on your computer or directly from a web link.
-*   **Remote Repositories:** Scan code from GitHub (including Gists), GitLab, and Bitbucket (including Snippets, pull requests, Commits, and Tags).
-*   **Web Snippets:** Scan from Pastebin and Hugging Face.
+*   **Remote Repositories:** Scan code from GitHub, GitLab, and Bitbucket (supports Pull Requests, Commits, Tags, and Branches).
+    *   *Example:* `https://github.com/user/repo/pull/1`
+*   **Web Snippets:** Scan from Pastebin, GitHub Gists, and Hugging Face.
+    *   *Example:* `https://gist.github.com/user/id`
 
 ### File Format Support
 *   **Notebook Support:** Scan cells in `.ipynb` files for dangerous commands.
@@ -30,7 +32,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 ## Installation
 
 ### Prerequisites
-*   **Python:** Install **Python 3.9, 3.10, or 3.11**. Newer versions like 3.12 are not yet supported.
+*   **Python:** Install **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not yet supported due to compatibility with the TensorFlow 2.15 engine used for local scanning.
 *   **Data files:** The repository already includes the `scripts.h5` model and `task.txt` instruction files. Keep these in the project folder.
 
 ### Setup
@@ -61,8 +63,8 @@ Access these options from the **Browse** menu:
 *   **Scan Clipboard (Ctrl+Shift+V):** Scan code you have copied to your clipboard.
 
 #### Git Integration
-*   **Scan Git Diff (Ctrl+Shift+D):** Scan your current project changes as a diff.
-*   **Scan Git Changes:** Scan files that have changed in your project.
+*   **Scan Git Diff (Ctrl+Shift+D):** Scan your current project changes as a unified diff patch. This checks the actual modifications (the "diff") instead of the full files.
+*   **Scan Git Changes:** Scan the full content of every file that has changed in your project.
 *   **Scan Recent Commits...:** Scan files from the most recent commits.
 *   **Scan Git Hooks (Ctrl+Shift+G):** Scan your local and global Git hooks for suspicious scripts.
 *   **Scan Git Stashes (Ctrl+Shift+Q):** Scan all Git stashes for suspicious code changes.
