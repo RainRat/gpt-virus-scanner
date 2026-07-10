@@ -1064,13 +1064,15 @@ def adjust_newlines(val: Any, width: int, pad: int = 10, measure: Optional[Calla
 
 def get_wrapped_values(tree: ttk.Treeview, values: Iterable[Any], measure: Optional[Callable[[str], int]] = None, col_widths: Optional[List[int]] = None) -> List[Any]:
     """Wrap a list of values to fit the current Treeview column widths."""
+    # Convert to list once to support generators and avoid multiple traversals
+    values_list = list(values)
     measure = measure or (default_font_measure or tkinter.font.Font(font='TkDefaultFont').measure)
     col_widths = col_widths or [tree.column(cid)['width'] for cid in tree['columns']]
 
     # Only wrap the first 6 columns, leave the rest (including line and hidden orig_json) as is
-    wrapped = [adjust_newlines(v, w, measure=measure) for v, w in zip(list(values)[:6], col_widths[:6])]
-    if len(values) > 6:
-        wrapped.extend(list(values)[6:])
+    wrapped = [adjust_newlines(v, w, measure=measure) for v, w in zip(values_list[:6], col_widths[:6])]
+    if len(values_list) > 6:
+        wrapped.extend(values_list[6:])
     return wrapped
 
 
