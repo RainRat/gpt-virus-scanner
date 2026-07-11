@@ -755,6 +755,28 @@ def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
         scan_button.focus_set()
 
 
+def _generic_scan_click(label: str, get_paths_func: Callable[[], List[str]], not_found_msg: str, error_target: Optional[str] = None) -> None:
+    """Helper to handle generic 'Scan X' click events.
+
+    Args:
+        label: The name of the scan target (used for the error title).
+        get_paths_func: A function that returns a list of paths to scan.
+        not_found_msg: Message to show if no paths are found.
+        error_target: Optional descriptive name for the error message. Defaults to label.
+    """
+    if error_target is None:
+        error_target = label
+    try:
+        paths = get_paths_func()
+        if paths:
+            _set_scan_target(paths)
+            button_click()
+        else:
+            messagebox.showinfo(label, not_found_msg)
+    except Exception as e:
+        messagebox.showwarning(f"{label} Error", f"Could not scan {error_target}: {e}")
+
+
 def _get_initial_dir() -> Optional[str]:
     """Find a starting folder for file dialogs based on what is currently entered."""
     path_str = ""
@@ -3132,41 +3154,17 @@ def scan_git_revision_click():
 
 def scan_shell_profiles_click():
     """Scan common shell profile and RC files."""
-    try:
-        profile_paths = get_shell_profile_paths()
-        if profile_paths:
-            _set_scan_target(profile_paths)
-            button_click()
-        else:
-            messagebox.showinfo("Shell Profiles", "No common shell profile files were found on this system.")
-    except Exception as e:
-        messagebox.showwarning("Shell Profiles Error", f"Could not scan shell profiles: {e}")
+    _generic_scan_click("Shell Profiles", get_shell_profile_paths, "No common shell profile files were found on this system.", error_target="shell profiles")
 
 
 def scan_shell_history_click():
     """Scan common shell history files."""
-    try:
-        history_paths = get_shell_history_paths()
-        if history_paths:
-            _set_scan_target(history_paths)
-            button_click()
-        else:
-            messagebox.showinfo("Shell History", "No common shell history files were found on this system.")
-    except Exception as e:
-        messagebox.showwarning("Shell History Error", f"Could not scan shell history: {e}")
+    _generic_scan_click("Shell History", get_shell_history_paths, "No common shell history files were found on this system.", error_target="shell history")
 
 
 def scan_system_path_click():
     """Scan all folders in the system's PATH environment variable."""
-    try:
-        path_dirs = get_system_path_directories()
-        if path_dirs:
-            _set_scan_target(path_dirs)
-            button_click()
-        else:
-            messagebox.showinfo("System PATH", "No valid folders found in the system PATH.")
-    except Exception as e:
-        messagebox.showwarning("System PATH Error", f"Could not scan system PATH: {e}")
+    _generic_scan_click("System PATH", get_system_path_directories, "No valid folders found in the system PATH.", error_target="system PATH")
 
 
 def scan_running_processes_click():
@@ -3222,28 +3220,12 @@ def scan_system_services_click():
 
 def scan_ssh_config_click():
     """Scan all common SSH configuration and authorized_keys files."""
-    try:
-        paths = get_ssh_config_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo("SSH Configuration", "No SSH configuration or authorized_keys files were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("SSH Configuration Error", f"Could not scan SSH configuration: {e}")
+    _generic_scan_click("SSH Configuration", get_ssh_config_paths, "No SSH configuration or authorized_keys files were found to scan.", error_target="SSH configuration")
 
 
 def scan_python_packages_click():
     """Scan all folders containing installed Python packages (site-packages)."""
-    try:
-        package_paths = get_python_package_paths()
-        if package_paths:
-            _set_scan_target(package_paths)
-            button_click()
-        else:
-            messagebox.showinfo("Python Packages", "No Python site-packages folders were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Python Packages Error", f"Could not scan Python packages: {e}")
+    _generic_scan_click("Python Packages", get_python_package_paths, "No Python site-packages folders were found to scan.", error_target="Python packages")
 
 
 def scan_recently_modified_click(duration_str: Optional[str] = None):
@@ -3273,15 +3255,7 @@ def scan_env_vars_click():
 
 def scan_nodejs_packages_click():
     """Scan all folders containing global Node.js packages."""
-    try:
-        package_paths = get_nodejs_package_paths()
-        if package_paths:
-            _set_scan_target(package_paths)
-            button_click()
-        else:
-            messagebox.showinfo("Node.js Packages", "No global Node.js package folders were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Node.js Packages Error", f"Could not scan Node.js packages: {e}")
+    _generic_scan_click("Node.js Packages", get_nodejs_package_paths, "No global Node.js package folders were found to scan.", error_target="Node.js packages")
 
 
 def scan_browser_bookmarks_click():
@@ -3298,158 +3272,62 @@ def scan_browser_bookmarks_click():
 
 def scan_browser_extensions_click():
     """Scan all common browser extension folders."""
-    try:
-        extension_paths = get_browser_extensions_paths()
-        if extension_paths:
-            _set_scan_target(extension_paths)
-            button_click()
-        else:
-            messagebox.showinfo("Browser Extensions", "No browser extension folders were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Browser Extensions Error", f"Could not scan browser extensions: {e}")
+    _generic_scan_click("Browser Extensions", get_browser_extensions_paths, "No browser extension folders were found to scan.", error_target="browser extensions")
 
 
 def scan_editor_extensions_click():
     """Scan all folders containing editor extensions (VS Code, Sublime Text, Vim)."""
-    try:
-        extension_paths = get_editor_extensions_paths()
-        if extension_paths:
-            _set_scan_target(extension_paths)
-            button_click()
-        else:
-            messagebox.showinfo("Editor Extensions", "No editor extension folders were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Editor Extensions Error", f"Could not scan editor extensions: {e}")
+    _generic_scan_click("Editor Extensions", get_editor_extensions_paths, "No editor extension folders were found to scan.", error_target="editor extensions")
 
 
 def scan_downloads_click():
     """Scan the standard Downloads folder."""
-    try:
-        paths = get_downloads_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo("Downloads", "The standard Downloads folder was not found on this system.")
-    except Exception as e:
-        messagebox.showwarning("Downloads Error", f"Could not scan Downloads: {e}")
+    _generic_scan_click("Downloads", get_downloads_paths, "The standard Downloads folder was not found on this system.")
 
 
 def scan_desktop_click():
     """Scan the user's Desktop folder."""
-    try:
-        paths = get_desktop_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo("Desktop", "The Desktop folder was not found on this system.")
-    except Exception as e:
-        messagebox.showwarning("Desktop Error", f"Could not scan Desktop: {e}")
+    _generic_scan_click("Desktop", get_desktop_paths, "The Desktop folder was not found on this system.")
 
 
 def scan_temp_click():
     """Scan common temporary folders."""
-    try:
-        paths = get_temp_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo("Temporary Folders", "No common temporary folders were found on this system.")
-    except Exception as e:
-        messagebox.showwarning("Temporary Folders Error", f"Could not scan temporary folders: {e}")
+    _generic_scan_click("Temporary Folders", get_temp_paths, "No common temporary folders were found on this system.", error_target="temporary folders")
 
 
 def scan_ruby_gems_click():
     """Scan all folders containing installed Ruby gems."""
-    try:
-        paths = get_ruby_gems_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo("Ruby Gems", "No Ruby gems folders were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Ruby Gems Error", f"Could not scan Ruby gems: {e}")
+    _generic_scan_click("Ruby Gems", get_ruby_gems_paths, "No Ruby gems folders were found to scan.", error_target="Ruby gems")
 
 
 def scan_php_packages_click():
     """Scan all folders containing global PHP Composer packages."""
-    try:
-        paths = get_php_packages_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo("PHP Packages", "No global PHP package folders were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("PHP Packages Error", f"Could not scan PHP packages: {e}")
+    _generic_scan_click("PHP Packages", get_php_packages_paths, "No global PHP package folders were found to scan.", error_target="PHP packages")
 
 
 def scan_rust_packages_click():
     """Scan all folders containing global Rust Cargo packages."""
-    try:
-        paths = get_rust_packages_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo("Rust Packages", "No global Rust package folders were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Rust Packages Error", f"Could not scan Rust packages: {e}")
+    _generic_scan_click("Rust Packages", get_rust_packages_paths, "No global Rust package folders were found to scan.", error_target="Rust packages")
 
 
 def scan_go_packages_click():
     """Scan all folders containing Go packages (GOPATH)."""
-    try:
-        paths = get_go_packages_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo("Go Packages", "No Go package folders were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Go Packages Error", f"Could not scan Go packages: {e}")
+    _generic_scan_click("Go Packages", get_go_packages_paths, "No Go package folders were found to scan.", error_target="Go packages")
 
 
 def scan_java_packages_click():
     """Scan all folders containing Java package caches (Maven and Gradle)."""
-    try:
-        paths = get_java_packages_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo("Java Packages", "No Java package folders were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Java Packages Error", f"Could not scan Java packages: {e}")
+    _generic_scan_click("Java Packages", get_java_packages_paths, "No Java package folders were found to scan.", error_target="Java packages")
 
 
 def scan_dotnet_packages_click():
     """Scan all folders containing global .NET NuGet package caches."""
-    try:
-        paths = get_dotnet_packages_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo(".NET Packages", "No .NET NuGet package folders were found to scan.")
-    except Exception as e:
-        messagebox.showwarning(".NET Packages Error", f"Could not scan .NET packages: {e}")
+    _generic_scan_click(".NET Packages", get_dotnet_packages_paths, "No .NET NuGet package folders were found to scan.", error_target=".NET packages")
 
 
 def scan_documents_click():
     """Scan the user's Documents folder."""
-    try:
-        paths = get_documents_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo("Documents", "The standard Documents folder was not found on this system.")
-    except Exception as e:
-        messagebox.showwarning("Documents Error", f"Could not scan Documents: {e}")
+    _generic_scan_click("Documents", get_documents_paths, "The standard Documents folder was not found on this system.")
 
 
 def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
