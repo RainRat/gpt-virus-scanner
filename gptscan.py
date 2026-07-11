@@ -4002,9 +4002,10 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
     """Extract scan-ready snippets from various container formats.
 
     This function recursively unpacks archives (ZIP, TAR), Jupyter Notebooks,
-    project and build files (package.json, pyproject.toml), Dockerfiles, Makefiles,
-    automation tasks (YAML), web files (HTML, SVG), and Unified Diffs.
-    It ensures that only relevant code blocks and scripts are processed.
+    project and build files (package.json, pyproject.toml, requirements.txt),
+    Dockerfiles, Makefiles, automation tasks (YAML), web files (HTML, SVG),
+    and Unified Diffs. It ensures that only relevant code blocks and scripts
+    are processed.
 
     Args:
         name: The display name or path of the content.
@@ -4083,12 +4084,20 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 4. Check for project and build files (package.json, composer.json, deno.json/jsonc, pyproject.toml, tasks.json, launch.json)
+    # 4. Check for project and build files (package.json, composer.json, deno.json/jsonc, pyproject.toml, tasks.json, launch.json, requirements.txt)
     lowered_check = check_name.lower()
     check_basename = os.path.basename(lowered_check)
-    if check_basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'tasks.json', 'launch.json')):
+    if check_basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml', 'tasks.json', 'launch.json', 'requirements.txt')):
         try:
             text = content.decode('utf-8', errors='ignore')
+
+            if check_basename.endswith('requirements.txt'):
+                for line in text.splitlines():
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        yield (f"{name} [Dependency]", line.encode('utf-8'))
+                return
+
             if check_basename.endswith('pyproject.toml'):
                 # Parse pyproject.toml using regex to avoid toml dependency
                 lines = text.splitlines()
