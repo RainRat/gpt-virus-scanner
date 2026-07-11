@@ -30,22 +30,29 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 ## Installation
 
 ### Prerequisites
-*   **Python:** Install **Python 3.9, 3.10, or 3.11**. Newer versions like 3.12 are not yet supported.
-*   **Data files:** The repository already includes the `scripts.h5` model and `task.txt` instruction files. Keep these in the project folder.
+*   **Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions like 3.12 or 3.13 are not yet supported.
+*   **Git:** You need Git to download the project.
+*   **Data Files:** The `scripts.h5` model and `task.txt` files are required. They are already included in this folder.
 
 ### Setup
-1.  **Clone the repository:**
+1.  **Get the code:**
     ```bash
     git clone https://github.com/RainRat/gpt-virus-scanner.git
     cd gpt-virus-scanner
     ```
-2.  **Install mandatory packages:**
+2.  **Install required packages:**
     ```bash
     python3 -m pip install "tensorflow<2.16" openai numpy
     ```
-3.  **Install optional packages (if needed):**
-    *   **python3-tk:** Install this if you use Linux and want the window (GUI) interface.
-    *   **PyYAML:** Install this if you want to train your own models.
+3.  **Install optional tools (if needed):**
+    *   **For the Window (GUI) on Linux:** If the scanner window does not open, run:
+        ```bash
+        sudo apt install python3-tk
+        ```
+    *   **For Training Models:** If you want to train your own detection models, run:
+        ```bash
+        python3 -m pip install pyyaml
+        ```
 
 ## How to use
 ### Using the Window (GUI)
