@@ -2111,7 +2111,19 @@ def get_online_url(path: str, line: Union[int, str] = 1) -> Optional[str]:
 
         # GitLab Raw: https://gitlab.com/user/repo/-/raw/rev/path
         if '/-/raw/' in url.lower():
-            url = url.replace('/-/raw/', '/-/blob/')
+            url = url.replace('/-/raw/', '/-/blob/', 1)
+
+        # Bitbucket Raw: https://bitbucket.org/user/repo/raw/rev/path
+        if '/raw/' in url.lower() and 'bitbucket.org' in url.lower():
+            url = url.replace('/raw/', '/src/', 1)
+
+        # Pastebin Raw: https://pastebin.com/raw/id
+        if '/raw/' in url.lower() and 'pastebin.com' in url.lower():
+            url = url.replace('/raw/', '/', 1)
+
+        # Hugging Face Raw: https://huggingface.co/user/repo/raw/rev/path
+        if '/raw/' in url.lower() and 'huggingface.co' in url.lower():
+            url = url.replace('/raw/', '/blob/', 1)
 
         # Append line fragment
         if line_val:
@@ -2154,7 +2166,8 @@ def get_online_url(path: str, line: Union[int, str] = 1) -> Optional[str]:
 
     # Normalize Remote URL (Convert SSH to HTTPS, remove .git suffix)
     # git@host:user/repo.git -> https://host/user/repo
-    remote = re.sub(r'^git@([^:]+):', r'https://\1/', remote)
+    # Also handle ssh://git@host/user/repo.git or ssh://git@host:user/repo.git
+    remote = re.sub(r'^(?:ssh://)?git@([^:/]+)[:/]', r'https://\1/', remote)
     remote = re.sub(r'\.git$', '', remote)
     remote = remote.rstrip('/')
 
