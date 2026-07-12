@@ -4790,11 +4790,13 @@ def scan_files(
         deep_scan: Whether to scan overlapping 1024-byte windows beyond the first block.
         show_all: Whether to yield all scanned files regardless of threat level threshold.
         use_gpt: Whether to request GPT analysis when the local model is confident.
+        cancel_event: An event to signal cancellation of the scan.
         rate_limit: Maximum number of GPT requests permitted per minute.
         max_concurrent_requests: Maximum number of GPT requests executed concurrently.
         dry_run: Whether to list files that would be scanned without running the model or API.
         exclude_patterns: List of glob patterns to exclude from the scan.
         extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
+        fail_threshold: Threat level threshold to trigger a failure count.
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
 
     Yields:
@@ -5417,8 +5419,13 @@ def run_scan(
         deep_scan: Whether to evaluate all 1024-byte windows.
         show_all: Whether to display all results regardless of threat level.
         use_gpt: Whether to enrich suspicious files with GPT output.
+        cancel_event: An event to signal cancellation of the scan.
         rate_limit: Maximum allowed GPT requests per minute.
         dry_run: Whether to simulate the scan.
+        exclude_patterns: List of glob patterns to exclude from the scan.
+        extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
+        fail_threshold: Threat level threshold to trigger a failure count.
+        modified_since: A timestamp. If provided, only files modified after this time are scanned.
     """
     event_gen = scan_files(
         scan_targets,
