@@ -1067,10 +1067,12 @@ def get_wrapped_values(tree: ttk.Treeview, values: Iterable[Any], measure: Optio
     measure = measure or (default_font_measure or tkinter.font.Font(font='TkDefaultFont').measure)
     col_widths = col_widths or [tree.column(cid)['width'] for cid in tree['columns']]
 
+    values_list = list(values)
+
     # Only wrap the first 6 columns, leave the rest (including line and hidden orig_json) as is
-    wrapped = [adjust_newlines(v, w, measure=measure) for v, w in zip(list(values)[:6], col_widths[:6])]
-    if len(values) > 6:
-        wrapped.extend(list(values)[6:])
+    wrapped = [adjust_newlines(v, w, measure=measure) for v, w in zip(values_list[:6], col_widths[:6])]
+    if len(values_list) > 6:
+        wrapped.extend(values_list[6:])
     return wrapped
 
 
