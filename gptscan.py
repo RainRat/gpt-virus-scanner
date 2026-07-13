@@ -48,7 +48,6 @@ filter_var: Optional[tk.StringVar] = None
 filter_entry: Optional[ttk.Entry] = None
 tree: Optional[ttk.Treeview] = None
 scan_button: Optional[ttk.Button] = None
-cancel_button: Optional[ttk.Button] = None
 view_button: Optional[ttk.Button] = None
 rescan_button: Optional[ttk.Button] = None
 open_button: Optional[ttk.Button] = None
@@ -809,7 +808,12 @@ def toggle_dry_run() -> None:
 
     is_scanning = current_cancel_event is not None
     if not is_scanning:
-        scan_button.config(text="Dry Run" if dry_var.get() else "Scan Now")
+        if dry_var.get():
+            scan_button.config(text="Dry Run")
+            bind_hover_message(scan_button, "Preview which files would be scanned. (Enter)")
+        else:
+            scan_button.config(text="Scan Now")
+            bind_hover_message(scan_button, "Start the scan. (Enter)")
 
 
 def toggle_ai_controls() -> None:
@@ -2772,14 +2776,17 @@ def set_scanning_state(is_scanning: bool) -> None:
         update_button_states()
 
     if scan_button:
-        new_state = "disabled" if is_scanning else "normal"
         if is_scanning:
-            scan_button.config(text="Scanning...", state=new_state)
+            if current_cancel_event and current_cancel_event.is_set():
+                scan_button.config(text="Stopping...", state="disabled")
+                bind_hover_message(scan_button, "Stopping the scan...")
+            else:
+                scan_button.config(text="Stop Scan", state="normal")
+                bind_hover_message(scan_button, "Stop the current scan. (Esc)")
         else:
-            scan_button.config(text="Scan Now", state=new_state)
+            scan_button.config(text="Scan Now", state="normal")
+            bind_hover_message(scan_button, "Start the scan. (Enter)")
             toggle_dry_run()
-    if cancel_button:
-        cancel_button.config(state="normal" if is_scanning else "disabled")
 
     # Disable/Enable configuration widgets during scan
     config_widgets = [
@@ -3503,6 +3510,14 @@ def scan_system_audit_click():
         messagebox.showwarning("System Audit Error", f"Could not perform system audit: {e}")
 
 
+def on_scan_button_click() -> None:
+    """Handle scan button click to either start or stop a scan."""
+    if current_cancel_event is not None:
+        cancel_scan()
+    else:
+        button_click()
+
+
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None, modified_since: Optional[float] = None) -> None:
     """Trigger a scan in a background thread using the selected path.
 
@@ -3584,6 +3599,8 @@ def cancel_scan() -> None:
 
     if current_cancel_event:
         current_cancel_event.set()
+        # Update UI to show "Stopping..." state immediately
+        set_scanning_state(True)
 
 
 def rescan_selected() -> None:
@@ -7700,7 +7717,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     Returns:
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, cancel_button, view_button, intel_button, intel_menu, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, clear_target_btn, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, view_button, intel_button, intel_menu, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, clear_target_btn, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -7845,13 +7862,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
     bind_hover_message(browse_button, "Select scan targets or perform system audits.")
 
-    scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
+    scan_button = ttk.Button(button_box, text="Scan Now", command=on_scan_button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(scan_button, "Start the scan. (Enter)")
-
-    cancel_button = ttk.Button(button_box, text="Cancel", command=cancel_scan, state="disabled", width=10)
-    cancel_button.pack(side=tk.LEFT, padx=(2, 0), ipady=5)
-    bind_hover_message(cancel_button, "Stop the current scan. (Esc)")
 
     browse_menu = tk.Menu(browse_button, tearoff=0)
     browse_menu.add_command(label="Scan File(s)...", command=browse_file_click, accelerator="Ctrl+Shift+O")

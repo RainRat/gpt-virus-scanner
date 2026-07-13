@@ -65,7 +65,7 @@ def test_intel_button_disabled_during_scan(mock_gui, monkeypatch):
         'textbox', 'clear_target_btn', 'browse_button',
         'git_checkbox', 'deep_checkbox', 'scan_all_checkbox', 'dry_checkbox',
         'gpt_checkbox', 'provider_combo', 'model_combo', 'api_entry', 'show_key_btn',
-        'copy_cmd_button', 'scan_button', 'cancel_button'
+        'copy_cmd_button', 'scan_button'
     ]
     for name in monkeypatch_config:
         monkeypatch.setattr(gptscan, name, MagicMock())
