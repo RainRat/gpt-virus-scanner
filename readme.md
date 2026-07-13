@@ -62,7 +62,6 @@ Access these options from the **Browse** menu:
 
 #### Git Integration
 *   **Scan Git Diff (Ctrl+Shift+D):** Scan your current project changes as a diff.
-*   **Scan Git Changes:** Scan files that have changed in your project.
 *   **Scan Recent Commits...:** Scan files from the most recent commits.
 *   **Scan Git Hooks (Ctrl+Shift+G):** Scan your local and global Git hooks for suspicious scripts.
 *   **Scan Git Stashes (Ctrl+Shift+Q):** Scan all Git stashes for suspicious code changes.
@@ -404,6 +403,7 @@ You can tailor the scanner to your needs:
 *   **Deep Scan:** Scan the entire file instead of just the beginning and end. This is more thorough but slower. Use the **Deep Scan** checkbox or the `-d` or `--deep` flag.
 *   **Scan All Files:** By default, the scanner only checks script-like files (like `.py` or `.js`). Use the **Scan All Files** checkbox or the `--all-files` flag to check every file.
 *   **Dry Run:** Preview which files would be scanned without actually checking them. Use the **Dry Run** checkbox or the `--dry-run` flag.
+*   **Git Changes Only:** Only scan files that have been modified or are untracked in Git. Use the **Git changes only** checkbox or the `--git-changes` flag.
 
 ## Advanced Usage
 ### Training the Model
