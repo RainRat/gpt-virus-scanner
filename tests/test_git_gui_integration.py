@@ -33,7 +33,6 @@ def test_button_click_with_git_changes_enabled(monkeypatch):
 
     # Mock buttons
     monkeypatch.setattr(gptscan, 'scan_button', MagicMock(), raising=False)
-    monkeypatch.setattr(gptscan, 'cancel_button', MagicMock(), raising=False)
 
     # Mock get_git_changed_files
     mock_get_git = MagicMock(return_value=["/some/repo/file1.py", "/some/repo/file2.py"])

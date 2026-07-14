@@ -79,28 +79,22 @@ def test_browse_file_click_selects_file(monkeypatch):
 def test_set_scanning_state_updates_buttons(monkeypatch):
     # Setup mocks
     mock_scan_button = MagicMock()
-    mock_cancel_button = MagicMock()
     monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
-    monkeypatch.setattr(gptscan, 'cancel_button', mock_cancel_button, raising=False)
 
     # Test scanning=True
     gptscan.set_scanning_state(True)
-    mock_scan_button.config.assert_called_with(text="Scanning...", state="disabled")
-    mock_cancel_button.config.assert_called_with(state="normal")
+    mock_scan_button.config.assert_called_with(text="Stop Scan", state="normal")
 
     # Test scanning=False
     gptscan.set_scanning_state(False)
-    mock_scan_button.config.assert_called_with(text="Scan Now", state="normal")
-    mock_cancel_button.config.assert_called_with(state="disabled")
+    mock_scan_button.config.assert_called_with(state="normal")
 
 def test_finish_scan_state_resets_state(monkeypatch):
     # Setup
     mock_event = MagicMock()
     monkeypatch.setattr(gptscan, 'current_cancel_event', mock_event)
     mock_scan_button = MagicMock()
-    mock_cancel_button = MagicMock()
     monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
-    monkeypatch.setattr(gptscan, 'cancel_button', mock_cancel_button, raising=False)
 
     # Mock status_label
     mock_status_label = MagicMock()
@@ -115,8 +109,7 @@ def test_finish_scan_state_resets_state(monkeypatch):
     # because it avoids overwriting a possible "Scan cancelled" status set by _consume_scan_events.
     mock_status_label.config.assert_not_called()
     assert gptscan.current_cancel_event is None
-    mock_scan_button.config.assert_called_with(text="Scan Now", state="normal")
-    mock_cancel_button.config.assert_called_with(state="disabled")
+    mock_scan_button.config.assert_called_with(state="normal")
 
 def test_cancel_scan_triggers_event(monkeypatch):
     # Setup
@@ -178,9 +171,7 @@ def test_button_click_starts_scan(monkeypatch):
     monkeypatch.setattr(gptscan, 'current_cancel_event', None)
 
     mock_scan_button = MagicMock()
-    mock_cancel_button = MagicMock()
     monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
-    monkeypatch.setattr(gptscan, 'cancel_button', mock_cancel_button, raising=False)
 
     # Mock vars
     mock_deep = MagicMock()
@@ -223,7 +214,7 @@ def test_button_click_starts_scan(monkeypatch):
     # Assert
     mock_status_label.config.assert_called_with(text="Starting scan...")
     assert gptscan.current_cancel_event is not None
-    mock_scan_button.config.assert_called_with(text="Scanning...", state="disabled")
+    mock_scan_button.config.assert_called_with(text="Stop Scan", state="normal")
 
     # Check thread creation
     mock_thread_cls.assert_called_once()
@@ -240,13 +231,19 @@ def test_button_click_starts_scan(monkeypatch):
 
     mock_thread_instance.start.assert_called_once()
 
-def test_button_click_ignored_if_already_running(monkeypatch):
+def test_button_click_cancels_if_already_running(monkeypatch):
     mock_event = MagicMock()
     monkeypatch.setattr(gptscan, 'current_cancel_event', mock_event)
+
+    mock_scan_button = MagicMock()
+    monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
 
     mock_thread_cls = MagicMock()
     monkeypatch.setattr(gptscan.threading, 'Thread', mock_thread_cls)
 
     gptscan.button_click()
 
+    # Should call cancel_scan, which sets event and updates button
+    mock_event.set.assert_called_once()
+    mock_scan_button.config.assert_called_with(text="Stopping...", state="disabled")
     mock_thread_cls.assert_not_called()
