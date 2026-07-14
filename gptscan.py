@@ -377,7 +377,8 @@ class Config:
         # Explicit manifest files and build scripts (checked by basename)
         basename = os.path.basename(path_s)
         if basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml',
-                            'tasks.json', 'launch.json', 'dockerfile', 'makefile', 'docker-compose.yml', 'docker-compose.yaml')):
+                            'tasks.json', 'launch.json', 'dockerfile', 'makefile', 'docker-compose.yml', 'docker-compose.yaml',
+                            'requirements.txt', 'requirements.in')):
             return True
         return False
 
@@ -4617,7 +4618,24 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 12. Fallback: yield as a single snippet if it's a supported file type
+    # 12. Check for Requirements files
+    if check_basename.endswith(('requirements.txt', 'requirements.in')):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            yielded_any = False
+            for line in text.splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith('#'):
+                    continue
+                # Simple parsing: yield the whole line as a dependency snippet
+                yield (f"{name} [Dependency: {stripped}]", stripped.encode('utf-8'))
+                yielded_any = True
+            if yielded_any:
+                return
+        except Exception:
+            pass
+
+    # 13. Fallback: yield as a single snippet if it's a supported file type
     # If scan_all_files is True, we always yield. Otherwise check extension/shebang.
     if Config.is_supported_file(check_name, content=content, is_member=(depth > 0)):
         yield name, content
