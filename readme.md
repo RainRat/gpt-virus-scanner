@@ -62,7 +62,6 @@ Access these options from the **Browse** menu:
 
 #### Git Integration
 *   **Scan Git Diff (Ctrl+Shift+D):** Scan your current project changes as a diff.
-*   **Scan Git Changes:** Scan files that have changed in your project.
 *   **Scan Recent Commits...:** Scan files from the most recent commits.
 *   **Scan Git Hooks (Ctrl+Shift+G):** Scan your local and global Git hooks for suspicious scripts.
 *   **Scan Git Stashes (Ctrl+Shift+Q):** Scan all Git stashes for suspicious code changes.
@@ -404,6 +403,7 @@ The scanner provides several ways to analyze and manage your results:
 
 ## Customizing the Scanner
 You can tailor the scanner to your needs:
+*   **Git Changes Only:** Only scan files that have been modified or are untracked in Git. Use the **Git changes only** checkbox or the `--git-changes` flag.
 *   **Exclusions:** Ignore specific files or folders by using **File > Manage Exclusions...** or by adding patterns to a `.gptscanignore` file. In the terminal, use the `-e` or `--exclude` flag.
 *   **Extensions:** Control which file types are scanned by using **File > Manage Extensions...** or by editing the `extensions.txt` file. In the terminal, use the `--extensions` flag.
 *   **File Size:** The scanner skips files larger than 10MB during folder scans. You can adjust this limit in the **Scan Options** panel or by using the `--max-size` flag. Files you select individually are always scanned, regardless of their size.
