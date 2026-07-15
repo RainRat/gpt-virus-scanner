@@ -7645,12 +7645,14 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         recent_menu.add_separator()
         recent_menu.add_command(label="Custom...", command=scan_recently_modified_click)
         parent.add_cascade(label="Scan Recently Modified", menu=recent_menu)
+        parent.add_separator()
 
         git_menu = tk.Menu(parent, tearoff=0)
         git_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
         git_menu.add_command(label="Scan Git Hooks", command=scan_git_hooks_click, accelerator="Ctrl+Shift+G")
         git_menu.add_command(label="Scan Git Stashes", command=scan_git_stash_click, accelerator="Ctrl+Shift+Q")
         git_menu.add_command(label="Scan Git Conflicts", command=scan_git_conflicts_click)
+        git_menu.add_separator()
 
         history_menu = tk.Menu(git_menu, tearoff=0)
         history_menu.add_command(label="Last 5 Commits", command=lambda: scan_git_history_click(5))
@@ -7667,23 +7669,33 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         reflog_menu.add_separator()
         reflog_menu.add_command(label="Custom...", command=scan_git_reflog_click)
         git_menu.add_cascade(label="Scan Git Reflog", menu=reflog_menu)
+        git_menu.add_separator()
 
         git_menu.add_command(label="Scan Git Configuration", command=scan_git_config_click)
         git_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
         parent.add_cascade(label="Git Integration", menu=git_menu)
+        parent.add_separator()
 
         system_menu = tk.Menu(parent, tearoff=0)
         system_menu.add_command(label="Scan System Audit", command=scan_system_audit_click, accelerator="Ctrl+Shift+I")
+        system_menu.add_separator()
+
         system_menu.add_command(label="Scan Shell Profiles", command=scan_shell_profiles_click, accelerator="Ctrl+Shift+B")
         system_menu.add_command(label="Scan Shell History", command=scan_shell_history_click, accelerator="Ctrl+Shift+H")
         system_menu.add_command(label="Scan System PATH", command=scan_system_path_click, accelerator="Ctrl+Shift+P")
         system_menu.add_command(label="Scan Running Processes", command=scan_running_processes_click, accelerator="Ctrl+Shift+K")
         system_menu.add_command(label="Scan Environment Variables", command=scan_env_vars_click, accelerator="Ctrl+Shift+N")
+        system_menu.add_separator()
+
         system_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
         system_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
         system_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
+        system_menu.add_separator()
+
         system_menu.add_command(label="Scan SSH Configuration", command=scan_ssh_config_click)
         system_menu.add_command(label="Scan Network Configuration", command=scan_network_config_click)
+        system_menu.add_separator()
+
         system_menu.add_command(label="Scan Python Packages", command=scan_python_packages_click, accelerator="Ctrl+Shift+Y")
         system_menu.add_command(label="Scan Node.js Packages", command=scan_nodejs_packages_click, accelerator="Ctrl+Shift+M")
         system_menu.add_command(label="Scan Ruby Gems", command=scan_ruby_gems_click)
@@ -7692,9 +7704,13 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         system_menu.add_command(label="Scan Go Packages", command=scan_go_packages_click)
         system_menu.add_command(label="Scan Java Packages", command=scan_java_packages_click)
         system_menu.add_command(label="Scan .NET Packages", command=scan_dotnet_packages_click)
+        system_menu.add_separator()
+
         system_menu.add_command(label="Scan Browser Bookmarks", command=scan_browser_bookmarks_click)
         system_menu.add_command(label="Scan Browser Extensions", command=scan_browser_extensions_click, accelerator="Ctrl+Shift+W")
         system_menu.add_command(label="Scan Editor Extensions", command=scan_editor_extensions_click, accelerator="Ctrl+Shift+X")
+        system_menu.add_separator()
+
         system_menu.add_command(label="Scan Documents", command=scan_documents_click)
         system_menu.add_command(label="Scan Downloads", command=scan_downloads_click, accelerator="Ctrl+Shift+J")
         system_menu.add_command(label="Scan Desktop", command=scan_desktop_click, accelerator="Ctrl+Shift+L")
