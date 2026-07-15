@@ -1165,7 +1165,7 @@ def get_shell_profile_paths() -> List[str]:
         except Exception:
             pass
 
-    return sorted(list(set(paths)))
+    return sorted(set(paths))
 
 
 def get_shell_history_paths() -> List[str]:
@@ -1453,7 +1453,7 @@ def get_system_service_paths() -> List[str]:
             except Exception:
                 pass
 
-    return sorted(list(set(paths)))
+    return sorted(set(paths))
 
 
 def get_python_package_paths() -> List[str]:
@@ -1917,7 +1917,7 @@ def get_ssh_config_paths() -> List[str]:
             if p.exists():
                 paths.append(str(p))
 
-    return sorted(list(set(paths)))
+    return sorted(set(paths))
 
 
 def get_network_config_paths() -> List[str]:
@@ -1948,7 +1948,7 @@ def get_network_config_paths() -> List[str]:
                 except OSError:
                     pass
 
-    return sorted(list(set(str(Path(p).absolute()) for p in paths if os.path.isfile(p))))
+    return sorted(set(str(Path(p).absolute()) for p in paths if os.path.isfile(p)))
 
 
 def get_startup_item_commands() -> List[Tuple[str, bytes]]:
@@ -2069,7 +2069,7 @@ def get_git_hooks_paths(path: str = ".") -> List[str]:
         except OSError:
             pass
 
-    return sorted(list(set(paths)))
+    return sorted(set(paths))
 
 
 def get_git_config_snippets() -> List[Tuple[str, bytes]]:
