@@ -547,18 +547,27 @@ class Config:
 
         file_path = Path(file_path)
 
-        # Check for a script starting line (like #!/bin/bash) for files without a recognized extension
+        # Check for a script starting line (like #!/bin/bash) or binary executable magic bytes
         try:
-            first_line = None
+            header = None
             if content is not None:
-                if content.startswith(b'#!'):
-                    first_line = content[2:].split(b'\n', 1)[0][:126].decode('utf-8', errors='ignore').lower()
+                header = content[:128]
             elif file_path.is_file():
                 with open(file_path, 'rb') as f:
-                    if f.read(2) == b'#!':
-                        first_line = f.readline(126).decode('utf-8', errors='ignore').lower()
+                    header = f.read(128)
 
-            if first_line:
+            if header:
+                # Check for content/extension mismatch
+                deception_score, _ = analyze_content_mismatch(path_str, header)
+                if deception_score >= 0.5:
+                    return True
+
+                # Check for shebang
+                first_line = None
+                if header.startswith(b'#!'):
+                    first_line = header[2:].split(b'\n', 1)[0][:126].decode('utf-8', errors='ignore').lower()
+
+            if header and first_line:
                 interpreters = ['python', 'node', 'nodejs', 'javascript', 'bash', 'sh', 'ash', 'dash', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell', 'lua', 'osascript', 'ipython']
                 escaped_interpreters = [re.escape(i) for i in interpreters]
                 pattern = r'(?:/|\s|^)(?:' + '|'.join(escaped_interpreters) + r')\d*\b'
@@ -2483,6 +2492,50 @@ def format_bytes(num: float) -> str:
             return f"{num:3.1f} {unit}"
         num /= 1024.0
     return f"{num:.1f} PiB"
+
+
+def analyze_content_mismatch(path: Union[str, Path], content: bytes) -> Tuple[float, str]:
+    """Analyze if the file content matches its extension.
+
+    Detects executable magic bytes or shebangs in files with "safe" extensions.
+
+    Returns:
+        A tuple of (threat_score, message). Score is 0.0 to 1.0.
+    """
+    path_s = str(path).lower()
+    name = os.path.basename(path_s)
+    if not name or not content:
+        return 0.0, ""
+
+    extension = os.path.splitext(name)[1]
+    # "Safe" extensions that shouldn't contain executables or scripts
+    safe_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.pdf', '.docx', '.xlsx', '.pptx', '.mp3', '.mp4', '.txt', '.csv', '.zip', '.rar', '.7z'}
+
+    if extension not in safe_extensions:
+        return 0.0, ""
+
+    # Check for binary executable magic bytes
+    # Windows (MZ)
+    if content.startswith(b'MZ'):
+        return 1.0, f"Deceptive content: Windows executable (MZ) found in '{extension}' file."
+
+    # Linux (ELF)
+    if content.startswith(b'\x7fELF'):
+        return 1.0, f"Deceptive content: Linux executable (ELF) found in '{extension}' file."
+
+    # macOS (Mach-O)
+    if content.startswith((b'\xfe\xed\xfa\xce', b'\xfe\xed\xfa\xcf', b'\xce\xfa\xed\xfe', b'\xcf\xfa\xed\xfe')):
+        return 1.0, f"Deceptive content: macOS executable (Mach-O) found in '{extension}' file."
+
+    # Check for shebangs in non-script files (excluding .txt which might legitimately have them for some reason, though still suspicious)
+    if content.startswith(b'#!') and extension != '.txt':
+        try:
+            first_line = content[:128].split(b'\n', 1)[0].decode('utf-8', errors='ignore')
+            return 0.8, f"Deceptive content: Script shebang '{first_line.strip()}' found in '{extension}' file."
+        except Exception:
+            pass
+
+    return 0.0, ""
 
 
 def analyze_filename(path: Union[str, Path]) -> Tuple[float, str]:
@@ -4856,8 +4909,11 @@ def scan_files(
             # Filename analysis for additional threat indicators
             file_threat, file_msg = analyze_filename(path)
 
-            # Combine threat levels (take the maximum of content and filename threat)
-            effective_maxconf = max(maxconf, file_threat)
+            # Content-extension mismatch analysis
+            mismatch_threat, mismatch_msg = analyze_content_mismatch(path, max_window_bytes)
+
+            # Combine threat levels (take the maximum of content and metadata threats)
+            effective_maxconf = max(maxconf, file_threat, mismatch_threat)
 
             percent = format_percent(effective_maxconf * 100.0)
             snippet = ''.join(map(chr, max_window_bytes)).strip()
@@ -4868,6 +4924,11 @@ def scan_files(
             if file_threat >= 0.5:
                 admin_note = f"[Filename Warning] {file_msg}"
                 user_note = f"Caution: {file_msg}"
+
+            if mismatch_threat >= 0.5:
+                mismatch_warn = f"[Deception Warning] {mismatch_msg}"
+                admin_note = f"{admin_note}\n{mismatch_warn}".strip()
+                user_note = f"{user_note}\nCaution: {mismatch_msg}".strip()
 
             if full_content is not None:
                 _virtual_source_cache[path] = full_content

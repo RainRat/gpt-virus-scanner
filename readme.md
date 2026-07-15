@@ -26,6 +26,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 *   **Automation Tasks:** Scan GitHub Actions, GitLab CI, and other YAML workflows for suspicious commands.
 *   **Web Files:** Scan HTML, SVG, and Markdown files for embedded scripts.
 *   **Unified Diffs:** Scan `.diff` and `.patch` files to review code changes.
+*   **Deceptive Content Detection:** Detect executables and scripts disguised as images or documents (e.g., a Windows `.exe` renamed to `.jpg`) using content signatures (magic bytes).
 
 ## Installation
 
