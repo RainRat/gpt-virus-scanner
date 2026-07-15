@@ -4709,16 +4709,18 @@ def scan_files(
     """Scan files for dangerous content and optionally use AI for analysis.
 
     Args:
-        scan_targets: Folder path or list of file/folder paths to search.
-        deep_scan: Whether to scan overlapping 1024-byte windows beyond the first block.
-        show_all: Whether to yield all scanned files regardless of threat level threshold.
-        use_gpt: Whether to request GPT analysis when the local model is confident.
-        rate_limit: Maximum number of GPT requests permitted per minute.
-        max_concurrent_requests: Maximum number of GPT requests executed concurrently.
-        dry_run: Whether to list files that would be scanned without running the model or API.
-        exclude_patterns: List of glob patterns to exclude from the scan.
+        scan_targets: Folder path, file path, or list of paths to scan.
+        deep_scan: Scan the whole file. This is slower but more thorough.
+        show_all: Show all scanned files, even safe ones.
+        use_gpt: Use AI to analyze suspicious files.
+        cancel_event: Event used to stop the scan.
+        rate_limit: Maximum number of AI requests per minute.
+        max_concurrent_requests: Maximum number of AI requests to run at once.
+        dry_run: Preview which files would be scanned without actually checking them.
+        exclude_patterns: Ignore files or folders matching these patterns.
         extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
-        modified_since: A timestamp. If provided, only files modified after this time are scanned.
+        fail_threshold: Stop the scan if a file's threat level is at or above this number.
+        modified_since: Only scan files changed since this Unix timestamp.
 
     Yields:
         Tuples indicating events:
@@ -5336,12 +5338,17 @@ def run_scan(
     """Read scan results and send them to the UI window.
 
     Args:
-        scan_targets: Folder path or list of files to scan.
-        deep_scan: Whether to evaluate all 1024-byte windows.
-        show_all: Whether to display all results regardless of threat level.
-        use_gpt: Whether to enrich suspicious files with GPT output.
-        rate_limit: Maximum allowed GPT requests per minute.
-        dry_run: Whether to simulate the scan.
+        scan_targets: Folder path, file path, or list of paths to scan.
+        deep_scan: Scan the whole file. This is slower but more thorough.
+        show_all: Show all scanned files, even safe ones.
+        use_gpt: Use AI to analyze suspicious files.
+        cancel_event: Event used to stop the scan.
+        rate_limit: Maximum number of AI requests per minute.
+        dry_run: Preview which files would be scanned without actually checking them.
+        exclude_patterns: Ignore files or folders matching these patterns.
+        extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
+        fail_threshold: Stop the scan if a file's threat level is at or above this number.
+        modified_since: Only scan files changed since this Unix timestamp.
     """
     event_gen = scan_files(
         scan_targets,
