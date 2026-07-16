@@ -377,7 +377,8 @@ class Config:
         basename = os.path.basename(path_s)
         if basename.endswith(('package.json', 'composer.json', 'deno.json', 'deno.jsonc', 'pyproject.toml',
                             'tasks.json', 'launch.json', 'dockerfile', 'makefile', 'docker-compose.yml', 'docker-compose.yaml',
-                            'requirements.txt', 'requirements.in')):
+                            'requirements.txt', 'requirements.in')) or \
+           basename == '.env' or basename.startswith('.env.'):
             return True
         return False
 
@@ -1392,6 +1393,25 @@ def get_documents_paths() -> List[str]:
             pass
 
     return sorted(_normalize_and_filter_dirs(paths))
+
+
+def get_env_file_paths() -> List[str]:
+    """Identify common .env files in the home directory and current folder."""
+    paths = []
+    search_dirs = [Path.home(), Path(".")]
+
+    env_patterns = [".env", ".env.*"]
+
+    for d in search_dirs:
+        for pattern in env_patterns:
+            try:
+                for p in d.glob(pattern):
+                    if p.is_file():
+                        paths.append(str(p.absolute()))
+            except Exception:
+                pass
+
+    return sorted(list(set(paths)))
 
 
 def get_running_process_commands() -> List[Tuple[str, bytes]]:
@@ -3284,6 +3304,11 @@ def scan_env_vars_click():
     _generic_scan_click(get_environment_variable_snippets, "Environment Variables", "No non-empty environment variables were found.", "Environment Variables Error", is_snippets=True)
 
 
+def scan_env_files_click():
+    """Scan all common .env files found in home and current directories."""
+    _generic_scan_click(get_env_file_paths, "Env Files", "No common .env files were found.", "Env Files Error")
+
+
 def scan_nodejs_packages_click():
     """Scan all folders containing global Node.js packages."""
     _generic_scan_click(get_nodejs_package_paths, "Node.js Packages", "No global Node.js package folders were found to scan.", "Node.js Packages Error")
@@ -3378,6 +3403,7 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
     all_paths.extend(get_downloads_paths())
     all_paths.extend(get_desktop_paths())
     all_paths.extend(get_temp_paths())
+    all_paths.extend(get_env_file_paths())
 
     all_snippets = []
     all_snippets.extend(get_running_process_commands())
@@ -4636,7 +4662,27 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
         except Exception:
             pass
 
-    # 13. Fallback: yield as a single snippet if it's a supported file type
+    # 13. Check for .env files
+    if check_basename == '.env' or check_basename.startswith('.env.'):
+        try:
+            text = content.decode('utf-8', errors='ignore')
+            yielded_any = False
+            for line in text.splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith('#'):
+                    continue
+                # Yield key=value pairs or exports as snippets
+                key = stripped.split('=', 1)[0].strip()
+                if key.startswith('export '):
+                    key = key[7:].strip()
+                yield (f"{name} [Env: {key}]", stripped.encode('utf-8'))
+                yielded_any = True
+            if yielded_any:
+                return
+        except Exception:
+            pass
+
+    # 14. Fallback: yield as a single snippet if it's a supported file type
     # If scan_all_files is True, we always yield. Otherwise check extension/shebang.
     if Config.is_supported_file(check_name, content=content, is_member=(depth > 0)):
         yield name, content
@@ -7679,6 +7725,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         system_menu.add_command(label="Scan System PATH", command=scan_system_path_click, accelerator="Ctrl+Shift+P")
         system_menu.add_command(label="Scan Running Processes", command=scan_running_processes_click, accelerator="Ctrl+Shift+K")
         system_menu.add_command(label="Scan Environment Variables", command=scan_env_vars_click, accelerator="Ctrl+Shift+N")
+        system_menu.add_command(label="Scan Env Files", command=scan_env_files_click)
         system_menu.add_command(label="Scan Scheduled Tasks", command=scan_scheduled_tasks_click, accelerator="Ctrl+Shift+T")
         system_menu.add_command(label="Scan Startup Items", command=scan_startup_items_click, accelerator="Ctrl+Shift+A")
         system_menu.add_command(label="Scan System Services", command=scan_system_services_click, accelerator="Ctrl+Shift+S")
@@ -8466,6 +8513,11 @@ def main():
         help='Scan all non-empty environment variables.'
     )
     system_group.add_argument(
+        '--env-files',
+        action='store_true',
+        help='Scan all common .env files.'
+    )
+    system_group.add_argument(
         '--ruby-gems',
         action='store_true',
         help='Scan all folders containing installed Ruby gems.'
@@ -8562,7 +8614,7 @@ def main():
         # If we ONLY wanted to clear cache, exit now.
         if not any([
             args.target, args.path, args.stdin, args.import_results, args.files,
-            args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
+            args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
             args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
             args.system_services, args.audit, args.modified, args.downloads, args.desktop,
@@ -8870,6 +8922,13 @@ def main():
                 extra_snippets.extend(snippets)
             else:
                 print("No non-empty environment variables were found.", file=sys.stderr)
+
+        if args.env_files:
+            env_paths = get_env_file_paths()
+            if env_paths:
+                scan_targets.extend(env_paths)
+            else:
+                print("No common .env files were found.", file=sys.stderr)
 
         if args.audit:
             paths, snippets = get_system_audit_data()
