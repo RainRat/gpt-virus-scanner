@@ -163,10 +163,10 @@ def test_import_results_invalid_json(monkeypatch, tmp_path):
 
 def test_import_results_unsupported_ext(monkeypatch, tmp_path):
     """Test error handling for unsupported file extensions."""
-    txt_file = tmp_path / "test.txt"
-    txt_file.write_text("some text")
+    unsupported_file = tmp_path / "test.unsupported"
+    unsupported_file.write_text("some text")
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **kwargs: str(txt_file))
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **kwargs: str(unsupported_file))
     monkeypatch.setattr(gptscan, "tree", MagicMock())
 
     mock_messagebox = MagicMock()
@@ -174,7 +174,7 @@ def test_import_results_unsupported_ext(monkeypatch, tmp_path):
 
     gptscan.import_results()
 
-    mock_messagebox.showerror.assert_called_with("Import Failed", "Could not load results:\nUnsupported file extension: .txt")
+    mock_messagebox.showerror.assert_called_with("Import Failed", "Could not load results:\nUnsupported file extension: .unsupported")
 
 def test_import_results_single_object_json(tmp_path):
     """Test importing a pretty-printed single JSON object result."""

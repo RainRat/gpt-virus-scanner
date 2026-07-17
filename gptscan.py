@@ -5988,6 +5988,124 @@ def standardize_result_dict(item: Any) -> Dict[str, Any]:
     return res
 
 
+def parse_triage_report(content: str) -> List[Dict[str, Any]]:
+    """Parse a plain-text or colorized console triage report into standardized result dicts.
+
+    Args:
+        content: The raw text of the triage report.
+
+    Returns:
+        A list of parsed findings ready to be standardized.
+    """
+    # Strip ANSI escape codes
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    clean_content = ansi_escape.sub('', content)
+
+    lines = clean_content.splitlines()
+    findings = []
+    current_item = None
+    state = "FINDING_START"  # FINDING_START, METADATA, CONTENT
+    content_mode = None      # ADMIN, USER, SNIPPET
+
+    header_re = re.compile(r'^\[\d+\]\s+(?:HIGH|MEDIUM|LOW)\s+RISK\s+-\s+(.+)$', re.IGNORECASE)
+
+    for line in lines:
+        line_stripped = line.strip()
+
+        # Check if this line is a new finding header
+        header_match = header_re.match(line_stripped)
+        if header_match:
+            # Save the previous finding if it exists
+            if current_item:
+                findings.append(current_item)
+
+            # Extract location
+            location = header_match.group(1).strip()
+            path = location
+            line_num = "-"
+            if ":" in location:
+                # Handle path:line_num
+                parts = location.rsplit(":", 1)
+                if parts[1].isdigit():
+                    path = parts[0]
+                    line_num = parts[1]
+
+            current_item = {
+                "path": path,
+                "line": line_num,
+                "own_conf": "",
+                "gpt_conf": "",
+                "admin_desc_list": [],
+                "end-user_desc_list": [],
+                "snippet_list": []
+            }
+            state = "METADATA"
+            content_mode = None
+            continue
+
+        if state == "METADATA":
+            if "Local:" in line_stripped:
+                # e.g., Local: 85%  AI: 90%
+                local_match = re.search(r'Local:\s*(\d+%)', line_stripped)
+                if local_match:
+                    current_item["own_conf"] = local_match.group(1)
+                ai_match = re.search(r'AI:\s*(\d+%)', line_stripped)
+                if ai_match:
+                    current_item["gpt_conf"] = ai_match.group(1)
+                state = "CONTENT"
+            continue
+
+        if state == "CONTENT":
+            # Check for Admin, User, Snippet indicators
+            if "Admin:" in line_stripped:
+                content_mode = "ADMIN"
+                idx = line_stripped.find("Admin:")
+                text = line_stripped[idx + 6:].strip()
+                if text:
+                    current_item["admin_desc_list"].append(text)
+            elif "User:" in line_stripped:
+                content_mode = "USER"
+                idx = line_stripped.find("User:")
+                text = line_stripped[idx + 5:].strip()
+                if text:
+                    current_item["end-user_desc_list"].append(text)
+            elif line_stripped.startswith(">"):
+                content_mode = "SNIPPET"
+                text = line_stripped[1:]
+                if text.startswith(" "):
+                    text = text[1:]
+                current_item["snippet_list"].append(text)
+            elif line.startswith("    ") and content_mode:
+                # Continuation of the current content mode
+                if content_mode == "ADMIN":
+                    current_item["admin_desc_list"].append(line_stripped)
+                elif content_mode == "USER":
+                    current_item["end-user_desc_list"].append(line_stripped)
+                elif content_mode == "SNIPPET":
+                    text = line[4:]
+                    if text.startswith(">"):
+                        text = text[1:]
+                        if text.startswith(" "):
+                            text = text[1:]
+                    current_item["snippet_list"].append(text)
+
+    if current_item:
+        findings.append(current_item)
+
+    # Post-process lists into strings
+    final_findings = []
+    for item in findings:
+        item["admin_desc"] = "\n".join(item["admin_desc_list"]).strip()
+        item["end-user_desc"] = "\n".join(item["end-user_desc_list"]).strip()
+        item["snippet"] = "\n".join(item["snippet_list"]).strip()
+        del item["admin_desc_list"]
+        del item["end-user_desc_list"]
+        del item["snippet_list"]
+        final_findings.append(item)
+
+    return final_findings
+
+
 def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:
     """Parse report content in JSON, SARIF, or CSV format.
 
@@ -6006,13 +6124,23 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     if filename_hint:
         ext = os.path.splitext(filename_hint)[1].lower()
 
-    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown', '.html', '.htm', '.xhtml'):
+    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt'):
         raise ValueError(f"Unsupported file extension: {ext}")
 
     data_to_import = []
 
+    # Strip ANSI codes for checking triage report signature
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    stripped_for_check = ansi_escape.sub('', content)
+    lines_for_check = stripped_for_check.splitlines()
+    has_triage_header = any("--- GPT SCAN - " in line and "TRIAGE REPORT" in line for line in lines_for_check)
+    has_triage_finding = any(re.match(r'^\[\d+\]\s+(?:HIGH|MEDIUM|LOW)\s+RISK\s+-\s+.+$', line.strip(), re.IGNORECASE) for line in lines_for_check)
+
     # Auto-detection logic
-    if (content.strip().startswith('<') and ('<table' in content.lower() or '<tr' in content.lower())) or ext in ('.html', '.htm', '.xhtml'):
+    if ext == '.txt' or has_triage_header or has_triage_finding:
+        # Parse Triage Report
+        data_to_import = parse_triage_report(content)
+    elif (content.strip().startswith('<') and ('<table' in content.lower() or '<tr' in content.lower())) or ext in ('.html', '.htm', '.xhtml'):
         # HTML report format
         # Use regex to find rows, ignoring the header row
         rows = re.findall(r'<tr\b[^>]*>(.*?)</tr>', content, re.DOTALL | re.IGNORECASE)
@@ -6271,12 +6399,13 @@ def import_results(event: Optional[tk.Event] = None) -> None:
 
     file_path = filedialog.askopenfilename(
         filetypes=[
-            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml"),
+            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml;*.txt"),
             ("JSON files", "*.json;*.jsonl;*.ndjson"),
             ("SARIF files", "*.sarif"),
             ("CSV files", "*.csv"),
             ("Markdown files", "*.md;*.markdown"),
             ("HTML files", "*.html;*.htm;*.xhtml"),
+            ("Text / Triage files", "*.txt"),
             ("All files", "*.*")
         ],
         title="Import Scan Results",
@@ -6406,7 +6535,7 @@ def _get_tree_results_as_dicts(item_ids: Iterable[str]) -> List[Dict[str, Any]]:
 def export_results(event: Optional[tk.Event] = None) -> None:
     """Save the current Treeview contents to a file chosen by the user.
 
-    Supports CSV, HTML, JSON, and SARIF formats.
+    Supports CSV, HTML, JSON, SARIF, and Text/Triage formats.
 
     Returns
     -------
@@ -6424,6 +6553,7 @@ def export_results(event: Optional[tk.Event] = None) -> None:
             ("HTML files", "*.html"),
             ("JSON files", "*.json"),
             ("SARIF files", "*.sarif"),
+            ("Text / Triage files", "*.txt"),
             ("All files", "*.*")
         ],
         title="Export Scan Results",
@@ -6449,6 +6579,9 @@ def export_results(event: Optional[tk.Event] = None) -> None:
         elif ext == '.md':
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(generate_markdown(results))
+        elif ext == '.txt':
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(generate_console_report(results, use_color=False))
         else: # Default to CSV
             with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
                 writer = csv.writer(csv_file)
