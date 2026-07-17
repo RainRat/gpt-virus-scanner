@@ -70,3 +70,64 @@ def test_version_alias():
             with pytest.raises(SystemExit) as excinfo:
                 main()
             assert excinfo.value.code == 0
+
+
+def test_auto_cli_mode_with_flags(monkeypatch):
+    """Test that CLI mode is automatically enabled when a CLI-centric flag like --audit is provided."""
+    mock_run_cli = MagicMock(return_value=0)
+    monkeypatch.setattr("gptscan.run_cli", mock_run_cli)
+
+    test_args = ["gptscan.py", "--audit"]
+    with patch.object(sys, "argv", test_args):
+        try:
+            main()
+        except SystemExit:
+            pass
+
+    # Verify run_cli was called even though --cli was NOT specified!
+    assert mock_run_cli.called
+
+
+def test_auto_cli_mode_with_git_changes(monkeypatch):
+    """Test that CLI mode is automatically enabled when --git-changes is provided."""
+    mock_run_cli = MagicMock(return_value=0)
+    monkeypatch.setattr("gptscan.run_cli", mock_run_cli)
+    monkeypatch.setattr("gptscan.get_git_changed_files", MagicMock(return_value=["some_changed_file.py"]))
+
+    test_args = ["gptscan.py", "--git-changes"]
+    with patch.object(sys, "argv", test_args):
+        try:
+            main()
+        except SystemExit:
+            pass
+
+    assert mock_run_cli.called
+
+
+def test_gui_tcl_error_fallback(monkeypatch, capsys):
+    """Test that the application gracefully falls back to CLI mode if GUI initialization raises a TclError."""
+    import tkinter as tk
+
+    mock_run_cli = MagicMock(return_value=0)
+    monkeypatch.setattr("gptscan.run_cli", mock_run_cli)
+
+    # Mock create_gui to raise TclError
+    def mock_create_gui(initial_path=None):
+        raise tk.TclError("no display name and no $DISPLAY environment variable")
+
+    monkeypatch.setattr("gptscan.create_gui", mock_create_gui)
+
+    test_args = ["gptscan.py"]
+    with patch.object(sys, "argv", test_args):
+        try:
+            main()
+        except SystemExit:
+            pass
+
+    # Verify run_cli was called (graceful fallback)
+    assert mock_run_cli.called
+
+    # Verify the warning was printed to stderr
+    captured = capsys.readouterr()
+    assert "Warning: Failed to initialize GUI" in captured.err
+    assert "Falling back to terminal (CLI) mode" in captured.err
