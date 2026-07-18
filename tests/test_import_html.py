@@ -129,4 +129,4 @@ def test_parse_html_report_multiline_notes():
 def test_parse_html_unsupported_extension():
     """Test that unsupported extensions raise ValueError if hinted."""
     with pytest.raises(ValueError, match="Unsupported file extension"):
-        parse_report_content("<html></html>", filename_hint="report.txt")
+        parse_report_content("<html></html>", filename_hint="report.xyz")
