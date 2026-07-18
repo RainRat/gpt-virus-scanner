@@ -416,6 +416,26 @@ You can tailor the scanner to your needs:
 You can train the local "quick scan" model on your own data. This requires `pyyaml` to be installed.
 See [Training the Local Scanner](train.md) for more information.
 
+### Running Tests
+If you want to contribute to the project or run the test suite, you can install the test dependencies and run the tests.
+
+#### 1. Install test packages
+Run the following command to install the required testing packages:
+```bash
+python3 -m pip install pytest pytest-asyncio pytest-mock pytest-cov Pillow
+```
+
+#### 2. Run the full test suite
+To run all tests, run:
+```bash
+python3 -m pytest
+```
+
+If you are using Python 3.12, some training tests might fail due to TensorFlow library compatibility. In Python 3.12, you can ignore the training tests with this command:
+```bash
+python3 -m pytest --ignore=tests/test_train.py
+```
+
 ## How it works
 1.  **Local Filter:** The tool uses a quick scan model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
 2.  **AI Analysis:** If a file looks suspicious, you can ask an AI for a second opinion. The AI will explain *why* it thinks the code is dangerous, helping you decide what to do.
