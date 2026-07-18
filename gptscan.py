@@ -818,12 +818,47 @@ def browse_dir_click() -> None:
         button_click()
 
 
+def normalize_and_validate_url(url_str: str) -> Optional[str]:
+    """Normalize and validate user-inputted URLs for web scanning/importing.
+
+    Prepends 'https://' if a protocol is missing but the string looks like a web address,
+    and returns None if the URL is empty or completely invalid.
+    """
+    url_str = url_str.strip()
+    if not url_str:
+        return None
+
+    # Check if there is an existing scheme (e.g. http:// or file://)
+    match = re.match(r'^([a-zA-Z][a-zA-Z0-9+.-]*)://', url_str)
+    if match:
+        scheme = match.group(1).lower()
+        if scheme not in ("http", "https"):
+            messagebox.showerror(
+                "Unsupported Protocol",
+                f"Unsupported protocol '{scheme}://'. Only 'http://' and 'https://' are supported."
+            )
+            return None
+        return url_str
+
+    # No scheme found. Check if it looks like a web host or local address
+    if "." in url_str or url_str.lower().startswith("localhost"):
+        return f"https://{url_str}"
+
+    messagebox.showerror(
+        "Invalid Web Link",
+        f"The entered string '{url_str}' does not appear to be a valid web link (http/https)."
+    )
+    return None
+
+
 def select_url_click() -> None:
     """Handle the web link input dialog and populate the textbox."""
     url_selected = simpledialog.askstring("Scan Web Link", "Enter a script web link to scan (http/https):")
-    if url_selected:
-        _set_scan_target(url_selected.strip())
-        button_click()
+    if url_selected is not None:
+        normalized_url = normalize_and_validate_url(url_selected)
+        if normalized_url:
+            _set_scan_target(normalized_url)
+            button_click()
 
 
 def toggle_dry_run() -> None:
@@ -6337,22 +6372,25 @@ def import_from_url() -> None:
         return
 
     url = simpledialog.askstring("Import from Web Link", "Enter the web link of the scan results to import:")
-    if not url:
+    if url is None:
         return
 
-    url = url.strip()
+    normalized_url = normalize_and_validate_url(url)
+    if not normalized_url:
+        return
+
     try:
-        update_status(f"Fetching results from {url}...")
-        content_bytes = fetch_url_content(url)
+        update_status(f"Fetching results from {normalized_url}...")
+        content_bytes = fetch_url_content(normalized_url)
         content = content_bytes.decode('utf-8', errors='ignore')
 
-        data_to_import = parse_report_content(content, filename_hint=url)
+        data_to_import = parse_report_content(content, filename_hint=normalized_url)
 
         if not data_to_import:
             messagebox.showwarning("Import Warning", "No valid scan results found at the provided web link.")
             return
 
-        _finalize_import(data_to_import, url)
+        _finalize_import(data_to_import, normalized_url)
 
     except Exception as err:
         messagebox.showerror("Import Failed", f"Could not import results from web link:\n{err}")

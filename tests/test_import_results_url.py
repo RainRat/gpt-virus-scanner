@@ -41,6 +41,45 @@ def test_import_from_url_success(monkeypatch):
     assert args[0][0]["path"] == "test.py"
     assert args[1] == mock_url
 
+def test_import_from_url_schemeless(monkeypatch):
+    """Test importing scan results from a scheme-less URL successfully after auto-normalization."""
+    input_url = "example.com/results.json"
+    normalized_url = "https://example.com/results.json"
+    data = [
+        {
+            "path": "test.py",
+            "own_conf": "85%",
+            "admin_desc": "Suspicious",
+            "end-user_desc": "Don't run",
+            "gpt_conf": "90%",
+            "snippet": "print('hello')",
+            "line": "10"
+        }
+    ]
+    content = json.dumps(data).encode('utf-8')
+
+    # Mock GUI components
+    mock_tree = MagicMock()
+    monkeypatch.setattr(gptscan, "tree", mock_tree)
+    monkeypatch.setattr(gptscan.tkinter.simpledialog, "askstring", lambda *args, **kwargs: input_url)
+
+    # Mock network call
+    mock_fetch = MagicMock(return_value=content)
+    monkeypatch.setattr(gptscan, "fetch_url_content", mock_fetch)
+
+    # Mock internal helpers
+    mock_finalize = MagicMock()
+    monkeypatch.setattr(gptscan, "_finalize_import", mock_finalize)
+    monkeypatch.setattr(gptscan, "update_status", MagicMock())
+
+    gptscan.import_from_url()
+
+    mock_fetch.assert_called_once_with(normalized_url)
+    mock_finalize.assert_called_once()
+    args, _ = mock_finalize.call_args
+    assert args[0][0]["path"] == "test.py"
+    assert args[1] == normalized_url
+
 def test_import_from_url_cancelled(monkeypatch):
     """Test that cancelling the URL dialog does nothing."""
     monkeypatch.setattr(gptscan, "tree", MagicMock())
@@ -51,6 +90,24 @@ def test_import_from_url_cancelled(monkeypatch):
 
     gptscan.import_from_url()
     mock_fetch.assert_not_called()
+
+def test_import_from_url_invalid(monkeypatch):
+    """Test that an invalid URL input is rejected immediately without fetching."""
+    monkeypatch.setattr(gptscan, "tree", MagicMock())
+    monkeypatch.setattr(gptscan.tkinter.simpledialog, "askstring", lambda *args, **kwargs: "file:///etc/passwd")
+
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, "messagebox", mock_msgbox)
+
+    mock_fetch = MagicMock()
+    monkeypatch.setattr(gptscan, "fetch_url_content", mock_fetch)
+
+    gptscan.import_from_url()
+    mock_fetch.assert_not_called()
+    mock_msgbox.showerror.assert_called_with(
+        "Unsupported Protocol",
+        "Unsupported protocol 'file://'. Only 'http://' and 'https://' are supported."
+    )
 
 def test_import_from_url_error(monkeypatch):
     """Test error handling when fetching from URL fails."""
