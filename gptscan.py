@@ -6091,6 +6091,95 @@ def standardize_result_dict(item: Any) -> Dict[str, Any]:
     return res
 
 
+def strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences from a string."""
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', text)
+
+
+def parse_triage_report(content: str) -> List[Dict[str, Any]]:
+    """Parse a console triage report text and extract findings.
+
+    Args:
+        content: The raw string content of the triage report.
+
+    Returns:
+        A list of standardized result dictionaries.
+    """
+    content = strip_ansi(content)
+    lines = content.splitlines()
+
+    results = []
+    current_item = None
+
+    # We match item start: [1] HIGH RISK - path:line or [1] HIGH RISK - path
+    item_pattern = re.compile(r'^\[\d+\]\s+(?:HIGH|MEDIUM|LOW)\s+RISK\s+-\s+(.+)$')
+
+    for line in lines:
+        match = item_pattern.match(line.strip())
+        if match:
+            # Save previous item if any
+            if current_item:
+                results.append(current_item)
+
+            location = match.group(1).strip()
+
+            # Split location into path and line from the right
+            path = location
+            line_num = "-"
+            if ":" in location:
+                parts = location.rsplit(":", 1)
+                if parts[1].isdigit():
+                    path = parts[0]
+                    line_num = parts[1]
+
+            current_item = {
+                "path": path,
+                "line": line_num,
+                "own_conf": "0%",
+                "gpt_conf": "",
+                "admin_desc": [],
+                "end-user_desc": [],
+                "snippet": []
+            }
+        elif current_item is not None:
+            if "Local:" in line:
+                local_match = re.search(r'Local:\s*(\d+%)', line)
+                if local_match:
+                    current_item["own_conf"] = local_match.group(1)
+                ai_match = re.search(r'AI:\s*(\d+%)', line)
+                if ai_match:
+                    current_item["gpt_conf"] = ai_match.group(1)
+            elif "Admin:" in line:
+                parts = line.split("Admin:", 1)
+                if len(parts) > 1:
+                    current_item["admin_desc"].append(parts[1].strip())
+            elif "User:" in line:
+                parts = line.split("User:", 1)
+                if len(parts) > 1:
+                    current_item["end-user_desc"].append(parts[1].strip())
+            elif line.startswith("    >"):
+                parts = line.split('>', 1)
+                if len(parts) > 1:
+                    sl_raw = parts[1]
+                    if sl_raw.startswith(' '):
+                        sl_raw = sl_raw[1:]
+                    current_item["snippet"].append(sl_raw)
+
+    if current_item:
+        results.append(current_item)
+
+    # Post-process lists to strings and standardize
+    final_results = []
+    for item in results:
+        item["admin_desc"] = "\n".join(item["admin_desc"]).strip()
+        item["end-user_desc"] = "\n".join(item["end-user_desc"]).strip()
+        item["snippet"] = "\n".join(item["snippet"]).rstrip()
+        final_results.append(standardize_result_dict(item))
+
+    return final_results
+
+
 def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:
     """Parse report content in JSON, SARIF, or CSV format.
 
@@ -6109,7 +6198,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     if filename_hint:
         ext = os.path.splitext(filename_hint)[1].lower()
 
-    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown', '.html', '.htm', '.xhtml'):
+    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log'):
         raise ValueError(f"Unsupported file extension: {ext}")
 
     data_to_import = []
@@ -6242,6 +6331,9 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
 
                         data_to_import.append(item)
                 break
+    elif ext in ('.txt', '.log') or '--- GPT SCAN - CONSOLE TRIAGE REPORT' in content:
+        # Triage Report format
+        data_to_import = parse_triage_report(content)
     else:
         # Last resort: try JSON parsing anyway
         try:
@@ -6374,12 +6466,13 @@ def import_results(event: Optional[tk.Event] = None) -> None:
 
     file_path = filedialog.askopenfilename(
         filetypes=[
-            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml"),
+            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml;*.txt;*.log"),
             ("JSON files", "*.json;*.jsonl;*.ndjson"),
             ("SARIF files", "*.sarif"),
             ("CSV files", "*.csv"),
             ("Markdown files", "*.md;*.markdown"),
             ("HTML files", "*.html;*.htm;*.xhtml"),
+            ("Triage reports", "*.txt;*.log"),
             ("All files", "*.*")
         ],
         title="Import Scan Results",
