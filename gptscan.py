@@ -1455,7 +1455,7 @@ def get_env_file_paths() -> List[str]:
             except Exception:
                 pass
 
-    return sorted(list(set(paths)))
+    return sorted(set(paths))
 
 
 def get_running_process_commands() -> List[Tuple[str, bytes]]:
