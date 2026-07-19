@@ -4,14 +4,12 @@ from gptscan import Config
 
 @pytest.fixture
 def temp_settings_file(tmp_path, monkeypatch):
-    """Use a temporary settings file path for testing."""
     f = tmp_path / ".gptscan_settings_types.json"
     monkeypatch.setattr(Config, "SETTINGS_FILE", str(f))
     return f
 
 @pytest.fixture(autouse=True)
 def reset_config_settings():
-    """Reset configuration settings before and after each test."""
     orig = {
         "deep_scan": Config.deep_scan,
         "git_changes_only": Config.git_changes_only,
@@ -56,11 +54,11 @@ def test_load_settings_bool_garbage_fallback(temp_settings_file):
 
     Config.deep_scan = True
     Config.load_settings()
-    assert Config.deep_scan is True # Should remain unchanged
+    assert Config.deep_scan is True
 
     Config.deep_scan = False
     Config.load_settings()
-    assert Config.deep_scan is False # Should remain unchanged
+    assert Config.deep_scan is False
 
 def test_load_settings_int_strings(temp_settings_file):
     settings = {
@@ -84,3 +82,31 @@ def test_load_settings_int_garbage_fallback(temp_settings_file):
     Config.THRESHOLD = 42
     Config.load_settings()
     assert Config.THRESHOLD == 42
+
+def test_get_setting_bool_direct():
+    assert Config._get_setting_bool({"k": True}, "k", False) is True
+    assert Config._get_setting_bool({"k": "true"}, "k", False) is True
+    assert Config._get_setting_bool({"k": "1"}, "k", False) is True
+    assert Config._get_setting_bool({"k": "yes"}, "k", False) is True
+    assert Config._get_setting_bool({"k": "on"}, "k", False) is True
+
+    assert Config._get_setting_bool({"k": False}, "k", True) is False
+    assert Config._get_setting_bool({"k": "false"}, "k", True) is False
+    assert Config._get_setting_bool({"k": "0"}, "k", True) is False
+    assert Config._get_setting_bool({"k": "no"}, "k", True) is False
+    assert Config._get_setting_bool({"k": "off"}, "k", True) is False
+
+    assert Config._get_setting_bool({"k": 1}, "k", False) is True
+    assert Config._get_setting_bool({"k": 0}, "k", True) is False
+
+    assert Config._get_setting_bool({"k": "invalid"}, "k", True) is True
+    assert Config._get_setting_bool({"k": "invalid"}, "k", False) is False
+    assert Config._get_setting_bool({"k": []}, "k", True) is True
+
+def test_get_setting_int_direct():
+    assert Config._get_setting_int({"k": 42}, "k", 10) == 42
+    assert Config._get_setting_int({"k": "100"}, "k", 10) == 100
+
+    assert Config._get_setting_int({"k": "invalid"}, "k", 10) == 10
+    assert Config._get_setting_int({"k": []}, "k", 10) == 10
+    assert Config._get_setting_int({}, "k", 10) == 10
