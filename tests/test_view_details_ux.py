@@ -57,3 +57,36 @@ def test_view_details_shortcuts(mock_view_details_env):
     from gptscan import root as mock_root
     captured_bindings['<Control-s>'](None)
     mock_root.clipboard_append.assert_called_with("snippet_content")
+
+def test_view_details_keyboard_navigation_prevented(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
+    mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
+    raw2 = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1]
+    mock_tree._item_values["item2"] = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1, json.dumps(raw2)]
+    mock_tree.get_children.return_value = ["item1", "item2"]
+
+    captured_bindings = {}
+    mock_toplevel.bind.side_effect = lambda event, func: captured_bindings.update({event: func})
+
+    # First, mock focus_get to return a mock widget with class "Text"
+    mock_focused = MagicMock()
+    mock_focused.winfo_class.return_value = "Text"
+    mock_toplevel.focus_get.return_value = mock_focused
+
+    gptscan.view_details(item_id="item1")
+    assert '<Left>' in captured_bindings
+    assert '<Right>' in captured_bindings
+
+    # Trigger Right Key Press
+    captured_bindings['<Right>'](None)
+    # The selection should NOT have changed because focus was in a Text widget!
+    mock_tree.selection_set.assert_not_called()
+
+    # Now mock focus_get to return None, so navigation works
+    mock_toplevel.focus_get.return_value = None
+
+    # Reset mock to verify it works when not focused on Text/Entry
+    mock_tree.selection_set.reset_mock()
+    captured_bindings['<Right>'](None)
+    mock_tree.selection_set.assert_called_with("item2")
