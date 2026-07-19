@@ -78,6 +78,7 @@ Access these options from the **Browse** menu:
 *   **Scan System PATH (Ctrl+Shift+P):** Scan folders in your system PATH for suspicious programs.
 *   **Scan Running Processes (Ctrl+Shift+K):** Scan the command lines of active processes.
 *   **Scan Environment Variables (Ctrl+Shift+N):** Scan your environment variables for suspicious scripts.
+*   **Scan Env Files:** Scan all common .env files found in home and current directories.
 *   **Scan Scheduled Tasks (Ctrl+Shift+T):** Scan tasks and Cron jobs for ways programs stay on your system.
 *   **Scan Startup Items (Ctrl+Shift+A):** Scan startup items and LaunchAgents.
 *   **Scan System Services (Ctrl+Shift+S):** Scan system services and background units.
@@ -319,6 +320,11 @@ python3 gptscan.py --temp --cli
 Scan all environment variables:
 ```bash
 python3 gptscan.py --env-vars --cli
+```
+
+Scan all common .env files:
+```bash
+python3 gptscan.py --env-files --cli
 ```
 
 #### Git Integration
