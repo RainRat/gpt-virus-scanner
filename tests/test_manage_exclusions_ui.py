@@ -171,7 +171,23 @@ def test_manage_exclusions_add_pattern_error(mock_gui_env, monkeypatch):
     add_cmd = captured['buttons']['Add Pattern...'][1]
     add_cmd()
 
-    mock_mb.showerror.assert_called_with("Error", "Could not update .gptscanignore: Disk Error", parent=mock_top)
+    mock_mb.showerror.assert_called_with("Error", "Could not update .gptscanignore for pattern 'bad': Disk Error", parent=mock_top)
+
+def test_manage_exclusions_add_pattern_bulk(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    mock_sd.askstring.return_value = "*.log, temp/ ,  build/"
+
+    manage_exclusions()
+    add_btn, add_cmd = captured['buttons']['Add Pattern...']
+    add_cmd()
+
+    assert "*.log" in Config.ignore_patterns
+    assert "temp/" in Config.ignore_patterns
+    assert "build/" in Config.ignore_patterns
+    assert "*.log" in captured['listbox'].items
+    assert "temp/" in captured['listbox'].items
+    assert "build/" in captured['listbox'].items
+    assert gptscan._apply_filter.called
 
 def test_manage_exclusions_add_folder_error(mock_gui_env, monkeypatch):
     captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env

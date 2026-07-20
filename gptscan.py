@@ -3886,17 +3886,22 @@ def manage_exclusions() -> None:
     btn_frame.pack(fill=tk.X)
 
     def add_pattern():
-        pattern = simpledialog.askstring("Add Pattern", "Enter a file or folder pattern to exclude (e.g., *.log, temp/):", parent=manage_win)
-        if pattern:
-            pattern = pattern.strip()
-            if pattern and pattern not in Config.ignore_patterns:
-                try:
-                    add_to_ignore_file(pattern)
-                    Config.ignore_patterns.append(pattern)
-                    refresh_list()
-                    _apply_filter()
-                except Exception as e:
-                    messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
+        patterns_str = simpledialog.askstring("Add Patterns", "Enter one or more file or folder patterns to exclude (separated by commas):", parent=manage_win)
+        if patterns_str:
+            added_any = False
+            # Split by commas
+            parts = [p.strip() for p in patterns_str.split(",") if p.strip()]
+            for pattern in parts:
+                if pattern and pattern not in Config.ignore_patterns:
+                    try:
+                        add_to_ignore_file(pattern)
+                        Config.ignore_patterns.append(pattern)
+                        added_any = True
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Could not update .gptscanignore for pattern '{pattern}': {e}", parent=manage_win)
+            if added_any:
+                refresh_list()
+                _apply_filter()
 
     def add_folder():
         folder = filedialog.askdirectory(parent=manage_win, initialdir=_get_initial_dir())
@@ -3971,18 +3976,27 @@ def manage_extensions() -> None:
     btn_frame.pack(fill=tk.X)
 
     def add_extension():
-        ext = simpledialog.askstring("Add Extension", "Enter a file extension (e.g., .py, .js):", parent=manage_win)
-        if ext:
-            ext = ext.strip().lower()
-            if not ext.startswith('.'):
-                ext = f".{ext}"
-            if ext and ext not in Config.extensions_set:
+        exts_str = simpledialog.askstring("Add Extensions", "Enter one or more file extensions (separated by commas or spaces, e.g., .py, .js):", parent=manage_win)
+        if exts_str:
+            added_any = False
+            # Split by commas or spaces
+            import re
+            parts = [p.strip().lower() for p in re.split(r'[,\s]+', exts_str) if p.strip()]
+            for ext in parts:
+                if not ext.startswith('.'):
+                    ext = f".{ext}"
+                if ext and ext not in Config.extensions_set:
+                    try:
+                        Config.extensions_set.add(ext)
+                        added_any = True
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Could not update extensions for '{ext}': {e}", parent=manage_win)
+            if added_any:
                 try:
-                    Config.extensions_set.add(ext)
                     Config.save_extensions()
                     refresh_list()
                 except Exception as e:
-                    messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
+                    messagebox.showerror("Error", f"Could not save extensions file: {e}", parent=manage_win)
 
     def remove_selected():
         selection = ext_listbox.curselection()

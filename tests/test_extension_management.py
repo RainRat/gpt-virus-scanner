@@ -117,6 +117,40 @@ def test_manage_extensions_add(mock_gui_env, monkeypatch):
     assert ".rb" in captured['listbox'].items
     Config.save_extensions.assert_called()
 
+def test_manage_extensions_add_bulk(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py"}
+    mock_sd.askstring.return_value = "rb,  .go   ts  .py"
+    monkeypatch.setattr(Config, "save_extensions", MagicMock())
+
+    manage_extensions()
+    add_btn, add_cmd = captured['buttons']['Add...']
+    add_cmd()
+
+    assert ".rb" in Config.extensions_set
+    assert ".go" in Config.extensions_set
+    assert ".ts" in Config.extensions_set
+    assert ".py" in Config.extensions_set
+    assert ".rb" in captured['listbox'].items
+    assert ".go" in captured['listbox'].items
+    assert ".ts" in captured['listbox'].items
+    assert len(Config.extensions_set) == 4
+    Config.save_extensions.assert_called()
+
+def test_manage_extensions_add_error(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py"}
+    mock_sd.askstring.return_value = "rb"
+
+    # Mock save_extensions to raise an error
+    monkeypatch.setattr(Config, "save_extensions", MagicMock(side_effect=Exception("Save Error")))
+
+    manage_extensions()
+    add_btn, add_cmd = captured['buttons']['Add...']
+    add_cmd()
+
+    mock_mb.showerror.assert_called_with("Error", "Could not save extensions file: Save Error", parent=mock_top)
+
 def test_manage_extensions_remove(mock_gui_env, monkeypatch):
     captured, mock_sd, mock_mb, mock_top = mock_gui_env
     Config.extensions_set = {".py", ".js"}
