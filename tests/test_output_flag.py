@@ -73,3 +73,21 @@ def test_inference_logic_csv(monkeypatch, tmp_path):
     gptscan.main()
 
     assert recorded_args['output_format'] == 'csv'
+
+
+def test_inference_logic_triage_txt(monkeypatch, tmp_path):
+    import gptscan
+    import sys
+
+    output_file = tmp_path / "report.txt"
+    monkeypatch.setattr(sys, "argv", ["gptscan.py", "--cli", "-o", str(output_file), "gptscan.py", "--dry-run"])
+
+    recorded_args = {}
+    def mock_run_cli(*args, **kwargs):
+        recorded_args['output_format'] = kwargs.get('output_format')
+        return 0
+
+    monkeypatch.setattr(gptscan, "run_cli", mock_run_cli)
+    gptscan.main()
+
+    assert recorded_args['output_format'] == 'report'

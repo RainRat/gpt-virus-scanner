@@ -67,3 +67,52 @@ def test_export_results_handles_error(monkeypatch):
     args, _ = mock_msgbox.showerror.call_args
     assert args[0] == "Export Failed"
     assert "Disk full" in args[1]
+
+
+def test_export_results_triage_report_txt(monkeypatch, tmp_path):
+    """Verify that treeview contents can be exported to a plain text triage report."""
+    file_path = tmp_path / "export_report.txt"
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', lambda **k: str(file_path))
+
+    mock_tree = MagicMock()
+    # Treeview columns for Zip
+    cols = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line")
+    mock_tree.__getitem__.return_value = cols
+    mock_tree.get_children.return_value = ("item1",)
+
+    # Mock _get_item_raw_values or tree.item
+    def get_item(iid, option=None):
+        vals = ("my_script.py", "90%", "Suspicious eval instruction", "Evaluates untrusted input", "85%", "eval(input())", "10")
+        if option == "values":
+            return vals
+        return {"values": vals}
+    mock_tree.item.side_effect = get_item
+
+    monkeypatch.setattr(gptscan, "tree", mock_tree, raising=False)
+
+    # Mock messagebox so that showinfo doesn't pop up a real GUI window
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, "messagebox", mock_msgbox)
+
+    gptscan.export_results()
+
+    assert file_path.exists()
+    content = file_path.read_text(encoding="utf-8")
+    assert "--- GPT SCAN - CONSOLE TRIAGE REPORT" in content
+    assert "[1] HIGH RISK - my_script.py:10" in content
+    assert "Local: 90%" in content
+    assert "AI: 85%" in content
+    assert "Admin: Suspicious eval instruction" in content
+    assert "User: Evaluates untrusted input" in content
+    assert "> eval(input())" in content
+
+    # Test round-trip: import back using parse_triage_report or parse_report_content!
+    imported = gptscan.parse_triage_report(content)
+    assert len(imported) == 1
+    assert imported[0]["path"] == "my_script.py"
+    assert imported[0]["line"] == "10"
+    assert imported[0]["own_conf"] == "90%"
+    assert imported[0]["gpt_conf"] == "85%"
+    assert imported[0]["admin_desc"] == "Suspicious eval instruction"
+    assert imported[0]["end-user_desc"] == "Evaluates untrusted input"
+    assert imported[0]["snippet"] == "eval(input())"
