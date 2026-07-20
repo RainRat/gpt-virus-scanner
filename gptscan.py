@@ -7255,6 +7255,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         load_display_code(path, line, snippet, silent_fallback=True)
 
     def on_prev():
+        focused = details_win.focus_get()
+        if focused:
+            try:
+                widget_class = focused.winfo_class()
+                if widget_class in ("Text", "Entry", "TEntry"):
+                    return
+            except Exception:
+                pass
         all_visible = tree.get_children()
         try:
             idx = all_visible.index(current_item_id)
@@ -7267,6 +7275,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             pass
 
     def on_next():
+        focused = details_win.focus_get()
+        if focused:
+            try:
+                widget_class = focused.winfo_class()
+                if widget_class in ("Text", "Entry", "TEntry"):
+                    return
+            except Exception:
+                pass
         all_visible = tree.get_children()
         try:
             idx = all_visible.index(current_item_id)
