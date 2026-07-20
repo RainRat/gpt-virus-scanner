@@ -31,7 +31,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 ## Installation
 
 ### Prerequisites
-*   **Python:** Install **Python 3.9, 3.10, or 3.11**. Newer versions like 3.12 are not yet supported.
+*   **Python:** Install **Python 3.9, 3.10, 3.11, or 3.12**.
 *   **Data files:** The repository already includes the `scripts.h5` model and `task.txt` instruction files. Keep these in the project folder.
 
 ### Setup
@@ -41,9 +41,14 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
     cd gpt-virus-scanner
     ```
 2.  **Install mandatory packages:**
-    ```bash
-    python3 -m pip install "tensorflow<2.16" openai numpy
-    ```
+    *   **For Python 3.9, 3.10, or 3.11:**
+        ```bash
+        python3 -m pip install "tensorflow<2.16" openai numpy
+        ```
+    *   **For Python 3.12:**
+        ```bash
+        python3 -m pip install tensorflow openai numpy
+        ```
 3.  **Install optional packages (if needed):**
     *   **python3-tk:** Install this if you use Linux and want the window (GUI) interface.
     *   **PyYAML:** Install this if you want to train your own models.
@@ -462,7 +467,7 @@ To run all tests, run:
 python3 -m pytest
 ```
 
-If you are using Python 3.12, some training tests might fail due to TensorFlow library compatibility. In Python 3.12, you can ignore the training tests with this command:
+For some setups using Python 3.12 with older TensorFlow libraries, training-related tests may not be fully compatible. If you encounter errors, you can run the suite while ignoring those training tests:
 ```bash
 python3 -m pytest --ignore=tests/test_train.py
 ```
@@ -470,6 +475,42 @@ python3 -m pytest --ignore=tests/test_train.py
 ## How it works
 1.  **Local Filter:** The tool uses a quick scan model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
 2.  **AI Analysis:** If a file looks suspicious, you can ask an AI for a second opinion. The AI will explain *why* it thinks the code is dangerous, helping you decide what to do.
+
+## Troubleshooting
+
+Here are solutions to some common problems you might encounter:
+
+### Graphical Interface (GUI) Errors on Linux
+*   **Issue:** You see errors like `_tkinter.TclError: no display name` or `ModuleNotFoundError: No module named '_tkinter'` when running the script on Linux.
+*   **Solution:**
+    *   If you are running the scanner on a server or headless environment, use the terminal instead. Add the `--cli` flag to your command:
+        ```bash
+        python3 gptscan.py --cli [targets...]
+        ```
+    *   If you want to use the window interface, install the missing Tkinter package for your system. On Debian or Ubuntu, run:
+        ```bash
+        sudo apt install python3-tk
+        ```
+
+### TensorFlow Installation Errors
+*   **Issue:** You see `Could not find a version that satisfies the requirement tensorflow` during setup.
+*   **Solution:** This usually happens if you are using a Python version that is not supported by your package manager.
+    *   Check your Python version by running `python3 --version`.
+    *   Ensure you are running Python 3.9, 3.10, 3.11, or 3.12.
+    *   If you are on Python 3.12, do not restrict the TensorFlow version (e.g., do not use `"tensorflow<2.16"`). Instead, run:
+        ```bash
+        python3 -m pip install tensorflow
+        ```
+
+### AI Analysis Failures or Missing API Keys
+*   **Issue:** The local scan works, but AI analysis fails or you see a message saying "API key not found".
+*   **Solution:** AI analysis requires a connection and a valid API key for OpenAI or OpenRouter.
+    *   Enter your key directly in the **AI Analysis** panel in the window interface. This saves the key to `apikey.txt` automatically.
+    *   Alternatively, save your key inside a file named `apikey.txt` in the scanner's main folder.
+    *   You can also set an environment variable in your terminal before running the script:
+        ```bash
+        export OPENAI_API_KEY="your-api-key-here"
+        ```
 
 ## License
 This project is licensed under the GNU Lesser General Public License v2.1.
