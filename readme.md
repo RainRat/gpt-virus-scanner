@@ -379,14 +379,38 @@ Save scan results to a file (CSV, JSON, HTML, etc.):
 python3 gptscan.py ./my_project --output results.html --cli
 ```
 
+#### Output Formats
+By default, the scanner prints human-readable text to the terminal. You can customize the output format with these flags:
+*   `--json`: Print or save results in JSON format.
+*   `--csv`: Print or save results in CSV format.
+*   `--sarif`: Save results in SARIF format (useful for security scanning tools).
+*   `--html`: Create an interactive HTML report.
+*   `--md` / `--markdown`: Create a Markdown report.
+*   `--report`: Output a detailed triage report to the terminal.
+
+To save the formatted output directly to a file, combine any format flag with the `--output` (or `-o`) option:
+```bash
+python3 gptscan.py ./my_project --json --output results.json --cli
+```
+
+#### CI/CD & Exit Codes
+You can use the scanner in CI/CD pipelines (like GitHub Actions) to prevent malicious or dangerous code from being committed.
+
+Use the `--fail-threshold` option followed by a threat level (0 to 100) to fail the scan. If any scanned file meets or exceeds this threat level, the script will exit with code `1`, stopping your build or pipeline:
+```bash
+# Fail the build if any file has a threat level of 70 or higher
+python3 gptscan.py ./my_project --cli --fail-threshold 70
+```
+
 ### Setting up AI Analysis
 To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama running locally.
 
 #### API Keys
-You can provide your API key in three ways:
+You can provide your API key in four ways:
 *   **In the GUI:** Enter it in the **AI Analysis** panel. It will be saved locally to `apikey.txt`.
 *   **Environment Variables:** Set the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable in your terminal.
 *   **Local File:** Create a file named `apikey.txt` in the project folder and paste your key there.
+*   **Command Line:** Pass your key directly with the `--api-key` (or `-k`) option in your terminal scan.
 
 *Note: Do not share `apikey.txt` or commit it to a public repository.*
 
@@ -427,9 +451,9 @@ See [Training the Local Scanner](train.md) for more information.
 If you want to contribute to the project or run the test suite, you can install the test dependencies and run the tests.
 
 #### 1. Install test packages
-Run the following command to install the required testing packages:
+Run the following command to install the required testing packages (including `pyyaml` which is needed for training and YAML configuration tests):
 ```bash
-python3 -m pip install pytest pytest-asyncio pytest-mock pytest-cov Pillow
+python3 -m pip install pytest pytest-asyncio pytest-mock pytest-cov Pillow pyyaml
 ```
 
 #### 2. Run the full test suite
