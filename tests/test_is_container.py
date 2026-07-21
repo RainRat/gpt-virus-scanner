@@ -65,3 +65,8 @@ def test_is_container_negative_cases():
 def test_is_container_path_object():
     assert Config.is_container(Path("package.json")) is True
     assert Config.is_container(Path("test.zip")) is True
+
+def test_is_container_unified_diff_by_content():
+    assert Config.is_container("unknown_file", content=b"--- a/file.py\n+++ b/file.py") is True
+    assert Config.is_container("unknown_file", content=b"Index: file.py\n==========================") is True
+    assert Config.is_container("unknown_file", content=b"diff --git a/file.py b/file.py") is True
