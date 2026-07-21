@@ -1,4 +1,5 @@
 import io
+import subprocess
 import pytest
 from unittest.mock import MagicMock, patch
 import gptscan
@@ -166,3 +167,76 @@ def test_scan_clipboard_click_error(monkeypatch):
 
     mock_messagebox.showwarning.assert_called_once()
     assert "Could not read from clipboard" in mock_messagebox.showwarning.call_args[0][1]
+
+def test_get_cli_clipboard_content_darwin(monkeypatch):
+    """Verify Darwin pbpaste is called and returns correct content."""
+    monkeypatch.setattr("sys.platform", "darwin")
+    mock_check = MagicMock(return_value="macOS clip")
+    monkeypatch.setattr("subprocess.check_output", mock_check)
+
+    content = gptscan.get_cli_clipboard_content()
+    assert content == "macOS clip"
+    mock_check.assert_called_with(['pbpaste'], text=True, stderr=subprocess.DEVNULL)
+
+def test_get_cli_clipboard_content_win32(monkeypatch):
+    """Verify Win32 powershell is called and returns correct content."""
+    monkeypatch.setattr("sys.platform", "win32")
+    mock_check = MagicMock(return_value="windows clip")
+    monkeypatch.setattr("subprocess.check_output", mock_check)
+
+    content = gptscan.get_cli_clipboard_content()
+    assert content == "windows clip"
+    mock_check.assert_called_with(['powershell.exe', '-NoProfile', '-Command', 'Get-Clipboard'], text=True, stderr=subprocess.DEVNULL)
+
+def test_get_cli_clipboard_content_linux(monkeypatch):
+    """Verify Linux xclip/xsel is called and returns correct content."""
+    monkeypatch.setattr("sys.platform", "linux")
+    mock_check = MagicMock(return_value="linux clip")
+    monkeypatch.setattr("subprocess.check_output", mock_check)
+
+    content = gptscan.get_cli_clipboard_content()
+    assert content == "linux clip"
+    mock_check.assert_any_call(['xclip', '-selection', 'clipboard', '-o'], text=True, stderr=subprocess.DEVNULL)
+
+def test_get_cli_clipboard_content_fallback_tkinter(monkeypatch):
+    """Verify Tkinter fallback is used when CLI tools fail."""
+    monkeypatch.setattr("sys.platform", "linux")
+
+    # Force CLI tools to fail
+    mock_check = MagicMock(side_effect=Exception("no tools"))
+    monkeypatch.setattr("subprocess.check_output", mock_check)
+
+    # Mock tkinter.Tk
+    mock_tk_inst = MagicMock()
+    mock_tk_inst.clipboard_get.return_value = "tkinter fallback clip"
+    mock_tk_class = MagicMock(return_value=mock_tk_inst)
+    monkeypatch.setattr("tkinter.Tk", mock_tk_class)
+
+    content = gptscan.get_cli_clipboard_content()
+    assert content == "tkinter fallback clip"
+    mock_tk_inst.clipboard_get.assert_called_once()
+    mock_tk_inst.destroy.assert_called_once()
+
+def test_get_cli_clipboard_content_failure(monkeypatch):
+    """Verify None is returned when both CLI tools and Tkinter fail."""
+    monkeypatch.setattr("sys.platform", "linux")
+    monkeypatch.setattr("subprocess.check_output", MagicMock(side_effect=Exception("no tools")))
+    monkeypatch.setattr("tkinter.Tk", MagicMock(side_effect=Exception("no display")))
+
+    content = gptscan.get_cli_clipboard_content()
+    assert content is None
+
+def test_cli_clipboard_integration(monkeypatch):
+    """Test that CLI parameter --clipboard correctly fetches and passes clipboard to run_cli."""
+    mock_run_cli = MagicMock(return_value=0)
+    monkeypatch.setattr(gptscan, "run_cli", mock_run_cli)
+    monkeypatch.setattr(gptscan, "get_cli_clipboard_content", MagicMock(return_value="my clip content"))
+
+    test_args = ["gptscan.py", "--cli", "--clipboard"]
+    with patch("sys.argv", test_args):
+        gptscan.main()
+
+    mock_run_cli.assert_called_once()
+    _, kwargs = mock_run_cli.call_args
+    extra_snippets = kwargs.get("extra_snippets")
+    assert extra_snippets == [("[Clipboard]", b"my clip content")]
