@@ -13,11 +13,17 @@ Train the local model (the detection model) for the GPT Virus Scanner. It learns
 
 ## Installation
 
-1.  **Install Python:** You need **Python 3.9, 3.10, or 3.11**. Newer versions (like 3.12) are not supported yet because of model compatibility.
-2.  **Install requirements:** Open your terminal and run:
-    ```bash
-    python3 -m pip install "tensorflow<2.16" numpy pyyaml
-    ```
+1.  **Install Python:** Install **Python 3.9, 3.10, 3.11, or 3.12**.
+2.  **Install requirements:** Open your terminal and choose the command that matches your Python version:
+
+    *   **For Python 3.9 to 3.11:**
+        ```bash
+        python3 -m pip install "tensorflow<2.16" numpy pyyaml
+        ```
+    *   **For Python 3.12:**
+        ```bash
+        python3 -m pip install tensorflow numpy pyyaml
+        ```
 
 ## Configuration
 
