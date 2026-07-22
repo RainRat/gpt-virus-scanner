@@ -90,6 +90,22 @@ def test_manage_exclusions_add_pattern(mock_gui_env):
     assert "*.log" in captured['listbox'].items
     assert gptscan._apply_filter.called
 
+def test_manage_exclusions_add_pattern_bulk(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    mock_sd.askstring.return_value = "*.log,  temp/,   build/ "
+
+    manage_exclusions()
+    add_btn, add_cmd = captured['buttons']['Add Pattern...']
+    add_cmd()
+
+    assert "*.log" in Config.ignore_patterns
+    assert "temp/" in Config.ignore_patterns
+    assert "build/" in Config.ignore_patterns
+    assert "*.log" in captured['listbox'].items
+    assert "temp/" in captured['listbox'].items
+    assert "build/" in captured['listbox'].items
+    assert gptscan._apply_filter.called
+
 def test_manage_exclusions_add_folder(mock_gui_env, monkeypatch):
     captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
     # Mock os.path.relpath to return a predictable relative path

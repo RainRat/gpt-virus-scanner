@@ -117,6 +117,25 @@ def test_manage_extensions_add(mock_gui_env, monkeypatch):
     assert ".rb" in captured['listbox'].items
     Config.save_extensions.assert_called()
 
+def test_manage_extensions_add_bulk(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py"}
+    mock_sd.askstring.return_value = "rb,   .go,  js"
+
+    monkeypatch.setattr(Config, "save_extensions", MagicMock())
+
+    manage_extensions()
+    add_btn, add_cmd = captured['buttons']['Add...']
+    add_cmd()
+
+    assert ".rb" in Config.extensions_set
+    assert ".go" in Config.extensions_set
+    assert ".js" in Config.extensions_set
+    assert ".rb" in captured['listbox'].items
+    assert ".go" in captured['listbox'].items
+    assert ".js" in captured['listbox'].items
+    Config.save_extensions.assert_called()
+
 def test_manage_extensions_remove(mock_gui_env, monkeypatch):
     captured, mock_sd, mock_mb, mock_top = mock_gui_env
     Config.extensions_set = {".py", ".js"}
