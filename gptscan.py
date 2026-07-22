@@ -6651,7 +6651,7 @@ def _get_tree_results_as_dicts(item_ids: Iterable[str]) -> List[Dict[str, Any]]:
 def export_results(event: Optional[tk.Event] = None) -> None:
     """Save the current Treeview contents to a file chosen by the user.
 
-    Supports CSV, HTML, JSON, and SARIF formats.
+    Supports CSV, HTML, JSON, SARIF, and Console Triage Report formats.
 
     Returns
     -------
@@ -6669,6 +6669,7 @@ def export_results(event: Optional[tk.Event] = None) -> None:
             ("HTML files", "*.html"),
             ("JSON files", "*.json"),
             ("SARIF files", "*.sarif"),
+            ("Triage reports", "*.txt;*.log"),
             ("All files", "*.*")
         ],
         title="Export Scan Results",
@@ -6694,6 +6695,9 @@ def export_results(event: Optional[tk.Event] = None) -> None:
         elif ext == '.md':
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(generate_markdown(results))
+        elif ext in ('.txt', '.log'):
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(generate_console_report(results, use_color=False))
         else: # Default to CSV
             with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
                 writer = csv.writer(csv_file)
@@ -9014,6 +9018,8 @@ def main():
                 output_format = 'markdown'
             elif ext == '.csv':
                 output_format = 'csv'
+            elif ext in ('.txt', '.log'):
+                output_format = 'report'
 
         final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or [])))
 
