@@ -96,3 +96,17 @@ def test_refactored_scan_env_vars_click(mocker):
         "Environment Variables Error",
         is_snippets=True
     )
+
+def test_refactored_scan_network_config_click(mocker):
+    """Verify that scan_network_config_click correctly calls the _generic_scan_click helper."""
+    mock_get_paths = mocker.patch("gptscan.get_network_config_paths", return_value=["/etc/hosts"])
+    mock_generic = mocker.patch("gptscan._generic_scan_click")
+
+    gptscan.scan_network_config_click()
+
+    mock_generic.assert_called_once_with(
+        gptscan.get_network_config_paths,
+        "Network Configuration",
+        "No network configuration files were found to scan.",
+        "Network Configuration Error"
+    )

@@ -3358,15 +3358,7 @@ def scan_ssh_config_click():
 
 def scan_network_config_click():
     """Scan all common network configuration files (hosts, resolv.conf, etc.)."""
-    try:
-        paths = get_network_config_paths()
-        if paths:
-            _set_scan_target(paths)
-            button_click()
-        else:
-            messagebox.showinfo("Network Configuration", "No network configuration files were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Network Configuration Error", f"Could not scan network configuration: {e}")
+    _generic_scan_click(get_network_config_paths, "Network Configuration", "No network configuration files were found to scan.", "Network Configuration Error")
 
 
 def scan_python_packages_click():
