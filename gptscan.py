@@ -3974,7 +3974,7 @@ def manage_exclusions() -> None:
             except Exception as e:
                 messagebox.showerror("Error", f"Could not add folder: {e}", parent=manage_win)
 
-    def remove_selected():
+    def remove_selected(event=None):
         selection = ignore_listbox.curselection()
         if not selection:
             return
@@ -3989,6 +3989,17 @@ def manage_exclusions() -> None:
             _apply_filter()
         except Exception as e:
             messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
+
+    def select_all(event=None):
+        ignore_listbox.select_set(0, tk.END)
+        return "break"
+
+    # Keyboard Bindings
+    ignore_listbox.bind("<Delete>", remove_selected)
+    ignore_listbox.bind("<BackSpace>", remove_selected)
+    ignore_listbox.bind("<Control-a>", select_all)
+    ignore_listbox.bind("<Command-a>", select_all)
+    manage_win.bind("<Escape>", lambda e: manage_win.destroy())
 
     ttk.Button(btn_frame, text="Add Pattern...", command=add_pattern).pack(side=tk.LEFT, padx=(0, 5), ipady=5)
     ttk.Button(btn_frame, text="Add Folder...", command=add_folder).pack(side=tk.LEFT, padx=5, ipady=5)
@@ -4055,7 +4066,7 @@ def manage_extensions() -> None:
                 except Exception as e:
                     messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
 
-    def remove_selected():
+    def remove_selected(event=None):
         selection = ext_listbox.curselection()
         if not selection:
             return
@@ -4082,6 +4093,17 @@ def manage_extensions() -> None:
             refresh_list()
         except Exception as e:
             messagebox.showerror("Error", f"Could not reset extensions: {e}", parent=manage_win)
+
+    def select_all(event=None):
+        ext_listbox.select_set(0, tk.END)
+        return "break"
+
+    # Keyboard Bindings
+    ext_listbox.bind("<Delete>", remove_selected)
+    ext_listbox.bind("<BackSpace>", remove_selected)
+    ext_listbox.bind("<Control-a>", select_all)
+    ext_listbox.bind("<Command-a>", select_all)
+    manage_win.bind("<Escape>", lambda e: manage_win.destroy())
 
     ttk.Button(btn_frame, text="Add...", command=add_extension).pack(side=tk.LEFT, padx=(0, 5), ipady=5)
     ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5, ipady=5)
