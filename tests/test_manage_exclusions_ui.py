@@ -23,6 +23,7 @@ def mock_gui_env(monkeypatch, tmp_path):
         def __init__(self, *args, **kwargs):
             self.items = []
             self.selection = []
+            self.bindings = {}
         def insert(self, idx, item):
             if idx == "end":
                 self.items.append(item)
@@ -40,6 +41,15 @@ def mock_gui_env(monkeypatch, tmp_path):
         def pack(self, **kwargs): pass
         def config(self, **kwargs): pass
         def yview(self, *args): pass
+        def bind(self, sequence, func, add=None):
+            self.bindings[sequence] = func
+        def select_set(self, first, last=None):
+            if last == tk.END or last == "end":
+                self.selection = list(range(first, len(self.items)))
+            elif last is not None:
+                self.selection = list(range(first, last + 1))
+            else:
+                self.selection = [first]
 
     monkeypatch.setattr(gptscan.tk, 'Listbox', MockListbox)
 
@@ -214,3 +224,44 @@ def test_manage_exclusions_remove_error(mock_gui_env, monkeypatch):
     remove_cmd()
 
     mock_mb.showerror.assert_called_with("Error", "Could not update .gptscanignore: IO Error", parent=mock_top)
+
+def test_manage_exclusions_keyboard_bindings(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    manage_exclusions()
+    lb = captured['listbox']
+
+    # Check that bindings exist
+    assert "<Delete>" in lb.bindings
+    assert "<BackSpace>" in lb.bindings
+    assert "<Control-a>" in lb.bindings
+    assert "<Command-a>" in lb.bindings
+    assert mock_top.bind.called  # Esc is bound to mock_top Toplevel window
+
+def test_manage_exclusions_keyboard_select_all(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = ["p1", "p2"]
+    manage_exclusions()
+    lb = captured['listbox']
+
+    # Trigger Select All
+    select_all_func = lb.bindings["<Control-a>"]
+    res = select_all_func(None)
+
+    assert res == "break"
+    assert lb.selection == [0, 1]
+
+def test_manage_exclusions_keyboard_remove(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = ["p1", "p2"]
+    mock_mb.askyesno.return_value = True
+
+    manage_exclusions()
+    lb = captured['listbox']
+    lb.selection = [0]
+
+    # Trigger Delete
+    delete_func = lb.bindings["<Delete>"]
+    delete_func(None)
+
+    assert "p1" not in Config.ignore_patterns
+    assert "p2" in Config.ignore_patterns
