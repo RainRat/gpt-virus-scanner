@@ -497,10 +497,24 @@ class Config:
             # Fallback to environment variables if apikey.txt is missing or empty
             cls.apikey = os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY") or ""
 
-        if not cls.apikey:
-            print(cls.apikey_missing_message, file=sys.stderr)
-        if not cls.taskdesc:
-            print(cls.task_missing_message, file=sys.stderr)
+        is_help_or_version = any(arg in sys.argv for arg in ['-h', '--help', '-v', '--version'])
+        is_cli_without_gpt = ('--cli' in sys.argv or any(arg in sys.argv for arg in [
+            '--audit', '--git-changes', '--git-diff', '--git-hooks', '--git-config',
+            '--git-stash', '--git-conflicts', '--git-history', '--git-reflog',
+            '--shell-profiles', '--shell-history', '--system-path', '--running-processes',
+            '--scheduled-tasks', '--startup-items', '--system-services', '--python-packages',
+            '--browser-bookmarks', '--nodejs-packages', '--browser-extensions', '--editor-extensions',
+            '--ssh-config', '--network-config', '--env-vars', '--env-files', '--ruby-gems',
+            '--php-packages', '--rust-packages', '--go-packages', '--java-packages',
+            '--dotnet-packages', '--documents', '--temp', '--downloads', '--desktop',
+            '--modified', '--file-list', '--stdin', '--import-results', '--import'
+        ])) and not any(arg in sys.argv for arg in ['-g', '--use-gpt'])
+
+        if not is_help_or_version:
+            if not cls.apikey and not is_cli_without_gpt:
+                print(cls.apikey_missing_message, file=sys.stderr)
+            if not cls.taskdesc and not is_cli_without_gpt:
+                print(cls.task_missing_message, file=sys.stderr)
 
         # Enable GPT if task description is present.
         # Specific provider requirements (like API key) are checked at runtime.
@@ -509,7 +523,8 @@ class Config:
         loaded_extensions = load_file('extensions.txt', mode='multi_line')
         if not loaded_extensions:
             cls.set_extensions(cls.DEFAULT_EXTENSIONS, missing=True)
-            print(cls.extensions_missing_message, file=sys.stderr)
+            if not is_help_or_version:
+                print(cls.extensions_missing_message, file=sys.stderr)
         else:
             cls.set_extensions(loaded_extensions)
 

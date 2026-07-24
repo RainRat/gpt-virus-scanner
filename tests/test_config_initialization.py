@@ -111,3 +111,36 @@ def test_initialize_loads_ignore_patterns():
     # Ensure comments/empty lines are gone
     assert not any(p.startswith("#") for p in Config.ignore_patterns)
     assert "" not in Config.ignore_patterns
+
+
+def test_initialize_suppress_warnings_on_help(capsys):
+    """Test that Config.initialize() suppresses warnings when help or version is requested."""
+    import sys
+    Config.apikey = ""
+    Config.taskdesc = ""
+
+    # Simulate passing help option
+    with patch.object(sys, 'argv', ['gptscan.py', '--help']):
+        with patch('gptscan.load_file', return_value=[]):
+            Config.initialize()
+
+    captured = capsys.readouterr()
+    assert Config.apikey_missing_message not in captured.err
+    assert Config.task_missing_message not in captured.err
+    assert Config.extensions_missing_message not in captured.err
+
+
+def test_initialize_suppress_warnings_on_cli_without_gpt(capsys):
+    """Test that Config.initialize() suppresses api/task warnings on CLI run without GPT requested."""
+    import sys
+    Config.apikey = ""
+    Config.taskdesc = ""
+
+    # Simulate passing --cli option without GPT flag
+    with patch.object(sys, 'argv', ['gptscan.py', '--cli', '/some/path']):
+        with patch('gptscan.load_file', return_value=[".py"]):
+            Config.initialize()
+
+    captured = capsys.readouterr()
+    assert Config.apikey_missing_message not in captured.err
+    assert Config.task_missing_message not in captured.err
