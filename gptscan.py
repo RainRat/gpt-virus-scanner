@@ -804,6 +804,12 @@ def _generic_scan_click(get_data_func: Callable[[], Union[List[str], List[Tuple[
         messagebox.showwarning(error_title, f"Could not scan {title.lower()}: {e}")
 
 
+def _get_target_path() -> str:
+    """Get the target path from the textbox or default to '.' if empty or None."""
+    path = textbox.get().strip() if textbox else "."
+    return path if path else "."
+
+
 def _get_initial_dir() -> Optional[str]:
     """Find a starting folder for file dialogs based on what is currently entered."""
     path_str = ""
@@ -3092,10 +3098,7 @@ def scan_clipboard_click():
 def scan_git_diff_click():
     """Scan current Git diff (staged and unstaged changes)."""
     try:
-        # Get path from textbox or default to current folder
-        target_path = textbox.get().strip() if textbox else "."
-        if not target_path:
-            target_path = "."
+        target_path = _get_target_path()
 
         diff_content = get_git_diff(target_path)
         if diff_content:
@@ -3109,10 +3112,7 @@ def scan_git_diff_click():
 def scan_git_hooks_click():
     """Scan local and global Git hooks."""
     try:
-        # Get path from textbox or default to current folder
-        target_path = textbox.get().strip() if textbox else "."
-        if not target_path:
-            target_path = "."
+        target_path = _get_target_path()
 
         hook_paths = get_git_hooks_paths(target_path)
         if hook_paths:
@@ -3139,10 +3139,7 @@ def scan_git_config_click():
 def scan_git_stash_click():
     """Scan all Git stashes."""
     try:
-        # Get path from textbox or default to current directory
-        target_path = textbox.get().strip() if textbox else "."
-        if not target_path:
-            target_path = "."
+        target_path = _get_target_path()
 
         snippets = get_git_stash_snippets(target_path)
         if snippets:
@@ -3156,10 +3153,7 @@ def scan_git_stash_click():
 def scan_git_conflicts_click():
     """Scan files with Git merge conflicts."""
     try:
-        # Get path from textbox or default to current directory
-        target_path = textbox.get().strip() if textbox else "."
-        if not target_path:
-            target_path = "."
+        target_path = _get_target_path()
 
         snippets = get_git_conflict_snippets(target_path)
         if snippets:
@@ -3348,9 +3342,7 @@ def scan_git_reflog_click(count=None):
 def scan_git_revision_click():
     """Scan files changed in a specific Git revision."""
     try:
-        target_path = textbox.get().strip() if textbox else "."
-        if not target_path:
-            target_path = "."
+        target_path = _get_target_path()
 
         toplevel, _ = _get_git_info(target_path)
         if toplevel is None:

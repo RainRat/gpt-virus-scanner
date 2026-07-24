@@ -218,3 +218,22 @@ def test_scan_system_services_click_error(monkeypatch):
     args, _ = mock_showwarning.call_args
     assert args[0] == "System Services Error"
     assert "Services scan error" in args[1]
+
+
+def test_get_target_path_with_value(monkeypatch):
+    mock_textbox = MagicMock()
+    mock_textbox.get.return_value = "   /some/path/to/scan   "
+    monkeypatch.setattr(gptscan, "textbox", mock_textbox, raising=False)
+    assert gptscan._get_target_path() == "/some/path/to/scan"
+
+
+def test_get_target_path_empty(monkeypatch):
+    mock_textbox = MagicMock()
+    mock_textbox.get.return_value = "   "
+    monkeypatch.setattr(gptscan, "textbox", mock_textbox, raising=False)
+    assert gptscan._get_target_path() == "."
+
+
+def test_get_target_path_no_textbox(monkeypatch):
+    monkeypatch.setattr(gptscan, "textbox", None, raising=False)
+    assert gptscan._get_target_path() == "."
