@@ -67,3 +67,40 @@ def test_export_results_handles_error(monkeypatch):
     args, _ = mock_msgbox.showerror.call_args
     assert args[0] == "Export Failed"
     assert "Disk full" in args[1]
+
+
+def test_export_results_triage_report(monkeypatch, tmp_path):
+    """Verify that results are correctly saved as a Console Triage Report when exporting to .txt or .log."""
+    file_path = tmp_path / "export.txt"
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', lambda **k: str(file_path))
+
+    mock_tree = MagicMock()
+    monkeypatch.setattr(gptscan, "tree", mock_tree, raising=False)
+
+    sample_results = [
+        {
+            "path": "test.py",
+            "line": "123",
+            "own_conf": "95%",
+            "gpt_conf": "85%",
+            "admin_desc": "Highly suspicious eval instruction.",
+            "end-user_desc": "This file evaluates untrusted input.",
+            "snippet": "eval(user_input)"
+        }
+    ]
+    monkeypatch.setattr(gptscan, "_get_tree_results_as_dicts", lambda item_ids: sample_results)
+
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, "messagebox", mock_msgbox)
+
+    gptscan.export_results()
+
+    assert file_path.exists()
+    content = file_path.read_text(encoding="utf-8")
+    assert "--- GPT SCAN - CONSOLE TRIAGE REPORT" in content
+    assert "test.py:123" in content
+    assert "Local: 95%" in content
+    assert "AI: 85%" in content
+    assert "Admin: Highly suspicious eval instruction." in content
+    assert "User: This file evaluates untrusted input." in content
+    assert "> eval(user_input)" in content
