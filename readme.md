@@ -407,6 +407,85 @@ Use the `--fail-threshold` option followed by a threat level (0 to 100) to fail 
 python3 gptscan.py ./my_project --cli --fail-threshold 70
 ```
 
+#### CLI Options Reference
+You can customize terminal scans using these command line options.
+
+##### Scan Options
+*   `target` (or other arguments): The folder, file, pattern, or web link to scan.
+*   `-p`, `--path <path>`: Alternative way to specify a folder, file, or web link to scan.
+*   `-d`, `--deep`: Scan the whole file instead of just the beginning and end. This is more thorough but slower.
+*   `--dry-run`: Preview which files would be scanned without actually checking them.
+*   `--extensions <exts>`: Only scan these file types (for example: `py,js`).
+*   `-e`, `--exclude <patterns>`: Ignore files or folders matching these patterns (for example: `node_modules/*`).
+*   `--file-list <file>`: Read a list of files to scan from a text file.
+*   `--all-files`: Scan every file, even if it is not a script.
+*   `--fail-threshold <num>`: Exit with code `1` if any file has a threat level at or above this number (0-100).
+*   `-t`, `--threshold <num>`: Set the minimum threat level (0-100) to show in results (default is 50).
+*   `--stdin`: Scan code piped from another command.
+*   `-c`, `--clipboard`: Scan code currently copied in the system clipboard.
+*   `--import-results <file>` / `--import <file>`: Import results from a previous scan. Use `-` to read from the terminal.
+*   `--max-size <size>`: The maximum file size to scan (for example: `10MB`). Default is 10MB.
+*   `--modified <time>`: Only scan files changed within this time (for example: `24h`, `1h`, `7d`).
+*   `--downloads`: Scan the standard Downloads folder.
+*   `--desktop`: Scan your standard Desktop folder.
+
+##### Git Integration
+*   `--git-changes [<commit>]`: Only scan files changed in Git. You can optionally provide a branch or commit (default is `HEAD`).
+*   `--git-diff [<commit>]`: Scan current Git changes as a diff. You can optionally provide a branch or commit (default is `HEAD`).
+*   `--git-hooks`: Scan local and global Git hooks.
+*   `--git-config`: Scan for dangerous Git configuration settings.
+*   `--git-stash`: Scan all Git stashes.
+*   `--git-conflicts`: Scan files with Git merge conflicts.
+*   `--git-history [<count>]`: Scan recent Git commits. You can optionally set the number of commits (default is 5).
+*   `--git-reflog [<count>]`: Scan recent entries in your Git reflog. You can optionally set the number of entries (default is 5).
+
+##### System Scans
+*   `--audit`: Run a complete system audit (includes shell profiles, history, system PATH, processes, scheduled tasks, startup items, system services, and more).
+*   `--shell-profiles`: Scan common shell profile and configuration files (like `.bashrc` or `.zshrc`).
+*   `--shell-history`: Scan common shell history files for dangerous commands.
+*   `--system-path`: Scan all folders in the system PATH.
+*   `--running-processes`: Scan command lines of all active processes.
+*   `--scheduled-tasks`: Scan all scheduled tasks and Cron jobs.
+*   `--startup-items`: Scan all system startup items and LaunchAgents.
+*   `--system-services`: Scan all system services and background units.
+*   `--python-packages`: Scan all folders containing installed Python packages.
+*   `--browser-bookmarks`: Scan all common browser bookmark files for suspicious bookmarklets.
+*   `--nodejs-packages`: Scan all folders containing global Node.js packages.
+*   `--browser-extensions`: Scan all common browser extension folders.
+*   `--editor-extensions`: Scan all common editor extension folders.
+*   `--ssh-config`: Scan all common SSH configuration and authorized_keys files.
+*   `--network-config`: Scan all common network configuration files (like `hosts` or `resolv.conf`).
+*   `--env-vars`: Scan all non-empty environment variables.
+*   `--env-files`: Scan all common `.env` files.
+*   `--ruby-gems`: Scan all folders containing installed Ruby gems.
+*   `--php-packages`: Scan all folders containing global PHP Composer packages.
+*   `--rust-packages`: Scan all folders containing global Rust Cargo packages.
+*   `--go-packages`: Scan all folders containing Go packages.
+*   `--java-packages`: Scan all folders containing Java package caches (Maven and Gradle).
+*   `--dotnet-packages`: Scan all folders containing global .NET NuGet package caches.
+*   `--documents`: Scan your standard Documents folder.
+*   `--temp`: Scan common temporary folders.
+
+##### AI Analysis
+*   `-g`, `--use-gpt`: Use AI to analyze suspicious files. Cloud providers require an API key; Ollama does not.
+*   `--provider <name>`: Choose your AI service (`openai`, `openrouter`, or `ollama`). Default is `openai`.
+*   `--model <model>`: Choose the AI model to use (for example: `gpt-4o`, `llama3.2`).
+*   `-k`, `--api-key <key>`: Provide the API key for your AI service.
+*   `--api-base <url>`: Set a custom web link for the AI service endpoint (useful for local servers).
+*   `--rate-limit <num>`: Set the maximum AI requests allowed per minute (default is 60).
+*   `--clear-cache`: Clear the AI analysis cache before starting the scan.
+
+##### Output Options
+*   `--cli`: Run in the terminal instead of opening a GUI window.
+*   `-a`, `--show-all`: Show all scanned files, even safe ones (threat level under threshold).
+*   `-o`, `--output <file>`: Save the scan results to a file.
+*   `-j`, `--json`: Output or save results in JSON format.
+*   `--csv`: Output or save results in CSV format.
+*   `--sarif`: Save results in SARIF format.
+*   `--html`: Create an interactive HTML report.
+*   `--md`, `--markdown`: Create a Markdown report.
+*   `--report`: Output a detailed triage report to the terminal.
+
 ### Setting up AI Analysis
 To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama running locally.
 
