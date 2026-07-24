@@ -185,3 +185,22 @@ def test_get_documents_paths_windows(monkeypatch, tmp_path):
     paths = [_norm(p) for p in get_documents_paths()]
     assert _norm("C:\\Users\\User\\Documents") in paths
     mock_winreg.OpenKey.assert_called_once()
+
+def test_get_documents_paths_windows_error(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "platform", "win32")
+    fake_home = tmp_path / "home"
+    docs_dir = fake_home / "Documents"
+    docs_dir.mkdir(parents=True)
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+
+    mock_winreg = MagicMock()
+    mock_winreg.OpenKey.side_effect = Exception("Registry error")
+    mock_winreg.HKEY_CURRENT_USER = "HKCU"
+    monkeypatch.setitem(sys.modules, "winreg", mock_winreg)
+
+    def mock_isdir(p):
+        return _norm(p) == _norm(str(docs_dir))
+    monkeypatch.setattr(os.path, "isdir", mock_isdir)
+
+    paths = [_norm(p) for p in get_documents_paths()]
+    assert _norm(str(docs_dir)) in paths
