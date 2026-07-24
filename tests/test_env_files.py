@@ -54,3 +54,20 @@ def test_is_container_env():
     assert Config.is_container(".env.local") is True
     assert Config.is_container(".env.development.local") is True
     assert Config.is_container("env.txt") is False
+
+def test_get_env_file_paths_handles_exception_during_glob(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", lambda: home)
+
+    original_glob = Path.glob
+
+    def mock_glob(self, pattern):
+        if str(self) == str(home):
+            raise OSError("Access denied")
+        return original_glob(self, pattern)
+
+    monkeypatch.setattr(Path, "glob", mock_glob)
+
+    paths = get_env_file_paths()
+    assert isinstance(paths, list)
