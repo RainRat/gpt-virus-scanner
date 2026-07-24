@@ -3929,13 +3929,18 @@ def manage_exclusions() -> None:
     btn_frame.pack(fill=tk.X)
 
     def add_pattern():
-        pattern = simpledialog.askstring("Add Pattern", "Enter a file or folder pattern to exclude (e.g., *.log, temp/):", parent=manage_win)
-        if pattern:
-            pattern = pattern.strip()
-            if pattern and pattern not in Config.ignore_patterns:
+        pattern_str = simpledialog.askstring("Add Pattern", "Enter one or more file/folder patterns to exclude (separated by commas, e.g., *.log, temp/):", parent=manage_win)
+        if pattern_str:
+            patterns = [p.strip() for p in pattern_str.split(',') if p.strip()]
+            if not patterns:
+                return
+            new_patterns = [p for p in patterns if p not in Config.ignore_patterns]
+            if new_patterns:
                 try:
-                    add_to_ignore_file(pattern)
-                    Config.ignore_patterns.append(pattern)
+                    for p in new_patterns:
+                        add_to_ignore_file(p)
+                        if p not in Config.ignore_patterns:
+                            Config.ignore_patterns.append(p)
                     refresh_list()
                     _apply_filter()
                 except Exception as e:
@@ -4014,14 +4019,22 @@ def manage_extensions() -> None:
     btn_frame.pack(fill=tk.X)
 
     def add_extension():
-        ext = simpledialog.askstring("Add Extension", "Enter a file extension (e.g., .py, .js):", parent=manage_win)
-        if ext:
-            ext = ext.strip().lower()
-            if not ext.startswith('.'):
-                ext = f".{ext}"
-            if ext and ext not in Config.extensions_set:
+        ext_str = simpledialog.askstring("Add Extension", "Enter one or more file extensions (separated by commas or whitespace, e.g., .py, .js):", parent=manage_win)
+        if ext_str:
+            import re
+            parts = re.split(r'[\s,]+', ext_str)
+            added_any = False
+            for p in parts:
+                p = p.strip().lower()
+                if not p:
+                    continue
+                if not p.startswith('.'):
+                    p = f".{p}"
+                if p not in Config.extensions_set:
+                    Config.extensions_set.add(p)
+                    added_any = True
+            if added_any:
                 try:
-                    Config.extensions_set.add(ext)
                     Config.save_extensions()
                     refresh_list()
                 except Exception as e:
