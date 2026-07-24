@@ -6839,6 +6839,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     snippet_frame = ttk.LabelFrame(paned_window, text="Code Snippet", padding=5)
     paned_window.add(snippet_frame, weight=1)
 
+    snippet_toolbar = ttk.Frame(snippet_frame)
+    snippet_toolbar.pack(fill=tk.X, pady=(0, 5))
+
     snippet_text = scrolledtext.ScrolledText(snippet_frame, height=8, font='TkFixedFont', wrap=tk.NONE)
     snippet_text.pack(fill=tk.BOTH, expand=True)
     snippet_text.tag_configure("highlight", background="yellow", foreground="black")
@@ -7138,12 +7141,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_menu.add_command(label="Copy Code", command=copy_code, accelerator="Ctrl+S")
     copy_menu_btn["menu"] = copy_menu
 
-    ttk.Separator(btn_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=5, fill=tk.Y)
-
-    # Group: View
-    source_toggle_btn = ttk.Button(btn_frame, text="Show Full Source", width=18, command=toggle_source)
-    source_toggle_btn.pack(side=tk.LEFT, padx=2, ipady=5)
+    # Group: Code View Actions (Toolbar)
+    source_toggle_btn = ttk.Button(snippet_toolbar, text="Show Full Source", width=18, command=toggle_source)
+    source_toggle_btn.pack(side=tk.RIGHT, padx=2)
     bind_hover_message(source_toggle_btn, "Toggle between the suspicious snippet and the full file content. (Ctrl+U)", label=status_bar)
+
+    copy_code_btn = ttk.Button(snippet_toolbar, text="Copy Code", command=copy_code)
+    copy_code_btn.pack(side=tk.RIGHT, padx=2)
+    bind_hover_message(copy_code_btn, "Copy the currently displayed code to the clipboard. (Ctrl+S)", label=status_bar)
 
     # Group: System
     close_btn = ttk.Button(btn_frame, text="Close", command=details_win.destroy)

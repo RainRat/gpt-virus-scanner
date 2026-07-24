@@ -436,3 +436,23 @@ def test_view_details_rescan(mock_view_details_env, monkeypatch):
     # Verify button states were toggled
     rescan_btn_mock.config.assert_any_call(state='disabled', text='Rescanning...')
     rescan_btn_mock.config.assert_any_call(state='normal', text='Rescan')
+
+
+def test_view_details_copy_code_button(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py", snippet="print('hello, world')")
+    from gptscan import root as mock_root
+
+    # Verify the "Copy Code" button is in captured buttons
+    assert "btn_Copy Code" in captured
+    copy_code_btn, copy_code_cmd = captured["btn_Copy Code"]
+
+    # Trigger click command
+    copy_code_cmd()
+
+    mock_root.clipboard_clear.assert_called()
+    mock_root.clipboard_append.assert_called_with("print('hello, world')")
+
+    # Verify local status feedback
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "Code copied to clipboard."
