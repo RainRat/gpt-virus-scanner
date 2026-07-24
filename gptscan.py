@@ -3012,6 +3012,57 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
     _auto_select_best_result()
 
 
+def get_cli_clipboard_content() -> Optional[str]:
+    """Retrieve content from the system clipboard in CLI mode without requiring a GUI.
+
+    Tries platform-specific CLI tools first, falling back to Tkinter if a display is present.
+
+    Returns:
+        The text content of the clipboard, or None if empty or unavailable.
+    """
+    # 1. Try pbpaste on macOS
+    if sys.platform == 'darwin':
+        try:
+            return subprocess.check_output(['pbpaste'], text=True, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+
+    # 2. Try powershell on Windows
+    elif sys.platform == 'win32':
+        try:
+            # -NoProfile to avoid slow loading of user profiles
+            out = subprocess.check_output(
+                ['powershell.exe', '-NoProfile', '-Command', 'Get-Clipboard'],
+                text=True,
+                stderr=subprocess.DEVNULL
+            )
+            return out
+        except Exception:
+            pass
+
+    # 3. Try xclip or xsel on Linux/Unix
+    elif sys.platform.startswith('linux') or 'bsd' in sys.platform:
+        for tool, args in [('xclip', ['-selection', 'clipboard', '-o']), ('xsel', ['--clipboard', '--output'])]:
+            try:
+                return subprocess.check_output([tool] + args, text=True, stderr=subprocess.DEVNULL)
+            except Exception:
+                continue
+
+    # 4. Fallback: Try Tkinter if a display/GUI session is available
+    try:
+        import tkinter as tk
+        temp_root = tk.Tk()
+        temp_root.withdraw()  # Hide the main window
+        content = temp_root.clipboard_get()
+        temp_root.destroy()
+        if content:
+            return str(content)
+    except Exception:
+        pass
+
+    return None
+
+
 def scan_clipboard_click():
     """Scan code currently in the clipboard."""
     try:
@@ -8596,6 +8647,11 @@ def main():
         help='Scan code sent from another command in the terminal.'
     )
     scan_group.add_argument(
+        '--clipboard', '-c',
+        action='store_true',
+        help='Scan code currently in the system clipboard.'
+    )
+    scan_group.add_argument(
         '--import-results', '--import',
         type=str,
         help='Import results from a previous scan. Use "-" to read from the terminal.'
@@ -8851,7 +8907,7 @@ def main():
         print("AI Analysis cache cleared.", file=sys.stderr)
         # If we ONLY wanted to clear cache, exit now.
         if not any([
-            args.target, args.path, args.stdin, args.import_results, args.files,
+            args.target, args.path, args.stdin, args.clipboard, args.import_results, args.files,
             args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
             args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
@@ -8893,7 +8949,7 @@ def main():
     scan_target = args.target or args.path
 
     cli_targets_or_flags = [
-        args.stdin, args.import_results,
+        args.stdin, args.clipboard, args.import_results,
         args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
         args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.shell_profiles, args.shell_history, args.system_path,
         args.running_processes, args.scheduled_tasks, args.startup_items,
@@ -8986,7 +9042,7 @@ def main():
             for root_dir in git_roots:
                 extra_snippets.extend(get_git_reflog_snippets(root_dir, count=args.git_reflog))
 
-        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_conflicts and not args.git_history and not args.git_reflog and not extra_snippets:
+        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_conflicts and not args.git_history and not args.git_reflog and not args.clipboard and not extra_snippets:
             # Default to current folder if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
@@ -9027,6 +9083,16 @@ def main():
                     extra_snippets.append(("[Stdin]", stdin_content))
             except Exception as e:
                 print(f"Error reading from terminal input: {e}", file=sys.stderr)
+
+        if args.clipboard:
+            try:
+                clipboard_content = get_cli_clipboard_content()
+                if clipboard_content:
+                    extra_snippets.append(("[Clipboard]", clipboard_content.encode('utf-8')))
+                else:
+                    print("Warning: Clipboard is empty or could not be read.", file=sys.stderr)
+            except Exception as e:
+                print(f"Error reading from clipboard: {e}", file=sys.stderr)
 
         if args.shell_profiles:
             profile_paths = get_shell_profile_paths()
