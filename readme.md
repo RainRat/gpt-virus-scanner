@@ -31,7 +31,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 ## Installation
 
 ### Prerequisites
-*   **Python:** Install **Python 3.9, 3.10, or 3.11**. Newer versions like 3.12 are not yet supported.
+*   **Python:** Install **Python 3.9, 3.10, 3.11, or 3.12**.
 *   **Data files:** The repository already includes the `scripts.h5` model and `task.txt` instruction files. Keep these in the project folder.
 
 ### Setup
@@ -41,9 +41,14 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
     cd gpt-virus-scanner
     ```
 2.  **Install mandatory packages:**
-    ```bash
-    python3 -m pip install "tensorflow<2.16" openai numpy
-    ```
+    *   **For Python 3.9, 3.10, or 3.11:**
+        ```bash
+        python3 -m pip install "tensorflow<2.16" openai numpy
+        ```
+    *   **For Python 3.12:**
+        ```bash
+        python3 -m pip install tensorflow openai numpy
+        ```
 3.  **Install optional packages (if needed):**
     *   **python3-tk:** Install this if you use Linux and want the window (GUI) interface.
     *   **PyYAML:** Install this if you want to train your own models.
