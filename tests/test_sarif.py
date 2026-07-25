@@ -34,7 +34,8 @@ def test_sarif_round_trip(monkeypatch, tmp_path):
     mock_insert = MagicMock()
     monkeypatch.setattr(gptscan, "insert_tree_row", mock_insert)
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **k: str(sarif_file))
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilenames", lambda **k: (str(sarif_file),))
+    mock_tree.get_children.return_value = []
     monkeypatch.setattr(gptscan, "clear_results", MagicMock())
     monkeypatch.setattr(gptscan, "update_status", MagicMock())
 
@@ -181,10 +182,11 @@ def test_import_results_sarif(monkeypatch, tmp_path):
     sarif_file = tmp_path / "results.sarif"
     sarif_file.write_text(json.dumps(sarif_data))
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **kwargs: str(sarif_file))
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilenames", lambda **kwargs: (str(sarif_file),))
 
     mock_tree = MagicMock()
     mock_tree.__getitem__.side_effect = lambda key: ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet") if key == "columns" else MagicMock()
+    mock_tree.get_children.return_value = []
     monkeypatch.setattr(gptscan, "tree", mock_tree)
 
     mock_insert = MagicMock()
@@ -227,10 +229,11 @@ def test_import_results_sarif_content_detection(monkeypatch, tmp_path):
     json_file = tmp_path / "not_sarif_ext.json"
     json_file.write_text(json.dumps(sarif_data))
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **kwargs: str(json_file))
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilenames", lambda **kwargs: (str(json_file),))
 
     mock_tree = MagicMock()
     mock_tree.__getitem__.side_effect = lambda key: ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet") if key == "columns" else MagicMock()
+    mock_tree.get_children.return_value = []
     monkeypatch.setattr(gptscan, "tree", mock_tree)
 
     monkeypatch.setattr(gptscan, "insert_tree_row", MagicMock())

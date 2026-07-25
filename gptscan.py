@@ -6537,21 +6537,63 @@ def import_results_from_content_generator(content: str, filename_hint: Optional[
 
 
 def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None, None]:
-    """Generator that yields events from an imported report file or URL."""
+    """Generator that yields events from an imported report file, directory, or URL."""
     try:
         if file_path.lower().startswith(('http://', 'https://')):
             content_bytes = fetch_url_content(file_path)
             content = content_bytes.decode('utf-8', errors='ignore')
+            if not content.strip():
+                raise ValueError("Web link content is empty.")
+            yield from import_results_from_content_generator(content, filename_hint=file_path)
+        elif os.path.isdir(file_path):
+            supported_exts = ('.json', '.jsonl', '.ndjson', '.csv', '.sarif', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log')
+            files = []
+            for r_dir, _, filenames in os.walk(file_path):
+                for filename in filenames:
+                    ext = os.path.splitext(filename)[1].lower()
+                    if ext in supported_exts:
+                        files.append(os.path.join(r_dir, filename))
+            files.sort()
+
+            if not files:
+                raise ValueError(f"No supported report files found in directory: {file_path}")
+
+            # Collect results across all files
+            all_results = []
+            for path in files:
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        file_content = f.read()
+                    if file_content.strip():
+                        # Parse and extend
+                        all_results.extend(parse_report_content(file_content, filename_hint=path))
+                except Exception:
+                    pass
+
+            total = len(all_results)
+            yield ('progress', (0, total, f"Importing from directory: {os.path.basename(file_path)}"))
+            for i, item in enumerate(all_results):
+                yield ('progress', (i + 1, total, f"Importing: {os.path.basename(item.get('path', 'unknown'))}"))
+                data = (
+                    item.get("path", ""),
+                    item.get("own_conf", ""),
+                    item.get("admin_desc", ""),
+                    item.get("end-user_desc", ""),
+                    item.get("gpt_conf", ""),
+                    item.get("snippet", ""),
+                    item.get("line", "-")
+                )
+                yield ('result', data)
+            yield ('summary', (total, 0, 0.0))
         else:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
-        if not content.strip():
-            raise ValueError("File or web link content is empty.")
+            if not content.strip():
+                raise ValueError("File content is empty.")
+            yield from import_results_from_content_generator(content, filename_hint=file_path)
     except Exception as e:
         yield ('progress', (0, 1, f"Error: {e}"))
         return
-
-    yield from import_results_from_content_generator(content, filename_hint=file_path)
 
 
 def _finalize_import(data_to_import: List[Dict[str, Any]], source_name: str) -> None:
@@ -6583,19 +6625,19 @@ def _finalize_import(data_to_import: List[Dict[str, Any]], source_name: str) -> 
 
 
 def import_results(event: Optional[tk.Event] = None) -> None:
-    """Load results from a JSON or CSV file into the Treeview.
+    """Load results from one or more JSON, CSV, SARIF, HTML, MD, or TXT files into the Treeview.
 
-    Supports standard JSON lists, NDJSON (newline-delimited JSON), and CSV files.
+    Supports bulk selection of files.
 
     Returns
     -------
     None
-        Clears the Treeview and populates it with imported data, or shows an error.
+        Clears or appends to the Treeview and populates it with imported data, or shows an error.
     """
     if not tree:
         return
 
-    file_path = filedialog.askopenfilename(
+    file_paths = filedialog.askopenfilenames(
         filetypes=[
             ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml;*.txt;*.log"),
             ("JSON files", "*.json;*.jsonl;*.ndjson"),
@@ -6609,20 +6651,72 @@ def import_results(event: Optional[tk.Event] = None) -> None:
         title="Import Scan Results",
         initialdir=_get_initial_dir()
     )
-    if not file_path:
+    if not file_paths:
         return
 
-    try:
-        data_to_import = load_report_file(file_path)
+    if isinstance(file_paths, str):
+        file_paths = root.tk.splitlist(file_paths)
 
-        if not data_to_import:
-            messagebox.showwarning("Import Warning", "No data found in the selected file.")
-            return
+    append_existing = False
+    has_existing = len(tree.get_children()) > 0
+    if has_existing:
+        append_existing = messagebox.askyesno(
+            "Import Mode",
+            "Do you want to append the imported results to the current list?\nSelect 'No' to clear the current results first.",
+            icon='question'
+        )
 
-        _finalize_import(data_to_import, os.path.basename(file_path))
+    all_imported_data = []
+    loaded_files = []
+    errors = []
 
-    except Exception as err:
-        messagebox.showerror("Import Failed", f"Could not load results:\n{err}")
+    for path in file_paths:
+        try:
+            data = load_report_file(path)
+            if data:
+                all_imported_data.extend(data)
+                loaded_files.append(os.path.basename(path))
+        except Exception as err:
+            errors.append(f"{os.path.basename(path)}: {err}")
+
+    if errors:
+        error_msg = "Failed to load some files:\n" + "\n".join(errors)
+        messagebox.showerror("Import Errors", error_msg)
+
+    if not all_imported_data:
+        if not errors:
+            messagebox.showwarning("Import Warning", "No data found in the selected files.")
+        return
+
+    if not append_existing:
+        clear_results()
+
+    count = 0
+    for item in all_imported_data:
+        values = (
+            item["path"],
+            item["own_conf"],
+            item["admin_desc"],
+            item["end-user_desc"],
+            item["gpt_conf"],
+            item["snippet"],
+            item["line"]
+        )
+        insert_tree_row(values)
+        count += 1
+
+    source_names = ", ".join(loaded_files)
+    if len(loaded_files) > 3:
+        source_names = f"{len(loaded_files)} files"
+
+    msg = f"Imported {count} results from {source_names}"
+    if append_existing:
+        msg = f"Appended {count} results to current list from {source_names}"
+    global _last_scan_summary
+    _last_scan_summary = msg
+    update_status(msg)
+    update_tree_columns()
+    _auto_select_best_result()
 
 
 def import_from_clipboard(event: Optional[tk.Event] = None) -> Optional[str]:
