@@ -19,6 +19,7 @@ def mock_gui_env(monkeypatch):
         def __init__(self, *args, **kwargs):
             self.items = []
             self.selection = []
+            self.bindings = {}
         def insert(self, idx, item):
             if idx == gptscan.tk.END:
                 self.items.append(item)
@@ -36,6 +37,15 @@ def mock_gui_env(monkeypatch):
         def pack(self, **kwargs): pass
         def config(self, **kwargs): pass
         def yview(self, *args): pass
+        def bind(self, sequence, func, add=None):
+            self.bindings[sequence] = func
+        def select_set(self, first, last=None):
+            if last == tk.END or last == "end":
+                self.selection = list(range(first, len(self.items)))
+            elif last is not None:
+                self.selection = list(range(first, last + 1))
+            else:
+                self.selection = [first]
 
     monkeypatch.setattr(gptscan.tk, 'Listbox', MockListbox)
 
@@ -168,3 +178,46 @@ def test_manage_extensions_reset(mock_gui_env, monkeypatch):
     assert ".py" in Config.extensions_set
     assert ".custom" not in Config.extensions_set
     Config.save_extensions.assert_called()
+
+def test_manage_extensions_keyboard_bindings(mock_gui_env):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    manage_extensions()
+    lb = captured['listbox']
+
+    # Check that bindings exist
+    assert "<Delete>" in lb.bindings
+    assert "<BackSpace>" in lb.bindings
+    assert "<Control-a>" in lb.bindings
+    assert "<Command-a>" in lb.bindings
+    assert mock_top.bind.called  # Esc is bound to mock_top Toplevel window
+
+def test_manage_extensions_keyboard_select_all(mock_gui_env):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py", ".js"}
+    manage_extensions()
+    lb = captured['listbox']
+
+    # Trigger Select All
+    select_all_func = lb.bindings["<Control-a>"]
+    res = select_all_func(None)
+
+    assert res == "break"
+    assert lb.selection == [0, 1]
+
+def test_manage_extensions_keyboard_remove(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py", ".js"}
+    mock_mb.askyesno.return_value = True
+    monkeypatch.setattr(Config, "save_extensions", MagicMock())
+
+    manage_extensions()
+    lb = captured['listbox']
+    # .js is index 0 because sorted
+    lb.selection = [0]
+
+    # Trigger Delete
+    delete_func = lb.bindings["<Delete>"]
+    delete_func(None)
+
+    assert ".js" not in Config.extensions_set
+    assert ".py" in Config.extensions_set
