@@ -50,8 +50,26 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
         python3 -m pip install tensorflow openai numpy
         ```
 3.  **Install optional packages (if needed):**
-    *   **python3-tk:** Install this if you use Linux and want the window (GUI) interface.
-    *   **PyYAML:** Install this if you want to train your own models.
+    *   **Tkinter (for the window interface on Linux):**
+        On Windows and macOS, the window interface works automatically. On Linux, you must install the Tkinter package using your system's package manager. Do not use `pip` to install it.
+        *   **Ubuntu / Debian:**
+            ```bash
+            sudo apt update
+            sudo apt install python3-tk
+            ```
+        *   **Fedora:**
+            ```bash
+            sudo dnf install python3-tkinter
+            ```
+        *   **Arch Linux:**
+            ```bash
+            sudo pacman -S tk
+            ```
+    *   **PyYAML (for training models):**
+        If you want to train your own local scanner models, install PyYAML using pip:
+        ```bash
+        python3 -m pip install pyyaml
+        ```
 
 ## How to use
 ### Using the Window (GUI)
