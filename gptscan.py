@@ -6602,13 +6602,13 @@ def _finalize_import(data_to_import: List[Dict[str, Any]], source_name: str) -> 
     for item in data_to_import:
         # Map item keys back to the expected column order
         values = (
-            item["path"],
-            item["own_conf"],
-            item["admin_desc"],
-            item["end-user_desc"],
-            item["gpt_conf"],
-            item["snippet"],
-            item["line"]
+            item.get("path", ""),
+            item.get("own_conf", ""),
+            item.get("admin_desc", ""),
+            item.get("end-user_desc", ""),
+            item.get("gpt_conf", ""),
+            item.get("snippet", ""),
+            item.get("line", "-")
         )
         insert_tree_row(values)
         count += 1
@@ -6691,13 +6691,13 @@ def import_results(event: Optional[tk.Event] = None) -> None:
     count = 0
     for item in all_imported_data:
         values = (
-            item["path"],
-            item["own_conf"],
-            item["admin_desc"],
-            item["end-user_desc"],
-            item["gpt_conf"],
-            item["snippet"],
-            item["line"]
+            item.get("path", ""),
+            item.get("own_conf", ""),
+            item.get("admin_desc", ""),
+            item.get("end-user_desc", ""),
+            item.get("gpt_conf", ""),
+            item.get("snippet", ""),
+            item.get("line", "-")
         )
         insert_tree_row(values)
         count += 1
