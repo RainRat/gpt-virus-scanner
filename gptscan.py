@@ -6593,10 +6593,11 @@ def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None,
         return
 
 
-def _finalize_import(data_to_import: List[Dict[str, Any]], source_name: str) -> None:
-    """Clear results and populate the Treeview with imported data."""
-    # Clear existing results
-    clear_results()
+def _finalize_import(data_to_import: List[Dict[str, Any]], source_name: str, append: bool = False) -> None:
+    """Clear or append results and populate the Treeview with imported data."""
+    if not append:
+        # Clear existing results
+        clear_results()
 
     count = 0
     for item in data_to_import:
@@ -6613,7 +6614,10 @@ def _finalize_import(data_to_import: List[Dict[str, Any]], source_name: str) -> 
         insert_tree_row(values)
         count += 1
 
-    msg = f"Imported {count} results from {source_name}"
+    if append:
+        msg = f"Appended {count} results to current list from {source_name}"
+    else:
+        msg = f"Imported {count} results from {source_name}"
     global _last_scan_summary
     _last_scan_summary = msg
     update_status(msg)
@@ -6685,35 +6689,11 @@ def import_results(event: Optional[tk.Event] = None) -> None:
             messagebox.showwarning("Import Warning", "No data found in the selected files.")
         return
 
-    if not append_existing:
-        clear_results()
-
-    count = 0
-    for item in all_imported_data:
-        values = (
-            item.get("path", ""),
-            item.get("own_conf", ""),
-            item.get("admin_desc", ""),
-            item.get("end-user_desc", ""),
-            item.get("gpt_conf", ""),
-            item.get("snippet", ""),
-            item.get("line", "-")
-        )
-        insert_tree_row(values)
-        count += 1
-
     source_names = ", ".join(loaded_files)
     if len(loaded_files) > 3:
         source_names = f"{len(loaded_files)} files"
 
-    msg = f"Imported {count} results from {source_names}"
-    if append_existing:
-        msg = f"Appended {count} results to current list from {source_names}"
-    global _last_scan_summary
-    _last_scan_summary = msg
-    update_status(msg)
-    update_tree_columns()
-    _auto_select_best_result()
+    _finalize_import(all_imported_data, source_names, append=append_existing)
 
 
 def import_from_clipboard(event: Optional[tk.Event] = None) -> Optional[str]:
