@@ -52,3 +52,22 @@ def test_unpack_git_commit(monkeypatch):
     assert len(snippets) == 1
     assert "test.patch [test.py @ line 1]" in snippets[0][0]
     assert b"new" in snippets[0][1]
+
+def test_get_git_history_snippets_partial_failure(monkeypatch):
+    monkeypatch.setattr("gptscan._get_git_info", lambda p: ("/repo", "."))
+
+    def mock_check_output(cmd, cwd=None, **kwargs):
+        if "rev-list" in cmd:
+            return "hash1\nhash2\nhash3\n"
+        elif "show" in cmd:
+            if "hash2" in cmd:
+                raise subprocess.CalledProcessError(1, cmd)
+            return f"commit {cmd[-1]}\nAuthor: test\n\ndiff --git a/file.py b/file.py\n+new line"
+        return ""
+
+    monkeypatch.setattr("subprocess.check_output", mock_check_output)
+
+    snippets = gptscan.get_git_history_snippets(".", count=3)
+    assert len(snippets) == 2
+    assert snippets[0][0] == "[Git History] commit hash1"
+    assert snippets[1][0] == "[Git History] commit hash3"
