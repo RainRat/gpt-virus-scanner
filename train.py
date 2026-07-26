@@ -1,3 +1,4 @@
+import sys
 import tensorflow as tf
 import numpy as np
 import yaml
@@ -447,31 +448,54 @@ class Predictor:
 
 def load_config(config_path: str) -> Tuple[ModelConfig, Optional[Hyperparameters]]:
     """Loads the training, model, and optimization settings from a YAML file."""
-    with open(config_path, 'r') as f:
-        data = yaml.safe_load(f)
+    try:
+        with open(config_path, 'r') as f:
+            data = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Error: The configuration file '{config_path}' was not found. Please verify the file path and try again.", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"Error: The configuration file '{config_path}' contains invalid YAML syntax.\nDetails: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if not isinstance(data, dict):
+        print(f"Error: The configuration file '{config_path}' must be a YAML dictionary.", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        model_data = data['model']
+        training_data = data['training']
+        prediction_data = data['prediction']
+        weights_data = data['weights']
+    except KeyError as e:
+        print(f"Error: The configuration file is missing a required section: {e}.\nPlease ensure your '{config_path}' contains all necessary sections: 'model', 'training', 'prediction', and 'weights'.", file=sys.stderr)
+        sys.exit(1)
     
-    model_data = data['model']
-    training_data = data['training']
-    prediction_data = data['prediction']
-    weights_data = data['weights']
-    
-    config = ModelConfig(
-        model_name=model_data['name'],
-        max_length=model_data['max_length'],
-        pad_value=model_data['pad_value'],
-        max_params=model_data['max_params'],
-        batch_size=training_data['batch_size'],
-        epochs=training_data['epochs'],
-        validation_split=training_data['validation_split'],
-        patience=training_data['patience'],
-        mode=training_data['mode'],
-        predict_threshold=prediction_data['threshold'],
-        positive_sample_weight=weights_data['positive_sample_weight']
-    )
+    try:
+        config = ModelConfig(
+            model_name=model_data['name'],
+            max_length=model_data['max_length'],
+            pad_value=model_data['pad_value'],
+            max_params=model_data['max_params'],
+            batch_size=training_data['batch_size'],
+            epochs=training_data['epochs'],
+            validation_split=training_data['validation_split'],
+            patience=training_data['patience'],
+            mode=training_data['mode'],
+            predict_threshold=prediction_data['threshold'],
+            positive_sample_weight=weights_data['positive_sample_weight']
+        )
+    except KeyError as e:
+        print(f"Error: A required configuration parameter is missing: {e}.\nPlease check your '{config_path}' file and make sure all parameters are defined under their respective sections.", file=sys.stderr)
+        sys.exit(1)
     
     hp = None
     if 'hyperparameters' in data:
-        hp = Hyperparameters(**data['hyperparameters'])
+        try:
+            hp = Hyperparameters(**data['hyperparameters'])
+        except TypeError as e:
+            print(f"Error: The 'hyperparameters' section in '{config_path}' has invalid or missing parameters.\nDetails: {e}", file=sys.stderr)
+            sys.exit(1)
     
     return config, hp
 
@@ -583,9 +607,18 @@ def main():
         print(f"Output folder: {output_dir}")
         print(f"Threshold: {config.predict_threshold}")
         
+        model_file = Path(f'{config.model_name}.h5')
+        if not model_file.exists():
+            print(f"Error: The trained model file '{model_file}' does not exist.\nPlease train a model first or make sure the file is placed in the project directory.", file=sys.stderr)
+            sys.exit(1)
+
+        if not predict_dir.exists():
+            print(f"Error: The prediction input folder '{predict_dir}' does not exist.\nPlease specify a valid folder containing the files you want to scan.", file=sys.stderr)
+            sys.exit(1)
+
         predictor = Predictor(config)
         predictor.predict(
-            f'{config.model_name}.h5',
+            str(model_file),
             predict_dir,
             output_dir
         )
@@ -595,6 +628,14 @@ def main():
         print(f"Dangerous files: {positive_dir}")
         print(f"Safe files: {negative_dir}")
         
+        if not positive_dir.exists():
+            print(f"Error: The dangerous (positive) dataset directory '{positive_dir}' does not exist.\nPlease create this folder and populate it with examples of dangerous files before starting training.", file=sys.stderr)
+            sys.exit(1)
+
+        if not negative_dir.exists():
+            print(f"Error: The safe (negative) dataset directory '{negative_dir}' does not exist.\nPlease create this folder and populate it with examples of safe files before starting training.", file=sys.stderr)
+            sys.exit(1)
+
         trainer = Trainer(config)
         data_loader = DataLoader(config)
         
