@@ -8,8 +8,8 @@ import gptscan
 def test_import_results_cancels(monkeypatch):
     """Test that cancelling the file dialog does nothing."""
     mock_filedialog = MagicMock()
-    mock_filedialog.askopenfilename.return_value = ""
-    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", mock_filedialog.askopenfilename)
+    mock_filedialog.askopenfilenames.return_value = ()
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilenames", mock_filedialog.askopenfilenames)
 
     # Mock tree to ensure it's not None
     mock_tree = MagicMock()
@@ -34,11 +34,12 @@ def test_import_results_json(monkeypatch, tmp_path):
     json_file = tmp_path / "results.json"
     json_file.write_text(json.dumps(data))
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **kwargs: str(json_file))
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilenames", lambda **kwargs: (str(json_file),))
 
     mock_tree = MagicMock()
     # Mocking __getitem__ to return columns when tree["columns"] is called
     mock_tree.__getitem__.side_effect = lambda key: ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet") if key == "columns" else MagicMock()
+    mock_tree.get_children.return_value = []
     monkeypatch.setattr(gptscan, "tree", mock_tree)
 
     mock_insert = MagicMock()
@@ -49,7 +50,7 @@ def test_import_results_json(monkeypatch, tmp_path):
 
     gptscan.import_results()
 
-    mock_tree.delete.assert_called_once()
+    mock_tree.delete.assert_not_called()
     mock_insert.assert_called_once()
     args, _ = mock_insert.call_args
     assert args[0][0] == "test.py"
@@ -66,10 +67,11 @@ def test_import_results_ndjson(monkeypatch, tmp_path):
         f.write(json.dumps(line1) + "\n")
         f.write(json.dumps(line2) + "\n")
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **kwargs: str(ndjson_file))
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilenames", lambda **kwargs: (str(ndjson_file),))
 
     mock_tree = MagicMock()
     mock_tree.__getitem__.side_effect = lambda key: ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet") if key == "columns" else MagicMock()
+    mock_tree.get_children.return_value = []
     monkeypatch.setattr(gptscan, "tree", mock_tree)
 
     mock_insert = MagicMock()
@@ -89,10 +91,11 @@ def test_import_results_csv(monkeypatch, tmp_path):
         writer.writerow(["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"])
         writer.writerow(["test.py", "50%", "Maybe", "Careful", "60%", "code"])
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **kwargs: str(csv_file))
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilenames", lambda **kwargs: (str(csv_file),))
 
     mock_tree = MagicMock()
     mock_tree.__getitem__.side_effect = lambda key: ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet") if key == "columns" else MagicMock()
+    mock_tree.get_children.return_value = []
     monkeypatch.setattr(gptscan, "tree", mock_tree)
 
     mock_insert = MagicMock()
@@ -116,11 +119,12 @@ def test_import_results_csv_alternative_headers(monkeypatch, tmp_path):
         writer.writerow(headers)
         writer.writerow(data)
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **kwargs: str(csv_file))
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilenames", lambda **kwargs: (str(csv_file),))
 
     mock_tree = MagicMock()
     columns = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "orig_json")
     mock_tree.__getitem__.side_effect = lambda key: columns if key == "columns" else MagicMock()
+    mock_tree.get_children.return_value = []
     monkeypatch.setattr(gptscan, "tree", mock_tree)
 
     mock_insert = MagicMock()
@@ -149,7 +153,7 @@ def test_import_results_invalid_json(monkeypatch, tmp_path):
     bad_file = tmp_path / "bad.json"
     bad_file.write_text("invalid json")
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **kwargs: str(bad_file))
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilenames", lambda **kwargs: (str(bad_file),))
     monkeypatch.setattr(gptscan, "tree", MagicMock())
 
     mock_messagebox = MagicMock()
@@ -158,15 +162,14 @@ def test_import_results_invalid_json(monkeypatch, tmp_path):
     gptscan.import_results()
 
     mock_messagebox.showerror.assert_called()
-    # First argument to showerror is title, second is message
-    assert "Import Failed" in mock_messagebox.showerror.call_args[0][0]
+    assert "Import Errors" in mock_messagebox.showerror.call_args[0][0]
 
 def test_import_results_unsupported_ext(monkeypatch, tmp_path):
     """Test error handling for unsupported file extensions."""
     txt_file = tmp_path / "test.xyz"
     txt_file.write_text("some text")
 
-    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilename", lambda **kwargs: str(txt_file))
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilenames", lambda **kwargs: (str(txt_file),))
     monkeypatch.setattr(gptscan, "tree", MagicMock())
 
     mock_messagebox = MagicMock()
@@ -174,7 +177,7 @@ def test_import_results_unsupported_ext(monkeypatch, tmp_path):
 
     gptscan.import_results()
 
-    mock_messagebox.showerror.assert_called_with("Import Failed", "Could not load results:\nUnsupported file extension: .xyz")
+    mock_messagebox.showerror.assert_called_with("Import Errors", "Failed to load some files:\ntest.xyz: Unsupported file extension: .xyz")
 
 def test_import_results_single_object_json(tmp_path):
     """Test importing a pretty-printed single JSON object result."""
@@ -188,7 +191,6 @@ def test_import_results_single_object_json(tmp_path):
         "line": "42"
     }
     json_file = tmp_path / "single.json"
-    # Write as pretty-printed JSON
     json_file.write_text(json.dumps(data, indent=2))
 
     results = gptscan.load_report_file(str(json_file))
@@ -197,3 +199,69 @@ def test_import_results_single_object_json(tmp_path):
     assert results[0]["path"] == "single.py"
     assert results[0]["gpt_conf"] == "99%"
     assert results[0]["line"] == "42"
+
+def test_import_results_bulk_multiple_files(monkeypatch, tmp_path):
+    """Test importing multiple files at once."""
+    data1 = [{"path": "file1.py", "own_conf": "10%"}]
+    data2 = [{"path": "file2.py", "own_conf": "20%"}]
+    file1 = tmp_path / "report1.json"
+    file2 = tmp_path / "report2.json"
+    file1.write_text(json.dumps(data1))
+    file2.write_text(json.dumps(data2))
+
+    monkeypatch.setattr(gptscan.tkinter.filedialog, "askopenfilenames", lambda **kwargs: (str(file1), str(file2)))
+
+    mock_tree = MagicMock()
+    mock_tree.__getitem__.side_effect = lambda key: ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet") if key == "columns" else MagicMock()
+    mock_tree.get_children.return_value = ["existing_row"] # Simulates already having items in tree
+    monkeypatch.setattr(gptscan, "tree", mock_tree)
+
+    mock_messagebox = MagicMock()
+    mock_messagebox.askyesno.return_value = True # Select "Append"
+    monkeypatch.setattr(gptscan, "messagebox", mock_messagebox)
+
+    mock_insert = MagicMock()
+    monkeypatch.setattr(gptscan, "insert_tree_row", mock_insert)
+
+    mock_clear = MagicMock()
+    monkeypatch.setattr(gptscan, "clear_results", mock_clear)
+
+    mock_status = MagicMock()
+    monkeypatch.setattr(gptscan, "update_status", mock_status)
+
+    gptscan.import_results()
+
+    mock_clear.assert_not_called()  # Since append was requested
+    assert mock_insert.call_count == 2
+    mock_status.assert_called_with("Appended 2 results to current list from report1.json, report2.json")
+
+def test_import_results_directory_recursive(tmp_path):
+    """Test importing results from a directory recursively."""
+    sub_dir = tmp_path / "reports_dir"
+    sub_dir.mkdir()
+
+    nested_dir = sub_dir / "nested"
+    nested_dir.mkdir()
+
+    data1 = [{"path": "nested_file.py", "own_conf": "90%", "snippet": "eval(x)"}]
+    data2 = [{"path": "top_file.py", "own_conf": "50%", "snippet": "exec(y)"}]
+
+    file1 = nested_dir / "report1.json"
+    file2 = sub_dir / "report2.json"
+
+    file1.write_text(json.dumps(data1))
+    file2.write_text(json.dumps(data2))
+
+    # Run generator with directory
+    generator = gptscan.import_results_generator(str(sub_dir))
+    events = list(generator)
+
+    # Filter 'result' events
+    results = [e[1] for e in events if e[0] == 'result']
+    assert len(results) == 2
+
+    # Sort by path to be deterministic
+    results.sort(key=lambda x: x[0])
+
+    assert results[0][0] == "nested_file.py"
+    assert results[1][0] == "top_file.py"
