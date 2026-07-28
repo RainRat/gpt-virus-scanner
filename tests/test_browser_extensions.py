@@ -32,14 +32,64 @@ def test_get_browser_extensions_paths_linux(monkeypatch):
 
     monkeypatch.setattr(Path, "glob", mock_glob)
 
-    # We also need to mock _normalize_and_filter_dirs because it uses os.path.isdir
-    # which we already mocked, but it also uses os.path.abspath and Path.exists.
     monkeypatch.setattr(gptscan, "_normalize_and_filter_dirs", lambda paths: [str(p) for p in paths if p])
 
     paths = get_browser_extensions_paths()
 
     assert str(home / ".config" / "google-chrome" / "Default" / "Extensions") in paths
     assert str(home / ".mozilla" / "firefox" / "profile.default" / "extensions") in paths
+
+def test_get_browser_extensions_paths_win32(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setenv("LOCALAPPDATA", "/Users/user/AppData/Local")
+    monkeypatch.setenv("APPDATA", "/Users/user/AppData/Roaming")
+
+    def mock_glob(self, pattern):
+        s = str(self).replace("\\", "/")
+        if "Google/Chrome/User Data" in s and pattern == "Profile */Extensions":
+            return [Path("/Users/user/AppData/Local/Google/Chrome/User Data/Profile 1/Extensions")]
+        if "Microsoft/Edge/User Data" in s and pattern == "Profile */Extensions":
+            return [Path("/Users/user/AppData/Local/Microsoft/Edge/User Data/Profile 2/Extensions")]
+        if "Mozilla/Firefox/Profiles" in s and pattern == "*/extensions":
+            return [Path("/Users/user/AppData/Roaming/Mozilla/Firefox/Profiles/xyz.default/extensions")]
+        return []
+
+    monkeypatch.setattr(Path, "glob", mock_glob)
+    monkeypatch.setattr(gptscan, "_normalize_and_filter_dirs", lambda paths: [str(p) for p in paths if p])
+
+    paths = get_browser_extensions_paths()
+
+    assert str(Path("/Users/user/AppData/Local/Google/Chrome/User Data/Default/Extensions")) in paths
+    assert str(Path("/Users/user/AppData/Local/Google/Chrome/User Data/Profile 1/Extensions")) in paths
+    assert str(Path("/Users/user/AppData/Local/Microsoft/Edge/User Data/Default/Extensions")) in paths
+    assert str(Path("/Users/user/AppData/Local/Microsoft/Edge/User Data/Profile 2/Extensions")) in paths
+    assert str(Path("/Users/user/AppData/Roaming/Mozilla/Firefox/Profiles/xyz.default/extensions")) in paths
+
+def test_get_browser_extensions_paths_darwin(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    home = Path("/Users/user")
+    monkeypatch.setattr(Path, "home", lambda: home)
+
+    def mock_glob(self, pattern):
+        s = str(self).replace("\\", "/")
+        if "Google/Chrome" in s and pattern == "Profile */Extensions":
+            return [home / "Library" / "Application Support" / "Google" / "Chrome" / "Profile 1" / "Extensions"]
+        if "Microsoft Edge" in s and pattern == "Profile */Extensions":
+            return [home / "Library" / "Application Support" / "Microsoft Edge" / "Profile 2" / "Extensions"]
+        if "Firefox/Profiles" in s and pattern == "*/extensions":
+            return [home / "Library" / "Application Support" / "Firefox" / "Profiles" / "abc.default" / "extensions"]
+        return []
+
+    monkeypatch.setattr(Path, "glob", mock_glob)
+    monkeypatch.setattr(gptscan, "_normalize_and_filter_dirs", lambda paths: [str(p) for p in paths if p])
+
+    paths = get_browser_extensions_paths()
+
+    assert str(home / "Library" / "Application Support" / "Google" / "Chrome" / "Default" / "Extensions") in paths
+    assert str(home / "Library" / "Application Support" / "Google" / "Chrome" / "Profile 1" / "Extensions") in paths
+    assert str(home / "Library" / "Application Support" / "Microsoft Edge" / "Default" / "Extensions") in paths
+    assert str(home / "Library" / "Application Support" / "Microsoft Edge" / "Profile 2" / "Extensions") in paths
+    assert str(home / "Library" / "Application Support" / "Firefox" / "Profiles" / "abc.default" / "extensions") in paths
 
 def test_scan_browser_extensions_click(monkeypatch):
     """Verify the GUI callback for scanning browser extensions."""
