@@ -2799,6 +2799,39 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
     for index, (_, k) in enumerate(values_with_ids):
         tv.move(k, "", index)
 
+    # Clean up all column headers first
+    columns = []
+    try:
+        cols_val = tv["columns"]
+        if isinstance(cols_val, (list, tuple)):
+            columns = list(cols_val)
+        elif isinstance(cols_val, str):
+            columns = [cols_val]
+    except Exception:
+        pass
+
+    if not columns:
+        columns = ["path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet"]
+
+    for c in columns:
+        try:
+            cur_heading = tv.heading(c, "text")
+            if cur_heading and isinstance(cur_heading, str):
+                clean_heading = cur_heading.replace(" ▲", "").replace(" ▼", "").strip()
+                tv.heading(c, text=clean_heading)
+        except Exception:
+            pass
+
+    # Now add the sorted indicator to the current column
+    try:
+        cur_heading = tv.heading(col, "text")
+        if cur_heading and isinstance(cur_heading, str):
+            clean_heading = cur_heading.replace(" ▲", "").replace(" ▼", "").strip()
+            indicator = " ▼" if reverse else " ▲"
+            tv.heading(col, text=f"{clean_heading}{indicator}")
+    except Exception:
+        pass
+
     # Reverse sort order on subsequent clicks of the same column header
     tv.heading(col, command=lambda: sort_column(tv, col, not reverse))
 
