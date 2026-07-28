@@ -6021,6 +6021,32 @@ def generate_markdown(results: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def generate_xml(results: List[Dict[str, Any]]) -> str:
+    """Generate an XML report from the scan results.
+
+    Args:
+        results: List of standardized result dictionaries.
+
+    Returns:
+        The XML report as a string.
+    """
+    import xml.etree.ElementTree as ET
+    root_el = ET.Element("findings")
+    for r in results:
+        finding_el = ET.SubElement(root_el, "finding")
+        for key in ["path", "line", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]:
+            child_el = ET.SubElement(finding_el, key)
+            child_el.text = str(r.get(key, ""))
+
+    try:
+        ET.indent(root_el, space="  ")
+    except AttributeError:
+        pass
+
+    raw_bytes = ET.tostring(root_el, encoding="utf-8")
+    return '<?xml version="1.0" encoding="utf-8"?>\n' + raw_bytes.decode("utf-8")
+
+
 def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
@@ -6112,7 +6138,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             record = dict(zip(keys, data))
             if output_format == 'json':
                 print(json.dumps(record), file=out_stream)
-            elif output_format in ('sarif', 'html', 'markdown', 'report'):
+            elif output_format in ('sarif', 'html', 'markdown', 'report', 'xml'):
                 result_buffer.append(record)
             else:
                 writer.writerow(data)
@@ -6164,6 +6190,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         print(generate_html(result_buffer), file=out_stream)
     elif output_format == 'markdown':
         print(generate_markdown(result_buffer), file=out_stream)
+    elif output_format == 'xml':
+        print(generate_xml(result_buffer), file=out_stream)
     elif output_format == 'report':
         # Sort results by effective threat level (highest first)
         result_buffer.sort(
@@ -6308,12 +6336,39 @@ def parse_triage_report(content: str) -> List[Dict[str, Any]]:
     return final_results
 
 
+def parse_xml_content(content: str) -> List[Dict[str, Any]]:
+    """Parse scan findings from an XML string.
+
+    Args:
+        content: The raw XML string content.
+
+    Returns:
+        A list of result dictionaries.
+    """
+    import xml.etree.ElementTree as ET
+    try:
+        root_el = ET.fromstring(content)
+        if root_el.tag != "findings":
+            return []
+
+        data = []
+        for finding_el in root_el.findall("finding"):
+            item = {}
+            for key in ["path", "line", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet"]:
+                child = finding_el.find(key)
+                item[key] = child.text if child is not None and child.text is not None else ""
+            data.append(item)
+        return data
+    except Exception as e:
+        raise ValueError(f"Failed to parse XML content: {e}")
+
+
 def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Parse report content in JSON, SARIF, or CSV format.
+    """Parse report content in JSON, SARIF, XML, or CSV format.
 
     Args:
         content: The raw string content of the report.
-        filename_hint: Optional filename or extension hint (e.g., '.json', '.csv').
+        filename_hint: Optional filename or extension hint (e.g., '.json', '.csv', '.xml').
 
     Returns:
         A list of standardized result dictionaries.
@@ -6326,7 +6381,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     if filename_hint:
         ext = os.path.splitext(filename_hint)[1].lower()
 
-    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log'):
+    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml'):
         raise ValueError(f"Unsupported file extension: {ext}")
 
     data_to_import = []
@@ -6365,6 +6420,9 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
                     "snippet": html.unescape(snippet_raw.strip())
                 }
                 data_to_import.append(item)
+    elif (content.strip().startswith('<') and ('<findings' in content.lower() or content.startswith('<?xml'))) or ext == '.xml':
+        # XML report format
+        data_to_import = parse_xml_content(content)
     elif content.startswith('[') or (ext in ('.json', '.jsonl', '.ndjson')):
         if content.startswith('['):
             # Standard JSON list
@@ -6543,7 +6601,7 @@ def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None,
                 raise ValueError("Web link content is empty.")
             yield from import_results_from_content_generator(content, filename_hint=file_path)
         elif os.path.isdir(file_path):
-            supported_exts = ('.json', '.jsonl', '.ndjson', '.csv', '.sarif', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log')
+            supported_exts = ('.json', '.jsonl', '.ndjson', '.csv', '.sarif', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml')
             files = []
             for r_dir, _, filenames in os.walk(file_path):
                 for filename in filenames:
@@ -6636,12 +6694,13 @@ def import_results(event: Optional[tk.Event] = None) -> None:
 
     file_paths = filedialog.askopenfilenames(
         filetypes=[
-            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml;*.txt;*.log"),
+            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml;*.txt;*.log;*.xml"),
             ("JSON files", "*.json;*.jsonl;*.ndjson"),
             ("SARIF files", "*.sarif"),
             ("CSV files", "*.csv"),
             ("Markdown files", "*.md;*.markdown"),
             ("HTML files", "*.html;*.htm;*.xhtml"),
+            ("XML files", "*.xml"),
             ("Triage reports", "*.txt;*.log"),
             ("All files", "*.*")
         ],
@@ -6845,6 +6904,7 @@ def export_results(event: Optional[tk.Event] = None) -> None:
             ("HTML files", "*.html"),
             ("JSON files", "*.json"),
             ("SARIF files", "*.sarif"),
+            ("XML files", "*.xml"),
             ("Triage reports", "*.txt;*.log"),
             ("All files", "*.*")
         ],
@@ -6871,6 +6931,9 @@ def export_results(event: Optional[tk.Event] = None) -> None:
         elif ext == '.md':
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(generate_markdown(results))
+        elif ext == '.xml':
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(generate_xml(results))
         elif ext in ('.txt', '.log'):
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(generate_console_report(results, use_color=False))
@@ -9026,6 +9089,7 @@ def main():
     output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format.')
     output_group.add_argument('--html', action='store_true', help='Create an HTML report.')
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report.')
+    output_group.add_argument('--xml', action='store_true', help='Create an XML report.')
     output_group.add_argument('--report', action='store_true', help='Output a report to the terminal.')
 
     args = parser.parse_args()
@@ -9186,6 +9250,8 @@ def main():
             output_format = 'html'
         elif args.markdown:
             output_format = 'markdown'
+        elif args.xml:
+            output_format = 'xml'
         elif args.report:
             output_format = 'report'
         elif args.output:
@@ -9201,6 +9267,8 @@ def main():
                 output_format = 'markdown'
             elif ext == '.csv':
                 output_format = 'csv'
+            elif ext == '.xml':
+                output_format = 'xml'
             elif ext in ('.txt', '.log'):
                 output_format = 'report'
 
