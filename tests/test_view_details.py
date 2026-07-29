@@ -456,3 +456,61 @@ def test_view_details_copy_code_button(mock_view_details_env):
     # Verify local status feedback
     status_bar = captured['labels'][0]
     assert status_bar.config_data.get('text') == "Code copied to clipboard."
+
+
+def test_center_window():
+    import gptscan
+
+    # 1. Test normal case where winfo values are returned
+    mock_window = MagicMock()
+    mock_window.winfo_width.return_value = 500
+    mock_window.winfo_height.return_value = 400
+
+    mock_parent = MagicMock()
+    mock_parent.winfo_width.return_value = 1000
+    mock_parent.winfo_height.return_value = 800
+    mock_parent.winfo_x.return_value = 100
+    mock_parent.winfo_y.return_value = 100
+
+    gptscan.center_window(mock_window, mock_parent)
+    # Expected x = 100 + (1000 - 500) // 2 = 350
+    # Expected y = 100 + (800 - 400) // 2 = 300
+    mock_window.geometry.assert_called_with("500x400+350+300")
+
+    # 2. Test fallback to geometry string parsing when winfo returns <= 1
+    mock_window = MagicMock()
+    mock_window.winfo_width.return_value = 1
+    mock_window.winfo_height.return_value = 1
+    mock_window.geometry.return_value = "500x400+0+0"
+
+    mock_parent = MagicMock()
+    mock_parent.winfo_width.return_value = 1000
+    mock_parent.winfo_height.return_value = 800
+    mock_parent.winfo_x.return_value = 100
+    mock_parent.winfo_y.return_value = 100
+
+    gptscan.center_window(mock_window, mock_parent)
+    # Expected x = 100 + (1000 - 500) // 2 = 350
+    # Expected y = 100 + (800 - 400) // 2 = 300
+    mock_window.geometry.assert_called_with("500x400+350+300")
+
+    # 3. Test bounding to max(0, coordinate) when off-screen
+    mock_window = MagicMock()
+    mock_window.winfo_width.return_value = 600
+    mock_window.winfo_height.return_value = 500
+
+    mock_parent = MagicMock()
+    mock_parent.winfo_width.return_value = 400
+    mock_parent.winfo_height.return_value = 300
+    mock_parent.winfo_x.return_value = 50
+    mock_parent.winfo_y.return_value = 50
+
+    gptscan.center_window(mock_window, mock_parent)
+    # x = 50 + (400 - 600) // 2 = 50 - 100 = -50 -> max(0, -50) = 0
+    # y = 50 + (300 - 500) // 2 = 50 - 100 = -50 -> max(0, -50) = 0
+    mock_window.geometry.assert_called_with("600x500+0+0")
+
+    # 4. Test exception handling (graceful fallback)
+    mock_window = MagicMock()
+    mock_window.winfo_width.side_effect = TypeError("Mocked TypeError")
+    gptscan.center_window(mock_window, mock_parent)
