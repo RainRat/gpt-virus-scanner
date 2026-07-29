@@ -23,15 +23,38 @@ import urllib.request
 import webbrowser
 import zipfile
 from collections import deque
-import tkinter.scrolledtext as scrolledtext
 from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Deque, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
-import tkinter as tk
-from tkinter import messagebox, filedialog, simpledialog
-import tkinter.font
-import tkinter.ttk as ttk
+class Dummy:
+    def __getattr__(self, name):
+        return Dummy
+    def __call__(self, *args, **kwargs):
+        return self
+
+try:
+    import tkinter as tk
+    import tkinter.scrolledtext as scrolledtext
+    from tkinter import messagebox, filedialog, simpledialog
+    import tkinter.font
+    import tkinter.ttk as ttk
+    TK_AVAILABLE = True
+except ImportError:
+    TK_AVAILABLE = False
+    tk = Dummy()
+    scrolledtext = Dummy()
+    messagebox = Dummy()
+    filedialog = Dummy()
+    simpledialog = Dummy()
+    ttk = Dummy()
+    # Also define a dummy tkinter namespace for any direct references like tkinter.font
+    import sys
+    sys.modules['tkinter'] = Dummy()
+    sys.modules['tkinter.font'] = Dummy()
+    sys.modules['tkinter.scrolledtext'] = Dummy()
+    sys.modules['tkinter.ttk'] = Dummy()
+    import tkinter
 
 # Global GUI variables for thread-safe updates and testing
 root: Optional[tk.Tk] = None
@@ -9165,12 +9188,16 @@ def main():
     cli_mode = args.cli or any(cli_targets_or_flags)
 
     if not cli_mode:
-        try:
-            app_root = create_gui(initial_path=scan_target)
-            app_root.mainloop()
-        except tk.TclError as e:
-            print(f"Warning: Failed to initialize GUI ({e}). Falling back to terminal (CLI) mode.", file=sys.stderr)
+        if not TK_AVAILABLE:
+            print("Warning: tkinter is not installed. Falling back to terminal (CLI) mode.", file=sys.stderr)
             cli_mode = True
+        else:
+            try:
+                app_root = create_gui(initial_path=scan_target)
+                app_root.mainloop()
+            except tk.TclError as e:
+                print(f"Warning: Failed to initialize GUI ({e}). Falling back to terminal (CLI) mode.", file=sys.stderr)
+                cli_mode = True
 
     if cli_mode:
         scan_targets = []
