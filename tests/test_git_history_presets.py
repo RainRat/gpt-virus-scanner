@@ -6,6 +6,12 @@ import gptscan
 # Mock the global textbox object
 gptscan.textbox = MagicMock()
 
+@pytest.fixture(autouse=True)
+def setup_textbox():
+    gptscan.textbox = MagicMock()
+    yield
+    gptscan.textbox = None
+
 def test_scan_git_history_click_with_count():
     with patch('gptscan.simpledialog.askinteger') as mock_ask:
         with patch('gptscan.get_git_history_snippets', return_value=['snippet1']) as mock_get:

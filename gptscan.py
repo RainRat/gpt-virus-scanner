@@ -8477,6 +8477,15 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     filter_entry.grid(row=0, column=1, sticky="ew")
     filter_entry.bind('<KeyRelease>', _apply_filter)
     filter_entry.bind('<Return>', on_filter_return)
+
+    def on_filter_escape(event: Optional[tk.Event] = None) -> str:
+        """Clear filter, apply it, and move focus to the treeview."""
+        filter_var.set("")
+        _apply_filter()
+        on_filter_return()
+        return "break"
+
+    filter_entry.bind('<Escape>', on_filter_escape)
     bind_hover_message(filter_entry, "Search results by any column (path, threat level, analysis, snippet). (Ctrl+F)")
 
     def clear_filter():
