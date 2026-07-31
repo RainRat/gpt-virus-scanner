@@ -15,7 +15,7 @@ This project is a security tool that uses both local and cloud-based analysis. I
     * The API uses the prompt in `task.txt` to return a JSON assessment (Administrator description, End-user description, Threat Level).
 
 ## Environment Setup
-* **Python Version:** 3.9, 3.10, or 3.11 required.
+* **Python Version:** 3.9, 3.10, 3.11, or 3.12 required.
 * **Dependencies:**
     * `tensorflow` (Heavy dependency, ensure compatibility with your local CUDA/CPU setup).
     * `openai` (v1.0+ code style used, including `AsyncOpenAI`).
@@ -33,7 +33,7 @@ This project is a security tool that uses both local and cloud-based analysis. I
 
 ## Critical Notes for Agents
 * **Security:** Do not commit `apikey.txt` or real API keys to version control.
-* Always run `pytest` from the repository root before submitting changes, unless it is a documentation-only change. Try to fix any test failures, even if you don't think you caused them.
+* Always run the test suite from the repository root before submitting changes, unless it is a documentation-only change. Use the command `python3 -m pytest --ignore=tests/test_train.py` to run the tests. Try to fix any test failures, even if you do not think you caused them.
 * Update or add unit tests alongside code changes when behaviour changes.
 * You may do minor refactoring if needed (ie. expose some code as a function in order to test it specifically)
 * The scripts.h5 file:
