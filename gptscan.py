@@ -7096,9 +7096,65 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     snippet_toolbar = ttk.Frame(snippet_frame)
     snippet_toolbar.pack(fill=tk.X, pady=(0, 5))
 
-    snippet_text = scrolledtext.ScrolledText(snippet_frame, height=8, font='TkFixedFont', wrap=tk.NONE)
+    snippet_font = tkinter.font.Font(font='TkFixedFont')
+    default_font_size = snippet_font.cget("size")
+    current_size = abs(default_font_size) if default_font_size else 10
+
+    snippet_text = scrolledtext.ScrolledText(snippet_frame, height=8, font=snippet_font, wrap=tk.NONE)
     snippet_text.pack(fill=tk.BOTH, expand=True)
     snippet_text.tag_configure("highlight", background="yellow", foreground="black")
+
+    def set_zoom(new_size):
+        nonlocal current_size
+        current_size = max(6, min(30, new_size))
+        snippet_font.configure(size=current_size)
+        set_local_status(f"Font size set to {current_size}pt.", temporary=True)
+
+    def zoom_in(event=None):
+        set_zoom(current_size + 1)
+        return "break"
+
+    def zoom_out(event=None):
+        set_zoom(current_size - 1)
+        return "break"
+
+    def reset_zoom(event=None):
+        set_zoom(abs(default_font_size) if default_font_size else 10)
+        return "break"
+
+    def on_mouse_wheel(event):
+        if event.state & 4:  # Control key modifier
+            if event.num == 4 or getattr(event, 'delta', 0) > 0:
+                zoom_in()
+            elif event.num == 5 or getattr(event, 'delta', 0) < 0:
+                zoom_out()
+            return "break"
+        return None
+
+    # Windows and macOS mouse wheel
+    snippet_text.bind("<MouseWheel>", on_mouse_wheel)
+    # Linux mouse wheel
+    snippet_text.bind("<Button-4>", on_mouse_wheel)
+    snippet_text.bind("<Button-5>", on_mouse_wheel)
+
+    # Zoom controls UI (packed left in snippet_toolbar)
+    zoom_frame = ttk.Frame(snippet_toolbar)
+    zoom_frame.pack(side=tk.LEFT, padx=2)
+
+    zoom_label = ttk.Label(zoom_frame, text="Zoom:")
+    zoom_label.pack(side=tk.LEFT, padx=(0, 5))
+
+    zoom_out_btn = ttk.Button(zoom_frame, text="-", width=3, command=zoom_out)
+    zoom_out_btn.pack(side=tk.LEFT, padx=1)
+    bind_hover_message(zoom_out_btn, "Decrease font size (Ctrl+-)", label=status_bar)
+
+    zoom_in_btn = ttk.Button(zoom_frame, text="+", width=3, command=zoom_in)
+    zoom_in_btn.pack(side=tk.LEFT, padx=1)
+    bind_hover_message(zoom_in_btn, "Increase font size (Ctrl+=)", label=status_bar)
+
+    zoom_reset_btn = ttk.Button(zoom_frame, text="100%", width=6, command=reset_zoom)
+    zoom_reset_btn.pack(side=tk.LEFT, padx=(4, 0))
+    bind_hover_message(zoom_reset_btn, "Reset font size to default (Ctrl+0)", label=status_bar)
 
     showing_full_source = False
 
@@ -7591,6 +7647,16 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<F5>', lambda e: on_rescan())
     details_win.bind('r', lambda e: on_rescan())
     details_win.bind('R', lambda e: on_rescan())
+
+    # Font Zoom Keyboard Bindings
+    details_win.bind('<Control-plus>', zoom_in)
+    details_win.bind('<Control-equal>', zoom_in)
+    details_win.bind('<Control-minus>', zoom_out)
+    details_win.bind('<Control-Key-0>', reset_zoom)
+    details_win.bind('<Command-plus>', zoom_in)
+    details_win.bind('<Command-equal>', zoom_in)
+    details_win.bind('<Command-minus>', zoom_out)
+    details_win.bind('<Command-Key-0>', reset_zoom)
     refresh_content(current_item_id)
 
 

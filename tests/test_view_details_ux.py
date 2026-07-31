@@ -90,3 +90,99 @@ def test_view_details_keyboard_navigation_prevented(mock_view_details_env):
     mock_tree.selection_set.reset_mock()
     captured_bindings['<Right>'](None)
     mock_tree.selection_set.assert_called_with("item2")
+
+
+def test_view_details_zoom_controls(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py", snippet="snippet_content")
+
+    # Find the zoom buttons
+    assert "btn_+" in captured
+    assert "btn_-" in captured
+    assert "btn_100%" in captured
+
+    # Mock the Font class cget/configure to track size changes
+    mock_font_instance = MagicMock()
+    mock_font_instance.cget.return_value = 10
+    monkeypatch.setattr(gptscan.tkinter.font, 'Font', MagicMock(return_value=mock_font_instance))
+
+    # Re-run setup_details to use the mocked Font class
+    setup_details(mock_view_details_env, "item1", "test.py", snippet="snippet_content")
+
+    # Capture the correct status bar (which is initialized to "Ready")
+    status_bar = [l for l in captured['labels'] if l.config_data.get('text') == "Ready"][-1]
+
+    # Click Zoom In
+    zoom_in_btn, zoom_in_cmd = captured["btn_+"]
+    zoom_in_cmd()
+    mock_font_instance.configure.assert_called_with(size=11)
+    assert "Font size set to 11pt." in status_bar.config_data.get('text', '')
+
+    # Click Zoom Out
+    zoom_out_btn, zoom_out_cmd = captured["btn_-"]
+    zoom_out_cmd()
+    mock_font_instance.configure.assert_called_with(size=10)
+    assert "Font size set to 10pt." in status_bar.config_data.get('text', '')
+
+    # Click Reset Zoom
+    zoom_reset_btn, zoom_reset_cmd = captured["btn_100%"]
+    zoom_reset_cmd()
+    mock_font_instance.configure.assert_called_with(size=10)
+    assert "Font size set to 10pt." in status_bar.config_data.get('text', '')
+
+
+def test_view_details_zoom_shortcuts_and_mousewheel(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+
+    # Track top level bindings
+    captured_bindings = {}
+    mock_toplevel.bind.side_effect = lambda event, func: captured_bindings.update({event: func})
+
+    mock_font_instance = MagicMock()
+    mock_font_instance.cget.return_value = 12
+    monkeypatch.setattr(gptscan.tkinter.font, 'Font', MagicMock(return_value=mock_font_instance))
+
+    setup_details(mock_view_details_env, "item1", "test.py", snippet="snippet_content")
+
+    # Test keyboard shortcuts
+    assert '<Control-plus>' in captured_bindings
+    assert '<Control-minus>' in captured_bindings
+    assert '<Control-Key-0>' in captured_bindings
+
+    # Trigger Control-plus (Zoom In)
+    captured_bindings['<Control-plus>'](None)
+    mock_font_instance.configure.assert_any_call(size=13)
+
+    # Trigger Control-minus (Zoom Out)
+    captured_bindings['<Control-minus>'](None)
+    mock_font_instance.configure.assert_any_call(size=12)
+
+    # Trigger Control-0 (Reset)
+    captured_bindings['<Control-Key-0>'](None)
+    mock_font_instance.configure.assert_any_call(size=12)
+
+    # Find MouseWheel bindings on ScrolledText
+    snippet_st = captured['scrolledtexts'][-1]
+    assert '<MouseWheel>' in snippet_st.bindings
+
+    # Trigger MouseWheel Zoom In (Control state bitmask is 4, delta > 0)
+    mock_event_zoom_in = MagicMock()
+    mock_event_zoom_in.state = 4
+    mock_event_zoom_in.delta = 120
+    snippet_st.bindings['<MouseWheel>'](mock_event_zoom_in)
+    mock_font_instance.configure.assert_any_call(size=13)
+
+    # Trigger MouseWheel Zoom Out (Control state bitmask is 4, delta < 0)
+    mock_event_zoom_out = MagicMock()
+    mock_event_zoom_out.state = 4
+    mock_event_zoom_out.delta = -120
+    snippet_st.bindings['<MouseWheel>'](mock_event_zoom_out)
+    mock_font_instance.configure.assert_any_call(size=12)
+
+    # Trigger MouseWheel without Control (should do nothing to font)
+    mock_font_instance.configure.reset_mock()
+    mock_event_no_ctrl = MagicMock()
+    mock_event_no_ctrl.state = 0
+    mock_event_no_ctrl.delta = 120
+    snippet_st.bindings['<MouseWheel>'](mock_event_no_ctrl)
+    mock_font_instance.configure.assert_not_called()

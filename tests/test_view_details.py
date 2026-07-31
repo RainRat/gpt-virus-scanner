@@ -45,7 +45,7 @@ def mock_view_details_env(monkeypatch):
     # Mock tk.Label/ttk.Label
     class MockLabel:
         def __init__(self, *args, **kwargs):
-            self.config_data = {}
+            self.config_data = dict(kwargs)
         def config(self, **kwargs): self.config_data.update(kwargs)
         def cget(self, key): return self.config_data.get(key, "")
         def grid(self, **kwargs): pass
@@ -62,16 +62,21 @@ def mock_view_details_env(monkeypatch):
         def __init__(self, *args, **kwargs):
             self.content = ""
             self.tags = []
+            self.bindings = {}
+            self.config_data = {}
         def delete(self, start, end): self.content = ""
         def insert(self, idx, val): self.content += val
         def get(self, start, end): return self.content
-        def config(self, **kwargs): pass
+        def config(self, **kwargs): self.config_data.update(kwargs)
+        def configure(self, **kwargs): self.config_data.update(kwargs)
         def pack(self, **kwargs): pass
         def pack_forget(self): pass
         def tag_add(self, tag, start, end): self.tags.append((tag, start, end))
         def tag_configure(self, *args, **kwargs): pass
         def see(self, *args): pass
         def winfo_viewable(self): return True
+        def bind(self, event, func):
+            self.bindings[event] = func
 
     monkeypatch.setattr(gptscan.scrolledtext, 'ScrolledText', MockScrolledText)
 
