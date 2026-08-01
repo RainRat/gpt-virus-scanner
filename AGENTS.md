@@ -15,29 +15,30 @@ This project is a security tool that uses both local and cloud-based analysis. I
     * The API uses the prompt in `task.txt` to return a JSON assessment (Administrator description, End-user description, Threat Level).
 
 ## Environment Setup
-* **Python Version:** 3.9, 3.10, or 3.11 required.
+* **Python Version:** Supports Python 3.9, 3.10, 3.11, or 3.12.
 * **Dependencies:**
-    * `tensorflow` (Heavy dependency, ensure compatibility with your local CUDA/CPU setup).
-    * `openai` (v1.0+ code style used, including `AsyncOpenAI`).
-    * `tkinter` (Usually included with Python, but may need separate install on Linux).
+    * `tensorflow` (To ensure compatibility, install `tensorflow<2.16` on Python 3.9–3.11 or the standard `tensorflow` library without version limits on Python 3.12).
+    * `openai` (Uses the modern v1.0+ API style, including asynchronous calls with `AsyncOpenAI`).
+    * `tkinter` (Standard GUI library. This comes pre-installed on Windows and macOS. Linux users need to install it using their system package manager, such as `python3-tk` or `tk`).
 * **Files Required for Execution:**
-    * `scripts.h5`: The trained model (binary).
-    * `task.txt`: The system prompt for the LLM.
-    * `apikey.txt`: (Optional) OpenAI/Provider API key.
+    * `scripts.h5`: The trained local detection model.
+    * `task.txt`: The prompt templates for the AI analysis.
+    * `apikey.txt`: (Optional) Local file to store your OpenAI, OpenRouter, or other provider keys.
     * `extensions.txt`: (Optional) List of file extensions to scan.
 
 ## Code Conventions
-* **Formatting:** The current codebase is loosely formatted. New contributions should aim for PEP8 style rules.
-* **Error Handling:** GUI operations should not crash the main thread. Use `try/except` blocks wherever necessary when dealing with file I/O and API calls.
-* **Threading:** Scanning operations run on a background thread to keep the UI responsive. UI updates are sent back to the main thread via a queue.
+* **Formatting:** Use PEP 8 guidelines to keep your code clean and organized.
+* **Error Handling:** Make sure GUI operations do not crash the main thread. Always wrap file operations, network requests, and API calls in robust `try/except` blocks.
+* **Threading:** Running a scan should not lock up the user interface. Perform scan operations in a background thread and send status updates to the main thread using a queue.
 
 ## Critical Notes for Agents
-* **Security:** Do not commit `apikey.txt` or real API keys to version control.
-* Always run `pytest` from the repository root before submitting changes, unless it is a documentation-only change. Try to fix any test failures, even if you don't think you caused them.
-* Update or add unit tests alongside code changes when behaviour changes.
-* You may do minor refactoring if needed (ie. expose some code as a function in order to test it specifically)
-* The scripts.h5 file:
-    * Was trained on an older version of Tensorflow
-    * Was trained in 1024-byte chunks
-    * Was trained using ASCII 13 as a filler
-    * You won't be able to retrain it
+* **Security:** Never save or commit `apikey.txt` or real API keys to the repository.
+* **Testing:** To run tests in your local or virtual environment without TensorFlow compatibility issues on Python 3.12, run:
+  ```bash
+  python3 -m pytest --ignore=tests/test_train.py
+  ```
+  Try to fix any test failures, even if you do not think your changes caused them.
+* **Unit Tests:** Always add new unit tests or update existing ones when you modify logic or add features.
+* **Refactoring:** You can do small refactorings (such as moving inline code into helper functions) to make testing easier.
+* **The scripts.h5 Model File:**
+  The default `scripts.h5` model file was trained on an older TensorFlow version in 1024-byte windows, using ASCII 13 for padding. While you cannot retrain this exact model because the original dataset is not included in the repository, you can train a brand-new model using `train.py` on your own dataset. Rename your trained output file to `scripts.h5` and place it in the root folder to use it with `gptscan.py`.
