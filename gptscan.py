@@ -7096,7 +7096,49 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     snippet_toolbar = ttk.Frame(snippet_frame)
     snippet_toolbar.pack(fill=tk.X, pady=(0, 5))
 
-    snippet_text = scrolledtext.ScrolledText(snippet_frame, height=8, font='TkFixedFont', wrap=tk.NONE)
+    # Initialize snippet font safely
+    try:
+        base_font = tkinter.font.nametofont("TkFixedFont")
+        base_size = base_font.actual("size")
+        if not isinstance(base_size, int) or base_size <= 0:
+            base_size = 10
+        font_family = base_font.actual("family")
+    except Exception:
+        base_size = 10
+        font_family = "Courier"
+
+    current_font_size = base_size
+    try:
+        snippet_font = tkinter.font.Font(family=font_family, size=current_font_size)
+    except Exception:
+        snippet_font = "TkFixedFont"
+
+    def update_zoom():
+        if hasattr(snippet_font, "configure"):
+            try:
+                snippet_font.configure(size=current_font_size)
+                set_local_status(f"Font size: {current_font_size}pt", temporary=True)
+            except Exception:
+                pass
+
+    def zoom_in():
+        nonlocal current_font_size
+        if current_font_size < 36:
+            current_font_size += 1
+            update_zoom()
+
+    def zoom_out():
+        nonlocal current_font_size
+        if current_font_size > 6:
+            current_font_size -= 1
+            update_zoom()
+
+    def zoom_reset():
+        nonlocal current_font_size
+        current_font_size = base_size
+        update_zoom()
+
+    snippet_text = scrolledtext.ScrolledText(snippet_frame, height=8, font=snippet_font, wrap=tk.NONE)
     snippet_text.pack(fill=tk.BOTH, expand=True)
     snippet_text.tag_configure("highlight", background="yellow", foreground="black")
 
@@ -7396,6 +7438,23 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_menu_btn["menu"] = copy_menu
 
     # Group: Code View Actions (Toolbar)
+    zoom_frame = ttk.Frame(snippet_toolbar)
+    zoom_frame.pack(side=tk.LEFT, padx=5)
+
+    ttk.Label(zoom_frame, text="Zoom:").pack(side=tk.LEFT, padx=(0, 2))
+
+    zoom_out_btn = ttk.Button(zoom_frame, text="-", width=3, command=zoom_out)
+    zoom_out_btn.pack(side=tk.LEFT, padx=1)
+    bind_hover_message(zoom_out_btn, "Zoom out code viewer. (Ctrl+-)", label=status_bar)
+
+    zoom_in_btn = ttk.Button(zoom_frame, text="+", width=3, command=zoom_in)
+    zoom_in_btn.pack(side=tk.LEFT, padx=1)
+    bind_hover_message(zoom_in_btn, "Zoom in code viewer. (Ctrl+=)", label=status_bar)
+
+    zoom_reset_btn = ttk.Button(zoom_frame, text="100%", width=5, command=zoom_reset)
+    zoom_reset_btn.pack(side=tk.LEFT, padx=1)
+    bind_hover_message(zoom_reset_btn, "Reset code zoom to default. (Ctrl+0)", label=status_bar)
+
     source_toggle_btn = ttk.Button(snippet_toolbar, text="Show Full Source", width=18, command=toggle_source)
     source_toggle_btn.pack(side=tk.RIGHT, padx=2)
     bind_hover_message(source_toggle_btn, "Toggle between the suspicious snippet and the full file content. (Ctrl+U)", label=status_bar)
@@ -7563,6 +7622,17 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     details_win.bind('<Left>', lambda e: on_prev())
     details_win.bind('<Right>', lambda e: on_next())
+
+    # Previous and Next keyboard navigation shortcuts that are always accessible
+    for key in ('<Control-Prior>', '<Control-Next>', '<Command-Prior>', '<Command-Next>'):
+        try:
+            if 'Prior' in key:
+                details_win.bind(key, lambda e: on_prev())
+            else:
+                details_win.bind(key, lambda e: on_next())
+        except Exception:
+            pass
+
     details_win.bind('<Delete>', lambda e: on_exclude())
     details_win.bind('<Escape>', lambda e: details_win.destroy())
     details_win.bind('<Shift-Return>', lambda e: open_file(path_entry.get()))
@@ -7591,6 +7661,47 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<F5>', lambda e: on_rescan())
     details_win.bind('r', lambda e: on_rescan())
     details_win.bind('R', lambda e: on_rescan())
+
+    # Bind zoom keyboard shortcuts safely
+    for key in ('<Control-plus>', '<Control-equal>', '<Control-minus>', '<Control-0>',
+                '<Command-plus>', '<Command-equal>', '<Command-minus>', '<Control-Key-0>',
+                '<Command-Key-0>'):
+        try:
+            if 'plus' in key or 'equal' in key:
+                details_win.bind(key, lambda e: zoom_in())
+            elif 'minus' in key:
+                details_win.bind(key, lambda e: zoom_out())
+            elif '0' in key:
+                details_win.bind(key, lambda e: zoom_reset())
+        except Exception:
+            pass
+
+    def on_mouse_wheel_zoom(event):
+        if event.state & 0x4:  # Control key is held
+            if event.delta > 0:
+                zoom_in()
+            elif event.delta < 0:
+                zoom_out()
+            return "break"
+
+    def on_linux_zoom_up(event):
+        if event.state & 0x4:  # Control key is held
+            zoom_in()
+            return "break"
+
+    def on_linux_zoom_down(event):
+        if event.state & 0x4:  # Control key is held
+            zoom_out()
+            return "break"
+
+    if hasattr(snippet_text, "bind"):
+        try:
+            snippet_text.bind("<MouseWheel>", on_mouse_wheel_zoom)
+            snippet_text.bind("<Button-4>", on_linux_zoom_up)
+            snippet_text.bind("<Button-5>", on_linux_zoom_down)
+        except Exception:
+            pass
+
     refresh_content(current_item_id)
 
 
