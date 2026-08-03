@@ -511,6 +511,20 @@ To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama
 You can provide your API key in four ways:
 *   **In the GUI:** Enter it in the **AI Analysis** panel. It will be saved locally to `apikey.txt`.
 *   **Environment Variables:** Set the `OPENAI_API_KEY` or `OPENROUTER_API_KEY` environment variable in your terminal.
+
+    Here is how to set it for different terminals:
+    *   **macOS / Linux (Bash or Zsh):**
+        ```bash
+        export OPENAI_API_KEY="your-api-key-here"
+        ```
+    *   **Windows (Command Prompt):**
+        ```cmd
+        set OPENAI_API_KEY=your-api-key-here
+        ```
+    *   **Windows (PowerShell):**
+        ```powershell
+        $env:OPENAI_API_KEY="your-api-key-here"
+        ```
 *   **Local File:** Create a file named `apikey.txt` in the project folder and paste your key there.
 *   **Command Line:** Pass your key directly with the `--api-key` (or `-k`) option in your terminal scan.
 
