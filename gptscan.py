@@ -6080,6 +6080,23 @@ def generate_xml(results: List[Dict[str, Any]]) -> str:
     return '<?xml version="1.0" encoding="utf-8"?>\n' + raw_bytes.decode("utf-8")
 
 
+def generate_yaml(results: List[Dict[str, Any]]) -> str:
+    """Generate a YAML report from the scan results.
+
+    Args:
+        results: List of standardized result dictionaries.
+
+    Returns:
+        The YAML report as a string.
+    """
+    try:
+        import yaml
+    except ImportError:
+        raise ImportError("PyYAML is required for YAML export. Please install it first.")
+
+    return yaml.dump(results, sort_keys=False, default_flow_style=False, allow_unicode=True)
+
+
 def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
@@ -6171,7 +6188,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             record = dict(zip(keys, data))
             if output_format == 'json':
                 print(json.dumps(record), file=out_stream)
-            elif output_format in ('sarif', 'html', 'markdown', 'report', 'xml'):
+            elif output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
                 result_buffer.append(record)
             else:
                 writer.writerow(data)
@@ -6225,6 +6242,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         print(generate_markdown(result_buffer), file=out_stream)
     elif output_format == 'xml':
         print(generate_xml(result_buffer), file=out_stream)
+    elif output_format == 'yaml':
+        print(generate_yaml(result_buffer), file=out_stream)
     elif output_format == 'report':
         # Sort results by effective threat level (highest first)
         result_buffer.sort(
@@ -6396,6 +6415,31 @@ def parse_xml_content(content: str) -> List[Dict[str, Any]]:
         raise ValueError(f"Failed to parse XML content: {e}")
 
 
+def parse_yaml_content(content: str) -> List[Dict[str, Any]]:
+    """Parse scan findings from a YAML string.
+
+    Args:
+        content: The raw YAML string content.
+
+    Returns:
+        A list of result dictionaries.
+    """
+    try:
+        import yaml
+    except ImportError:
+        raise ImportError("PyYAML is required for YAML import. Please install it first.")
+
+    try:
+        data = yaml.safe_load(content)
+        if isinstance(data, list):
+            return data
+        elif isinstance(data, dict):
+            return [data]
+        return []
+    except Exception as e:
+        raise ValueError(f"Failed to parse YAML content: {e}")
+
+
 def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:
     """Parse report content in JSON, SARIF, XML, or CSV format.
 
@@ -6414,13 +6458,16 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     if filename_hint:
         ext = os.path.splitext(filename_hint)[1].lower()
 
-    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml'):
+    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml'):
         raise ValueError(f"Unsupported file extension: {ext}")
 
     data_to_import = []
 
     # Auto-detection logic
-    if (content.strip().startswith('<') and ('<table' in content.lower() or '<tr' in content.lower())) or ext in ('.html', '.htm', '.xhtml'):
+    if ext in ('.yaml', '.yml') or (('own_conf:' in content or 'admin_desc:' in content) and not content.startswith('[')):
+        # YAML report format
+        data_to_import = parse_yaml_content(content)
+    elif (content.strip().startswith('<') and ('<table' in content.lower() or '<tr' in content.lower())) or ext in ('.html', '.htm', '.xhtml'):
         # HTML report format
         # Use regex to find rows, ignoring the header row
         rows = re.findall(r'<tr\b[^>]*>(.*?)</tr>', content, re.DOTALL | re.IGNORECASE)
@@ -6729,8 +6776,9 @@ def import_results(event: Optional[tk.Event] = None) -> None:
 
     file_paths = filedialog.askopenfilenames(
         filetypes=[
-            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml;*.txt;*.log;*.xml"),
+            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml;*.txt;*.log;*.xml;*.yaml;*.yml"),
             ("JSON files", "*.json;*.jsonl;*.ndjson"),
+            ("YAML files", "*.yaml;*.yml"),
             ("SARIF files", "*.sarif"),
             ("CSV files", "*.csv"),
             ("Markdown files", "*.md;*.markdown"),
@@ -6914,6 +6962,7 @@ def export_results(event: Optional[tk.Event] = None) -> None:
             ("Markdown files", "*.md"),
             ("HTML files", "*.html"),
             ("JSON files", "*.json"),
+            ("YAML files", "*.yaml;*.yml"),
             ("SARIF files", "*.sarif"),
             ("XML files", "*.xml"),
             ("Triage reports", "*.txt;*.log"),
@@ -6945,6 +6994,9 @@ def export_results(event: Optional[tk.Event] = None) -> None:
         elif ext == '.xml':
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(generate_xml(results))
+        elif ext in ('.yaml', '.yml'):
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(generate_yaml(results))
         elif ext in ('.txt', '.log'):
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(generate_console_report(results, use_color=False))
@@ -9101,6 +9153,7 @@ def main():
     output_group.add_argument('--html', action='store_true', help='Create an HTML report.')
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report.')
     output_group.add_argument('--xml', action='store_true', help='Create an XML report.')
+    output_group.add_argument('--yaml', '--yml', action='store_true', dest='yaml', help='Create a YAML report.')
     output_group.add_argument('--report', action='store_true', help='Output a report to the terminal.')
 
     args = parser.parse_args()
@@ -9263,6 +9316,8 @@ def main():
             output_format = 'markdown'
         elif args.xml:
             output_format = 'xml'
+        elif args.yaml:
+            output_format = 'yaml'
         elif args.report:
             output_format = 'report'
         elif args.output:
@@ -9280,6 +9335,8 @@ def main():
                 output_format = 'csv'
             elif ext == '.xml':
                 output_format = 'xml'
+            elif ext in ('.yaml', '.yml'):
+                output_format = 'yaml'
             elif ext in ('.txt', '.log'):
                 output_format = 'report'
 
