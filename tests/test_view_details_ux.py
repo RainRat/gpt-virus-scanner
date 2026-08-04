@@ -90,3 +90,53 @@ def test_view_details_keyboard_navigation_prevented(mock_view_details_env):
     mock_tree.selection_set.reset_mock()
     captured_bindings['<Right>'](None)
     mock_tree.selection_set.assert_called_with("item2")
+
+
+def test_view_details_robust_shortcuts(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
+    mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
+    raw2 = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1]
+    mock_tree._item_values["item2"] = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1, json.dumps(raw2)]
+    mock_tree.get_children.return_value = ["item1", "item2"]
+
+    captured_bindings = {}
+    mock_toplevel.bind.side_effect = lambda event, func: captured_bindings.update({event: func})
+
+    # Mock focus_get to return a mock widget with class "Text"
+    mock_focused = MagicMock()
+    mock_focused.winfo_class.return_value = "Text"
+    mock_toplevel.focus_get.return_value = mock_focused
+
+    gptscan.view_details(item_id="item1")
+
+    # Verify our new, robust shortcuts are bound
+    robust_shortcuts = [
+        '<Alt-Left>', '<Alt-Right>', '<Alt-Up>', '<Alt-Down>',
+        '<Control-Prior>', '<Control-Next>', '<Command-Prior>', '<Command-Next>'
+    ]
+    for key in robust_shortcuts:
+        assert key in captured_bindings
+
+    # Even though focus is on a Text widget, Alt-Right should STILL navigate to item2
+    mock_tree.selection_set.reset_mock()
+    captured_bindings['<Alt-Right>'](None)
+    mock_tree.selection_set.assert_called_with("item2")
+
+    # Reset and test Alt-Down
+    mock_tree.selection_set.reset_mock()
+    gptscan.view_details(item_id="item1")
+    captured_bindings['<Alt-Down>'](None)
+    mock_tree.selection_set.assert_called_with("item2")
+
+    # Reset and test Control-Next
+    mock_tree.selection_set.reset_mock()
+    gptscan.view_details(item_id="item1")
+    captured_bindings['<Control-Next>'](None)
+    mock_tree.selection_set.assert_called_with("item2")
+
+    # Reset and test Command-Next
+    mock_tree.selection_set.reset_mock()
+    gptscan.view_details(item_id="item1")
+    captured_bindings['<Command-Next>'](None)
+    mock_tree.selection_set.assert_called_with("item2")
