@@ -46,20 +46,54 @@ Type=Application
     assert len(snippets) == 1
     assert b"/usr/bin/test-app --flag" in snippets[0][1]
 
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux-specific test")
-def test_get_system_service_paths(tmp_path):
-    # Mock systemd directories
-    etc_dir = tmp_path / "etc" / "systemd" / "system"
-    etc_dir.mkdir(parents=True)
-    service_file = etc_dir / "test.service"
-    service_file.write_text("[Service]\nExecStart=/bin/ls")
+def test_get_system_service_paths_non_linux(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert get_system_service_paths() == []
 
-    # We need to monkeypatch search_dirs in the function or just test if it returns something on a real system
-    # Given the environment, let's just check if it returns a list of strings
-    paths = get_system_service_paths()
-    assert isinstance(paths, list)
-    for p in paths:
-        assert p.endswith(".service")
+    monkeypatch.setattr(sys, "platform", "darwin")
+    assert get_system_service_paths() == []
+
+def test_get_system_service_paths_linux_mocked(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "linux")
+
+    mock_home = Path("/home/mockuser")
+    monkeypatch.setattr(Path, "home", lambda: mock_home)
+
+    class MockServicePath:
+        def __init__(self, path_str, is_file_val=True, is_symlink_val=False, raise_exc=False):
+            self.path_str = path_str
+            self.is_file_val = is_file_val
+            self.is_symlink_val = is_symlink_val
+            self.raise_exc = raise_exc
+
+        def is_file(self):
+            if self.raise_exc:
+                raise OSError("Access denied")
+            return self.is_file_val
+
+        def is_symlink(self):
+            return self.is_symlink_val
+
+        def __str__(self):
+            return self.path_str
+
+    mock_paths = [
+        MockServicePath("/etc/systemd/system/z_service.service", is_file_val=True, is_symlink_val=False),
+        MockServicePath("/etc/systemd/system/a_service.service", is_file_val=True, is_symlink_val=False),
+        MockServicePath("/lib/systemd/system/symlink.service", is_file_val=True, is_symlink_val=True),
+        MockServicePath("/usr/lib/systemd/system/error.service", raise_exc=True),
+        MockServicePath("/etc/systemd/system/a_service.service", is_file_val=True, is_symlink_val=False),
+    ]
+
+    concrete_path_cls = type(Path())
+    monkeypatch.setattr(concrete_path_cls, "rglob", lambda self, pattern: mock_paths if pattern == "*.service" else [])
+
+    results = get_system_service_paths()
+
+    assert results == [
+        "/etc/systemd/system/a_service.service",
+        "/etc/systemd/system/z_service.service"
+    ]
 
 def test_is_container_service():
     assert Config.is_container("test.service") is True
