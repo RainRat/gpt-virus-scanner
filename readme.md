@@ -40,7 +40,20 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
     git clone https://github.com/RainRat/gpt-virus-scanner.git
     cd gpt-virus-scanner
     ```
-2.  **Install mandatory packages:**
+2.  **Create and activate a virtual environment (recommended):**
+    A virtual environment isolates your packages and prevents conflicts with other software.
+    *   **macOS / Linux:**
+        ```bash
+        python3 -m venv venv
+        source venv/bin/activate
+        ```
+    *   **Windows:**
+        ```cmd
+        python -m venv venv
+        venv\Scripts\activate
+        ```
+3.  **Install mandatory packages:**
+    Make sure you have activated your virtual environment before running these commands.
     *   **For Python 3.9, 3.10, or 3.11:**
         ```bash
         python3 -m pip install "tensorflow<2.16" openai numpy
@@ -49,7 +62,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
         ```bash
         python3 -m pip install tensorflow openai numpy
         ```
-3.  **Install optional packages (if needed):**
+4.  **Install optional packages (if needed):**
     *   **Tkinter (for the window interface on Linux):**
         On Windows and macOS, the window interface works automatically. On Linux, you must install the Tkinter package using your system's package manager. Do not use `pip` to install it.
         *   **Ubuntu / Debian:**
@@ -409,6 +422,7 @@ By default, the scanner prints human-readable text to the terminal. You can cust
 *   `--sarif`: Save results in SARIF format (useful for security scanning tools).
 *   `--html`: Create an interactive HTML report.
 *   `--md` / `--markdown`: Create a Markdown report.
+*   `--xml`: Create an XML report.
 *   `--report`: Output a detailed triage report to the terminal.
 
 To save the formatted output directly to a file, combine any format flag with the `--output` (or `-o`) option:
@@ -502,6 +516,7 @@ You can customize terminal scans using these command line options.
 *   `--sarif`: Save results in SARIF format.
 *   `--html`: Create an interactive HTML report.
 *   `--md`, `--markdown`: Create a Markdown report.
+*   `--xml`: Create an XML report.
 *   `--report`: Output a detailed triage report to the terminal.
 
 ### Setting up AI Analysis
