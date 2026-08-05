@@ -23,15 +23,73 @@ import urllib.request
 import webbrowser
 import zipfile
 from collections import deque
-import tkinter.scrolledtext as scrolledtext
 from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Deque, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
-import tkinter as tk
-from tkinter import messagebox, filedialog, simpledialog
-import tkinter.font
-import tkinter.ttk as ttk
+try:
+    import tkinter as tk
+    from tkinter import messagebox, filedialog, simpledialog
+    import tkinter.font
+    import tkinter.ttk as ttk
+    import tkinter.scrolledtext as scrolledtext
+    HAS_TKINTER = True
+except ImportError:
+    HAS_TKINTER = False
+
+    class DummyVar:
+        def __init__(self, *args, **kwargs): pass
+        def get(self): return False
+        def set(self, val): pass
+        def trace_add(self, *args, **kwargs): pass
+
+    class Dummy:
+        def __init__(self, *args, **kwargs): pass
+        def __getattr__(self, name): return Dummy()
+        def config(self, *args, **kwargs): pass
+        def bind(self, *args, **kwargs): pass
+        def pack(self, *args, **kwargs): pass
+        def grid(self, *args, **kwargs): pass
+        def measure(self, *args, **kwargs): return 100
+
+    tk = Dummy()
+    tk.Tk = Dummy
+    tk.Event = Dummy
+    tk.BooleanVar = DummyVar
+    tk.StringVar = DummyVar
+    tk.Menu = Dummy
+
+    scrolledtext = Dummy()
+    scrolledtext.ScrolledText = Dummy
+
+    messagebox = Dummy()
+    filedialog = Dummy()
+    simpledialog = Dummy()
+
+    ttk = Dummy()
+    ttk.Style = Dummy
+    ttk.Frame = Dummy
+    ttk.Label = Dummy
+    ttk.Entry = Dummy
+    ttk.Button = Dummy
+    ttk.Checkbutton = Dummy
+    ttk.Spinbox = Dummy
+    ttk.Combobox = Dummy
+    ttk.Treeview = Dummy
+    ttk.Scrollbar = Dummy
+    ttk.Progressbar = Dummy
+    ttk.LabelFrame = Dummy
+    ttk.Panedwindow = Dummy
+    ttk.Menubutton = Dummy
+
+    import sys
+    sys.modules['tkinter'] = tk
+    sys.modules['tkinter.font'] = Dummy()
+    sys.modules['tkinter.ttk'] = ttk
+    sys.modules['tkinter.scrolledtext'] = scrolledtext
+    sys.modules['tkinter.messagebox'] = messagebox
+    sys.modules['tkinter.filedialog'] = filedialog
+    sys.modules['tkinter.simpledialog'] = simpledialog
 
 # Global GUI variables for thread-safe updates and testing
 root: Optional[tk.Tk] = None
