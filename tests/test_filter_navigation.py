@@ -71,3 +71,19 @@ def test_on_filter_return_handles_none_tree(monkeypatch):
     monkeypatch.setattr(gptscan, 'tree', None)
     res = gptscan.on_filter_return()
     assert res == "break"
+
+
+def test_on_filter_escape_resets_and_focuses(mock_ui_env, monkeypatch):
+    """Test that on_filter_escape clears the filter, refreshes tree, focuses tree, and returns break."""
+    mock_filter_var = MagicMock()
+    mock_apply_filter = MagicMock()
+
+    monkeypatch.setattr(gptscan, 'filter_var', mock_filter_var)
+    monkeypatch.setattr(gptscan, '_apply_filter', mock_apply_filter)
+
+    res = gptscan.on_filter_escape()
+
+    mock_filter_var.set.assert_called_once_with("")
+    mock_apply_filter.assert_called_once()
+    mock_ui_env['tree'].focus_set.assert_called_once()
+    assert res == "break"

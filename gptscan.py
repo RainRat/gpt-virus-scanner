@@ -8051,6 +8051,16 @@ def focus_filter(event: Optional[tk.Event] = None) -> str:
     return "break"
 
 
+def on_filter_escape(event: Optional[tk.Event] = None) -> str:
+    """Clear the search query, refresh results, shift focus to tree, and break event propagation."""
+    if filter_var:
+        filter_var.set("")
+    _apply_filter()
+    if tree:
+        tree.focus_set()
+    return "break"
+
+
 def on_filter_return(event: Optional[tk.Event] = None) -> str:
     """Move focus from the filter entry to the results tree."""
     if tree:
@@ -8477,6 +8487,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     filter_entry.grid(row=0, column=1, sticky="ew")
     filter_entry.bind('<KeyRelease>', _apply_filter)
     filter_entry.bind('<Return>', on_filter_return)
+    filter_entry.bind('<Escape>', on_filter_escape)
     bind_hover_message(filter_entry, "Search results by any column (path, threat level, analysis, snippet). (Ctrl+F)")
 
     def clear_filter():
