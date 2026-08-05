@@ -68,6 +68,18 @@ def test_load_file_permission_error_multi_line(tmp_path):
     finally:
         f.chmod(0o644)
 
+def test_load_file_directory_error_single_line(tmp_path):
+    d = tmp_path / "somedir"
+    d.mkdir()
+    result = load_file(str(d), mode='single_line')
+    assert result == ""
+
+def test_load_file_directory_error_multi_line(tmp_path):
+    d = tmp_path / "somedir"
+    d.mkdir()
+    result = load_file(str(d), mode='multi_line')
+    assert result == []
+
 # --- format_percent Tests ---
 
 @pytest.mark.parametrize("input_val, expected", [
