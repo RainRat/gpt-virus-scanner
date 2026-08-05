@@ -409,6 +409,8 @@ By default, the scanner prints human-readable text to the terminal. You can cust
 *   `--sarif`: Save results in SARIF format (useful for security scanning tools).
 *   `--html`: Create an interactive HTML report.
 *   `--md` / `--markdown`: Create a Markdown report.
+*   `--xml`: Create an XML report.
+*   `--yaml` / `--yml`: Create a YAML report (requires the `pyyaml` package).
 *   `--report`: Output a detailed triage report to the terminal.
 
 To save the formatted output directly to a file, combine any format flag with the `--output` (or `-o`) option:
@@ -502,6 +504,8 @@ You can customize terminal scans using these command line options.
 *   `--sarif`: Save results in SARIF format.
 *   `--html`: Create an interactive HTML report.
 *   `--md`, `--markdown`: Create a Markdown report.
+*   `--xml`: Create an XML report.
+*   `--yaml`, `--yml`: Create a YAML report.
 *   `--report`: Output a detailed triage report to the terminal.
 
 ### Setting up AI Analysis
@@ -531,7 +535,7 @@ The scanner provides several ways to analyze and manage your results:
     *   **Check on VirusTotal:** Search for the file's hash on VirusTotal.
     *   **View Online:** Open the source file in your web browser (for Git projects and remote web links).
 *   **Export & Import:**
-    *   **Export Results:** Save your scan to a file (CSV, Markdown, HTML, JSON, or SARIF) via **File > Export Results...**.
+    *   **Export Results:** Save your scan to a file (CSV, Markdown, HTML, JSON, SARIF, XML, or YAML) via **File > Export Results...**.
     *   **Import Results:** Load previous scan results from any of the supported formats via **File > Import Results...** or by pasting them from your clipboard (`Ctrl+V`).
 
 ## Customizing the Scanner
