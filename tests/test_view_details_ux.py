@@ -90,3 +90,31 @@ def test_view_details_keyboard_navigation_prevented(mock_view_details_env):
     mock_tree.selection_set.reset_mock()
     captured_bindings['<Right>'](None)
     mock_tree.selection_set.assert_called_with("item2")
+
+def test_view_details_zoom_and_prior_next_navigation(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
+    mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
+    raw2 = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1]
+    mock_tree._item_values["item2"] = ["file2.py", "20%", "Admin", "User", "90%", "snippet2", 1, json.dumps(raw2)]
+    mock_tree.get_children.return_value = ["item1", "item2"]
+
+    captured_bindings = {}
+    mock_toplevel.bind.side_effect = lambda event, func: captured_bindings.update({event: func})
+
+    gptscan.view_details(item_id="item1")
+
+    # Verify key bindings for navigation
+    assert '<Control-Prior>' in captured_bindings
+    assert '<Control-Next>' in captured_bindings
+    assert '<Command-Prior>' in captured_bindings
+    assert '<Command-Next>' in captured_bindings
+
+    # Prior navigates to previous (noop if at first), Next navigates to next
+    captured_bindings['<Control-Next>'](None)
+    mock_tree.selection_set.assert_called_with("item2")
+
+    # Verify key bindings for zoom
+    assert '<Control-plus>' in captured_bindings or '<Control-equal>' in captured_bindings
+    assert '<Control-minus>' in captured_bindings
+    assert '<Control-0>' in captured_bindings
