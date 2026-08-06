@@ -738,6 +738,38 @@ def process_ui_queue() -> None:
         root.after(50, process_ui_queue)
 
 
+def center_window(window: tk.Toplevel, parent: tk.Tk) -> None:
+    """Center a Toplevel window relative to its parent window."""
+    try:
+        window.update_idletasks()
+        width = window.winfo_width()
+        height = window.winfo_height()
+
+        # Safe casting and handling of mock/uninitialized values
+        width = int(width)
+        height = int(height)
+
+        if width <= 1 or height <= 1:
+            geom = window.geometry().split('+')[0]
+            width, height = map(int, geom.split('x'))
+
+        parent_width = int(parent.winfo_width())
+        parent_height = int(parent.winfo_height())
+        parent_x = int(parent.winfo_x())
+        parent_y = int(parent.winfo_y())
+
+        x = parent_x + (parent_width - width) // 2
+        y = parent_y + (parent_height - height) // 2
+
+        # Ensure window is not positioned off-screen (at least partially)
+        x = max(0, x)
+        y = max(0, y)
+
+        window.geometry(f"{width}x{height}+{x}+{y}")
+    except Exception:
+        pass
+
+
 def bind_hover_message(widget: tk.Widget, message: str, label: Optional[ttk.Label] = None) -> None:
     """Bind mouse enter/leave events to update the status label."""
     # Store the previous message to restore it later
@@ -4051,6 +4083,9 @@ def manage_exclusions() -> None:
     ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT, ipady=5)
 
+    center_window(manage_win, root)
+    manage_win.focus_set()
+
 
 def manage_extensions() -> None:
     """Open a dialog to manage scanned file extensions (extensions.txt)."""
@@ -4154,6 +4189,9 @@ def manage_extensions() -> None:
     ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Reset to Defaults", command=reset_defaults).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT, ipady=5)
+
+    center_window(manage_win, root)
+    manage_win.focus_set()
 
 
 def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str] = None) -> Generator[Tuple[str, bytes], None, None]:
@@ -7615,6 +7653,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('r', lambda e: on_rescan())
     details_win.bind('R', lambda e: on_rescan())
     refresh_content(current_item_id)
+    center_window(details_win, root)
+    details_win.focus_set()
 
 
 def open_file(event_or_path: Union[tk.Event, str, None] = None) -> None:
