@@ -606,7 +606,7 @@ class Config:
                     first_line = header[2:].split(b'\n', 1)[0][:126].decode('utf-8', errors='ignore').lower()
                     interpreters = ['python', 'node', 'nodejs', 'javascript', 'bash', 'sh', 'ash', 'dash', 'zsh', 'perl', 'ruby', 'php', 'pwsh', 'powershell', 'lua', 'osascript', 'ipython']
                     escaped_interpreters = [re.escape(i) for i in interpreters]
-                    pattern = r'(?:/|\s|^)(?:' + '|'.join(escaped_interpreters) + r')\d*\b'
+                    pattern = r'(?:/|\s|^)(?:' + '|'.join(escaped_interpreters) + r')\d*(?![\w-])'
                     if re.search(pattern, first_line):
                         return True
         except (OSError, UnicodeDecodeError):
