@@ -412,3 +412,49 @@ triple_array = [
 def test_is_container_pyproject():
     assert Config.is_container("pyproject.toml") is True
     assert Config.is_container("path/to/pyproject.toml") is True
+
+
+def test_pyproject_inline_table_triple_quotes():
+    """Verify that triple-quoted strings inside inline tables in pyproject.toml are handled."""
+    content = b"""
+[tool.pdm.scripts]
+test = { shell = \"\"\"echo "triple"\"\"\" }
+test2 = { cmd = '''echo 'triple2' ''' }
+"""
+    results = list(unpack_content("pyproject.toml", content))
+    scripts = {s[0]: s[1].decode() for s in results}
+
+    assert "pyproject.toml [Script: test]" in scripts
+    assert 'echo "triple"' in scripts["pyproject.toml [Script: test]"]
+    assert "pyproject.toml [Script: test2]" in scripts
+    assert "echo 'triple2'" in scripts["pyproject.toml [Script: test2]"]
+
+
+def test_pyproject_poe_tasks_support():
+    """Verify that [tool.poe.tasks] in pyproject.toml is correctly extracted."""
+    content = b"""
+[tool.poe.tasks]
+test = "pytest"
+serve = { cmd = "python manage.py runserver" }
+expr_task = { expr = "sys.platform" }
+script_task = { script = "my_module:main" }
+
+[tool.poe.tasks.deep]
+shell = "echo deep"
+"""
+    snippets = list(unpack_content("pyproject.toml", content))
+    names = [s[0] for s in snippets]
+
+    assert "pyproject.toml [Script: test]" in names
+    assert "pyproject.toml [Script: serve]" in names
+    assert "pyproject.toml [Script: expr_task]" in names
+    assert "pyproject.toml [Script: script_task]" in names
+    assert "pyproject.toml [Script: deep]" in names
+
+    # Verify content
+    scripts = {s[0]: s[1].decode() for s in snippets}
+    assert scripts["pyproject.toml [Script: test]"] == "pytest"
+    assert scripts["pyproject.toml [Script: serve]"] == "python manage.py runserver"
+    assert scripts["pyproject.toml [Script: expr_task]"] == "sys.platform"
+    assert scripts["pyproject.toml [Script: script_task]"] == "my_module:main"
+    assert scripts["pyproject.toml [Script: deep]"] == "echo deep"
