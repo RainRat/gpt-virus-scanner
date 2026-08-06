@@ -91,7 +91,7 @@ def test_view_details_keyboard_navigation_prevented(mock_view_details_env):
     captured_bindings['<Right>'](None)
     mock_tree.selection_set.assert_called_with("item2")
 
-def test_view_details_zoom_and_prior_next_navigation(mock_view_details_env):
+def test_view_details_zoom_and_robust_shortcuts(mock_view_details_env):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
     mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
@@ -102,19 +102,45 @@ def test_view_details_zoom_and_prior_next_navigation(mock_view_details_env):
     captured_bindings = {}
     mock_toplevel.bind.side_effect = lambda event, func: captured_bindings.update({event: func})
 
+    # Mock focus_get to return a mock widget with class "Text"
+    mock_focused = MagicMock()
+    mock_focused.winfo_class.return_value = "Text"
+    mock_toplevel.focus_get.return_value = mock_focused
+
     gptscan.view_details(item_id="item1")
-
-    # Verify key bindings for navigation
-    assert '<Control-Prior>' in captured_bindings
-    assert '<Control-Next>' in captured_bindings
-    assert '<Command-Prior>' in captured_bindings
-    assert '<Command-Next>' in captured_bindings
-
-    # Prior navigates to previous (noop if at first), Next navigates to next
-    captured_bindings['<Control-Next>'](None)
-    mock_tree.selection_set.assert_called_with("item2")
 
     # Verify key bindings for zoom
     assert '<Control-plus>' in captured_bindings or '<Control-equal>' in captured_bindings
     assert '<Control-minus>' in captured_bindings
     assert '<Control-0>' in captured_bindings
+
+    # Verify our new, robust shortcuts are bound
+    robust_shortcuts = [
+        '<Alt-Left>', '<Alt-Right>', '<Alt-Up>', '<Alt-Down>',
+        '<Control-Prior>', '<Control-Next>', '<Command-Prior>', '<Command-Next>'
+    ]
+    for key in robust_shortcuts:
+        assert key in captured_bindings
+
+    # Even though focus is on a Text widget, Alt-Right should STILL navigate to item2
+    mock_tree.selection_set.reset_mock()
+    captured_bindings['<Alt-Right>'](None)
+    mock_tree.selection_set.assert_called_with("item2")
+
+    # Reset and test Alt-Down
+    mock_tree.selection_set.reset_mock()
+    gptscan.view_details(item_id="item1")
+    captured_bindings['<Alt-Down>'](None)
+    mock_tree.selection_set.assert_called_with("item2")
+
+    # Reset and test Control-Next
+    mock_tree.selection_set.reset_mock()
+    gptscan.view_details(item_id="item1")
+    captured_bindings['<Control-Next>'](None)
+    mock_tree.selection_set.assert_called_with("item2")
+
+    # Reset and test Command-Next
+    mock_tree.selection_set.reset_mock()
+    gptscan.view_details(item_id="item1")
+    captured_bindings['<Command-Next>'](None)
+    mock_tree.selection_set.assert_called_with("item2")

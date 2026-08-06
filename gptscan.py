@@ -7652,9 +7652,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
                 pass
         return False
 
-    def on_prev():
-        if is_input_focused():
-            return
+    def navigate_prev(event: Optional[tk.Event] = None) -> None:
+        """Navigate to the previous scan result in the details view."""
         all_visible = tree.get_children()
         try:
             idx = all_visible.index(current_item_id)
@@ -7666,9 +7665,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         except ValueError:
             pass
 
-    def on_next():
-        if is_input_focused():
-            return
+    def navigate_next(event: Optional[tk.Event] = None) -> None:
+        """Navigate to the next scan result in the details view."""
         all_visible = tree.get_children()
         try:
             idx = all_visible.index(current_item_id)
@@ -7680,30 +7678,37 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         except ValueError:
             pass
 
+    def on_prev():
+        if is_input_focused():
+            return
+        navigate_prev()
+
+    def on_next():
+        if is_input_focused():
+            return
+        navigate_next()
+
     prev_btn = ttk.Button(nav_header, text="< Previous", command=on_prev)
     prev_btn.pack(side=tk.LEFT, ipady=2)
-    bind_hover_message(prev_btn, "View the previous scan result. (Left Arrow)", label=status_bar)
+    bind_hover_message(prev_btn, "View the previous scan result. (Left Arrow, Alt+Left, or Ctrl+PageUp)", label=status_bar)
 
     count_label = ttk.Label(nav_header, text="", font=('TkDefaultFont', 9, 'bold'))
     count_label.pack(side=tk.LEFT, padx=20)
 
     next_btn = ttk.Button(nav_header, text="Next >", command=on_next)
     next_btn.pack(side=tk.LEFT, ipady=2)
-    bind_hover_message(next_btn, "View the next scan result. (Right Arrow)", label=status_bar)
+    bind_hover_message(next_btn, "View the next scan result. (Right Arrow, Alt+Right, or Ctrl+PageDown)", label=status_bar)
 
     details_win.bind('<Left>', lambda e: on_prev())
     details_win.bind('<Right>', lambda e: on_next())
-
-    # Previous and Next keyboard navigation shortcuts that are always accessible
-    for key in ('<Control-Prior>', '<Control-Next>', '<Command-Prior>', '<Command-Next>'):
-        try:
-            if 'Prior' in key:
-                details_win.bind(key, lambda e: on_prev())
-            else:
-                details_win.bind(key, lambda e: on_next())
-        except Exception:
-            pass
-
+    details_win.bind('<Alt-Left>', navigate_prev)
+    details_win.bind('<Alt-Right>', navigate_next)
+    details_win.bind('<Alt-Up>', navigate_prev)
+    details_win.bind('<Alt-Down>', navigate_next)
+    details_win.bind('<Control-Prior>', navigate_prev)
+    details_win.bind('<Control-Next>', navigate_next)
+    details_win.bind('<Command-Prior>', navigate_prev)
+    details_win.bind('<Command-Next>', navigate_next)
     details_win.bind('<Delete>', lambda e: on_exclude())
     details_win.bind('<Escape>', lambda e: details_win.destroy())
     details_win.bind('<Shift-Return>', lambda e: open_file(path_entry.get()))
