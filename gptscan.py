@@ -3228,14 +3228,7 @@ def scan_git_hooks_click():
 
 def scan_git_config_click():
     """Scan potentially dangerous Git configuration settings."""
-    try:
-        snippets = get_git_config_snippets()
-        if snippets:
-            button_click(extra_snippets=snippets)
-        else:
-            messagebox.showinfo("Git Configuration", "No potentially dangerous Git configuration settings were found.")
-    except Exception as e:
-        messagebox.showwarning("Git Configuration Error", f"Could not scan Git configuration: {e}")
+    _generic_scan_click(get_git_config_snippets, "Git Configuration", "No potentially dangerous Git configuration settings were found.", "Git Configuration Error", is_snippets=True)
 
 
 def scan_git_stash_click():
