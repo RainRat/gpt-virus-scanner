@@ -40,8 +40,10 @@ try:
     import tkinter.font
     import tkinter.ttk as ttk
     TK_AVAILABLE = True
+    HAS_TKINTER = True
 except ImportError:
     TK_AVAILABLE = False
+    HAS_TKINTER = False
     tk = Dummy()
     scrolledtext = Dummy()
     messagebox = Dummy()

@@ -301,3 +301,16 @@ def test_scan_documents_click(mocker):
         "The standard Documents folder was not found on this system.",
         "Documents Error"
     )
+
+
+def test_scan_startup_items_click(mocker):
+    mocker.patch("gptscan.get_startup_item_commands", return_value=[("startup", b"cmd")])
+    mock_generic = mocker.patch("gptscan._generic_scan_click")
+    gptscan.scan_startup_items_click()
+    mock_generic.assert_called_once_with(
+        gptscan.get_startup_item_commands,
+        "Startup Items",
+        "No system startup items or LaunchAgents were found.",
+        "Startup Items Error",
+        is_snippets=True
+    )
