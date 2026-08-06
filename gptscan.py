@@ -6979,8 +6979,14 @@ def clear_ai_cache() -> None:
     update_status("AI Analysis cache cleared.")
 
 
-def clear_results() -> None:
+def clear_results(event: Optional[tk.Event] = None) -> Optional[str]:
     """Clear all results from the Treeview and reset progress/status."""
+    if event:
+        # Don't intercept if focus is on an entry or text widget
+        focused = root.focus_get() if root else None
+        if isinstance(focused, (ttk.Entry, tk.Entry, tk.Text, scrolledtext.ScrolledText)):
+            return None
+
     global _all_results_cache, _last_scan_summary, _virtual_source_cache
     _all_results_cache = []
     _last_scan_summary = ""
@@ -6992,6 +6998,7 @@ def clear_results() -> None:
     if progress_bar:
         progress_bar["value"] = 0
     update_status("Ready")
+    return "break"
 
 
 def clear_path_history() -> None:
@@ -8504,7 +8511,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     file_menu.add_command(label="Manage Extensions...", command=manage_extensions)
     file_menu.add_command(label="Copy as CLI Command", command=copy_cli_command, accelerator="Ctrl+Shift+E")
     file_menu.add_separator()
-    file_menu.add_command(label="Clear Results", command=clear_results)
+    file_menu.add_command(label="Clear Results", command=clear_results, accelerator="Ctrl+Shift+Delete")
     file_menu.add_command(label="Clear AI Cache", command=clear_ai_cache)
     file_menu.add_command(label="Clear Path History", command=clear_path_history)
     file_menu.add_separator()
@@ -8889,7 +8896,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     results_menu.add_command(label="Import from Web Link...", command=import_from_url)
     results_menu.add_command(label="Export Results...", command=export_results, accelerator="Ctrl+E")
     results_menu.add_separator()
-    results_menu.add_command(label="Clear Results", command=clear_results)
+    results_menu.add_command(label="Clear Results", command=clear_results, accelerator="Ctrl+Shift+Delete")
     results_button["menu"] = results_menu
 
     # --- Context Menu ---
@@ -8992,6 +8999,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Command-Shift-R>', copy_as_report)
     root.bind('<Control-g>', analyze_selected_with_ai)
     root.bind('<Command-g>', analyze_selected_with_ai)
+    root.bind('<Control-Shift-Delete>', clear_results)
+    root.bind('<Command-Shift-Delete>', clear_results)
     tree.bind('<<TreeviewSelect>>', update_button_states)
     tree.bind('<Control-a>', select_all_items)
     tree.bind('<Command-a>', select_all_items)
