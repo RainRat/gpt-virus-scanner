@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import gptscan
-from gptscan import Config, deep_var, git_var, dry_var, all_var, gpt_var, textbox
+from gptscan import Config, deep_var, git_var, dry_var, all_var, scan_all_var, gpt_var, textbox
 
 @pytest.fixture
 def mock_gui_vars():
@@ -10,14 +10,15 @@ def mock_gui_vars():
          patch('gptscan.git_var', MagicMock()) as mock_git, \
          patch('gptscan.dry_var', MagicMock()) as mock_dry, \
          patch('gptscan.all_var', MagicMock()) as mock_all, \
+         patch('gptscan.scan_all_var', MagicMock()) as mock_scan_all, \
          patch('gptscan.gpt_var', MagicMock()) as mock_gpt, \
          patch('gptscan.textbox', MagicMock()) as mock_textbox:
 
-        # Default mock values
         mock_deep.get.return_value = False
         mock_git.get.return_value = False
         mock_dry.get.return_value = False
         mock_all.get.return_value = False
+        mock_scan_all.get.return_value = False
         mock_gpt.get.return_value = False
         mock_textbox.get.return_value = "/test/path"
 
@@ -26,6 +27,7 @@ def mock_gui_vars():
             'git': mock_git,
             'dry': mock_dry,
             'all': mock_all,
+            'scan_all': mock_scan_all,
             'gpt': mock_gpt,
             'textbox': mock_textbox
         }
@@ -54,7 +56,6 @@ def test_copy_cli_command_basic(mock_gui_vars):
         mock_root.clipboard_append.assert_called_once_with("python gptscan.py /test/path --cli")
 
 def test_copy_cli_command_with_spaces_in_path(mock_gui_vars):
-    # In multi-target mode, paths with spaces must be quoted in the textbox
     mock_gui_vars['textbox'].get.return_value = "'/path with spaces/script.py'"
     with patch('gptscan.root', MagicMock()) as mock_root, \
          patch('gptscan.update_status'):
@@ -110,3 +111,19 @@ def test_copy_cli_command_ui_update(mock_gui_vars):
 
         gptscan.copy_cli_command()
         mock_update_status.assert_called_once_with("CLI command copied to clipboard.")
+
+def test_copy_cli_command_with_unmatched_quote(mock_gui_vars):
+    mock_gui_vars['textbox'].get.return_value = '"unmatched_quote'
+    with patch('gptscan.root', MagicMock()) as mock_root, \
+         patch('gptscan.update_status'):
+        gptscan.copy_cli_command()
+        command = mock_root.clipboard_append.call_args[0][0]
+        assert 'python gptscan.py \\"unmatched_quote --cli' in command or 'python gptscan.py "unmatched_quote" --cli' in command or 'python gptscan.py' in command
+
+def test_copy_cli_command_with_scan_all(mock_gui_vars):
+    mock_gui_vars['scan_all'].get.return_value = True
+    with patch('gptscan.root', MagicMock()) as mock_root, \
+         patch('gptscan.update_status'):
+        gptscan.copy_cli_command()
+        command = mock_root.clipboard_append.call_args[0][0]
+        assert "--all-files" in command
