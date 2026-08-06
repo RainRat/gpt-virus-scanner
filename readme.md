@@ -40,7 +40,28 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
     git clone https://github.com/RainRat/gpt-virus-scanner.git
     cd gpt-virus-scanner
     ```
-2.  **Install mandatory packages:**
+2.  **Create and activate a virtual environment (Recommended):**
+    Using a virtual environment is highly recommended. It keeps your packages organized and avoids installation errors.
+
+    *   **macOS and Linux:**
+        ```bash
+        python3 -m venv venv
+        source venv/bin/activate
+        ```
+    *   **Windows (Command Prompt):**
+        ```cmd
+        python -m venv venv
+        venv\Scripts\activate.bat
+        ```
+    *   **Windows (PowerShell):**
+        ```powershell
+        python -m venv venv
+        .\venv\Scripts\Activate.ps1
+        ```
+
+    *Note: Remember to run the activation command whenever you open a new terminal.*
+
+3.  **Install mandatory packages:**
     *   **For Python 3.9, 3.10, or 3.11:**
         ```bash
         python3 -m pip install "tensorflow<2.16" openai numpy
@@ -49,7 +70,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
         ```bash
         python3 -m pip install tensorflow openai numpy
         ```
-3.  **Install optional packages (if needed):**
+4.  **Install optional packages (if needed):**
     *   **Tkinter (for the window interface on Linux):**
         On Windows and macOS, the window interface works automatically. On Linux, you must install the Tkinter package using your system's package manager. Do not use `pip` to install it.
         *   **Ubuntu / Debian:**
