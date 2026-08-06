@@ -2928,7 +2928,10 @@ def _apply_filter(*args: Any) -> None:
         if _matches_filter(values):
             match_count += 1
             wrapped_values, tags = _prepare_tree_row(values)
-            tree.insert("", tk.END, values=wrapped_values, tags=tags)
+            row_tags = list(tags)
+            if (match_count - 1) % 2 == 1:
+                row_tags.append('odd')
+            tree.insert("", tk.END, values=wrapped_values, tags=tuple(row_tags))
 
     # Update status label with filtered count if not currently scanning
     if current_cancel_event is None:
@@ -2972,7 +2975,12 @@ def insert_tree_row(values: Tuple[Any, ...]) -> None:
     _all_results_cache.append(values)
     if tree and _matches_filter(values):
         wrapped_values, tags = _prepare_tree_row(values)
-        tree.insert("", tk.END, values=wrapped_values, tags=tags)
+        row_tags = list(tags)
+        children = tree.get_children()
+        if isinstance(children, (list, tuple)):
+            if len(children) % 2 == 1:
+                row_tags.append('odd')
+        tree.insert("", tk.END, values=wrapped_values, tags=tuple(row_tags))
 
 
 def update_tree_row(item_id: str, values: Tuple[Any, ...]) -> None:
@@ -2991,7 +2999,16 @@ def update_tree_row(item_id: str, values: Tuple[Any, ...]) -> None:
     if tree and tree.exists(item_id):
         if _matches_filter(values):
             wrapped_values, tags = _prepare_tree_row(values)
-            tree.item(item_id, values=wrapped_values, tags=tags)
+            row_tags = list(tags)
+            children = tree.get_children()
+            if isinstance(children, (list, tuple)):
+                try:
+                    idx = children.index(item_id)
+                    if idx % 2 == 1:
+                        row_tags.append('odd')
+                except ValueError:
+                    pass
+            tree.item(item_id, values=wrapped_values, tags=tuple(row_tags))
         else:
             tree.delete(item_id)
     elif tree and _matches_filter(values):
@@ -8585,6 +8602,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree_frame.rowconfigure(0, weight=1)
 
     tree = ttk.Treeview(tree_frame, style='Scanner.Treeview')
+    tree.tag_configure('odd', background='#f7f8fa')
     tree.tag_configure('high-risk', background='#ffcccc')
     tree.tag_configure('medium-risk', background='#fff0cc')
     tree["columns"] = ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line", "orig_json")
