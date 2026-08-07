@@ -59,7 +59,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
         .\venv\Scripts\Activate.ps1
         ```
 
-    *Note: Remember to run the activation command whenever you open a new terminal.*
+    *Note: Remember to run the activation command whenever you open a new terminal. To exit the virtual environment when you are done, run the command `deactivate`.*
 
 3.  **Install mandatory packages:**
     *   **For Python 3.9, 3.10, or 3.11:**
@@ -86,8 +86,8 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
             ```bash
             sudo pacman -S tk
             ```
-    *   **PyYAML (for training models):**
-        If you want to train your own local scanner models, install PyYAML using pip:
+    *   **PyYAML (for training models and YAML reports):**
+        If you want to train your own local scanner models or export/import YAML reports, install PyYAML using pip:
         ```bash
         python3 -m pip install pyyaml
         ```
@@ -554,6 +554,24 @@ You can provide your API key in four ways:
 *   **Command Line:** Pass your key directly with the `--api-key` (or `-k`) option in your terminal scan.
 
 *Note: Do not share `apikey.txt` or commit it to a public repository.*
+
+#### Local AI Analysis (Ollama)
+You can analyze files locally for free without sharing your data over the internet. To do this, use Ollama on your computer.
+
+1.  **Download Ollama:**
+    Download and install Ollama from [ollama.com](https://ollama.com).
+2.  **Download a model:**
+    Open your terminal and download the default model by running:
+    ```bash
+    ollama run llama3.2
+    ```
+    *Note: You can use other models like `llama3` or `mistral` by running `ollama run <model-name>`.*
+3.  **Run the scanner with Ollama:**
+    *   **In the GUI:** Select **ollama** from the **AI Provider** dropdown list. You can leave the API key blank.
+    *   **In the CLI:** Use the `--provider ollama` flag:
+        ```bash
+        python3 gptscan.py ./my_project --cli --use-gpt --provider ollama
+        ```
 
 #### Custom API Base (Advanced)
 If you use a local proxy or a custom endpoint (like a specific Ollama setup or an OpenAI-compatible server), you can set a custom **API Base** web link in the GUI or with the `--api-base` terminal flag.
