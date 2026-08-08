@@ -6179,7 +6179,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         show_all: Whether to emit every scanned file.
         use_gpt: Whether to request GPT analysis for confident detections.
         rate_limit: Maximum allowed GPT requests per minute.
-        output_format: Format of the output ('csv', 'json', 'sarif', 'html', or 'markdown'). Defaults to 'csv'.
+        output_format: Format of the output ('csv', 'json', 'sarif', 'html', 'markdown', 'xml', 'yaml', or 'report'). Defaults to 'csv'.
         dry_run: Whether to simulate the scan.
         exclude_patterns: List of glob patterns to exclude from the scan.
         fail_threshold: Threat level threshold to trigger a failure count.
@@ -6516,7 +6516,7 @@ def parse_yaml_content(content: str) -> List[Dict[str, Any]]:
 
 
 def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Parse report content in JSON, SARIF, XML, or CSV format.
+    """Parse report content in JSON, SARIF, XML, YAML, Markdown, HTML, Triage Report, or CSV format.
 
     Args:
         content: The raw string content of the report.
@@ -6687,7 +6687,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
 
 
 def load_report_file(file_path: str) -> List[Dict[str, Any]]:
-    """Parse a report file in JSON, SARIF, or CSV format.
+    """Parse a report file in JSON, SARIF, XML, YAML, Markdown, HTML, Triage Report, or CSV format.
 
     Args:
         file_path: Path to the report file.
