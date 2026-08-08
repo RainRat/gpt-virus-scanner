@@ -144,3 +144,96 @@ def test_view_details_zoom_and_robust_shortcuts(mock_view_details_env):
     gptscan.view_details(item_id="item1")
     captured_bindings['<Command-Next>'](None)
     mock_tree.selection_set.assert_called_with("item2")
+
+
+def test_view_details_autofocus(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
+    mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
+    raw2 = ["file2.py", "20%", "", "", "", "snippet2", 1]
+    mock_tree._item_values["item2"] = ["file2.py", "20%", "", "", "", "snippet2", 1, json.dumps(raw2)]
+    mock_tree.get_children.return_value = ["item1", "item2"]
+
+    button_mocks = {}
+    def mock_button(master, **kwargs):
+        btn = MagicMock()
+        text = kwargs.get('text', '')
+        btn.state_val = "normal"
+        def mock_config(**kw):
+            if 'state' in kw:
+                btn.state_val = kw['state']
+        btn.config.side_effect = mock_config
+        btn.cget.side_effect = lambda k: btn.state_val if k == 'state' else ''
+
+        if text:
+            button_mocks[text] = btn
+            captured[f"btn_{text}"] = (btn, kwargs.get('command'))
+        return btn
+
+    monkeypatch.setattr(gptscan.ttk, 'Button', mock_button)
+
+    # 1. Opening on item1 (has next item, so next_btn will have state normal after refresh_content)
+    gptscan.view_details(item_id="item1")
+    button_mocks["Next >"].focus_set.assert_called_once()
+    button_mocks["< Previous"].focus_set.assert_not_called()
+
+    # 2. Reset and test item2 (has prev item, so prev_btn will have state normal and next_btn will be disabled)
+    for m in button_mocks.values():
+        m.focus_set.reset_mock()
+
+    gptscan.view_details(item_id="item2")
+    button_mocks["< Previous"].focus_set.assert_called_once()
+    button_mocks["Next >"].focus_set.assert_not_called()
+
+
+def test_view_details_focus_transition(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
+    mock_tree._item_values["item1"] = ["file1.py", "10%", "", "", "", "snippet1", 1, json.dumps(raw1)]
+    raw2 = ["file2.py", "20%", "", "", "", "snippet2", 1]
+    mock_tree._item_values["item2"] = ["file2.py", "20%", "", "", "", "snippet2", 1, json.dumps(raw2)]
+    mock_tree.get_children.return_value = ["item1", "item2"]
+
+    button_mocks = {}
+    def mock_button(master, **kwargs):
+        btn = MagicMock()
+        text = kwargs.get('text', '')
+        btn.state_val = "normal"
+        def mock_config(**kw):
+            if 'state' in kw:
+                btn.state_val = kw['state']
+        btn.config.side_effect = mock_config
+        btn.cget.side_effect = lambda k: btn.state_val if k == 'state' else ''
+
+        if text:
+            button_mocks[text] = btn
+            captured[f"btn_{text}"] = (btn, kwargs.get('command'))
+        return btn
+
+    monkeypatch.setattr(gptscan.ttk, 'Button', mock_button)
+
+    gptscan.view_details(item_id="item1")
+
+    # Focus is on next_btn
+    mock_toplevel.focus_get.return_value = button_mocks["Next >"]
+
+    # We navigate to item2
+    next_cmd = captured["btn_Next >"][1]
+    next_cmd()
+
+    # Now we are at item2. has_next is False, so next_btn state becomes disabled.
+    # The navigation boundary transition should shift focus to < Previous button
+    button_mocks["< Previous"].focus_set.assert_called()
+
+    # Focus is on prev_btn
+    button_mocks["< Previous"].focus_set.reset_mock()
+    button_mocks["Next >"].focus_set.reset_mock()
+    mock_toplevel.focus_get.return_value = button_mocks["< Previous"]
+
+    # Navigate back to item1
+    prev_cmd = captured["btn_< Previous"][1]
+    prev_cmd()
+
+    # Navigating back to item1 makes has_prev False (disabled).
+    # Focus should shift back to Next > button
+    button_mocks["Next >"].focus_set.assert_called()
