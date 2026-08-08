@@ -35,15 +35,26 @@ Train the local model (the detection model) for the GPT Virus Scanner. It learns
 
     *Note: Remember to run the activation command whenever you open a new terminal.*
 
-3.  **Install requirements:** Open your terminal and run the appropriate command:
-    *   **For Python 3.9, 3.10, or 3.11:**
-        ```bash
-        python3 -m pip install "tensorflow<2.16" numpy pyyaml
-        ```
-    *   **For Python 3.12:**
-        ```bash
-        python3 -m pip install tensorflow numpy pyyaml
-        ```
+3.  **Install requirements:** Open your terminal and run the appropriate command based on your operating system:
+
+    *   **macOS and Linux:**
+        *   **For Python 3.9, 3.10, or 3.11:**
+            ```bash
+            python3 -m pip install "tensorflow<2.16" numpy pyyaml
+            ```
+        *   **For Python 3.12:**
+            ```bash
+            python3 -m pip install tensorflow numpy pyyaml
+            ```
+    *   **Windows:**
+        *   **For Python 3.9, 3.10, or 3.11:**
+            ```cmd
+            python -m pip install "tensorflow<2.16" numpy pyyaml
+            ```
+        *   **For Python 3.12:**
+            ```cmd
+            python -m pip install tensorflow numpy pyyaml
+            ```
 
 ## Configuration
 
@@ -115,6 +126,8 @@ project/
 ```
 
 ## Usage
+
+*Note: If you are on Windows, use `python` instead of `python3` for all the terminal examples shown below.*
 
 ### Basic Training
 

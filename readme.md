@@ -62,14 +62,27 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
     *Note: Remember to run the activation command whenever you open a new terminal. To exit the virtual environment when you are done, run the command `deactivate`.*
 
 3.  **Install mandatory packages:**
-    *   **For Python 3.9, 3.10, or 3.11:**
-        ```bash
-        python3 -m pip install "tensorflow<2.16" openai numpy
-        ```
-    *   **For Python 3.12:**
-        ```bash
-        python3 -m pip install tensorflow openai numpy
-        ```
+    Choose the command based on your operating system and Python version.
+
+    *   **macOS and Linux:**
+        *   **For Python 3.9, 3.10, or 3.11:**
+            ```bash
+            python3 -m pip install "tensorflow<2.16" openai numpy
+            ```
+        *   **For Python 3.12:**
+            ```bash
+            python3 -m pip install tensorflow openai numpy
+            ```
+    *   **Windows:**
+        *   **For Python 3.9, 3.10, or 3.11:**
+            ```cmd
+            python -m pip install "tensorflow<2.16" openai numpy
+            ```
+        *   **For Python 3.12:**
+            ```cmd
+            python -m pip install tensorflow openai numpy
+            ```
+
 4.  **Install optional packages (if needed):**
     *   **Tkinter (for the window interface on Linux):**
         On Windows and macOS, the window interface works automatically. On Linux, you must install the Tkinter package using your system's package manager. Do not use `pip` to install it.
@@ -88,13 +101,28 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
             ```
     *   **PyYAML (for training models and YAML reports):**
         If you want to train your own local scanner models or export/import YAML reports, install PyYAML using pip:
-        ```bash
-        python3 -m pip install pyyaml
-        ```
+
+        *   **macOS and Linux:**
+            ```bash
+            python3 -m pip install pyyaml
+            ```
+        *   **Windows:**
+            ```cmd
+            python -m pip install pyyaml
+            ```
 
 ## How to use
 ### Using the Window (GUI)
-Run `python3 gptscan.py` to open the scanner window.
+Open the scanner window by running the appropriate command for your operating system:
+
+*   **macOS and Linux:**
+    ```bash
+    python3 gptscan.py
+    ```
+*   **Windows:**
+    ```cmd
+    python gptscan.py
+    ```
 
 Access these options from the **Browse** menu:
 #### Common Scans
@@ -218,6 +246,8 @@ The scanner includes shortcuts for faster navigation.
 
 ### Using the Terminal (CLI)
 To run the scanner in your terminal, use the `--cli` flag.
+
+*Note: If you are on Windows, use `python` instead of `python3` for all the terminal examples shown below.*
 
 #### Basic Usage
 Scan a single file or folder:
@@ -610,10 +640,16 @@ See [Training the Local Scanner](train.md) for more information.
 If you want to contribute to the project or run the test suite, you can install the test dependencies and run the tests.
 
 #### 1. Install test packages
-Run the following command to install the required testing packages (including `pyyaml` which is needed for training and YAML configuration tests):
-```bash
-python3 -m pip install pytest pytest-asyncio pytest-mock pytest-cov Pillow pyyaml
-```
+Install the required testing packages by running the appropriate command:
+
+*   **macOS and Linux:**
+    ```bash
+    python3 -m pip install pytest pytest-asyncio pytest-mock pytest-cov Pillow pyyaml
+    ```
+*   **Windows:**
+    ```cmd
+    python -m pip install pytest pytest-asyncio pytest-mock pytest-cov Pillow pyyaml
+    ```
 
 #### 2. Run the full test suite
 To run all tests, run:
