@@ -3528,7 +3528,15 @@ def scan_recently_modified_click(duration_str: Optional[str] = None):
     if duration_str:
         duration = parse_duration(duration_str)
         if duration is None:
-            messagebox.showerror("Error", f"Invalid duration format: {duration_str}")
+            messagebox.showerror(
+                "Invalid Duration Format",
+                f"The entered duration '{duration_str}' is not valid.\n\n"
+                "Please use a number followed by a unit:\n"
+                "- 'm' for minutes (for example: 30m)\n"
+                "- 'h' for hours (for example: 24h)\n"
+                "- 'd' for days (for example: 7d)\n"
+                "- 'w' for weeks (for example: 2w)"
+            )
             return
         modified_since = time.time() - duration
         button_click(modified_since=modified_since)
@@ -9361,14 +9369,14 @@ def main():
     output_group.add_argument('--cli', action='store_true', help='Run in the terminal instead of opening a window.')
     output_group.add_argument('-a', '--show-all', action='store_true', help='Show all scanned files, even safe ones.')
     output_group.add_argument('-o', '--output', type=str, help='Save the results to a file.')
-    output_group.add_argument('-j', '--json', action='store_true', help='Output results as JSON.')
-    output_group.add_argument('--csv', action='store_true', help='Output results as CSV.')
-    output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format.')
-    output_group.add_argument('--html', action='store_true', help='Create an HTML report.')
+    output_group.add_argument('-j', '--json', action='store_true', help='Print or save scan results in JSON format.')
+    output_group.add_argument('--csv', action='store_true', help='Print or save scan results in CSV format.')
+    output_group.add_argument('--sarif', action='store_true', help='Save scan results in SARIF format.')
+    output_group.add_argument('--html', action='store_true', help='Create an interactive HTML report.')
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report.')
     output_group.add_argument('--xml', action='store_true', help='Create an XML report.')
     output_group.add_argument('--yaml', '--yml', action='store_true', dest='yaml', help='Create a YAML report.')
-    output_group.add_argument('--report', action='store_true', help='Output a report to the terminal.')
+    output_group.add_argument('--report', action='store_true', help='Print a detailed triage report to the terminal.')
 
     args = parser.parse_args()
 
@@ -9412,8 +9420,12 @@ def main():
     if args.max_size:
         try:
             Config.MAX_FILE_SIZE = parse_size_string(args.max_size)
-        except ValueError as e:
-            parser.error(f"Invalid --max-size: {e}")
+        except ValueError:
+            parser.error(
+                f"Invalid format for --max-size: '{args.max_size}'. "
+                "Please use a number followed by a unit like KB, MB, or GB. "
+                "For example: '10MB' or '500KB'."
+            )
 
     Config.THRESHOLD = args.threshold
 
@@ -9757,7 +9769,11 @@ def main():
         if args.modified:
             duration = parse_duration(args.modified)
             if duration is None:
-                parser.error(f"Invalid duration format for --modified: {args.modified}")
+                parser.error(
+                    f"Invalid format for --modified: '{args.modified}'. "
+                    "Please use a number followed by a unit like 'm' (minutes), 'h' (hours), 'd' (days), or 'w' (weeks). "
+                    "For example: '24h' or '7d'."
+                )
             modified_since = time.time() - duration
 
         threats = run_cli(
