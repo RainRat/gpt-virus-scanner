@@ -1,4 +1,3 @@
-
 apikey.txt
 gpt-tmp.txt
 __pycache__/
@@ -7,3 +6,4 @@ __pycache__/
 .pytest_cache/
 .gptscan_settings.json
 .gptscan_cache.json
+venv/
