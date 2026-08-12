@@ -317,6 +317,68 @@ def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = Non
         return data
 
 
+def parse_ignore_file(file_path: Union[Path, str]) -> List[str]:
+    """Parse patterns from an ignore file (.gptscanignore or .gitignore).
+
+    Args:
+        file_path: The Path or path string to the ignore file.
+
+    Returns:
+        A list of non-empty, non-comment pattern strings.
+    """
+    patterns = []
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                parts = line.split('#', 1)
+                pattern = parts[0].strip()
+                if pattern:
+                    patterns.append(pattern)
+    except Exception:
+        pass
+    return patterns
+
+
+def discover_local_ignore_patterns(local_targets: List[str]) -> List[Tuple[Path, str]]:
+    """Discover .gptscanignore and .gitignore files in local target directories and load their patterns.
+
+    Args:
+        local_targets: Normalized list of local target file or folder paths.
+
+    Returns:
+        A list of tuples: (ignore_dir_path, pattern_string)
+    """
+    ignore_rules = []
+    for target in local_targets:
+        tgt_path = Path(target)
+        if not tgt_path.exists():
+            continue
+        if tgt_path.is_file():
+            # For a file, check its immediate parent directory only (non-recursively)
+            for ignore_name in ('.gptscanignore', '.gitignore'):
+                ignore_file = tgt_path.parent / ignore_name
+                if ignore_file.is_file():
+                    patterns = parse_ignore_file(ignore_file)
+                    for pat in patterns:
+                        ignore_rules.append((tgt_path.parent, pat))
+        else:
+            # For a directory, recursively discover ignore files in it and its subdirectories
+            try:
+                for ignore_name in ('.gptscanignore', '.gitignore'):
+                    for item in tgt_path.rglob(ignore_name):
+                        if item.is_file():
+                            parent = item.parent
+                            patterns = parse_ignore_file(item)
+                            for pat in patterns:
+                                ignore_rules.append((parent, pat))
+            except Exception:
+                pass
+    return ignore_rules
+
+
 class Config:
     """Global configuration settings for the scanner."""
     VERSION = "1.4.0"
@@ -5088,6 +5150,26 @@ def scan_files(
             if not any(f.match(p) or any(parent.match(p) for parent in f.parents) for p in exclude_patterns)
         ]
 
+    # Discover and apply local ignore patterns (.gptscanignore and .gitignore)
+    local_ignore_rules = discover_local_ignore_patterns(local_targets)
+    if local_ignore_rules:
+        filtered_list = []
+        for f in file_list:
+            f_abs = f.resolve()
+            ignored = False
+            for ignore_dir, pattern in local_ignore_rules:
+                ignore_dir_abs = ignore_dir.resolve()
+                try:
+                    rel_path = f_abs.relative_to(ignore_dir_abs)
+                    if rel_path.match(pattern) or any(parent.match(pattern) for parent in rel_path.parents):
+                        ignored = True
+                        break
+                except ValueError:
+                    continue
+            if not ignored:
+                filtered_list.append(f)
+        file_list = filtered_list
+
     # Pre-process snippets from file_list and extra_snippets using unpack_content
     processed_snippets: List[Tuple[str, bytes]] = []
     # Preserve extra_snippets (from clipboard, stdin)
@@ -9090,6 +9172,11 @@ def main():
         help="Ignore files or folders matching these patterns (for example: 'node_modules/*')."
     )
     scan_group.add_argument(
+        '--exclude-file',
+        type=str,
+        help='Read a list of exclude patterns from a file.'
+    )
+    scan_group.add_argument(
         '--file-list',
         type=argparse.FileType('r'),
         help='Read a list of files to scan from a text file.'
@@ -9558,7 +9645,21 @@ def main():
             elif ext in ('.txt', '.log'):
                 output_format = 'report'
 
-        final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or [])))
+        exclude_file_patterns = []
+        if args.exclude_file:
+            try:
+                with open(args.exclude_file, "r", encoding="utf-8", errors="replace") as ef:
+                    for line in ef:
+                        line = line.strip()
+                        if line and not line.startswith('#'):
+                            parts = line.split('#', 1)
+                            pat = parts[0].strip()
+                            if pat:
+                                exclude_file_patterns.append(pat)
+            except Exception as e:
+                parser.error(f"Could not read exclude file '{args.exclude_file}': {e}")
+
+        final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or []) + exclude_file_patterns))
 
         if args.stdin:
             try:
