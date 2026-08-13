@@ -7640,10 +7640,21 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         total = len(all_visible)
         try:
             idx = all_visible.index(new_id)
-            prev_btn.config(state='normal' if idx > 0 else 'disabled')
-            next_btn.config(state='normal' if idx < total - 1 else 'disabled')
+            has_prev = idx > 0
+            has_next = idx < total - 1
+            prev_btn.config(state='normal' if has_prev else 'disabled')
+            next_btn.config(state='normal' if has_next else 'disabled')
             count_label.config(text=f"Result {idx + 1} of {total}")
             details_win.title(f"Result {idx + 1} of {total} - {os.path.basename(path)}")
+
+            # Gracefully manage focus transitions if navigating boundary disables current focused button
+            focused = details_win.focus_get()
+            if str(focused) == str(next_btn) and not has_next:
+                if has_prev:
+                    prev_btn.focus_set()
+            elif str(focused) == str(prev_btn) and not has_prev:
+                if has_next:
+                    next_btn.focus_set()
         except ValueError:
             prev_btn.config(state='disabled')
             next_btn.config(state='disabled')
@@ -7843,7 +7854,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     refresh_content(current_item_id)
     center_window(details_win, root)
-    details_win.focus_set()
+
+    # Automatically focus the appropriate navigation button for seamless sequential review
+    if next_btn.cget('state') == 'normal':
+        next_btn.focus_set()
+    elif prev_btn.cget('state') == 'normal':
+        prev_btn.focus_set()
+    else:
+        details_win.focus_set()
 
 
 def open_file(event_or_path: Union[tk.Event, str, None] = None) -> None:
