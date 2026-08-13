@@ -58,3 +58,14 @@ def test_scan_running_processes_click_empty(mock_showinfo, mock_get_cmds):
     scan_running_processes_click()
 
     mock_showinfo.assert_called_once()
+
+
+def test_get_running_process_commands_windows_single_dict():
+    mock_json = json.dumps({"Name": "single_proc.exe", "CommandLine": "single_proc.exe --run"})
+    with patch("sys.platform", "win32"):
+        with patch("subprocess.check_output", return_value=mock_json):
+            processes = get_running_process_commands()
+
+            assert len(processes) == 1
+            assert processes[0][0] == "[Process] single_proc.exe"
+            assert processes[0][1] == b"single_proc.exe --run"
