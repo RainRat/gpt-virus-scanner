@@ -6170,7 +6170,7 @@ def generate_yaml(results: List[Dict[str, Any]]) -> str:
     return yaml.safe_dump(results, default_flow_style=False, sort_keys=False)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6187,6 +6187,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
         import_file: Path to a previous scan report to import and process.
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
+        baseline_file: Path to a previous report file to use as a baseline to filter out existing findings.
 
     Returns:
         The number of suspicious files detected.
@@ -6198,6 +6199,17 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     if output_format == 'csv':
         writer = csv.writer(out_stream)
         writer.writerow(keys)
+
+    baseline_set = set()
+    matched_baseline_count = 0
+    if baseline_file:
+        try:
+            baseline_items = load_report_file(baseline_file)
+            baseline_set = {get_finding_signature(item) for item in baseline_items}
+            print(f"Loaded {len(baseline_set)} baseline findings from {os.path.basename(baseline_file)}.", file=sys.stderr)
+        except Exception as e:
+            print(f"Error loading baseline file {baseline_file}: {e}", file=sys.stderr)
+            sys.exit(1)
 
     cancel_event = threading.Event()
     final_progress: Optional[Tuple[int, int]] = None
@@ -6242,6 +6254,13 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             # data format: (path, own_conf, admin, user, gpt_conf, snippet)
             conf = get_effective_threat_level(data[1], data[4])
 
+            record = dict(zip(keys, data))
+            if baseline_set:
+                record_sig = get_finding_signature(record)
+                if record_sig in baseline_set:
+                    matched_baseline_count += 1
+                    continue
+
             # Determine if this finding counts as a threat based on the threshold
             is_threat = False
             if fail_threshold is not None:
@@ -6258,7 +6277,6 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 else:
                     medium_risk_found += 1
 
-            record = dict(zip(keys, data))
             if output_format == 'json':
                 print(json.dumps(record), file=out_stream)
             elif output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
@@ -6304,6 +6322,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             high_risk=high_risk_found,
             medium_risk=medium_risk_found
         )
+        if baseline_file:
+            summary += f" (Bypassed {matched_baseline_count} baseline findings)"
         print(summary, file=sys.stderr)
 
     if output_format == 'sarif':
@@ -6370,6 +6390,27 @@ def standardize_result_dict(item: Any) -> Dict[str, Any]:
     if not res.get('own_conf') and res.get('gpt_conf'):
         res['own_conf'] = res['gpt_conf']
     return res
+
+
+def get_finding_signature(item: Dict[str, Any]) -> Tuple[str, str]:
+    """Get a normalized signature for a finding to use for baseline matching.
+
+    Args:
+        item: A dictionary representing a finding.
+
+    Returns:
+        A tuple of (normalized_path, identifier) where identifier is the stripped
+        snippet or a line number fallback if snippet is empty.
+    """
+    path = str(item.get("path") or "").strip()
+    normalized_path = os.path.normpath(path).replace('\\', '/')
+
+    snippet = str(item.get("snippet") or "").strip()
+    if not snippet:
+        line = str(item.get("line") or "-").strip()
+        return (normalized_path, f"__line__:{line}")
+
+    return (normalized_path, snippet)
 
 
 def strip_ansi(text: str) -> str:
@@ -9126,6 +9167,11 @@ def main():
         help='Import results from a previous scan. Use "-" to read from the terminal.'
     )
     scan_group.add_argument(
+        '--baseline',
+        type=str,
+        help='A previous report file (any supported format) to act as a baseline. Existing findings in this baseline will be filtered out.'
+    )
+    scan_group.add_argument(
         '--max-size',
         type=str,
         help='The maximum file size to scan (for example: "10MB"). Default is 10MB.'
@@ -9378,7 +9424,7 @@ def main():
         print("AI Analysis cache cleared.", file=sys.stderr)
         # If we ONLY wanted to clear cache, exit now.
         if not any([
-            args.target, args.path, args.stdin, args.clipboard, args.import_results, args.files,
+            args.target, args.path, args.stdin, args.clipboard, args.import_results, args.baseline, args.files,
             args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
             args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
@@ -9420,7 +9466,7 @@ def main():
     scan_target = args.target or args.path
 
     cli_targets_or_flags = [
-        args.stdin, args.clipboard, args.import_results,
+        args.stdin, args.clipboard, args.import_results, args.baseline,
         args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
         args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.shell_profiles, args.shell_history, args.system_path,
         args.running_processes, args.scheduled_tasks, args.startup_items,
@@ -9773,7 +9819,8 @@ def main():
             output_file=args.output,
             extra_snippets=extra_snippets,
             import_file=args.import_results,
-            modified_since=modified_since
+            modified_since=modified_since,
+            baseline_file=args.baseline
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
