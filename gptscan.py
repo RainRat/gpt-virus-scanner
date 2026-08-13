@@ -3235,30 +3235,24 @@ def scan_git_config_click():
 
 def scan_git_stash_click():
     """Scan all Git stashes."""
-    try:
-        target_path = _get_target_path()
-
-        snippets = get_git_stash_snippets(target_path)
-        if snippets:
-            button_click(extra_snippets=snippets)
-        else:
-            messagebox.showinfo("Git Stash", "No Git stashes found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Git Stash Error", f"Could not scan Git stashes: {e}")
+    _generic_scan_click(
+        lambda: get_git_stash_snippets(_get_target_path()),
+        "Git Stash",
+        "No Git stashes found to scan.",
+        "Git Stash Error",
+        is_snippets=True
+    )
 
 
 def scan_git_conflicts_click():
     """Scan files with Git merge conflicts."""
-    try:
-        target_path = _get_target_path()
-
-        snippets = get_git_conflict_snippets(target_path)
-        if snippets:
-            button_click(extra_snippets=snippets)
-        else:
-            messagebox.showinfo("Git Conflicts", "No Git merge conflicts found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Git Conflicts Error", f"Could not scan Git conflicts: {e}")
+    _generic_scan_click(
+        lambda: get_git_conflict_snippets(_get_target_path()),
+        "Git Conflicts",
+        "No Git merge conflicts found to scan.",
+        "Git Conflicts Error",
+        is_snippets=True
+    )
 
 
 def get_git_conflict_snippets(path: str = ".") -> List[Tuple[str, bytes]]:
