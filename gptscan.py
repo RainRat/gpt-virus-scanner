@@ -82,7 +82,8 @@ reveal_button: Optional[ttk.Button] = None
 intel_button: Optional[ttk.Menubutton] = None
 intel_menu: Optional[tk.Menu] = None
 results_button: Optional[ttk.Menubutton] = None
-browse_button: Optional[ttk.Menubutton] = None
+browse_button: Optional[ttk.Button] = None
+browse_arrow: Optional[ttk.Menubutton] = None
 show_key_btn: Optional[ttk.Button] = None
 copy_cmd_button: Optional[ttk.Button] = None
 clear_target_btn: Optional[ttk.Button] = None
@@ -3146,7 +3147,7 @@ def set_scanning_state(is_scanning: bool) -> None:
 
     # Disable/Enable configuration widgets during scan
     config_widgets = [
-        textbox, clear_target_btn, browse_button,
+        textbox, clear_target_btn, browse_button, browse_arrow,
         git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox,
         gpt_checkbox, provider_combo, model_combo, api_entry, show_key_btn,
         copy_cmd_button, intel_button
@@ -8692,7 +8693,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     Returns:
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, view_button, intel_button, intel_menu, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, show_key_btn, default_font_measure, copy_cmd_button, clear_target_btn, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, view_button, intel_button, intel_menu, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, browse_arrow, show_key_btn, default_font_measure, copy_cmd_button, clear_target_btn, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -8858,15 +8859,19 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     root.bind('<Escape>', on_root_escape)
     button_box = ttk.Frame(input_frame)
     button_box.grid(row=0, column=3, sticky="e")
-    browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
-    browse_button.pack(side=tk.LEFT, padx=(5, 2), ipady=5)
-    bind_hover_message(browse_button, "Select scan targets or perform system audits.")
+    browse_button = ttk.Button(button_box, text="Browse", command=browse_dir_click, width=8)
+    browse_button.pack(side=tk.LEFT, padx=(5, 0), ipady=5)
+    bind_hover_message(browse_button, "Select a folder to scan. (Ctrl+Shift+F)")
+
+    browse_arrow = ttk.Menubutton(button_box, text="▼", width=2)
+    browse_arrow.pack(side=tk.LEFT, padx=(0, 2), ipady=5)
+    bind_hover_message(browse_arrow, "Select other scan targets or perform system audits.")
 
     scan_button = ttk.Button(button_box, text="Scan Now", command=button_click, style='Primary.TButton', default='active', width=12)
     scan_button.pack(side=tk.LEFT, padx=2, ipady=5)
     bind_hover_message(scan_button, "Start the scan. (Enter)")
 
-    browse_menu = tk.Menu(browse_button, tearoff=0)
+    browse_menu = tk.Menu(browse_arrow, tearoff=0)
     browse_menu.add_command(label="Scan File(s)...", command=browse_file_click, accelerator="Ctrl+Shift+O")
     browse_menu.add_command(label="Scan Folder...", command=browse_dir_click, accelerator="Ctrl+Shift+F")
     browse_menu.add_command(label="Scan Web Link...", command=select_url_click, accelerator="Ctrl+Shift+U")
@@ -8874,7 +8879,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     browse_menu.add_command(label="Scan Clipboard", command=scan_clipboard_click, accelerator="Ctrl+Shift+V")
     browse_menu.add_separator()
     add_scan_submenus(browse_menu)
-    browse_button["menu"] = browse_menu
+    browse_arrow["menu"] = browse_menu
 
     # --- Settings Container ---
     settings_frame = ttk.Frame(root)
