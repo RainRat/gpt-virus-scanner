@@ -8339,6 +8339,26 @@ def on_filter_escape(event: Optional[tk.Event] = None) -> str:
     return "break"
 
 
+def on_root_escape(event: Optional[tk.Event] = None) -> str:
+    """Handle the Escape key globally.
+
+    If a scan is active, stop it.
+    If no scan is active but a search query is present, clear the search and refresh results.
+    """
+    if current_cancel_event is not None:
+        cancel_scan()
+        return "break"
+
+    if filter_var and filter_var.get().strip():
+        filter_var.set("")
+        _apply_filter()
+        if tree:
+            tree.focus_set()
+        return "break"
+
+    return ""
+
+
 def on_filter_return(event: Optional[tk.Event] = None) -> str:
     """Move focus from the filter entry to the results tree."""
     if tree:
@@ -8589,7 +8609,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     clear_target_btn.grid(row=0, column=2, padx=(0, 5))
     bind_hover_message(clear_target_btn, "Clear the scan target.")
 
-    root.bind('<Escape>', lambda event: cancel_scan())
+    root.bind('<Escape>', on_root_escape)
     button_box = ttk.Frame(input_frame)
     button_box.grid(row=0, column=3, sticky="e")
     browse_button = ttk.Menubutton(button_box, text="Browse", width=10)
