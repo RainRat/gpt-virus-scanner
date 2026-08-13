@@ -61,6 +61,18 @@ class TestStartupScanning(unittest.TestCase):
         self.assertEqual(results[0][1], b"C:\\test.exe")
         self.assertEqual(results[1][0], "[Startup] Malicious")
 
+    @patch('gptscan.subprocess.check_output')
+    @patch('gptscan.sys.platform', 'win32')
+    def test_get_startup_item_commands_windows_single_dict(self, mock_check_output):
+        mock_output = json.dumps({"Name": "SingleApp", "Command": "C:\\single.exe"})
+        mock_check_output.return_value = mock_output
+
+        results = gptscan.get_startup_item_commands()
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0], "[Startup] SingleApp")
+        self.assertEqual(results[0][1], b"C:\\single.exe")
+
     @patch('gptscan.Path.exists')
     @patch('gptscan.Path.glob')
     @patch('gptscan.sys.platform', 'linux')

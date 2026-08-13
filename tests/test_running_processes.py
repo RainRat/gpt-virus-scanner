@@ -36,6 +36,15 @@ def test_get_running_process_commands_windows():
             assert processes[1][0] == "[Process] cmd.exe"
             assert processes[1][1] == b"cmd /c dir"
 
+def test_get_running_process_commands_windows_single_dict():
+    mock_json = json.dumps({"Name": "single.exe", "CommandLine": "single command"})
+    with patch("sys.platform", "win32"):
+        with patch("subprocess.check_output", return_value=mock_json):
+            processes = get_running_process_commands()
+            assert len(processes) == 1
+            assert processes[0][0] == "[Process] single.exe"
+            assert processes[0][1] == b"single command"
+
 def test_get_running_process_commands_error():
     with patch("subprocess.check_output", side_effect=subprocess.CalledProcessError(1, "ps")):
         processes = get_running_process_commands()
