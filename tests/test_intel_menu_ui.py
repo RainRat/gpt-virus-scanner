@@ -62,7 +62,7 @@ def test_intel_button_disabled_during_scan(mock_gui, monkeypatch):
 
     # Setup scan state widgets
     monkeypatch_config = [
-        'textbox', 'clear_target_btn', 'browse_button',
+        'textbox', 'clear_target_btn', 'browse_button', 'browse_arrow',
         'git_checkbox', 'deep_checkbox', 'scan_all_checkbox', 'dry_checkbox',
         'gpt_checkbox', 'provider_combo', 'model_combo', 'api_entry', 'show_key_btn',
     ]
@@ -72,3 +72,39 @@ def test_intel_button_disabled_during_scan(mock_gui, monkeypatch):
     gptscan.set_scanning_state(True)
 
     mock_intel_button.config.assert_called_with(state="disabled")
+
+
+def test_browse_split_button_states_during_scan(monkeypatch):
+    """Test that both browse_button and browse_arrow are disabled/enabled during scan state changes."""
+    mock_browse_button = MagicMock()
+    mock_browse_arrow = MagicMock()
+
+    monkeypatch.setattr(gptscan, 'browse_button', mock_browse_button)
+    monkeypatch.setattr(gptscan, 'browse_arrow', mock_browse_arrow)
+    monkeypatch.setattr(gptscan, 'textbox', MagicMock())
+    monkeypatch.setattr(gptscan, 'clear_target_btn', MagicMock())
+    monkeypatch.setattr(gptscan, 'git_checkbox', MagicMock())
+    monkeypatch.setattr(gptscan, 'deep_checkbox', MagicMock())
+    monkeypatch.setattr(gptscan, 'scan_all_checkbox', MagicMock())
+    monkeypatch.setattr(gptscan, 'dry_checkbox', MagicMock())
+    monkeypatch.setattr(gptscan, 'gpt_checkbox', MagicMock())
+    monkeypatch.setattr(gptscan, 'provider_combo', MagicMock())
+    monkeypatch.setattr(gptscan, 'model_combo', MagicMock())
+    monkeypatch.setattr(gptscan, 'api_entry', MagicMock())
+    monkeypatch.setattr(gptscan, 'show_key_btn', MagicMock())
+    monkeypatch.setattr(gptscan, 'copy_cmd_button', MagicMock())
+    monkeypatch.setattr(gptscan, 'intel_button', MagicMock())
+    monkeypatch.setattr(gptscan, 'rescan_button', MagicMock())
+    monkeypatch.setattr(gptscan, 'analyze_button', MagicMock())
+    monkeypatch.setattr(gptscan, 'exclude_button', MagicMock())
+    monkeypatch.setattr(gptscan, 'results_button', MagicMock())
+
+    # Set scan state to active
+    gptscan.set_scanning_state(True)
+    mock_browse_button.config.assert_any_call(state="disabled")
+    mock_browse_arrow.config.assert_any_call(state="disabled")
+
+    # Set scan state to inactive
+    gptscan.set_scanning_state(False)
+    mock_browse_button.config.assert_any_call(state="normal")
+    mock_browse_arrow.config.assert_any_call(state="normal")
