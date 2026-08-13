@@ -525,56 +525,56 @@ Examples:
         '--config', '-c',
         type=str,
         required=True,
-        help='Provide the path to the YAML settings file.'
+        help='Specify the path to your config.yml configuration file.'
     )
     
     parser.add_argument(
         '--mode', '-m',
         type=str,
         choices=['train', 'predict'],
-        help='Choose between training a model or finding suspicious files.'
+        help="Select the mode: 'train' to train a new model, or 'predict' to find suspicious files."
     )
     
     parser.add_argument(
         '--model-name',
         type=str,
-        help='Set the name of the model.'
+        help='Specify a custom name for the model (defaults to the name set in config.yml).'
     )
     
     parser.add_argument(
         '--positive-dir',
         type=str,
-        help='Use this folder for dangerous files.'
+        help="Specify the folder containing dangerous files (defaults to '<model_name>/1')."
     )
     
     parser.add_argument(
         '--negative-dir',
         type=str,
-        help='Use this folder for safe files.'
+        help="Specify the folder containing safe files (defaults to '<model_name>/0')."
     )
     
     parser.add_argument(
         '--predict-dir',
         type=str,
-        help='Use this folder for files to scan.'
+        help="Specify the folder containing files you want to scan (defaults to '<model_name>/0')."
     )
     
     parser.add_argument(
         '--output-dir',
         type=str,
-        help='Use this folder to copy suspicious files.'
+        help="Specify the folder where detected suspicious files will be copied (defaults to '~/sscript' in your home folder)."
     )
     
     parser.add_argument(
         '--epochs',
         type=int,
-        help='Set the number of training rounds.'
+        help='Specify the number of training epochs (defaults to the value set in config.yml).'
     )
     
     parser.add_argument(
         '--batch-size',
         type=int,
-        help='Set the number of files to process at once.'
+        help='Specify how many files to process at once (defaults to the value set in config.yml).'
     )
     
     return parser.parse_args()
