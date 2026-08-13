@@ -4214,6 +4214,174 @@ def manage_extensions() -> None:
     manage_win.focus_set()
 
 
+def show_keyboard_shortcuts() -> None:
+    """Open a dialog detailing the global keyboard shortcuts and keys."""
+    if not root:
+        return
+
+    win = tk.Toplevel(root)
+    win.title("Keyboard Shortcuts")
+    win.geometry("550x450")
+    win.minsize(500, 400)
+    win.transient(root)
+    win.grab_set()
+
+    # Bind Esc / Enter to close
+    win.bind('<Escape>', lambda e: win.destroy())
+    win.bind('<Return>', lambda e: win.destroy())
+
+    main_frame = ttk.Frame(win, padding=15)
+    main_frame.pack(fill=tk.BOTH, expand=True)
+
+    # Header / Title
+    title_label = ttk.Label(main_frame, text="Keyboard Shortcuts Reference", font=('TkDefaultFont', 11, 'bold'))
+    title_label.pack(anchor="w", pady=(0, 10))
+
+    # Notebook
+    notebook = ttk.Notebook(main_frame)
+    notebook.pack(fill=tk.BOTH, expand=True)
+
+    # Determine modifier based on OS
+    mod = "Cmd" if sys.platform == "darwin" else "Ctrl"
+
+    # Define the shortcut groups
+    general_shortcuts = [
+        ("Enter", "Start Scan"),
+        ("Esc", "Cancel Scan / Close Dialog"),
+        (f"{mod}+F", "Focus Filter Bar"),
+        (f"{mod}+O", "Import Results"),
+        (f"{mod}+E", "Export Results"),
+        (f"{mod}+V", "Import Results from Clipboard"),
+        (f"{mod}+Shift+E", "Copy settings as CLI Command"),
+        (f"{mod}+Shift+Delete", "Clear Results"),
+    ]
+
+    results_shortcuts = [
+        ("Space / Enter", "View Result Details"),
+        ("F5 / R", "Rescan Selected Items"),
+        ("Delete", "Exclude Selected Items"),
+        (f"{mod}+A", "Select All Items"),
+        (f"{mod}+C", "Copy File Path"),
+        (f"{mod}+Shift+C", "Copy as Markdown Table"),
+        (f"{mod}+S", "Copy Code Snippet"),
+        (f"{mod}+J", "Copy Results as JSON Array"),
+        (f"{mod}+G", "Analyze Selected with AI"),
+        (f"{mod}+Shift+R", "Copy as Triage Report"),
+        ("Shift+Enter", "Open Selected File"),
+        (f"{mod}+Enter", "Reveal File in Folder"),
+        (f"{mod}+T", "Check File on VirusTotal"),
+        (f"{mod}+L", "View File Online (Git / Link)"),
+    ]
+
+    details_shortcuts = [
+        ("Esc", "Close Details Window"),
+        ("Left / Right", "Previous / Next Result (when input not active)"),
+        ("Alt+Left / Right", "Force Previous / Next Result"),
+        ("Alt+Up / Down", "Force Previous / Next Result"),
+        ("Ctrl+PageUp / PageDown", "Force Previous / Next Result"),
+        (f"{mod}+U", "Toggle between Full Source & Snippet"),
+        (f"{mod}++ / -", "Zoom In / Out Code Viewer"),
+        (f"{mod}+0", "Reset Code Viewer Zoom"),
+        (f"{mod}+S", "Copy Code Snippet"),
+        (f"{mod}+Shift+C", "Copy AI Analysis"),
+        (f"{mod}+H", "Copy SHA-256 Hash"),
+        (f"{mod}+J", "Copy JSON Data"),
+        (f"{mod}+Shift+R", "Copy as Triage Report"),
+        ("Shift+Enter", "Open File"),
+        (f"{mod}+Enter", "Reveal in Folder"),
+    ]
+
+    groups = [
+        ("General / Navigation", general_shortcuts),
+        ("Results List", results_shortcuts),
+        ("Details Window", details_shortcuts),
+    ]
+
+    for title, shortcuts in groups:
+        tab_frame = ttk.Frame(notebook)
+        notebook.add(tab_frame, text=title)
+
+        canvas = tk.Canvas(tab_frame, borderwidth=0, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(tab_frame, orient="vertical", command=canvas.yview)
+        scrollable_content = ttk.Frame(canvas, padding=10)
+
+        # Bind configuration and scroll region
+        def on_frame_configure(event, c=canvas):
+            c.configure(scrollregion=c.bbox("all"))
+
+        scrollable_content.bind("<Configure>", on_frame_configure)
+
+        # Create window inside canvas
+        canvas_window = canvas.create_window((0, 0), window=scrollable_content, anchor="nw")
+
+        # Adjust width of scrollable content when canvas is resized
+        def on_canvas_configure(event, c=canvas, cw=canvas_window):
+            c.itemconfig(cw, width=event.width)
+
+        canvas.bind("<Configure>", on_canvas_configure)
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Pack scrollbar and canvas
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Mouse wheel support
+        def _on_mouse_wheel(event, cv=canvas):
+            if sys.platform == 'win32':
+                cv.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            elif sys.platform == 'darwin':
+                cv.yview_scroll(int(-1 * event.delta), "units")
+            else:
+                if event.num == 4:
+                    cv.yview_scroll(-1, "units")
+                elif event.num == 5:
+                    cv.yview_scroll(1, "units")
+
+        canvas.bind("<MouseWheel>", _on_mouse_wheel)
+        canvas.bind("<Button-4>", _on_mouse_wheel)
+        canvas.bind("<Button-5>", _on_mouse_wheel)
+
+        # Recursively bind child widgets so scrolling works when hovering over text labels
+        def bind_mouse_wheel_recursive(widget):
+            widget.bind("<MouseWheel>", _on_mouse_wheel)
+            widget.bind("<Button-4>", _on_mouse_wheel)
+            widget.bind("<Button-5>", _on_mouse_wheel)
+            for child in widget.winfo_children():
+                bind_mouse_wheel_recursive(child)
+
+        # Grid the shortcuts
+        scrollable_content.columnconfigure(0, weight=1, minsize=180)
+        scrollable_content.columnconfigure(1, weight=3)
+
+        for i, (key, desc) in enumerate(shortcuts):
+            # Key label - make it look like a keyboard shortcut (bold)
+            key_lbl = ttk.Label(scrollable_content, text=key, font=('TkDefaultFont', 9, 'bold'), foreground="#1a1a1a")
+            key_lbl.grid(row=i, column=0, sticky="w", pady=4, padx=(5, 10))
+
+            # Description label
+            desc_lbl = ttk.Label(scrollable_content, text=desc, font=('TkDefaultFont', 9), wraplength=300)
+            desc_lbl.grid(row=i, column=1, sticky="w", pady=4)
+
+            # Draw a subtle separator line if not the last one
+            if i < len(shortcuts) - 1:
+                sep = ttk.Separator(scrollable_content, orient=tk.HORIZONTAL)
+                sep.grid(row=i, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+
+        # Bind recursively after populating
+        bind_mouse_wheel_recursive(scrollable_content)
+
+    # Bottom frame for Close button
+    bottom_frame = ttk.Frame(main_frame, padding=(0, 10, 0, 0))
+    bottom_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+    close_btn = ttk.Button(bottom_frame, text="Close", command=win.destroy)
+    close_btn.pack(side=tk.RIGHT)
+
+    center_window(win, root)
+    win.focus_set()
+
+
 def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str] = None) -> Generator[Tuple[str, bytes], None, None]:
     """Extract scan-ready snippets from various container formats.
 
@@ -8578,6 +8746,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     menubar.add_cascade(label="Scan", menu=scan_menu)
 
     help_menu = tk.Menu(menubar, tearoff=0)
+    help_menu.add_command(label="Keyboard Shortcuts...", command=show_keyboard_shortcuts)
+    help_menu.add_separator()
     help_menu.add_command(label="About", command=lambda: messagebox.showinfo("About", f"GPT Virus Scanner v{Config.VERSION}\nThis tool uses AI to find dangerous code in your scripts."))
     menubar.add_cascade(label="Help", menu=help_menu)
     root.config(menu=menubar)
