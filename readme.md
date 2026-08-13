@@ -630,5 +630,41 @@ python3 -m pytest --ignore=tests/test_train.py
 1.  **Local Filter:** The tool uses a quick scan model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
 2.  **AI Analysis:** If a file looks suspicious, you can ask an AI for a second opinion. The AI will explain *why* it thinks the code is dangerous, helping you decide what to do.
 
+## Troubleshooting & FAQs
+
+Here are solutions to common issues you might run into when installing or using the scanner.
+
+### 1. "Externally Managed Environment" Error
+* **The Issue:** Modern operating systems (like Debian 12+, Ubuntu 23.04+, and newer macOS versions) prevent installing packages globally with `pip` to avoid breaking system tools.
+* **The Solution:** Always use a virtual environment! Follow the **Setup** steps in the Installation section to create and activate a virtual environment (`venv`) before running the install command.
+
+### 2. Tkinter / GUI Does Not Open on Linux
+* **The Issue:** Linux servers or headless desktop environments often do not have Tkinter installed by default, causing startup errors.
+* **The Solution:**
+  1. If you are on a server or don't need a window interface, run the scanner in terminal mode by adding the `--cli` flag:
+     ```bash
+     python3 gptscan.py ./my_project --cli
+     ```
+  2. If you want the window interface, install the Tkinter system package for your distribution (for example, `sudo apt install python3-tk` on Ubuntu/Debian).
+
+### 3. TensorFlow Installation Errors
+* **The Issue:** Installing TensorFlow can fail on certain systems or take a long time to compile.
+* **The Solution:**
+  * **macOS (M1/M2/M3 Apple Silicon):** Make sure you have Xcode Command Line Tools installed by running `xcode-select --install` in your terminal first. Then install tensorflow within your virtual environment.
+  * **Windows:** If `pip` fails to compile a package, you may need the Microsoft C++ Build Tools. Download them from the official Microsoft site or use a pre-built binary wheel if available.
+
+### 4. Setting up Alternative AI Providers (OpenRouter or Ollama)
+* **The Issue:** You want to use a provider other than OpenAI, but you are not sure how to configure the environment.
+* **The Solution:**
+  * **OpenRouter:** Set the `OPENROUTER_API_KEY` environment variable in your terminal:
+    * *macOS/Linux:* `export OPENROUTER_API_KEY="your-key"`
+    * *Windows CMD:* `set OPENROUTER_API_KEY=your-key`
+    * *PowerShell:* `$env:OPENROUTER_API_KEY="your-key"`
+  * **Ollama (Local AI):** Run Ollama on your computer first, then start the scanner with `--provider ollama` and `--model llama3.2`. If you use a custom Ollama port or host, specify it with `--api-base http://your-custom-address:port/v1`.
+
+### 5. Missing File Errors (e.g., scripts.h5 or task.txt not found)
+* **The Issue:** The scanner complains that a critical data file is missing.
+* **The Solution:** The scanner expects these files to be in the folder where the `gptscan.py` script resides. Make sure you do not delete `scripts.h5` or `task.txt`, and always run the command from the repository root directory.
+
 ## License
 This project is licensed under the GNU Lesser General Public License v2.1.
