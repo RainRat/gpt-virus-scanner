@@ -1,8 +1,9 @@
 import pytest
 from pathlib import Path
-from gptscan import unpack_content, get_system_service_paths, Config
-import os
+from unittest.mock import MagicMock
 import sys
+import os
+from gptscan import unpack_content, get_system_service_paths, Config
 
 def test_unpack_service_file():
     content = b"""
@@ -46,20 +47,38 @@ Type=Application
     assert len(snippets) == 1
     assert b"/usr/bin/test-app --flag" in snippets[0][1]
 
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux-specific test")
-def test_get_system_service_paths(tmp_path):
-    # Mock systemd directories
-    etc_dir = tmp_path / "etc" / "systemd" / "system"
-    etc_dir.mkdir(parents=True)
-    service_file = etc_dir / "test.service"
-    service_file.write_text("[Service]\nExecStart=/bin/ls")
+def test_get_system_service_paths_non_linux(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert get_system_service_paths() == []
 
-    # We need to monkeypatch search_dirs in the function or just test if it returns something on a real system
-    # Given the environment, let's just check if it returns a list of strings
-    paths = get_system_service_paths()
-    assert isinstance(paths, list)
-    for p in paths:
-        assert p.endswith(".service")
+def test_get_system_service_paths_linux_mocked(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "linux")
+
+    mock_file = MagicMock(spec=Path)
+    mock_file.is_file.return_value = True
+    mock_file.is_symlink.return_value = False
+    mock_file.__str__.return_value = "/etc/systemd/system/good.service"
+
+    mock_symlink = MagicMock(spec=Path)
+    mock_symlink.is_file.return_value = True
+    mock_symlink.is_symlink.return_value = True
+    mock_symlink.__str__.return_value = "/etc/systemd/system/symlink.service"
+
+    mock_error = MagicMock(spec=Path)
+    mock_error.is_file.side_effect = OSError("Permission denied")
+    mock_error.__str__.return_value = "/etc/systemd/system/error.service"
+
+    def mock_rglob(self, pattern):
+        path_str = str(self).replace("\\", "/")
+        if "etc" in path_str:
+            return [mock_file, mock_symlink, mock_error]
+        return []
+
+    monkeypatch.setattr(Path, "rglob", mock_rglob)
+    monkeypatch.setattr(Path, "home", lambda: Path("/mock/home"))
+
+    results = get_system_service_paths()
+    assert results == ["/etc/systemd/system/good.service"]
 
 def test_is_container_service():
     assert Config.is_container("test.service") is True
