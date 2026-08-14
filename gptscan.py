@@ -6981,14 +6981,34 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
 
 
 def load_report_file(file_path: str) -> List[Dict[str, Any]]:
-    """Parse a report file in JSON, SARIF, XML, YAML, Markdown, HTML, Triage Report, or CSV format.
+    """Parse a report file in JSON, SARIF, XML, YAML, Markdown, HTML, Triage Report, or CSV format,
+    or recursively find and parse all supported files if file_path is a directory.
 
     Args:
-        file_path: Path to the report file.
+        file_path: Path to the report file or directory.
 
     Returns:
         A list of standardized result dictionaries.
     """
+    if os.path.isdir(file_path):
+        supported_exts = ('.json', '.jsonl', '.ndjson', '.csv', '.sarif', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml')
+        all_results = []
+        files = []
+        for r_dir, _, filenames in os.walk(file_path):
+            for filename in filenames:
+                ext = os.path.splitext(filename)[1].lower()
+                if ext in supported_exts:
+                    files.append(os.path.join(r_dir, filename))
+        files.sort()
+        for path in files:
+            try:
+                results = load_report_file(path)
+                if results:
+                    all_results.extend(results)
+            except Exception:
+                pass
+        return all_results
+
     with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
 
