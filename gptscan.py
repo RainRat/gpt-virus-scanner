@@ -8665,6 +8665,15 @@ def select_all_items(event: Optional[tk.Event] = None) -> str:
     return "break"
 
 
+def on_target_selected(event: Optional[tk.Event] = None) -> None:
+    """Handle recent path selection from the target combobox dropdown."""
+    if scan_button:
+        try:
+            scan_button.focus_set()
+        except Exception:
+            pass
+
+
 def get_model_presets(provider: str) -> List[str]:
     """Return the list of model presets for a given provider.
 
@@ -8883,10 +8892,18 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     textbox = ttk.Combobox(input_frame, values=Config.recent_paths)
     path_to_use = initial_path if initial_path else (Config.last_path if Config.last_path else os.getcwd())
     textbox.insert(0, path_to_use)
-    textbox.select_range(0, tk.END)
+    try:
+        textbox.select_range(0, tk.END)
+    except Exception:
+        pass
     textbox.grid(row=0, column=1, sticky="ew", padx=(5, 2))
     textbox.bind('<Return>', lambda event: button_click())
-    textbox.focus_set()
+
+    textbox.bind('<<ComboboxSelected>>', on_target_selected)
+    try:
+        textbox.focus_set()
+    except Exception:
+        pass
     bind_hover_message(textbox, "Enter one or more files, folders, or glob patterns (e.g., src/**/*.py) to scan. Separate multiple targets with spaces.")
 
     def clear_target():
