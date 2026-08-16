@@ -156,3 +156,34 @@ def test_exclude_file_argparse_cli(tmp_path, monkeypatch):
         assert "custom_pattern1" in exclude_patterns
         assert "custom_pattern2" in exclude_patterns
         assert "# comment" not in exclude_patterns
+
+
+def test_parse_ignore_file_unreadable_exception(tmp_path, monkeypatch):
+    unreadable_file = tmp_path / "unreadable.ignore"
+    unreadable_file.touch()
+
+    def mock_open_raise(*args, **kwargs):
+        raise OSError("Permission denied")
+
+    monkeypatch.setattr("builtins.open", mock_open_raise)
+
+    patterns = gptscan.parse_ignore_file(unreadable_file)
+    assert patterns == []
+
+
+def test_discover_local_ignore_patterns_rglob_exception(tmp_path, monkeypatch):
+    target_dir = tmp_path / "scan_target"
+    target_dir.mkdir()
+
+    def mock_rglob_raise(*args, **kwargs):
+        raise OSError("Directory read error")
+
+    monkeypatch.setattr(Path, "rglob", mock_rglob_raise)
+
+    ignore_rules = gptscan.discover_local_ignore_patterns([str(target_dir)])
+    assert ignore_rules == []
+
+
+def test_discover_local_ignore_patterns_nonexistent_and_invalid_targets():
+    ignore_rules = gptscan.discover_local_ignore_patterns(["/nonexistent/path/for/test"])
+    assert ignore_rules == []
