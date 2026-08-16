@@ -116,6 +116,41 @@ def test_manage_exclusions_add_pattern_bulk(mock_gui_env):
     assert "build/" in captured['listbox'].items
     assert gptscan._apply_filter.called
 
+def test_manage_exclusions_add_file(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    file_path = "/tmp/some_file.py"
+    monkeypatch.setattr(os.path, 'relpath', lambda p, start: "some_file.py")
+    mock_fd.askopenfilename.return_value = file_path
+
+    manage_exclusions()
+    add_btn, add_cmd = captured['buttons']['Add File...']
+    add_cmd()
+
+    assert "some_file.py" in Config.ignore_patterns
+    assert "some_file.py" in captured['listbox'].items
+    assert gptscan._apply_filter.called
+
+def test_manage_exclusions_add_file_cancel(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    mock_fd.askopenfilename.return_value = None
+
+    manage_exclusions()
+    add_cmd = captured['buttons']['Add File...'][1]
+    add_cmd()
+
+    assert len(Config.ignore_patterns) == 0
+
+def test_manage_exclusions_add_file_error(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    mock_fd.askopenfilename.return_value = "/some/file.py"
+    monkeypatch.setattr(os.path, 'relpath', MagicMock(side_effect=Exception("Path Error")))
+
+    manage_exclusions()
+    add_cmd = captured['buttons']['Add File...'][1]
+    add_cmd()
+
+    mock_mb.showerror.assert_called_with("Error", "Could not add file: Path Error", parent=mock_top)
+
 def test_manage_exclusions_add_folder(mock_gui_env, monkeypatch):
     captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
     # Mock os.path.relpath to return a predictable relative path
