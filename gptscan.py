@@ -7772,6 +7772,26 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             root.clipboard_append(js)
             set_local_status("Result copied as JSON.", temporary=True)
 
+    def copy_as_csv_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"])
+            r = results[0]
+            writer.writerow([
+                r.get("path", ""),
+                r.get("own_conf", ""),
+                r.get("admin_desc", ""),
+                r.get("end-user_desc", ""),
+                r.get("gpt_conf", ""),
+                r.get("snippet", ""),
+                r.get("line", "-")
+            ])
+            root.clipboard_clear()
+            root.clipboard_append(output.getvalue())
+            set_local_status("Result copied as CSV.", temporary=True)
+
     def copy_as_report_details():
         results = _get_tree_results_as_dicts([current_item_id])
         if results:
@@ -7860,6 +7880,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_menu.add_command(label="Copy Analysis", command=copy_analysis, accelerator="Ctrl+Shift+C")
     copy_menu.add_command(label="Copy Path", command=copy_path_details, accelerator="Ctrl+Shift+P")
     copy_menu.add_command(label="Copy SHA256", command=copy_sha256_details, accelerator="Ctrl+H")
+    copy_menu.add_command(label="Copy as CSV", command=copy_as_csv_details)
     copy_menu.add_command(label="Copy as JSON", command=copy_as_json_details, accelerator="Ctrl+J")
     copy_menu.add_command(label="Copy as Triage Report", command=copy_as_report_details, accelerator="Ctrl+Shift+R")
     copy_menu.add_command(label="Copy Code", command=copy_code, accelerator="Ctrl+S")
@@ -8333,6 +8354,36 @@ def copy_as_markdown(event: Optional[tk.Event] = None) -> None:
     tree.clipboard_clear()
     tree.clipboard_append(md)
     update_status(f"Copied {len(results)} item(s) as Markdown.")
+
+
+def copy_as_csv(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as CSV to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"])
+    for r in results:
+        writer.writerow([
+            r.get("path", ""),
+            r.get("own_conf", ""),
+            r.get("admin_desc", ""),
+            r.get("end-user_desc", ""),
+            r.get("gpt_conf", ""),
+            r.get("snippet", ""),
+            r.get("line", "-")
+        ])
+
+    tree.clipboard_clear()
+    tree.clipboard_append(output.getvalue())
+    update_status(f"Copied {len(results)} item(s) as CSV.")
 
 
 def copy_as_json(event: Optional[tk.Event] = None) -> None:
@@ -9256,6 +9307,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     copy_submenu.add_command(label="File Path", command=copy_path, accelerator="Ctrl+C")
     copy_submenu.add_command(label="SHA256 Hash", command=copy_sha256, accelerator="Ctrl+H")
     copy_submenu.add_command(label="Code Snippet", command=copy_snippet, accelerator="Ctrl+S")
+    copy_submenu.add_command(label="As CSV", command=copy_as_csv)
     copy_submenu.add_command(label="As Markdown Table", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
     copy_submenu.add_command(label="As JSON Array", command=copy_as_json, accelerator="Ctrl+J")
     copy_submenu.add_command(label="As Triage Report", command=copy_as_report, accelerator="Ctrl+Shift+R")
