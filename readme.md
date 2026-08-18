@@ -188,6 +188,7 @@ The scanner includes shortcuts for faster navigation.
 | `Ctrl+E` | Export Results |
 | `Ctrl+V` | Import Results from Clipboard |
 | `Ctrl+Shift+E` | Copy as Command Line |
+| `Ctrl+Shift+Delete` | Clear Results |
 | **Scan Actions** | |
 | `Ctrl+Shift+O` | Scan File(s) |
 | `Ctrl+Shift+F` | Scan Folder |
@@ -453,6 +454,11 @@ Save scan results to a file (CSV, JSON, HTML, etc.):
 python3 gptscan.py ./my_project --output results.html --cli
 ```
 
+Filter out known findings using a baseline report:
+```bash
+python3 gptscan.py ./my_project --baseline previous_report.json --cli
+```
+
 #### Output Formats
 By default, the scanner prints human-readable text to the terminal. You can customize the output format with these flags:
 *   `--json`: Print or save results in JSON format.
@@ -488,6 +494,7 @@ You can customize terminal scans using these command line options.
 *   `--dry-run`: Preview which files would be scanned without actually checking them.
 *   `--extensions <exts>`: Only scan these file types (for example: `py,js`).
 *   `-e`, `--exclude <patterns>`: Ignore files or folders matching these patterns (for example: `node_modules/*`).
+*   `--exclude-file <file>`: Read a list of exclude patterns from a text file.
 *   `--file-list <file>`: Read a list of files to scan from a text file.
 *   `--all-files`: Scan every file, even if it is not a script.
 *   `--fail-threshold <num>`: Exit with code `1` if any file has a threat level at or above this number (0-100).
@@ -495,6 +502,7 @@ You can customize terminal scans using these command line options.
 *   `--stdin`: Scan code piped from another command.
 *   `-c`, `--clipboard`: Scan code currently copied in the system clipboard.
 *   `--import-results <file>` / `--import <file>`: Import results from a previous scan. Use `-` to read from the terminal.
+*   `--baseline <file>`: A previous report file (in any supported format) to act as a baseline. Existing findings in this baseline will be filtered out.
 *   `--max-size <size>`: The maximum file size to scan (for example: `10MB`). Default is 10MB.
 *   `--modified <time>`: Only scan files changed within this time (for example: `24h`, `1h`, `7d`).
 *   `--downloads`: Scan the standard Downloads folder.
@@ -624,7 +632,7 @@ The scanner provides several ways to analyze and manage your results:
 ## Customizing the Scanner
 You can tailor the scanner to your needs:
 *   **Git Changes Only:** Only scan files that have been modified or are untracked in Git. Use the **Git changes only** checkbox or the `--git-changes` flag.
-*   **Exclusions:** Ignore specific files or folders by using **File > Manage Exclusions...** or by adding patterns to a `.gptscanignore` file. In the terminal, use the `-e` or `--exclude` flag.
+*   **Exclusions:** Ignore specific files or folders by using **File > Manage Exclusions...** or by adding patterns to a `.gptscanignore` file. In the terminal, use the `-e` or `--exclude` flag, or load patterns from a file with `--exclude-file`.
 *   **Extensions:** Control which file types are scanned by using **File > Manage Extensions...** or by editing the `extensions.txt` file. In the terminal, use the `--extensions` flag.
 *   **File Size:** The scanner skips files larger than 10MB during folder scans. You can adjust this limit in the **Scan Options** panel or by using the `--max-size` flag. Files you select individually are always scanned, regardless of their size.
 *   **Deep Scan:** Scan the entire file instead of just the beginning and end. This is more thorough but slower. Use the **Deep Scan** checkbox or the `-d` or `--deep` flag.
