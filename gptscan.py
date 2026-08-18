@@ -6423,7 +6423,7 @@ def generate_yaml(results: List[Dict[str, Any]]) -> str:
     return yaml.safe_dump(results, default_flow_style=False, sort_keys=False)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, top_limit: Optional[int] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6441,6 +6441,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         import_file: Path to a previous scan report to import and process.
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
         baseline_file: Path to a previous report file to use as a baseline to filter out existing findings.
+        top_limit: If provided, restrict the output results to the top N highest-threat findings.
 
     Returns:
         The number of suspicious files detected.
@@ -6530,10 +6531,10 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 else:
                     medium_risk_found += 1
 
-            if output_format == 'json':
-                print(json.dumps(record), file=out_stream)
-            elif output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
+            if top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
                 result_buffer.append(record)
+            elif output_format == 'json':
+                print(json.dumps(record), file=out_stream)
             else:
                 writer.writerow(data)
         elif event_type == 'progress':
@@ -6579,6 +6580,15 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             summary += f" (Bypassed {matched_baseline_count} baseline findings)"
         print(summary, file=sys.stderr)
 
+    if top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
+        # Sort results by effective threat level (highest first)
+        result_buffer.sort(
+            key=lambda x: get_effective_threat_level(x.get('own_conf', '0%'), x.get('gpt_conf', '')),
+            reverse=True
+        )
+        if top_limit is not None and top_limit > 0:
+            result_buffer = result_buffer[:top_limit]
+
     if output_format == 'sarif':
         sarif_log = generate_sarif(result_buffer)
         print(json.dumps(sarif_log, indent=2), file=out_stream)
@@ -6591,15 +6601,16 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     elif output_format == 'yaml':
         print(generate_yaml(result_buffer), file=out_stream)
     elif output_format == 'report':
-        # Sort results by effective threat level (highest first)
-        result_buffer.sort(
-            key=lambda x: get_effective_threat_level(x.get('own_conf', '0%'), x.get('gpt_conf', '')),
-            reverse=True
-        )
         # Use color only if the output stream is a terminal
         use_color_output = out_stream.isatty() if hasattr(out_stream, 'isatty') else False
         report = generate_console_report(result_buffer, use_color=use_color_output)
         print(report, file=out_stream)
+    elif output_format == 'json' and top_limit is not None:
+        for record in result_buffer:
+            print(json.dumps(record), file=out_stream)
+    elif output_format == 'csv' and top_limit is not None:
+        for record in result_buffer:
+            writer.writerow([record.get(k, '') for k in keys])
 
     if output_file:
         out_stream.close()
@@ -9717,8 +9728,18 @@ def main():
     output_group.add_argument('--xml', action='store_true', help='Create an XML report.')
     output_group.add_argument('--yaml', '--yml', action='store_true', dest='yaml', help='Create a YAML report.')
     output_group.add_argument('--report', action='store_true', help='Print a detailed triage report to the terminal.')
+    output_group.add_argument(
+        '--top', '--limit',
+        type=int,
+        metavar='N',
+        dest='top',
+        help='Limit output results to the top N highest-risk findings.'
+    )
 
     args = parser.parse_args()
+
+    if args.top is not None and args.top <= 0:
+        parser.error("Value for --top / --limit must be a positive integer.")
 
     if args.clear_cache:
         Config.gpt_cache = {}
@@ -10144,7 +10165,8 @@ def main():
             extra_snippets=extra_snippets,
             import_file=args.import_results,
             modified_since=modified_since,
-            baseline_file=args.baseline
+            baseline_file=args.baseline,
+            top_limit=args.top
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
