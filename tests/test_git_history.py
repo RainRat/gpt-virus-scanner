@@ -1,7 +1,7 @@
 import pytest
+import subprocess
 from unittest.mock import patch, MagicMock
 import gptscan
-import subprocess
 
 def test_get_git_history_snippets_no_git(monkeypatch):
     monkeypatch.setattr("gptscan._get_git_info", lambda p: (None, None))
@@ -71,3 +71,65 @@ def test_get_git_history_snippets_partial_failure(monkeypatch):
     assert len(snippets) == 2
     assert snippets[0][0] == "[Git History] commit hash1"
     assert snippets[1][0] == "[Git History] commit hash3"
+
+def test_scan_git_history_click_with_count(monkeypatch):
+    mock_textbox = MagicMock()
+    mock_textbox.get.return_value = '.'
+    monkeypatch.setattr("gptscan.textbox", mock_textbox)
+    with patch('gptscan.simpledialog.askinteger') as mock_ask:
+        with patch('gptscan.get_git_history_snippets', return_value=[('snippet1', b'content')]) as mock_get:
+            with patch('gptscan.button_click') as mock_click:
+                gptscan.scan_git_history_click(count=10)
+                mock_ask.assert_not_called()
+                mock_get.assert_called_with('.', count=10)
+                mock_click.assert_called_once_with(extra_snippets=[('snippet1', b'content')])
+
+def test_scan_git_history_click_without_count(monkeypatch):
+    mock_textbox = MagicMock()
+    mock_textbox.get.return_value = '.'
+    monkeypatch.setattr("gptscan.textbox", mock_textbox)
+    with patch('gptscan.simpledialog.askinteger', return_value=5) as mock_ask:
+        with patch('gptscan.get_git_history_snippets', return_value=[('snippet1', b'content')]) as mock_get:
+            with patch('gptscan.button_click') as mock_click:
+                gptscan.scan_git_history_click()
+                mock_ask.assert_called_once()
+                mock_get.assert_called_with('.', count=5)
+                mock_click.assert_called_once_with(extra_snippets=[('snippet1', b'content')])
+
+def test_scan_git_history_click_cancel(monkeypatch):
+    monkeypatch.setattr("gptscan.simpledialog.askinteger", lambda *args, **kwargs: None)
+    mock_click = MagicMock()
+    monkeypatch.setattr("gptscan.button_click", mock_click)
+    gptscan.scan_git_history_click()
+    mock_click.assert_not_called()
+
+def test_scan_git_history_click_empty_results(monkeypatch):
+    mock_textbox = MagicMock()
+    mock_textbox.get.return_value = "."
+    monkeypatch.setattr("gptscan.textbox", mock_textbox)
+    monkeypatch.setattr("gptscan.simpledialog.askinteger", lambda *args, **kwargs: 5)
+    monkeypatch.setattr("gptscan.get_git_history_snippets", lambda path, count: [])
+    mock_info = MagicMock()
+    monkeypatch.setattr("gptscan.messagebox.showinfo", mock_info)
+    mock_click = MagicMock()
+    monkeypatch.setattr("gptscan.button_click", mock_click)
+
+    gptscan.scan_git_history_click()
+    mock_click.assert_not_called()
+    mock_info.assert_called_once()
+
+def test_scan_git_history_click_exception(monkeypatch):
+    mock_textbox = MagicMock()
+    mock_textbox.get.return_value = "."
+    monkeypatch.setattr("gptscan.textbox", mock_textbox)
+    monkeypatch.setattr("gptscan.simpledialog.askinteger", lambda *args, **kwargs: 5)
+
+    def raise_err(path, count):
+        raise RuntimeError("git failed")
+
+    monkeypatch.setattr("gptscan.get_git_history_snippets", raise_err)
+    mock_warn = MagicMock()
+    monkeypatch.setattr("gptscan.messagebox.showwarning", mock_warn)
+
+    gptscan.scan_git_history_click()
+    mock_warn.assert_called_once()

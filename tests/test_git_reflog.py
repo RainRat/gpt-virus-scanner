@@ -46,3 +46,42 @@ def test_scan_git_reflog_click_success(mocker):
 
         mock_get_snippets.assert_called_once_with(".", count=3)
         mock_button_click.assert_called_once_with(extra_snippets=[("name", b"content")])
+
+def test_scan_git_reflog_click_with_count(mocker):
+    mocker.patch('gptscan.simpledialog.askinteger')
+    mock_textbox = MagicMock()
+    mock_textbox.get.return_value = "."
+    with patch('gptscan.textbox', mock_textbox):
+        mock_get_snippets = mocker.patch('gptscan.get_git_reflog_snippets', return_value=[("name", b"content")])
+        mock_button_click = mocker.patch('gptscan.button_click')
+
+        scan_git_reflog_click(count=15)
+
+        mock_get_snippets.assert_called_once_with(".", count=15)
+        mock_button_click.assert_called_once_with(extra_snippets=[("name", b"content")])
+
+def test_scan_git_reflog_click_empty_results(mocker):
+    mocker.patch('tkinter.simpledialog.askinteger', return_value=5)
+    mock_textbox = MagicMock()
+    mock_textbox.get.return_value = "."
+    with patch('gptscan.textbox', mock_textbox):
+        mocker.patch('gptscan.get_git_reflog_snippets', return_value=[])
+        mock_info = mocker.patch('gptscan.messagebox.showinfo')
+        mock_button_click = mocker.patch('gptscan.button_click')
+
+        scan_git_reflog_click()
+
+        mock_button_click.assert_not_called()
+        mock_info.assert_called_once()
+
+def test_scan_git_reflog_click_exception(mocker):
+    mocker.patch('tkinter.simpledialog.askinteger', return_value=5)
+    mock_textbox = MagicMock()
+    mock_textbox.get.return_value = "."
+    with patch('gptscan.textbox', mock_textbox):
+        mocker.patch('gptscan.get_git_reflog_snippets', side_effect=RuntimeError("git reflog failed"))
+        mock_warn = mocker.patch('gptscan.messagebox.showwarning')
+
+        scan_git_reflog_click()
+
+        mock_warn.assert_called_once()
