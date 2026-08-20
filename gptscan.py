@@ -4115,6 +4115,19 @@ def manage_exclusions() -> None:
                 except Exception as e:
                     messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
 
+    def add_file():
+        file_path = filedialog.askopenfilename(parent=manage_win, initialdir=_get_initial_dir())
+        if file_path:
+            try:
+                rel_path = os.path.relpath(file_path, os.getcwd())
+                if rel_path not in Config.ignore_patterns:
+                    add_to_ignore_file(rel_path)
+                    Config.ignore_patterns.append(rel_path)
+                    refresh_list()
+                    _apply_filter()
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not add file: {e}", parent=manage_win)
+
     def add_folder():
         folder = filedialog.askdirectory(parent=manage_win, initialdir=_get_initial_dir())
         if folder:
@@ -4156,6 +4169,7 @@ def manage_exclusions() -> None:
     manage_win.bind("<Escape>", lambda e: manage_win.destroy())
 
     ttk.Button(btn_frame, text="Add Pattern...", command=add_pattern).pack(side=tk.LEFT, padx=(0, 5), ipady=5)
+    ttk.Button(btn_frame, text="Add File...", command=add_file).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Add Folder...", command=add_folder).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT, ipady=5)
