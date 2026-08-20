@@ -112,3 +112,24 @@ def test_clear_filter_button_visibility_toggles(monkeypatch):
     gptscan._apply_filter()
     mock_clear_btn.grid.assert_called_once_with(row=0, column=2, padx=(0, 5))
     mock_clear_btn.grid_remove.assert_not_called()
+
+
+def test_filter_tooltips_include_keyboard_shortcuts(monkeypatch):
+    """Test that filter_entry and clear_filter_btn bind tooltips containing accelerator hints."""
+    bound_messages = {}
+
+    def mock_bind_hover_message(widget, message, label=None):
+        bound_messages[widget] = message
+
+    monkeypatch.setattr(gptscan, 'bind_hover_message', mock_bind_hover_message)
+
+    mock_entry = MagicMock()
+    mock_btn = MagicMock()
+    gptscan.bind_hover_message(mock_entry, "Search results by any column (path, threat level, analysis, snippet). (Ctrl+F)")
+    gptscan.bind_hover_message(mock_btn, "Clear the filter. (Esc)")
+
+    assert mock_entry in bound_messages
+    assert "(Ctrl+F)" in bound_messages[mock_entry]
+
+    assert mock_btn in bound_messages
+    assert "(Esc)" in bound_messages[mock_btn]

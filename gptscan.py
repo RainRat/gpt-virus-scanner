@@ -9233,7 +9233,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     clear_filter_btn = ttk.Button(filter_frame, text="×", width=3, command=clear_filter)
     clear_filter_btn.grid(row=0, column=2, padx=(0, 5))
     clear_filter_btn.grid_remove()
-    bind_hover_message(clear_filter_btn, "Clear the filter.")
+    bind_hover_message(clear_filter_btn, "Clear the filter. (Esc)")
 
     ttk.Separator(filter_frame, orient=tk.VERTICAL).grid(row=0, column=3, sticky="ns", padx=10)
 
