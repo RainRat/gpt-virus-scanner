@@ -1418,11 +1418,7 @@ def _normalize_and_filter_dirs(paths: Iterable[Optional[str]]) -> List[str]:
 
 def get_system_path_directories() -> List[str]:
     """Find all folders listed in the system's PATH environment variable."""
-    path_env = os.environ.get("PATH", "")
-    if not path_env:
-        return []
-
-    return _normalize_and_filter_dirs(path_env.split(os.pathsep))
+    return _normalize_and_filter_dirs(os.environ.get("PATH", "").split(os.pathsep))
 
 
 def get_downloads_paths() -> List[str]:
