@@ -71,6 +71,7 @@ dry_var: Optional[tk.BooleanVar] = None
 git_var: Optional[tk.BooleanVar] = None
 filter_var: Optional[tk.StringVar] = None
 filter_entry: Optional[ttk.Entry] = None
+clear_filter_btn: Optional[ttk.Button] = None
 tree: Optional[ttk.Treeview] = None
 scan_button: Optional[ttk.Button] = None
 view_button: Optional[ttk.Button] = None
@@ -2981,6 +2982,12 @@ def _matches_filter(values: Tuple[Any, ...]) -> bool:
 
 def _apply_filter(*args: Any) -> None:
     """Refresh the Treeview based on the current filter and cached results."""
+    if clear_filter_btn is not None and filter_var is not None:
+        if filter_var.get().strip():
+            clear_filter_btn.grid(row=0, column=2, padx=(0, 5))
+        else:
+            clear_filter_btn.grid_remove()
+
     if not tree:
         return
 
@@ -8830,7 +8837,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     Returns:
         Initialized Tk root instance ready for ``mainloop``.
     """
-    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, tree, scan_button, view_button, intel_button, intel_menu, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, browse_arrow, show_key_btn, default_font_measure, copy_cmd_button, clear_target_btn, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
+    global root, textbox, progress_bar, status_label, deep_var, all_var, scan_all_var, gpt_var, dry_var, git_var, filter_var, filter_entry, clear_filter_btn, tree, scan_button, view_button, intel_button, intel_menu, rescan_button, open_button, analyze_button, exclude_button, reveal_button, results_button, browse_button, browse_arrow, show_key_btn, default_font_measure, copy_cmd_button, clear_target_btn, git_checkbox, deep_checkbox, scan_all_checkbox, dry_checkbox, gpt_checkbox, provider_combo, model_combo, api_key_entry, api_entry, all_checkbox, threshold_spin, provider_var, model_var, api_base_var, api_key_var
 
     root = tk.Tk()
     root.geometry("1000x600")
@@ -9191,6 +9198,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     clear_filter_btn = ttk.Button(filter_frame, text="×", width=3, command=clear_filter)
     clear_filter_btn.grid(row=0, column=2, padx=(0, 5))
+    clear_filter_btn.grid_remove()
     bind_hover_message(clear_filter_btn, "Clear the filter.")
 
     ttk.Separator(filter_frame, orient=tk.VERTICAL).grid(row=0, column=3, sticky="ns", padx=10)

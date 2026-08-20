@@ -87,3 +87,28 @@ def test_on_filter_escape_resets_and_focuses(mock_ui_env, monkeypatch):
     mock_apply_filter.assert_called_once()
     mock_ui_env['tree'].focus_set.assert_called_once()
     assert res == "break"
+
+
+def test_clear_filter_button_visibility_toggles(monkeypatch):
+    """Test that _apply_filter toggles clear_filter_btn visibility based on filter_var content."""
+    mock_clear_btn = MagicMock()
+    mock_filter_var = MagicMock()
+    mock_tree = MagicMock()
+
+    monkeypatch.setattr(gptscan, 'clear_filter_btn', mock_clear_btn)
+    monkeypatch.setattr(gptscan, 'filter_var', mock_filter_var)
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+
+    # Empty filter query
+    mock_filter_var.get.return_value = ""
+    gptscan._apply_filter()
+    mock_clear_btn.grid_remove.assert_called_once()
+    mock_clear_btn.grid.assert_not_called()
+
+    mock_clear_btn.reset_mock()
+
+    # Non-empty filter query
+    mock_filter_var.get.return_value = "suspicious"
+    gptscan._apply_filter()
+    mock_clear_btn.grid.assert_called_once_with(row=0, column=2, padx=(0, 5))
+    mock_clear_btn.grid_remove.assert_not_called()
