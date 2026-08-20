@@ -6437,7 +6437,7 @@ def generate_yaml(results: List[Dict[str, Any]]) -> str:
     return yaml.safe_dump(results, default_flow_style=False, sort_keys=False)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, quiet: bool = False) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6455,6 +6455,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         import_file: Path to a previous scan report to import and process.
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
         baseline_file: Path to a previous report file to use as a baseline to filter out existing findings.
+        quiet: Whether to suppress progress updates and summary banners on sys.stderr.
 
     Returns:
         The number of suspicious files detected.
@@ -6473,7 +6474,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         try:
             baseline_items = load_report_file(baseline_file)
             baseline_set = {get_finding_signature(item) for item in baseline_items}
-            print(f"Loaded {len(baseline_set)} baseline findings from {os.path.basename(baseline_file)}.", file=sys.stderr)
+            if not quiet:
+                print(f"Loaded {len(baseline_set)} baseline findings from {os.path.basename(baseline_file)}.", file=sys.stderr)
         except Exception as e:
             print(f"Error loading baseline file {baseline_file}: {e}", file=sys.stderr)
             sys.exit(1)
@@ -6553,31 +6555,32 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         elif event_type == 'progress':
             current, total, status = data
             final_progress = (current, total)
-            cols = shutil.get_terminal_size((80, 20)).columns
+            if not quiet:
+                cols = shutil.get_terminal_size((80, 20)).columns
 
-            threat_display = str(threats_found)
-            if use_color and threats_found > 0:
-                threat_display = f"\033[1;91m{threats_found}\033[0m"
+                threat_display = str(threats_found)
+                if use_color and threats_found > 0:
+                    threat_display = f"\033[1;91m{threats_found}\033[0m"
 
-            if threats_found > 0:
-                threat_suffix = f" ({threat_display} suspicious: {high_risk_found} high, {medium_risk_found} medium)"
-            else:
-                threat_suffix = ""
-            msg = f"{status} ({current}/{total}){threat_suffix}" if status else f"Scanning: {current}/{total} files{threat_suffix}"
+                if threats_found > 0:
+                    threat_suffix = f" ({threat_display} suspicious: {high_risk_found} high, {medium_risk_found} medium)"
+                else:
+                    threat_suffix = ""
+                msg = f"{status} ({current}/{total}){threat_suffix}" if status else f"Scanning: {current}/{total} files{threat_suffix}"
 
-            # Use \r to overwrite same line, and pad with spaces to clear any previous longer line.
-            # Adjust padding for zero-width ANSI color codes (total 11 chars).
-            ansi_len = 11 if use_color and threats_found > 0 else 0
-            padding = " " * max(0, cols - 1 - (len(msg) - ansi_len))
-            sys.stderr.write(f"\r{msg}{padding}\r")
-            sys.stderr.flush()
+                # Use \r to overwrite same line, and pad with spaces to clear any previous longer line.
+                # Adjust padding for zero-width ANSI color codes (total 11 chars).
+                ansi_len = 11 if use_color and threats_found > 0 else 0
+                padding = " " * max(0, cols - 1 - (len(msg) - ansi_len))
+                sys.stderr.write(f"\r{msg}{padding}\r")
+                sys.stderr.flush()
         elif event_type == 'summary':
             total_files, total_bytes, elapsed_time = data
             metrics['total_files'] = total_files
             metrics['total_bytes'] = total_bytes
             metrics['elapsed_time'] = elapsed_time
 
-    if final_progress is not None:
+    if final_progress is not None and not quiet:
         print(file=sys.stderr)
         total_scanned = metrics.get('total_files', final_progress[1])
         summary = format_scan_summary(
@@ -9816,6 +9819,7 @@ def main():
 
     output_group = parser.add_argument_group("Output")
     output_group.add_argument('--cli', action='store_true', help='Run in the terminal instead of opening a window.')
+    output_group.add_argument('-q', '--quiet', action='store_true', help='Suppress progress and summary messages in terminal output.')
     output_group.add_argument('-a', '--show-all', action='store_true', help='Show all scanned files, even safe ones.')
     output_group.add_argument('-o', '--output', type=str, help='Save the results to a file.')
     output_group.add_argument('-j', '--json', action='store_true', help='Print or save scan results in JSON format.')
@@ -9832,7 +9836,8 @@ def main():
     if args.clear_cache:
         Config.gpt_cache = {}
         Config.save_cache()
-        print("AI Analysis cache cleared.", file=sys.stderr)
+        if not args.quiet:
+            print("AI Analysis cache cleared.", file=sys.stderr)
         # If we ONLY wanted to clear cache, exit now.
         if not any([
             args.target, args.path, args.stdin, args.clipboard, args.import_results, args.baseline, args.files,
@@ -10049,7 +10054,7 @@ def main():
                 clipboard_content = get_cli_clipboard_content()
                 if clipboard_content:
                     extra_snippets.append(("[Clipboard]", clipboard_content.encode('utf-8')))
-                else:
+                elif not args.quiet:
                     print("Warning: Clipboard is empty or could not be read.", file=sys.stderr)
             except Exception as e:
                 print(f"Error reading from clipboard: {e}", file=sys.stderr)
@@ -10058,42 +10063,42 @@ def main():
             profile_paths = get_shell_profile_paths()
             if profile_paths:
                 scan_targets.extend(profile_paths)
-            else:
+            elif not args.quiet:
                 print("No common shell profile files were found on this system.", file=sys.stderr)
 
         if args.shell_history:
             history_paths = get_shell_history_paths()
             if history_paths:
                 scan_targets.extend(history_paths)
-            else:
+            elif not args.quiet:
                 print("No common shell history files were found on this system.", file=sys.stderr)
 
         if args.system_path:
             path_dirs = get_system_path_directories()
             if path_dirs:
                 scan_targets.extend(path_dirs)
-            else:
+            elif not args.quiet:
                 print("No valid folders found in the system PATH.", file=sys.stderr)
 
         if args.running_processes:
             processes = get_running_process_commands()
             if processes:
                 extra_snippets.extend(processes)
-            else:
+            elif not args.quiet:
                 print("No running processes with command lines were found.", file=sys.stderr)
 
         if args.scheduled_tasks:
             tasks = get_scheduled_task_commands()
             if tasks:
                 extra_snippets.extend(tasks)
-            else:
+            elif not args.quiet:
                 print("No scheduled tasks or Cron jobs were found.", file=sys.stderr)
 
         if args.startup_items:
             items = get_startup_item_commands()
             if items:
                 extra_snippets.extend(items)
-            else:
+            elif not args.quiet:
                 print("No system startup items or LaunchAgents were found.", file=sys.stderr)
 
         if args.system_services:
@@ -10103,98 +10108,98 @@ def main():
             service_cmds = get_system_service_commands()
             if service_cmds:
                 extra_snippets.extend(service_cmds)
-            if not service_paths and not service_cmds:
+            if not service_paths and not service_cmds and not args.quiet:
                 print("No system services or systemd units were found.", file=sys.stderr)
 
         if args.python_packages:
             package_paths = get_python_package_paths()
             if package_paths:
                 scan_targets.extend(package_paths)
-            else:
+            elif not args.quiet:
                 print("No Python site-packages folders were found.", file=sys.stderr)
 
         if args.browser_bookmarks:
             bookmarks_snippets = get_browser_bookmarks_snippets()
             if bookmarks_snippets:
                 extra_snippets.extend(bookmarks_snippets)
-            else:
+            elif not args.quiet:
                 print("No suspicious browser bookmarklets were found.", file=sys.stderr)
 
         if args.nodejs_packages:
             node_paths = get_nodejs_package_paths()
             if node_paths:
                 scan_targets.extend(node_paths)
-            else:
+            elif not args.quiet:
                 print("No global Node.js package folders were found.", file=sys.stderr)
 
         if args.browser_extensions:
             extension_paths = get_browser_extensions_paths()
             if extension_paths:
                 scan_targets.extend(extension_paths)
-            else:
+            elif not args.quiet:
                 print("No browser extension folders were found.", file=sys.stderr)
 
         if args.editor_extensions:
             extension_paths = get_editor_extensions_paths()
             if extension_paths:
                 scan_targets.extend(extension_paths)
-            else:
+            elif not args.quiet:
                 print("No editor extension folders were found.", file=sys.stderr)
 
         if args.ssh_config:
             ssh_paths = get_ssh_config_paths()
             if ssh_paths:
                 scan_targets.extend(ssh_paths)
-            else:
+            elif not args.quiet:
                 print("No SSH configuration or authorized_keys files were found.", file=sys.stderr)
 
         if args.network_config:
             network_paths = get_network_config_paths()
             if network_paths:
                 scan_targets.extend(network_paths)
-            else:
+            elif not args.quiet:
                 print("No network configuration files were found.", file=sys.stderr)
 
         if args.ruby_gems:
             gem_paths = get_ruby_gems_paths()
             if gem_paths:
                 scan_targets.extend(gem_paths)
-            else:
+            elif not args.quiet:
                 print("No Ruby gems folders were found.", file=sys.stderr)
 
         if args.php_packages:
             php_paths = get_php_packages_paths()
             if php_paths:
                 scan_targets.extend(php_paths)
-            else:
+            elif not args.quiet:
                 print("No global PHP package folders were found.", file=sys.stderr)
 
         if args.rust_packages:
             rust_paths = get_rust_packages_paths()
             if rust_paths:
                 scan_targets.extend(rust_paths)
-            else:
+            elif not args.quiet:
                 print("No global Rust package folders were found.", file=sys.stderr)
 
         if args.go_packages:
             go_paths = get_go_packages_paths()
             if go_paths:
                 scan_targets.extend(go_paths)
-            else:
+            elif not args.quiet:
                 print("No Go package folders were found.", file=sys.stderr)
 
         if args.java_packages:
             java_paths = get_java_packages_paths()
             if java_paths:
                 scan_targets.extend(java_paths)
-            else:
+            elif not args.quiet:
                 print("No Java package folders were found.", file=sys.stderr)
 
         if args.dotnet_packages:
             dotnet_paths = get_dotnet_packages_paths()
             if dotnet_paths:
                 scan_targets.extend(dotnet_paths)
-            else:
+            elif not args.quiet:
                 print("No .NET NuGet package folders were found.", file=sys.stderr)
 
         if args.documents:
@@ -10204,14 +10209,14 @@ def main():
             snippets = get_environment_variable_snippets()
             if snippets:
                 extra_snippets.extend(snippets)
-            else:
+            elif not args.quiet:
                 print("No non-empty environment variables were found.", file=sys.stderr)
 
         if args.env_files:
             env_paths = get_env_file_paths()
             if env_paths:
                 scan_targets.extend(env_paths)
-            else:
+            elif not args.quiet:
                 print("No common .env files were found.", file=sys.stderr)
 
         if args.audit:
@@ -10253,7 +10258,8 @@ def main():
             extra_snippets=extra_snippets,
             import_file=args.import_results,
             modified_since=modified_since,
-            baseline_file=args.baseline
+            baseline_file=args.baseline,
+            quiet=args.quiet
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)

@@ -548,6 +548,7 @@ You can customize terminal scans using these command line options.
 
 ##### Output Options
 *   `--cli`: Run in the terminal instead of opening a GUI window.
+*   `-q`, `--quiet`: Suppress progress updates and summary banners in terminal output.
 *   `-a`, `--show-all`: Show all scanned files, even safe ones (threat level under threshold).
 *   `-o`, `--output <file>`: Save the scan results to a file.
 *   `-j`, `--json`: Output or save results in JSON format.
