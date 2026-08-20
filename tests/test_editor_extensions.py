@@ -4,8 +4,7 @@ from pathlib import Path
 import pytest
 from gptscan import get_editor_extensions_paths, scan_editor_extensions_click
 
-def test_get_editor_extensions_paths_mocked(monkeypatch):
-    """Verify the logic of get_editor_extensions_paths with mocked inputs."""
+def test_get_editor_extensions_paths_linux(monkeypatch):
     home = Path("/home/user")
     monkeypatch.setattr(Path, "home", lambda: home)
 
@@ -33,8 +32,68 @@ def test_get_editor_extensions_paths_mocked(monkeypatch):
     assert str(home / ".vim" / "pack") in paths
     assert str(home / ".local" / "share" / "nvim" / "site" / "pack") in paths
 
+def test_get_editor_extensions_paths_win32_with_env(monkeypatch):
+    home = Path("C:/Users/user")
+    monkeypatch.setattr(Path, "home", lambda: home)
+    monkeypatch.setattr(sys, "platform", "win32")
+    appdata = "C:\\AppData"
+    local_appdata = "C:\\LocalAppData"
+    monkeypatch.setenv("APPDATA", appdata)
+    monkeypatch.setenv("LOCALAPPDATA", local_appdata)
+
+    sublime1 = os.path.abspath(os.path.join(appdata, "Sublime Text", "Packages"))
+    sublime2 = os.path.abspath(os.path.join(appdata, "Sublime Text 3", "Packages"))
+    neovim = os.path.abspath(os.path.join(local_appdata, "nvim-data", "site", "pack"))
+
+    fake_paths = {sublime1, sublime2, neovim}
+
+    def mock_isdir(p):
+        return os.path.abspath(p) in fake_paths
+
+    monkeypatch.setattr(os.path, "isdir", mock_isdir)
+
+    paths = get_editor_extensions_paths()
+
+    assert sublime1 in paths
+    assert sublime2 in paths
+    assert neovim in paths
+
+def test_get_editor_extensions_paths_win32_missing_env(monkeypatch):
+    home = Path("C:/Users/user")
+    monkeypatch.setattr(Path, "home", lambda: home)
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.delenv("APPDATA", raising=False)
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+
+    def mock_isdir(p):
+        return False
+
+    monkeypatch.setattr(os.path, "isdir", mock_isdir)
+
+    paths = get_editor_extensions_paths()
+    assert paths == []
+
+def test_get_editor_extensions_paths_darwin(monkeypatch):
+    home = Path("/Users/user")
+    monkeypatch.setattr(Path, "home", lambda: home)
+    monkeypatch.setattr(sys, "platform", "darwin")
+
+    sublime1 = str(home / "Library" / "Application Support" / "Sublime Text" / "Packages")
+    sublime2 = str(home / "Library" / "Application Support" / "Sublime Text 3" / "Packages")
+
+    fake_paths = {os.path.abspath(sublime1), os.path.abspath(sublime2)}
+
+    def mock_isdir(p):
+        return os.path.abspath(p) in fake_paths
+
+    monkeypatch.setattr(os.path, "isdir", mock_isdir)
+
+    paths = get_editor_extensions_paths()
+
+    assert os.path.abspath(sublime1) in paths
+    assert os.path.abspath(sublime2) in paths
+
 def test_scan_editor_extensions_click(monkeypatch):
-    """Verify the GUI callback for scanning editor extensions."""
     target_paths = []
     def mock_set_scan_target(paths):
         nonlocal target_paths
@@ -51,7 +110,6 @@ def test_scan_editor_extensions_click(monkeypatch):
     assert target_paths == ["/mock/vscode/extensions"]
 
 def test_scan_editor_extensions_click_no_paths(monkeypatch):
-    """Verify the GUI callback when no paths are found."""
     monkeypatch.setattr("gptscan.get_editor_extensions_paths", lambda: [])
 
     message_box_shown = False
