@@ -8389,6 +8389,61 @@ def copy_as_report(event: Optional[tk.Event] = None) -> None:
     update_status(f"Copied {len(results)} item(s) as Triage Report.")
 
 
+def copy_as_csv(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as CSV to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+    output = io.StringIO()
+    fields = ["path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet"]
+    writer = csv.DictWriter(output, fieldnames=fields)
+    writer.writeheader()
+    writer.writerows(results)
+
+    tree.clipboard_clear()
+    tree.clipboard_append(output.getvalue())
+    update_status(f"Copied {len(results)} item(s) as CSV.")
+
+
+def copy_as_yaml(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as YAML to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+    yaml_content = generate_yaml(results)
+
+    tree.clipboard_clear()
+    tree.clipboard_append(yaml_content)
+    update_status(f"Copied {len(results)} item(s) as YAML.")
+
+
+def copy_as_xml(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as XML to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+    xml_content = generate_xml(results)
+
+    tree.clipboard_clear()
+    tree.clipboard_append(xml_content)
+    update_status(f"Copied {len(results)} item(s) as XML.")
+
+
 def view_online(event_or_path: Union[tk.Event, str, None] = None, line: Optional[Union[int, str]] = None) -> None:
     """Open the selected result in a web browser (GitHub/GitLab/Bitbucket)."""
     # List of (path, line_num)
@@ -9293,8 +9348,11 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     copy_submenu.add_command(label="File Path", command=copy_path, accelerator="Ctrl+C")
     copy_submenu.add_command(label="SHA256 Hash", command=copy_sha256, accelerator="Ctrl+H")
     copy_submenu.add_command(label="Code Snippet", command=copy_snippet, accelerator="Ctrl+S")
+    copy_submenu.add_command(label="As CSV", command=copy_as_csv)
     copy_submenu.add_command(label="As Markdown Table", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
     copy_submenu.add_command(label="As JSON Array", command=copy_as_json, accelerator="Ctrl+J")
+    copy_submenu.add_command(label="As YAML", command=copy_as_yaml)
+    copy_submenu.add_command(label="As XML", command=copy_as_xml)
     copy_submenu.add_command(label="As Triage Report", command=copy_as_report, accelerator="Ctrl+Shift+R")
     context_menu.add_cascade(label="Copy", menu=copy_submenu)
 
