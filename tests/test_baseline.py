@@ -198,3 +198,88 @@ def test_baseline_missing_file_exits(capsys, monkeypatch):
     assert exit_called
     captured = capsys.readouterr()
     assert "Error loading baseline file non_existent_baseline_file.json" in captured.err or "Error loading baseline file non_existent_baseline_file.json" in captured.out
+
+
+def test_load_report_file_directory(tmp_path):
+    """Verify load_report_file can load a directory recursively and combine findings from multiple files."""
+    # Create directory structure
+    dir_path = tmp_path / "baselines"
+    dir_path.mkdir()
+
+    sub_dir = dir_path / "nested"
+    sub_dir.mkdir()
+
+    # Create a JSON report
+    json_report = dir_path / "report1.json"
+    json_data = [
+        {"path": "file1.py", "own_conf": "80%", "snippet": "eval(1)", "line": "10"}
+    ]
+    json_report.write_text(json.dumps(json_data), encoding="utf-8")
+
+    # Create a CSV report inside the nested directory
+    csv_report = sub_dir / "report2.csv"
+    with open(csv_report, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"])
+        writer.writerow(["file2.js", "70%", "Warning", "Warning", "", "exec('code')", "20"])
+
+    # Create an unsupported extension file which should be ignored
+    unsupported_file = dir_path / "report_ignored.txt_not_supported"
+    unsupported_file.write_text("should be ignored", encoding="utf-8")
+
+    # Load from the root baseline directory
+    results = gptscan.load_report_file(str(dir_path))
+
+    assert len(results) == 2
+    # Verify both findings exist and are standardized
+    paths = {r["path"] for r in results}
+    assert "file1.py" in paths
+    assert "file2.js" in paths
+
+
+def test_baseline_filtering_cli_directory(tmp_path, monkeypatch):
+    """Verify run_cli correctly loads findings from a baseline directory and bypasses them."""
+    # Create directory with a couple of reports
+    baseline_dir = tmp_path / "baseline_dir"
+    baseline_dir.mkdir()
+
+    json_report = baseline_dir / "rep1.json"
+    json_data = [
+        {"path": "known_unsafe.py", "own_conf": "90%", "snippet": "compromise()", "line": "5"}
+    ]
+    json_report.write_text(json.dumps(json_data), encoding="utf-8")
+
+    # Mock findings where one is in baseline_dir (known_unsafe.py) and one is new (new_unsafe.py)
+    mock_scan_results = [
+        ('progress', (0, 2, "Scanning")),
+        ('result', ("known_unsafe.py", "90%", "Critical", "Critical", "", "compromise()", "5")),
+        ('result', ("new_unsafe.py", "85%", "Critical", "Critical", "", "shell_exec()", "15")),
+        ('summary', (2, 1024, 0.2))
+    ]
+
+    monkeypatch.setattr(gptscan, "scan_files", lambda *args, **kwargs: mock_scan_results)
+
+    output_file = tmp_path / "results.json"
+
+    # Run run_cli specifying the directory as baseline_file
+    threats = gptscan.run_cli(
+        targets=["."],
+        deep=False,
+        show_all=False,
+        use_gpt=False,
+        rate_limit=60,
+        output_format="json",
+        output_file=str(output_file),
+        baseline_file=str(baseline_dir)
+    )
+
+    # Only new_unsafe.py should be printed/saved and counted as threat
+    assert threats == 1
+
+    assert output_file.exists()
+    content = output_file.read_text(encoding="utf-8")
+    lines = content.strip().splitlines()
+    assert len(lines) == 1
+    result_record = json.loads(lines[0])
+    assert result_record["path"] == "new_unsafe.py"
+    assert result_record["snippet"] == "shell_exec()"
