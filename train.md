@@ -35,38 +35,26 @@ Train the local detection model for the GPT Virus Scanner. The model learns to i
 
    *Note: Activate the virtual environment whenever you open a new terminal. Run `deactivate` to exit it.*
 
-<<<<<<< HEAD
-3.  **Install requirements:** Open your terminal and run the appropriate command based on your operating system:
+3. **Install requirements:** Open your terminal and run the appropriate command based on your operating system and Python version:
 
-    *   **macOS and Linux:**
-        *   **For Python 3.9, 3.10, or 3.11:**
-            ```bash
-            python3 -m pip install "tensorflow<2.16" numpy pyyaml
-            ```
-        *   **For Python 3.12:**
-            ```bash
-            python3 -m pip install tensorflow numpy pyyaml
-            ```
-    *   **Windows:**
-        *   **For Python 3.9, 3.10, or 3.11:**
-            ```cmd
-            python -m pip install "tensorflow<2.16" numpy pyyaml
-            ```
-        *   **For Python 3.12:**
-            ```cmd
-            python -m pip install tensorflow numpy pyyaml
-            ```
-=======
-3. **Install requirements:** Run the appropriate command for your Python version:
-   - **For Python 3.9, 3.10, or 3.11:**
-     ```bash
-     python3 -m pip install "tensorflow<2.16" numpy pyyaml
-     ```
-   - **For Python 3.12:**
-     ```bash
-     python3 -m pip install tensorflow numpy pyyaml
-     ```
->>>>>>> origin/docs-improve-train-guide-6270250563514395944
+   - **macOS and Linux:**
+     - **For Python 3.9, 3.10, or 3.11:**
+       ```bash
+       python3 -m pip install "tensorflow<2.16" numpy pyyaml
+       ```
+     - **For Python 3.12:**
+       ```bash
+       python3 -m pip install tensorflow numpy pyyaml
+       ```
+   - **Windows:**
+     - **For Python 3.9, 3.10, or 3.11:**
+       ```cmd
+       python -m pip install "tensorflow<2.16" numpy pyyaml
+       ```
+     - **For Python 3.12:**
+       ```cmd
+       python -m pip install tensorflow numpy pyyaml
+       ```
 
 ## Configuration
 
@@ -154,13 +142,9 @@ If you do not specify folder paths using command-line arguments, the tool uses t
 
 ## Usage
 
-<<<<<<< HEAD
 *Note: If you are on Windows, use `python` instead of `python3` for all the terminal examples shown below.*
 
-### Basic Training
-=======
 ### Training Mode
->>>>>>> origin/docs-improve-train-guide-6270250563514395944
 
 To train a new detection model:
 
