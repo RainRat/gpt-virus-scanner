@@ -875,6 +875,22 @@ def _quote_for_ui(path: str) -> str:
     return shlex.quote(path)
 
 
+def update_clear_target_visibility(*args: Any) -> None:
+    """Dynamically display or hide clear_target_btn based on whether textbox has input."""
+    if clear_target_btn is None or textbox is None or not hasattr(textbox, "get"):
+        return
+    try:
+        val = textbox.get()
+        if isinstance(val, str) and val.strip():
+            if hasattr(clear_target_btn, "grid"):
+                clear_target_btn.grid(row=0, column=2, padx=(0, 5))
+        else:
+            if hasattr(clear_target_btn, "grid_remove"):
+                clear_target_btn.grid_remove()
+    except Exception:
+        pass
+
+
 def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
     """Update the scan target textbox and set focus to the scan button.
 
@@ -894,6 +910,7 @@ def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
 
     textbox.delete(0, tk.END)
     textbox.insert(0, formatted_path)
+    update_clear_target_visibility()
     if scan_button:
         scan_button.focus_set()
 
@@ -931,8 +948,13 @@ def _get_target_path() -> str:
 def _get_initial_dir() -> Optional[str]:
     """Find a starting folder for file dialogs based on what is currently entered."""
     path_str = ""
-    if textbox:
-        path_str = textbox.get().strip()
+    if textbox and hasattr(textbox, "get"):
+        try:
+            val = textbox.get()
+            if isinstance(val, str):
+                path_str = val.strip()
+        except Exception:
+            pass
 
     if not path_str:
         path_str = Config.last_path
@@ -8995,12 +9017,19 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(textbox, "Enter one or more files, folders, or glob patterns (e.g., src/**/*.py) to scan. Separate multiple targets with spaces.")
 
     def clear_target():
-        textbox.delete(0, tk.END)
-        textbox.focus_set()
+        if textbox:
+            textbox.delete(0, tk.END)
+        update_clear_target_visibility()
+        if textbox:
+            textbox.focus_set()
 
     clear_target_btn = ttk.Button(input_frame, text="×", width=3, command=clear_target)
     clear_target_btn.grid(row=0, column=2, padx=(0, 5))
     bind_hover_message(clear_target_btn, "Clear the scan target.")
+
+    textbox.bind('<KeyRelease>', lambda e: update_clear_target_visibility())
+    textbox.bind('<<ComboboxSelected>>', lambda e: update_clear_target_visibility())
+    update_clear_target_visibility()
 
     root.bind('<Escape>', on_root_escape)
     button_box = ttk.Frame(input_frame)
