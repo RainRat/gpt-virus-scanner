@@ -4379,19 +4379,13 @@ def show_keyboard_shortcuts() -> None:
         scrollable_content = ttk.Frame(canvas, padding=10)
 
         # Bind configuration and scroll region
-        def on_frame_configure(event, c=canvas):
-            c.configure(scrollregion=c.bbox("all"))
-
-        scrollable_content.bind("<Configure>", on_frame_configure)
+        scrollable_content.bind("<Configure>", lambda e, c=canvas: c.configure(scrollregion=c.bbox("all")))
 
         # Create window inside canvas
         canvas_window = canvas.create_window((0, 0), window=scrollable_content, anchor="nw")
 
         # Adjust width of scrollable content when canvas is resized
-        def on_canvas_configure(event, c=canvas, cw=canvas_window):
-            c.itemconfig(cw, width=event.width)
-
-        canvas.bind("<Configure>", on_canvas_configure)
+        canvas.bind("<Configure>", lambda e, c=canvas, cw=canvas_window: c.itemconfig(cw, width=e.width))
 
         canvas.configure(yscrollcommand=scrollbar.set)
 
