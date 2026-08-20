@@ -469,6 +469,11 @@ To save the formatted output directly to a file, combine any format flag with th
 python3 gptscan.py ./my_project --json --output results.json --cli
 ```
 
+To limit output to the top N highest-risk findings, use `--top` (or `--limit`):
+```bash
+python3 gptscan.py ./my_project --top 10 --report --cli
+```
+
 #### CI/CD & Exit Codes
 You can use the scanner in CI/CD pipelines (like GitHub Actions) to prevent malicious or dangerous code from being committed.
 
@@ -559,6 +564,7 @@ You can customize terminal scans using these command line options.
 *   `--xml`: Create an XML report.
 *   `--yaml`, `--yml`: Create a YAML report.
 *   `--report`: Output a detailed triage report to the terminal.
+*   `--top <N>` / `--limit <N>`: Limit output results to the top N highest-risk findings.
 
 ### Setting up AI Analysis
 To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama running locally.
