@@ -8788,6 +8788,7 @@ def select_all_items(event: Optional[tk.Event] = None) -> str:
 
 def on_target_selected(event: Optional[tk.Event] = None) -> None:
     """Handle recent path selection from the target combobox dropdown."""
+    update_clear_target_visibility()
     if scan_button:
         try:
             scan_button.focus_set()
@@ -9039,7 +9040,6 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(clear_target_btn, "Clear the scan target.")
 
     textbox.bind('<KeyRelease>', lambda e: update_clear_target_visibility())
-    textbox.bind('<<ComboboxSelected>>', lambda e: update_clear_target_visibility())
     update_clear_target_visibility()
 
     root.bind('<Escape>', on_root_escape)
