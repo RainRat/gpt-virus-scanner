@@ -9,6 +9,7 @@ import os
 def mock_view_details_env(monkeypatch):
     """Setup a mock environment for view_details tests."""
     mock_tree = MagicMock()
+    mock_tree.__getitem__.side_effect = lambda key: ("path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line") if key == "columns" else MagicMock()
     monkeypatch.setattr(gptscan, 'tree', mock_tree)
 
     # Setup mock_tree.item to handle both single and double argument calls
@@ -456,6 +457,46 @@ def test_view_details_copy_code_button(mock_view_details_env):
     # Verify local status feedback
     status_bar = captured['labels'][0]
     assert status_bar.config_data.get('text') == "Code copied to clipboard."
+
+
+def test_view_details_copy_sha256_success(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py", snippet="print('hello, world')")
+    from gptscan import root as mock_root
+
+    assert "menu_Copy SHA256" in captured
+    copy_sha256_cmd = captured["menu_Copy SHA256"]
+
+    # Trigger click command
+    copy_sha256_cmd()
+
+    mock_root.clipboard_clear.assert_called()
+    assert mock_root.clipboard_append.called
+    sha256_val = mock_root.clipboard_append.call_args[0][0]
+    assert len(sha256_val) == 64
+
+    # Verify local status feedback
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text').startswith("SHA256 copied:")
+
+
+def test_view_details_copy_sha256_failure(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "[Clipboard]", snippet="")
+    from gptscan import root as mock_root
+
+    assert "menu_Copy SHA256" in captured
+    copy_sha256_cmd = captured["menu_Copy SHA256"]
+
+    # Clear snippet in the ScrolledText box to ensure get_effective_sha256 returns empty string
+    st = captured['scrolledtexts'][-1]
+    st.delete("1.0", tk.END)
+
+    copy_sha256_cmd()
+
+    mock_msgbox.showwarning.assert_called_once_with(
+        "Error", "Could not calculate file hash.", parent=mock_toplevel
+    )
 
 
 def test_center_window():

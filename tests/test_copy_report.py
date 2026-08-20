@@ -41,51 +41,29 @@ def test_copy_as_report_logic(monkeypatch):
     mock_tree.clipboard_append.assert_called_once_with(mock_report)
     mock_update_status.assert_called_once_with("Copied 1 item(s) as Triage Report.")
 
-def test_copy_as_report_details_logic(monkeypatch):
-    """Test that copy_as_report_details inside view_details correctly formats data."""
-    # We need to simulate the local function. Since it's nested, we test the logic.
-    mock_current_item_id = "I002"
-    mock_root = MagicMock()
-    monkeypatch.setattr(gptscan, 'root', mock_root)
+from tests.test_view_details import mock_view_details_env, setup_details
 
-    # Mock _get_tree_results_as_dicts
-    test_results = [{
-        "path": "detail.py",
-        "own_conf": "80%",
-        "admin_desc": "Admin note",
-        "end-user_desc": "User note",
-        "gpt_conf": "75%",
-        "snippet": "os.system('rm -rf /')",
-        "line": "5"
-    }]
-    mock_get_dicts = MagicMock(return_value=test_results)
-    monkeypatch.setattr(gptscan, '_get_tree_results_as_dicts', mock_get_dicts)
+def test_copy_as_report_details_logic(mock_view_details_env):
+    """Test that copy_as_report_details inside view_details correctly formats data and updates status bar."""
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "I002", "detail.py", own_conf="80%", admin="Admin note", user="User note", gpt_conf="75%", snippet="os.system('rm -rf /')", line=5)
 
-    # Mock generate_console_report
-    mock_report = "Details Report"
-    mock_gen_report = MagicMock(return_value=mock_report)
-    monkeypatch.setattr(gptscan, 'generate_console_report', mock_gen_report)
+    from gptscan import root as mock_root
 
-    # Mock set_local_status
-    mock_set_status = MagicMock()
+    assert "menu_Copy as Triage Report" in captured
+    copy_report_cmd = captured["menu_Copy as Triage Report"]
 
-    # Since copy_as_report_details is local, we recreate its logic here to test it
-    def copy_as_report_details():
-        results = gptscan._get_tree_results_as_dicts([mock_current_item_id])
-        if results:
-            report = gptscan.generate_console_report(results, use_color=False)
-            mock_root.clipboard_clear()
-            mock_root.clipboard_append(report)
-            mock_set_status("Result copied as Triage Report.", temporary=True)
+    # Trigger command directly from view_details menu
+    copy_report_cmd()
 
-    copy_as_report_details()
+    mock_root.clipboard_clear.assert_called()
+    assert mock_root.clipboard_append.called
+    copied_report = mock_root.clipboard_append.call_args[0][0]
+    assert "detail.py" in copied_report
 
-    # Verify calls
-    mock_get_dicts.assert_called_once_with([mock_current_item_id])
-    mock_gen_report.assert_called_once_with(test_results, use_color=False)
-    mock_root.clipboard_clear.assert_called_once()
-    mock_root.clipboard_append.assert_called_once_with(mock_report)
-    mock_set_status.assert_called_once_with("Result copied as Triage Report.", temporary=True)
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "Result copied as Triage Report."
+
 
 def test_copy_as_csv_logic(monkeypatch):
     """Test that copy_as_csv correctly formats selected data as CSV and appends to clipboard."""
@@ -116,6 +94,7 @@ def test_copy_as_csv_logic(monkeypatch):
     assert "test.py,10,90%,85%,Dangerous code found,Highly suspicious,eval(input())" in copied_content
     mock_update_status.assert_called_once_with("Copied 1 item(s) as CSV.")
 
+
 def test_copy_as_yaml_logic(monkeypatch):
     """Test that copy_as_yaml correctly formats selected data as YAML and appends to clipboard."""
     mock_tree = MagicMock()
@@ -142,6 +121,7 @@ def test_copy_as_yaml_logic(monkeypatch):
     mock_tree.clipboard_clear.assert_called_once()
     mock_tree.clipboard_append.assert_called_once_with("yaml_content_mock")
     mock_update_status.assert_called_once_with("Copied 1 item(s) as YAML.")
+
 
 def test_copy_as_xml_logic(monkeypatch):
     """Test that copy_as_xml correctly formats selected data as XML and appends to clipboard."""
