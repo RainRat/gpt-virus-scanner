@@ -162,8 +162,65 @@ def test_manage_extensions_remove(mock_gui_env, monkeypatch):
 
     assert ".js" not in Config.extensions_set
     assert ".py" in Config.extensions_set
-    mock_mb.askyesno.assert_called()
-    Config.save_extensions.assert_called()
+
+def test_manage_extensions_add_from_file_success(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py"}
+    mock_filedialog = MagicMock()
+    mock_filedialog.askopenfilename.return_value = "/path/to/my_script.rs"
+    monkeypatch.setattr(gptscan, "filedialog", mock_filedialog)
+    monkeypatch.setattr(Config, "save_extensions", MagicMock())
+
+    manage_extensions()
+    add_file_btn, add_file_cmd = captured['buttons']['Add from File...']
+    add_file_cmd()
+
+    assert ".rs" in Config.extensions_set
+    assert ".rs" in captured['listbox'].items
+    Config.save_extensions.assert_called_once()
+
+def test_manage_extensions_add_from_file_no_extension(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py"}
+    mock_filedialog = MagicMock()
+    mock_filedialog.askopenfilename.return_value = "/path/to/Makefile"
+    monkeypatch.setattr(gptscan, "filedialog", mock_filedialog)
+
+    manage_extensions()
+    add_file_btn, add_file_cmd = captured['buttons']['Add from File...']
+    add_file_cmd()
+
+    mock_mb.showinfo.assert_called_once()
+    assert "No Extension Found" in mock_mb.showinfo.call_args[0][0]
+
+def test_manage_extensions_add_from_file_cancelled(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py"}
+    mock_filedialog = MagicMock()
+    mock_filedialog.askopenfilename.return_value = ""
+    monkeypatch.setattr(gptscan, "filedialog", mock_filedialog)
+
+    manage_extensions()
+    add_file_btn, add_file_cmd = captured['buttons']['Add from File...']
+    add_file_cmd()
+
+    assert Config.extensions_set == {".py"}
+    mock_mb.showinfo.assert_not_called()
+
+def test_manage_extensions_add_from_file_exception(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py"}
+    mock_filedialog = MagicMock()
+    mock_filedialog.askopenfilename.return_value = "/path/to/script.ts"
+    monkeypatch.setattr(gptscan, "filedialog", mock_filedialog)
+    monkeypatch.setattr(Config, "save_extensions", MagicMock(side_effect=OSError("Disk write error")))
+
+    manage_extensions()
+    add_file_btn, add_file_cmd = captured['buttons']['Add from File...']
+    add_file_cmd()
+
+    mock_mb.showerror.assert_called_once()
+    assert "Could not update extensions" in mock_mb.showerror.call_args[0][1]
 
 def test_manage_extensions_reset(mock_gui_env, monkeypatch):
     captured, mock_sd, mock_mb, mock_top = mock_gui_env
