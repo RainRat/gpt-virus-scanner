@@ -3278,17 +3278,12 @@ def scan_git_diff_click():
 
 def scan_git_hooks_click():
     """Scan local and global Git hooks."""
-    try:
-        target_path = _get_target_path()
-
-        hook_paths = get_git_hooks_paths(target_path)
-        if hook_paths:
-            _set_scan_target(hook_paths)
-            button_click()
-        else:
-            messagebox.showinfo("Git Hooks", "No Git hooks found to scan.")
-    except Exception as e:
-        messagebox.showwarning("Git Hooks Error", f"Could not scan Git hooks: {e}")
+    _generic_scan_click(
+        lambda: get_git_hooks_paths(_get_target_path()),
+        "Git Hooks",
+        "No Git hooks found to scan.",
+        "Git Hooks Error"
+    )
 
 
 def scan_git_config_click():
