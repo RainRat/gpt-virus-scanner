@@ -107,3 +107,15 @@ def test_analyze_filename_trailing_dots_complex():
     score, msg = analyze_filename(name)
     assert score >= 0.5
     assert "dot" in msg.lower()
+
+def test_analyze_filename_path_and_empty_inputs():
+    # Path object input
+    p = Path("invoice\u202egepj.exe")
+    score, msg = analyze_filename(p)
+    assert score == 1.0
+    assert "RTLO" in msg
+
+    # Empty string or path without basename
+    score, msg = analyze_filename("")
+    assert score == 0.0
+    assert msg == ""
