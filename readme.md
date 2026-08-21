@@ -232,9 +232,14 @@ The scanner includes shortcuts for faster navigation.
 | **Details Window** | |
 | `Esc` | Close Window |
 | `Left` / `Right` | Previous / Next Result |
+| `Alt+Left` / `Alt+Right` | Force Previous / Next Result |
+| `Alt+Up` / `Alt+Down` | Force Previous / Next Result |
+| `Ctrl+PageUp` / `Ctrl+PageDown` | Force Previous / Next Result |
 | `F5` / `r` | Rescan |
 | `Delete` | Exclude |
 | `Ctrl+U` | Toggle Full Source |
+| `Ctrl++` / `Ctrl+-` | Zoom In / Out Code Viewer |
+| `Ctrl+0` | Reset Code Viewer Zoom |
 | `Ctrl+S` | Copy Code Snippet |
 | `Ctrl+Shift+C` | Copy AI Analysis |
 | `Ctrl+H` | Copy SHA-256 Hash |
