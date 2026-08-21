@@ -43,6 +43,29 @@ def test_copy_as_report_logic(monkeypatch):
 
 from tests.test_view_details import mock_view_details_env, setup_details
 
+def test_copy_as_csv_details_logic(mock_view_details_env):
+    """Test that copy_as_csv_details inside view_details correctly formats single item data as CSV and updates status bar."""
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "I002", "detail.py", own_conf="80%", admin="Admin note", user="User note", gpt_conf="75%", snippet="os.system('rm -rf /')", line=5)
+
+    from gptscan import root as mock_root
+
+    assert "menu_Copy as CSV" in captured
+    copy_csv_cmd = captured["menu_Copy as CSV"]
+
+    # Trigger command directly from view_details menu
+    copy_csv_cmd()
+
+    mock_root.clipboard_clear.assert_called()
+    assert mock_root.clipboard_append.called
+    copied_csv = mock_root.clipboard_append.call_args[0][0]
+    assert "path,line,own_conf,gpt_conf,admin_desc,end-user_desc,snippet" in copied_csv
+    assert "detail.py,5,80%,75%,Admin note,User note,os.system('rm -rf /')" in copied_csv
+
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "Result copied as CSV."
+
+
 def test_copy_as_report_details_logic(mock_view_details_env):
     """Test that copy_as_report_details inside view_details correctly formats data and updates status bar."""
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
