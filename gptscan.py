@@ -4261,6 +4261,21 @@ def manage_extensions() -> None:
                 except Exception as e:
                     messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
 
+    def add_from_file():
+        file_path = filedialog.askopenfilename(parent=manage_win, initialdir=_get_initial_dir())
+        if file_path:
+            ext = os.path.splitext(file_path)[1].lower()
+            if not ext:
+                messagebox.showwarning("No Extension", "The selected file does not have a file extension.", parent=manage_win)
+                return
+            if ext not in Config.extensions_set:
+                try:
+                    Config.extensions_set.add(ext)
+                    Config.save_extensions()
+                    refresh_list()
+                except Exception as e:
+                    messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
+
     def remove_selected(event=None):
         selection = ext_listbox.curselection()
         if not selection:
@@ -4301,6 +4316,7 @@ def manage_extensions() -> None:
     manage_win.bind("<Escape>", lambda e: manage_win.destroy())
 
     ttk.Button(btn_frame, text="Add...", command=add_extension).pack(side=tk.LEFT, padx=(0, 5), ipady=5)
+    ttk.Button(btn_frame, text="Add from File...", command=add_from_file).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Reset to Defaults", command=reset_defaults).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT, ipady=5)
