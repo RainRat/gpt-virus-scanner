@@ -7112,33 +7112,13 @@ def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None,
                 raise ValueError("Web link content is empty.")
             yield from import_results_from_content_generator(content, filename_hint=file_path)
         elif os.path.isdir(file_path):
-            supported_exts = ('.json', '.jsonl', '.ndjson', '.csv', '.sarif', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml')
-            files = []
-            for r_dir, _, filenames in os.walk(file_path):
-                for filename in filenames:
-                    ext = os.path.splitext(filename)[1].lower()
-                    if ext in supported_exts:
-                        files.append(os.path.join(r_dir, filename))
-            files.sort()
-
-            if not files:
+            results = load_report_file(file_path)
+            if not results:
                 raise ValueError(f"No supported report files found in directory: {file_path}")
 
-            # Collect results across all files
-            all_results = []
-            for path in files:
-                try:
-                    with open(path, "r", encoding="utf-8") as f:
-                        file_content = f.read()
-                    if file_content.strip():
-                        # Parse and extend
-                        all_results.extend(parse_report_content(file_content, filename_hint=path))
-                except Exception:
-                    pass
-
-            total = len(all_results)
+            total = len(results)
             yield ('progress', (0, total, f"Importing from directory: {os.path.basename(file_path)}"))
-            for i, item in enumerate(all_results):
+            for i, item in enumerate(results):
                 yield ('progress', (i + 1, total, f"Importing: {os.path.basename(item.get('path', 'unknown'))}"))
                 data = (
                     item.get("path", ""),
@@ -9611,7 +9591,7 @@ def main():
     scan_group.add_argument(
         '--import-results', '--import',
         type=str,
-        help='Import results from a previous scan. Use "-" to read from the terminal.'
+        help='Import results from a previous scan file, directory, or web link. Use "-" to read from the terminal.'
     )
     scan_group.add_argument(
         '--baseline',

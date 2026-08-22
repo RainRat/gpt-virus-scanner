@@ -506,7 +506,7 @@ You can customize terminal scans using these command line options.
 *   `-t`, `--threshold <num>`: Set the minimum threat level (0-100) to show in results (default is 50).
 *   `--stdin`: Scan code piped from another command.
 *   `-c`, `--clipboard`: Scan code currently copied in the system clipboard.
-*   `--import-results <file>` / `--import <file>`: Import results from a previous scan. Use `-` to read from the terminal.
+*   `--import-results <target>` / `--import <target>`: Import results from a previous scan file, directory, or web link. Use `-` to read from the terminal.
 *   `--baseline <file>`: A previous scan report (in any supported format) to act as a baseline. Findings matching this baseline are filtered out.
 *   `--max-size <size>`: The maximum file size to scan (for example: `10MB`). Default is 10MB.
 *   `--modified <time>`: Only scan files changed within this time (for example: `24h`, `1h`, `7d`).
