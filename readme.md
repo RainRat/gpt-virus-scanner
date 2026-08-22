@@ -659,11 +659,11 @@ Install the required testing packages by running the appropriate command:
 
 *   **macOS and Linux:**
     ```bash
-    python3 -m pip install pytest pytest-asyncio pytest-mock pytest-cov Pillow pyyaml
+    python3 -m pip install pytest pytest-asyncio pytest-mock pytest-cov pyyaml
     ```
 *   **Windows:**
     ```cmd
-    python -m pip install pytest pytest-asyncio pytest-mock pytest-cov Pillow pyyaml
+    python -m pip install pytest pytest-asyncio pytest-mock pytest-cov pyyaml
     ```
 
 #### 2. Run the full test suite
