@@ -7850,6 +7850,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             root.clipboard_append(report)
             set_local_status("Result copied as Triage Report.", temporary=True)
 
+    def copy_as_html_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            html_content = generate_html(results)
+            root.clipboard_clear()
+            root.clipboard_append(html_content)
+            set_local_status("Result copied as HTML.", temporary=True)
+
     def copy_sha256_details():
         path = path_entry.get()
         snippet = snippet_text.get("1.0", tk.END).strip()
@@ -7931,6 +7939,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_menu.add_command(label="Copy Path", command=copy_path_details, accelerator="Ctrl+Shift+P")
     copy_menu.add_command(label="Copy SHA256", command=copy_sha256_details, accelerator="Ctrl+H")
     copy_menu.add_command(label="Copy as CSV", command=copy_as_csv_details)
+    copy_menu.add_command(label="Copy as HTML", command=copy_as_html_details)
     copy_menu.add_command(label="Copy as JSON", command=copy_as_json_details, accelerator="Ctrl+J")
     copy_menu.add_command(label="Copy as Triage Report", command=copy_as_report_details, accelerator="Ctrl+Shift+R")
     copy_menu.add_command(label="Copy Code", command=copy_code, accelerator="Ctrl+S")
@@ -8493,6 +8502,23 @@ def copy_as_xml(event: Optional[tk.Event] = None) -> None:
     tree.clipboard_clear()
     tree.clipboard_append(xml_content)
     update_status(f"Copied {len(results)} item(s) as XML.")
+
+
+def copy_as_html(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as HTML to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+    html_content = generate_html(results)
+
+    tree.clipboard_clear()
+    tree.clipboard_append(html_content)
+    update_status(f"Copied {len(results)} item(s) as HTML.")
 
 
 def view_online(event_or_path: Union[tk.Event, str, None] = None, line: Optional[Union[int, str]] = None) -> None:
@@ -9408,6 +9434,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     copy_submenu.add_command(label="SHA256 Hash", command=copy_sha256, accelerator="Ctrl+H")
     copy_submenu.add_command(label="Code Snippet", command=copy_snippet, accelerator="Ctrl+S")
     copy_submenu.add_command(label="As CSV", command=copy_as_csv)
+    copy_submenu.add_command(label="As HTML", command=copy_as_html)
     copy_submenu.add_command(label="As Markdown Table", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
     copy_submenu.add_command(label="As JSON Array", command=copy_as_json, accelerator="Ctrl+J")
     copy_submenu.add_command(label="As YAML", command=copy_as_yaml)
