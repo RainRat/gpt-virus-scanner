@@ -7830,6 +7830,18 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             root.clipboard_append(js)
             set_local_status("Result copied as JSON.", temporary=True)
 
+    def copy_as_csv_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            output = io.StringIO()
+            fields = ["path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet"]
+            writer = csv.DictWriter(output, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(results)
+            root.clipboard_clear()
+            root.clipboard_append(output.getvalue())
+            set_local_status("Result copied as CSV.", temporary=True)
+
     def copy_as_report_details():
         results = _get_tree_results_as_dicts([current_item_id])
         if results:
@@ -7918,6 +7930,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_menu.add_command(label="Copy Analysis", command=copy_analysis, accelerator="Ctrl+Shift+C")
     copy_menu.add_command(label="Copy Path", command=copy_path_details, accelerator="Ctrl+Shift+P")
     copy_menu.add_command(label="Copy SHA256", command=copy_sha256_details, accelerator="Ctrl+H")
+    copy_menu.add_command(label="Copy as CSV", command=copy_as_csv_details)
     copy_menu.add_command(label="Copy as JSON", command=copy_as_json_details, accelerator="Ctrl+J")
     copy_menu.add_command(label="Copy as Triage Report", command=copy_as_report_details, accelerator="Ctrl+Shift+R")
     copy_menu.add_command(label="Copy Code", command=copy_code, accelerator="Ctrl+S")
