@@ -72,10 +72,12 @@ def test_analyze_content_mismatch_linux():
 
 def test_analyze_content_mismatch_mac():
     from gptscan import analyze_content_mismatch
-    # Mach-O 64-bit
-    score, msg = analyze_content_mismatch("data.png", b"\xcf\xfa\xed\xfe")
-    assert score == 1.0
-    assert "macOS executable" in msg
+    # Test all 4 Mach-O magic byte signatures (32-bit & 64-bit, big & little endian)
+    macho_magics = [b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf", b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe"]
+    for magic in macho_magics:
+        score, msg = analyze_content_mismatch("data.png", magic)
+        assert score == 1.0
+        assert "macOS executable" in msg
 
 def test_analyze_content_mismatch_shebang():
     from gptscan import analyze_content_mismatch
@@ -83,6 +85,45 @@ def test_analyze_content_mismatch_shebang():
     assert score == 0.8
     assert "Script shebang" in msg
     assert ".docx" in msg
+
+    # .txt files with shebang are exempt
+    score, msg = analyze_content_mismatch("readme.txt", b"#!/bin/bash\n")
+    assert score == 0.0
+    assert msg == ""
+
+def test_analyze_content_mismatch_shebang_decode_exception(monkeypatch):
+    from gptscan import analyze_content_mismatch
+    # Simulate a decode error by patching bytes.decode or bad bytes if possible
+    mock_bytes = MagicMock()
+    mock_bytes.startswith.side_effect = lambda prefix: prefix == b"#!"
+    mock_bytes.__getitem__.return_value = mock_bytes
+    mock_bytes.split.side_effect = Exception("Decode failure")
+
+    score, msg = analyze_content_mismatch("notes.docx", mock_bytes)
+    assert score == 0.0
+    assert msg == ""
+
+def test_analyze_content_mismatch_edge_cases():
+    from gptscan import analyze_content_mismatch
+    # Path object input
+    score, msg = analyze_content_mismatch(Path("document.pdf"), b"\x7fELF\x02")
+    assert score == 1.0
+    assert "Linux executable" in msg
+
+    # Empty filename / path
+    score, msg = analyze_content_mismatch("", b"MZ\x90\x00")
+    assert score == 0.0
+    assert msg == ""
+
+    # Empty content bytes
+    score, msg = analyze_content_mismatch("image.png", b"")
+    assert score == 0.0
+    assert msg == ""
+
+    # Non-safe extensions (e.g. .py, .bin)
+    score, msg = analyze_content_mismatch("script.py", b"MZ\x90\x00")
+    assert score == 0.0
+    assert msg == ""
 
 def test_analyze_content_mismatch_benign():
     from gptscan import analyze_content_mismatch
