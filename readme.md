@@ -242,8 +242,10 @@ The scanner includes shortcuts for faster navigation.
 | `Ctrl+0` | Reset Code Viewer Zoom |
 | `Ctrl+S` | Copy Code Snippet |
 | `Ctrl+Shift+C` | Copy AI Analysis |
+| `Ctrl+Shift+P` | Copy File Path |
 | `Ctrl+H` | Copy SHA-256 Hash |
 | `Ctrl+J` | Copy JSON Data |
+| `Ctrl+G` | Analyze with AI |
 | `Ctrl+Shift+R` | Copy as Triage Report |
 | `Ctrl+T` | Check on VirusTotal |
 | `Ctrl+L` | View Online |
