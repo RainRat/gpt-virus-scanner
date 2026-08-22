@@ -339,7 +339,7 @@ def parse_ignore_file(file_path: Union[Path, str]) -> List[str]:
                 pattern = parts[0].strip()
                 if pattern:
                     patterns.append(pattern)
-    except Exception:
+    except (OSError, UnicodeError):
         pass
     return patterns
 
@@ -376,7 +376,7 @@ def discover_local_ignore_patterns(local_targets: List[str]) -> List[Tuple[Path,
                             patterns = parse_ignore_file(item)
                             for pat in patterns:
                                 ignore_rules.append((parent, pat))
-            except Exception:
+            except (OSError, UnicodeError):
                 pass
     return ignore_rules
 
