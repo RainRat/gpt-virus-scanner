@@ -132,6 +132,7 @@ def test_exclude_selected_advances_selection(mock_gui, monkeypatch):
     mock_gui["tree"].selection_set.assert_called_with("item3")
     mock_gui["tree"].focus.assert_called_with("item3")
     mock_gui["tree"].see.assert_called_with("item3")
+    mock_gui["tree"].focus_set.assert_called_once()
 
 
 def test_exclude_selected_handles_last_item(mock_gui, monkeypatch):
