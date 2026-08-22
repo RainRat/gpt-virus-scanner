@@ -276,3 +276,122 @@ def test_check_virustotal_batch(mock_tree, monkeypatch):
     assert mock_web.call_count == 2
     mock_web.assert_any_call("https://www.virustotal.com/gui/file/hash_path1.py")
     mock_web.assert_any_call("https://www.virustotal.com/gui/file/hash_path2.js")
+
+
+def test_open_file_large_selection_accepted_and_declined(mock_tree, monkeypatch):
+    mock_tree.selection.return_value = [f"item{i}" for i in range(6)]
+    for i in range(6):
+        mock_tree._item_values[f"item{i}"] = (f"path{i}.py",)
+
+    monkeypatch.setattr(os.path, 'exists', lambda p: True)
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, 'messagebox', mock_msgbox)
+    mock_run = MagicMock()
+    monkeypatch.setattr(gptscan.subprocess, 'run', mock_run)
+
+    with patch('sys.platform', 'linux'):
+        # Case 1: User declines confirmation dialog
+        mock_msgbox.askyesno.return_value = False
+        gptscan.open_file()
+        mock_msgbox.askyesno.assert_called_once_with("Open Files", "Are you sure you want to open 6 files?")
+        mock_run.assert_not_called()
+
+        # Case 2: User accepts confirmation dialog
+        mock_msgbox.askyesno.reset_mock()
+        mock_msgbox.askyesno.return_value = True
+        mock_status = MagicMock()
+        monkeypatch.setattr(gptscan, 'update_status', mock_status)
+
+        gptscan.open_file()
+        assert mock_run.call_count == 6
+        mock_status.assert_called_once_with("Opened 6 files.")
+
+
+def test_show_in_folder_large_selection_accepted_and_declined(mock_tree, monkeypatch):
+    mock_tree.selection.return_value = [f"item{i}" for i in range(6)]
+    for i in range(6):
+        mock_tree._item_values[f"item{i}"] = (f"path{i}.py",)
+
+    monkeypatch.setattr(os.path, 'exists', lambda p: True)
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, 'messagebox', mock_msgbox)
+    mock_run = MagicMock()
+    monkeypatch.setattr(gptscan.subprocess, 'run', mock_run)
+
+    with patch('sys.platform', 'darwin'):
+        # Case 1: User declines confirmation dialog
+        mock_msgbox.askyesno.return_value = False
+        gptscan.show_in_folder()
+        mock_msgbox.askyesno.assert_called_once_with("Show in Folder", "Are you sure you want to show 6 files?")
+        mock_run.assert_not_called()
+
+        # Case 2: User accepts confirmation dialog
+        mock_msgbox.askyesno.reset_mock()
+        mock_msgbox.askyesno.return_value = True
+        gptscan.show_in_folder()
+        assert mock_run.call_count == 6
+
+
+def test_open_file_error_handling(mock_tree, monkeypatch):
+    mock_tree.selection.return_value = ["item1"]
+    mock_tree._item_values["item1"] = ("path1.py",)
+    monkeypatch.setattr(os.path, 'exists', lambda p: True)
+
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, 'messagebox', mock_msgbox)
+
+    with patch('sys.platform', 'linux'):
+        monkeypatch.setattr(gptscan.subprocess, 'run', MagicMock(side_effect=OSError("Permission denied")))
+        gptscan.open_file()
+        mock_msgbox.showerror.assert_called_once()
+        args = mock_msgbox.showerror.call_args[0]
+        assert args[0] == "Error"
+        assert "Could not open file 'path1.py': Permission denied" in args[1]
+
+
+def test_show_in_folder_error_handling(mock_tree, monkeypatch):
+    mock_tree.selection.return_value = ["item1"]
+    mock_tree._item_values["item1"] = ("path1.py",)
+    monkeypatch.setattr(os.path, 'exists', lambda p: True)
+
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, 'messagebox', mock_msgbox)
+
+    with patch('sys.platform', 'darwin'):
+        monkeypatch.setattr(gptscan.subprocess, 'run', MagicMock(side_effect=OSError("Command open failed")))
+        gptscan.show_in_folder()
+        mock_msgbox.showerror.assert_called_once()
+        args = mock_msgbox.showerror.call_args[0]
+        assert args[0] == "Error"
+        assert "Could not reveal file 'path1.py': Command open failed" in args[1]
+
+
+def test_show_in_folder_explicit_path_string(monkeypatch):
+    monkeypatch.setattr(os.path, 'exists', lambda p: True)
+    mock_run = MagicMock()
+    monkeypatch.setattr(gptscan.subprocess, 'run', mock_run)
+
+    with patch('sys.platform', 'darwin'):
+        gptscan.show_in_folder("/Users/test/explicit_file.py")
+        mock_run.assert_called_once_with(["open", "-R", "/Users/test/explicit_file.py"])
+
+
+def test_show_in_folder_linux_deduplication_and_status(mock_tree, monkeypatch):
+    mock_tree.selection.return_value = ["item1", "item2", "item3"]
+    mock_tree._item_values["item1"] = ("/home/user/dir1/file1.py",)
+    mock_tree._item_values["item2"] = ("/home/user/dir1/file2.py",)
+    mock_tree._item_values["item3"] = ("/home/user/dir2/file3.py",)
+
+    monkeypatch.setattr(os.path, 'exists', lambda p: True)
+    mock_run = MagicMock()
+    monkeypatch.setattr(gptscan.subprocess, 'run', mock_run)
+    mock_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_status)
+
+    with patch('sys.platform', 'linux'):
+        gptscan.show_in_folder()
+        # Should deduplicate /home/user/dir1 so xdg-open is only called twice
+        assert mock_run.call_count == 2
+        mock_run.assert_any_call(["xdg-open", "/home/user/dir1"])
+        mock_run.assert_any_call(["xdg-open", "/home/user/dir2"])
+        mock_status.assert_called_once_with("Opened 2 folders.")
