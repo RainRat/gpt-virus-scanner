@@ -6467,7 +6467,7 @@ def generate_yaml(results: List[Dict[str, Any]]) -> str:
     return yaml.safe_dump(results, default_flow_style=False, sort_keys=False)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6487,6 +6487,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         baseline_file: Path to a previous report file to use as a baseline to filter out existing findings.
         quiet: Whether to suppress progress updates and summary banners on sys.stderr.
         top_limit: If provided, restrict the output results to the top N highest-threat findings.
+        count_only: Whether to print only the total count of matching findings.
 
     Returns:
         The number of suspicious files detected.
@@ -6495,7 +6496,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     out_stream = open(output_file, 'w', encoding='utf-8') if output_file else sys.stdout
 
-    if output_format == 'csv':
+    if output_format == 'csv' and not count_only:
         writer = csv.writer(out_stream)
         writer.writerow(keys)
 
@@ -6577,7 +6578,9 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 else:
                     medium_risk_found += 1
 
-            if top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
+            if count_only:
+                pass
+            elif top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
                 result_buffer.append(record)
             elif output_format == 'json':
                 print(json.dumps(record), file=out_stream)
@@ -6636,7 +6639,12 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         if top_limit is not None and top_limit > 0:
             result_buffer = result_buffer[:top_limit]
 
-    if output_format == 'sarif':
+    if count_only:
+        final_count = threats_found
+        if top_limit is not None and top_limit >= 0:
+            final_count = min(threats_found, top_limit)
+        print(final_count, file=out_stream)
+    elif output_format == 'sarif':
         sarif_log = generate_sarif(result_buffer)
         print(json.dumps(sarif_log, indent=2), file=out_stream)
     elif output_format == 'html':
@@ -9879,6 +9887,12 @@ def main():
         dest='top',
         help='Limit output results to the top N highest-risk findings.'
     )
+    output_group.add_argument(
+        '--count', '-C',
+        action='store_true',
+        dest='count_only',
+        help='Print only the total count of suspicious findings.'
+    )
 
     args = parser.parse_args()
 
@@ -10312,7 +10326,8 @@ def main():
             modified_since=modified_since,
             baseline_file=args.baseline,
             quiet=args.quiet,
-            top_limit=args.top
+            top_limit=args.top,
+            count_only=args.count_only
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
