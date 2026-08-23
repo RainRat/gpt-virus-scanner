@@ -132,6 +132,8 @@ def test_show_keyboard_shortcuts_linux_modifier(mock_shortcuts_env, monkeypatch)
     # Verify Ctrl+F is used on Linux
     assert "Ctrl+F" in label_texts
     assert "Ctrl+O" in label_texts
+    assert "Ctrl+Shift+P" in label_texts
+    assert "Ctrl+G" in label_texts
     # Verify Cmd+F is NOT used on Linux
     assert "Cmd+F" not in label_texts
 
