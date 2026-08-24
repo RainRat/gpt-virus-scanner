@@ -941,8 +941,7 @@ def _generic_scan_click(get_data_func: Callable[[], Union[List[str], List[Tuple[
 
 def _get_target_path() -> str:
     """Get the target path from the textbox or default to '.' if empty or None."""
-    path = textbox.get().strip() if textbox else "."
-    return path if path else "."
+    return (textbox.get().strip() if textbox else "") or "."
 
 
 def _get_initial_dir() -> Optional[str]:
