@@ -4195,7 +4195,9 @@ def manage_exclusions() -> None:
     ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT, ipady=5)
 
     center_window(manage_win, root)
-    manage_win.focus_set()
+    ignore_listbox.focus_set()
+    if Config.ignore_patterns:
+        ignore_listbox.select_set(0)
 
 
 def manage_extensions() -> None:

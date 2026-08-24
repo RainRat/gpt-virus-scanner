@@ -24,6 +24,9 @@ def mock_gui_env(monkeypatch, tmp_path):
             self.items = []
             self.selection = []
             self.bindings = {}
+            self.focused = False
+        def focus_set(self):
+            self.focused = True
         def insert(self, idx, item):
             if idx == "end":
                 self.items.append(item)
@@ -300,3 +303,13 @@ def test_manage_exclusions_keyboard_remove(mock_gui_env):
 
     assert "p1" not in Config.ignore_patterns
     assert "p2" in Config.ignore_patterns
+
+def test_manage_exclusions_initial_focus_and_selection(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = ["pattern_a", "pattern_b"]
+
+    manage_exclusions()
+    lb = captured['listbox']
+
+    assert lb.focused is True
+    assert lb.selection == [0]
