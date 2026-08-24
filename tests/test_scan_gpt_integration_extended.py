@@ -121,10 +121,7 @@ def test_scan_files_gpt_cancellation_after_local_scan(mock_gpt_env, monkeypatch)
     scan_counts = 0
     def mock_is_set():
         nonlocal scan_counts
-        # After both files are scanned (usually 2 checks per file), trigger cancellation
-        # We can detect this by checking how many files were processed.
-        # But a simpler way is to count calls and know that we want to cancel before GPT.
-        # However, the reviewer wanted a more robust condition.
+        # Trigger cancellation after scanning both files (2 checks per file)
         return scan_counts >= 4
 
     def count_is_set():

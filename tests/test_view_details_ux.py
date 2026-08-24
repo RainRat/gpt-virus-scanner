@@ -114,7 +114,7 @@ def test_view_details_zoom_and_robust_shortcuts(mock_view_details_env):
     assert '<Control-minus>' in captured_bindings
     assert '<Control-0>' in captured_bindings
 
-    # Verify our new, robust shortcuts are bound
+    # Verify navigation shortcuts are bound
     robust_shortcuts = [
         '<Alt-Left>', '<Alt-Right>', '<Alt-Up>', '<Alt-Down>',
         '<Control-Prior>', '<Control-Next>', '<Command-Prior>', '<Command-Next>'

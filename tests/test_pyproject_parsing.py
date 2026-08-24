@@ -311,7 +311,7 @@ test = [
     assert scripts["pyproject.toml [Script: test (1)]"] == "echo ]"
 
 def test_pyproject_inline_table_with_escaped_quotes_and_brackets():
-    """Verify robust parsing of inline tables with complex strings."""
+    """Verify parsing of inline tables with complex strings."""
     content = b"""
 [tool.pdm.scripts]
 test = { cmd = ["echo \\"escaped ] quote\\"", 'single ] quote'] }

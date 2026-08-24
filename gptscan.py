@@ -4591,7 +4591,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                 def yield_pyproject_scripts(label_name, val):
                     # Strip inline comment if not a multiline string
                     if not (val.startswith(('"""', "'''"))):
-                        # A robust regex to match comments outside quotes, including triple quotes
+                        # Regex to match comments outside quotes, including triple quotes
                         robust_comment_match = re.search(r'^(?:[^"\'#]|"{3}(?:\\.|[^\\])*?"{3}(?!")|(?<!")"(?:\\.|[^"\\])*?"(?!")|\'{3}.*?\'{3}(?!\')|(?<!\')\'(?:\\.|[^\'\\])*?\'(?!\'))*(#.*)', val, re.DOTALL)
                         if robust_comment_match:
                             comment_start = robust_comment_match.start(1)
@@ -4676,7 +4676,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                             elif command_val.startswith('['):
                                 # Check if it actually ends on this line (ignoring comments)
                                 temp_val = command_val
-                                # A robust regex to match comments outside quotes, including triple quotes
+                                # Regex to match comments outside quotes, including triple quotes
                                 comment_match = re.search(r'^(?:[^"\'#]|"{3}(?:\\.|[^\\])*?"{3}(?!")|(?<!")"(?:\\.|[^"\\])*?"(?!")|\'{3}.*?\'{3}(?!\')|(?<!\')\'(?:\\.|[^\'\\])*?\'(?!\'))*(#.*)', temp_val)
                                 if comment_match:
                                     temp_val = temp_val[:comment_match.start(1)].strip()
@@ -8245,7 +8245,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     refresh_content(current_item_id)
     center_window(details_win, root)
 
-    # Automatically focus the appropriate navigation button for seamless sequential review
+    # Focus the navigation button for sequential review
     if next_btn.cget('state') == 'normal':
         next_btn.focus_set()
     elif prev_btn.cget('state') == 'normal':
