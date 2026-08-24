@@ -96,4 +96,4 @@ def test_scan_git_diff_click_error(monkeypatch):
     gptscan.scan_git_diff_click()
 
     # Assert
-    mock_msgbox.showwarning.assert_called_once_with("Git Diff Error", "Could not retrieve Git diff: Git error")
+    mock_msgbox.showwarning.assert_called_once_with("Git Diff Error", "Could not scan git diff: Git error")

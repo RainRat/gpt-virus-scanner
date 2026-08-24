@@ -3288,16 +3288,13 @@ def scan_clipboard_click():
 
 def scan_git_diff_click():
     """Scan current Git diff (staged and unstaged changes)."""
-    try:
-        target_path = _get_target_path()
-
-        diff_content = get_git_diff(target_path)
-        if diff_content:
-            button_click(extra_snippets=[("[Git Diff]", diff_content.encode('utf-8'))])
-        else:
-            messagebox.showinfo("Git Diff", "No Git changes detected (staged or unstaged) in the target path.")
-    except Exception as e:
-        messagebox.showwarning("Git Diff Error", f"Could not retrieve Git diff: {e}")
+    _generic_scan_click(
+        lambda: [("[Git Diff]", diff.encode('utf-8'))] if (diff := get_git_diff(_get_target_path())) else [],
+        "Git Diff",
+        "No Git changes detected (staged or unstaged) in the target path.",
+        "Git Diff Error",
+        is_snippets=True
+    )
 
 
 def scan_git_hooks_click():
