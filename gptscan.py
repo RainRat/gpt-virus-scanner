@@ -4078,6 +4078,7 @@ def exclude_selected() -> None:
             tree.selection_set(new_item_id)
             tree.focus(new_item_id)
             tree.see(new_item_id)
+            tree.focus_set()
 
 
 def manage_exclusions() -> None:
