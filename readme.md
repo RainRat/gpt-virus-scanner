@@ -501,7 +501,8 @@ python3 gptscan.py ./my_project --cli --fail-threshold 70
 You can customize terminal scans using these command line options.
 
 ##### Scan Options
-*   `target` (or other arguments): The folder, file, pattern, or web link to scan.
+*   `target`: The primary folder, file, pattern, or web link to scan.
+*   `files`: Additional folders, files, patterns, or web links to scan.
 *   `-p`, `--path <path>`: Alternative way to specify a folder, file, or web link to scan.
 *   `-d`, `--deep`: Scan the whole file instead of just the beginning and end. This is more thorough but slower.
 *   `--dry-run`: Preview which files would be scanned without actually checking them.
@@ -582,6 +583,7 @@ You can customize terminal scans using these command line options.
 *   `--report`: Output a detailed triage report to the terminal.
 *   `--top <N>` / `--limit <N>`: Limit output results to the top N highest-risk findings.
 *   `-C`, `--count`: Print only the total count of matching findings.
+*   `-v`, `--version`: Print program version number and exit.
 
 ### Setting up AI Analysis
 To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama running locally.
