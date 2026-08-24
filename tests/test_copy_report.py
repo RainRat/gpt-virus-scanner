@@ -172,3 +172,52 @@ def test_copy_as_xml_logic(monkeypatch):
     mock_tree.clipboard_clear.assert_called_once()
     mock_tree.clipboard_append.assert_called_once_with("<xml>content_mock</xml>")
     mock_update_status.assert_called_once_with("Copied 1 item(s) as XML.")
+
+
+def test_copy_as_html_logic(monkeypatch):
+    """Test that copy_as_html correctly formats selected data as HTML and appends to clipboard."""
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ["I001"]
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+
+    test_results = [{
+        "path": "test.py",
+        "line": "10",
+        "own_conf": "90%",
+        "gpt_conf": "85%",
+        "admin_desc": "Dangerous code found",
+        "end-user_desc": "Highly suspicious",
+        "snippet": "eval(input())"
+    }]
+    monkeypatch.setattr(gptscan, '_get_tree_results_as_dicts', lambda items: test_results)
+    monkeypatch.setattr(gptscan, 'generate_html', lambda results: "<html>content_mock</html>")
+
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+
+    gptscan.copy_as_html()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    mock_tree.clipboard_append.assert_called_once_with("<html>content_mock</html>")
+    mock_update_status.assert_called_once_with("Copied 1 item(s) as HTML.")
+
+
+def test_copy_as_html_details_logic(mock_view_details_env):
+    """Test that copy_as_html_details inside view_details correctly formats single item data as HTML and updates status bar."""
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "I002", "detail.py", own_conf="80%", admin="Admin note", user="User note", gpt_conf="75%", snippet="os.system('rm -rf /')", line=5)
+
+    from gptscan import root as mock_root
+
+    assert "menu_Copy as HTML" in captured
+    copy_html_cmd = captured["menu_Copy as HTML"]
+
+    copy_html_cmd()
+
+    mock_root.clipboard_clear.assert_called()
+    assert mock_root.clipboard_append.called
+    copied_html = mock_root.clipboard_append.call_args[0][0]
+    assert "detail.py" in copied_html
+
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "Result copied as HTML."
