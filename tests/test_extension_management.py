@@ -20,6 +20,9 @@ def mock_gui_env(monkeypatch):
             self.items = []
             self.selection = []
             self.bindings = {}
+            self.focused = False
+        def focus_set(self):
+            self.focused = True
         def insert(self, idx, item):
             if idx == gptscan.tk.END:
                 self.items.append(item)
@@ -109,6 +112,18 @@ def test_manage_extensions_init(mock_gui_env):
 
     assert mock_top.title.call_args[0][0] == "Manage Extensions"
     assert captured['listbox'].items == [".js", ".py"]
+    assert captured['listbox'].focused is True
+    assert captured['listbox'].selection == [0]
+
+def test_manage_extensions_init_empty(mock_gui_env):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = set()
+
+    manage_extensions()
+
+    assert captured['listbox'].items == []
+    assert captured['listbox'].focused is True
+    assert captured['listbox'].selection == []
 
 def test_manage_extensions_add(mock_gui_env, monkeypatch):
     captured, mock_sd, mock_mb, mock_top = mock_gui_env
