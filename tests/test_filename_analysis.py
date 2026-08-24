@@ -91,6 +91,12 @@ def test_analyze_filename_whitespace_before_single_extension():
     assert score >= 0.5
     assert "whitespace" in msg.lower() or "space" in msg.lower()
 
+def test_analyze_filename_large_whitespace_gap_single_extension():
+    name = "malware     .exe"
+    score, msg = analyze_filename(name)
+    assert score == 0.9
+    assert "Suspiciously large whitespace gap found before file extension." in msg
+
 def test_analyze_filename_unicode_invisible_chars():
     name = "file\u200b.exe"
     score, msg = analyze_filename(name)
