@@ -476,6 +476,7 @@ By default, the scanner prints human-readable text to the terminal. You can cust
 *   `--xml`: Create an XML report.
 *   `--yaml` / `--yml`: Create a YAML report (requires the `pyyaml` package).
 *   `--report`: Output a detailed triage report to the terminal.
+*   `-C`, `--count`: Print only the total count of suspicious findings.
 
 To save the formatted output directly to a file, combine any format flag with the `--output` (or `-o`) option:
 ```bash
@@ -580,6 +581,7 @@ You can customize terminal scans using these command line options.
 *   `--yaml`, `--yml`: Create a YAML report.
 *   `--report`: Output a detailed triage report to the terminal.
 *   `--top <N>` / `--limit <N>`: Limit output results to the top N highest-risk findings.
+*   `-C`, `--count`: Print only the total count of matching findings.
 
 ### Setting up AI Analysis
 To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama running locally.
