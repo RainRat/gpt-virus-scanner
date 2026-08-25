@@ -347,3 +347,159 @@ def test_predictor_predict_below_threshold(mock_load_model, tmp_path):
     predictor.predict("dummy_path", input_dir, output_dir)
 
     assert not (output_dir / "test.bin").exists()
+
+def test_load_config_file_not_found(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        load_config("non_existent_config.yml")
+    assert exc_info.value.code == 1
+    _, err = capsys.readouterr()
+    assert "was not found" in err
+
+def test_load_config_yaml_error(tmp_path, capsys):
+    config_file = tmp_path / "invalid.yml"
+    config_file.write_text("model: [invalid yaml: {")
+    with pytest.raises(SystemExit) as exc_info:
+        load_config(str(config_file))
+    assert exc_info.value.code == 1
+    _, err = capsys.readouterr()
+    assert "contains invalid YAML syntax" in err
+
+def test_load_config_non_dict(tmp_path, capsys):
+    config_file = tmp_path / "list.yml"
+    config_file.write_text("- item1\n- item2\n")
+    with pytest.raises(SystemExit) as exc_info:
+        load_config(str(config_file))
+    assert exc_info.value.code == 1
+    _, err = capsys.readouterr()
+    assert "must be a YAML dictionary" in err
+
+def test_load_config_missing_section(tmp_path, capsys):
+    config_file = tmp_path / "missing_sec.yml"
+    config_file.write_text("model:\n  name: test\n")
+    with pytest.raises(SystemExit) as exc_info:
+        load_config(str(config_file))
+    assert exc_info.value.code == 1
+    _, err = capsys.readouterr()
+    assert "missing a required section" in err
+
+def test_load_config_missing_parameter(tmp_path, capsys):
+    config_data = {
+        'model': {'name': 'test'},
+        'training': {'batch_size': 32, 'epochs': 1, 'validation_split': 0.2, 'patience': 3, 'mode': 'train'},
+        'prediction': {'threshold': 0.5},
+        'weights': {'positive_sample_weight': 1.0}
+    }
+    config_file = tmp_path / "missing_param.yml"
+    with open(config_file, 'w') as f:
+        yaml.dump(config_data, f)
+    with pytest.raises(SystemExit) as exc_info:
+        load_config(str(config_file))
+    assert exc_info.value.code == 1
+    _, err = capsys.readouterr()
+    assert "required configuration parameter is missing" in err
+
+def test_load_config_invalid_hyperparameters(tmp_path, capsys):
+    config_data = {
+        'model': {'name': 'test', 'max_length': 10, 'pad_value': 0, 'max_params': 1000},
+        'training': {'batch_size': 32, 'epochs': 1, 'validation_split': 0.2, 'patience': 3, 'mode': 'train'},
+        'prediction': {'threshold': 0.5},
+        'weights': {'positive_sample_weight': 1.0},
+        'hyperparameters': {'invalid_param': 123}
+    }
+    config_file = tmp_path / "invalid_hp.yml"
+    with open(config_file, 'w') as f:
+        yaml.dump(config_data, f)
+    with pytest.raises(SystemExit) as exc_info:
+        load_config(str(config_file))
+    assert exc_info.value.code == 1
+    _, err = capsys.readouterr()
+    assert "has invalid or missing parameters" in err
+
+def test_main_predict_missing_model_file(tmp_path, capsys):
+    config_data = {
+        'model': {'name': 'test_model', 'max_length': 10, 'pad_value': 0, 'max_params': 1000},
+        'training': {'batch_size': 32, 'epochs': 1, 'validation_split': 0.2, 'patience': 3, 'mode': 'predict'},
+        'prediction': {'threshold': 0.5},
+        'weights': {'positive_sample_weight': 1.0}
+    }
+    config_file = tmp_path / "config.yml"
+    with open(config_file, 'w') as f:
+        yaml.dump(config_data, f)
+
+    test_args = ["train.py", "--config", str(config_file), "--mode", "predict"]
+    with patch("sys.argv", test_args):
+        with pytest.raises(SystemExit) as exc_info:
+            from train import main
+            main()
+        assert exc_info.value.code == 1
+    _, err = capsys.readouterr()
+    assert "trained model file" in err
+
+def test_main_predict_missing_input_dir(tmp_path, capsys):
+    config_data = {
+        'model': {'name': 'test_model', 'max_length': 10, 'pad_value': 0, 'max_params': 1000},
+        'training': {'batch_size': 32, 'epochs': 1, 'validation_split': 0.2, 'patience': 3, 'mode': 'predict'},
+        'prediction': {'threshold': 0.5},
+        'weights': {'positive_sample_weight': 1.0}
+    }
+    config_file = tmp_path / "config.yml"
+    with open(config_file, 'w') as f:
+        yaml.dump(config_data, f)
+
+    model_file = Path("test_model.h5")
+    model_file.touch()
+    try:
+        test_args = ["train.py", "--config", str(config_file), "--mode", "predict", "--predict-dir", str(tmp_path / "nonexistent")]
+        with patch("sys.argv", test_args):
+            with pytest.raises(SystemExit) as exc_info:
+                from train import main
+                main()
+            assert exc_info.value.code == 1
+        _, err = capsys.readouterr()
+        assert "prediction input folder" in err
+    finally:
+        if model_file.exists():
+            model_file.unlink()
+
+def test_main_train_missing_positive_dir(tmp_path, capsys):
+    config_data = {
+        'model': {'name': 'test_model', 'max_length': 10, 'pad_value': 0, 'max_params': 1000},
+        'training': {'batch_size': 32, 'epochs': 1, 'validation_split': 0.2, 'patience': 3, 'mode': 'train'},
+        'prediction': {'threshold': 0.5},
+        'weights': {'positive_sample_weight': 1.0}
+    }
+    config_file = tmp_path / "config.yml"
+    with open(config_file, 'w') as f:
+        yaml.dump(config_data, f)
+
+    test_args = ["train.py", "--config", str(config_file), "--positive-dir", str(tmp_path / "missing_pos"), "--negative-dir", str(tmp_path / "missing_neg")]
+    with patch("sys.argv", test_args):
+        with pytest.raises(SystemExit) as exc_info:
+            from train import main
+            main()
+        assert exc_info.value.code == 1
+    _, err = capsys.readouterr()
+    assert "dangerous (positive) dataset directory" in err
+
+def test_main_train_missing_negative_dir(tmp_path, capsys):
+    config_data = {
+        'model': {'name': 'test_model', 'max_length': 10, 'pad_value': 0, 'max_params': 1000},
+        'training': {'batch_size': 32, 'epochs': 1, 'validation_split': 0.2, 'patience': 3, 'mode': 'train'},
+        'prediction': {'threshold': 0.5},
+        'weights': {'positive_sample_weight': 1.0}
+    }
+    config_file = tmp_path / "config.yml"
+    with open(config_file, 'w') as f:
+        yaml.dump(config_data, f)
+
+    pos_dir = tmp_path / "pos"
+    pos_dir.mkdir()
+
+    test_args = ["train.py", "--config", str(config_file), "--positive-dir", str(pos_dir), "--negative-dir", str(tmp_path / "missing_neg")]
+    with patch("sys.argv", test_args):
+        with pytest.raises(SystemExit) as exc_info:
+            from train import main
+            main()
+        assert exc_info.value.code == 1
+    _, err = capsys.readouterr()
+    assert "safe (negative) dataset directory" in err
