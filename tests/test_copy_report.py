@@ -221,3 +221,109 @@ def test_copy_as_html_details_logic(mock_view_details_env):
 
     status_bar = captured['labels'][0]
     assert status_bar.config_data.get('text') == "Result copied as HTML."
+
+
+def test_copy_as_sarif_logic(monkeypatch):
+    """Test that copy_as_sarif correctly formats selected data as SARIF and appends to clipboard."""
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ["I001"]
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+
+    test_results = [{
+        "path": "test.py",
+        "line": "10",
+        "own_conf": "90%",
+        "gpt_conf": "85%",
+        "admin_desc": "Dangerous code found",
+        "end-user_desc": "Highly suspicious",
+        "snippet": "eval(input())"
+    }]
+    monkeypatch.setattr(gptscan, '_get_tree_results_as_dicts', lambda items: test_results)
+    monkeypatch.setattr(gptscan, 'generate_sarif', lambda results: {"version": "2.1.0", "runs": []})
+
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+
+    gptscan.copy_as_sarif()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    assert mock_tree.clipboard_append.call_count == 1
+    copied_sarif = json.loads(mock_tree.clipboard_append.call_args[0][0])
+    assert copied_sarif.get("version") == "2.1.0"
+    mock_update_status.assert_called_once_with("Copied 1 item(s) as SARIF.")
+
+
+def test_copy_as_markdown_details_logic(mock_view_details_env):
+    """Test copy_as_markdown_details inside view_details."""
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "I002", "detail.py", own_conf="80%", admin="Admin note", user="User note", gpt_conf="75%", snippet="os.system('rm -rf /')", line=5)
+
+    from gptscan import root as mock_root
+
+    assert "menu_Copy as Markdown" in captured
+    captured["menu_Copy as Markdown"]()
+
+    mock_root.clipboard_clear.assert_called()
+    assert mock_root.clipboard_append.called
+    copied_md = mock_root.clipboard_append.call_args[0][0]
+    assert "detail.py" in copied_md
+
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "Result copied as Markdown."
+
+
+def test_copy_as_yaml_details_logic(mock_view_details_env):
+    """Test copy_as_yaml_details inside view_details."""
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "I002", "detail.py", own_conf="80%", admin="Admin note", user="User note", gpt_conf="75%", snippet="os.system('rm -rf /')", line=5)
+
+    from gptscan import root as mock_root
+
+    assert "menu_Copy as YAML" in captured
+    captured["menu_Copy as YAML"]()
+
+    mock_root.clipboard_clear.assert_called()
+    assert mock_root.clipboard_append.called
+    copied_yaml = mock_root.clipboard_append.call_args[0][0]
+    assert "detail.py" in copied_yaml
+
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "Result copied as YAML."
+
+
+def test_copy_as_xml_details_logic(mock_view_details_env):
+    """Test copy_as_xml_details inside view_details."""
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "I002", "detail.py", own_conf="80%", admin="Admin note", user="User note", gpt_conf="75%", snippet="os.system('rm -rf /')", line=5)
+
+    from gptscan import root as mock_root
+
+    assert "menu_Copy as XML" in captured
+    captured["menu_Copy as XML"]()
+
+    mock_root.clipboard_clear.assert_called()
+    assert mock_root.clipboard_append.called
+    copied_xml = mock_root.clipboard_append.call_args[0][0]
+    assert "detail.py" in copied_xml
+
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "Result copied as XML."
+
+
+def test_copy_as_sarif_details_logic(mock_view_details_env):
+    """Test copy_as_sarif_details inside view_details."""
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "I002", "detail.py", own_conf="80%", admin="Admin note", user="User note", gpt_conf="75%", snippet="os.system('rm -rf /')", line=5)
+
+    from gptscan import root as mock_root
+
+    assert "menu_Copy as SARIF" in captured
+    captured["menu_Copy as SARIF"]()
+
+    mock_root.clipboard_clear.assert_called()
+    assert mock_root.clipboard_append.called
+    copied_sarif = mock_root.clipboard_append.call_args[0][0]
+    assert "detail.py" in copied_sarif or "2.1.0" in copied_sarif
+
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "Result copied as SARIF."
