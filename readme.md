@@ -488,6 +488,11 @@ To limit output to the top N highest-risk findings, use `--top` (or `--limit`):
 python3 gptscan.py ./my_project --top 10 --report --cli
 ```
 
+To sort output findings by threat score, file path, or line number, use `--sort-by` (or `--sort`):
+```bash
+python3 gptscan.py ./my_project --sort-by path --cli
+```
+
 #### CI/CD & Exit Codes
 You can use the scanner in CI/CD pipelines (like GitHub Actions) to prevent malicious or dangerous code from being committed.
 
@@ -582,6 +587,7 @@ You can customize terminal scans using these command line options.
 *   `--report`: Output a detailed triage report to the terminal.
 *   `--top <N>` / `--limit <N>`: Limit output results to the top N highest-risk findings.
 *   `-C`, `--count`: Print only the total count of matching findings.
+*   `--sort-by <field>` / `--sort <field>`: Sort scan results by `threat` (highest threat score first), `path` (file path alphabetically), or `line` (line number numerically).
 
 ### Setting up AI Analysis
 To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama running locally.

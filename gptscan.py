@@ -6470,7 +6470,7 @@ def generate_yaml(results: List[Dict[str, Any]]) -> str:
     return yaml.safe_dump(results, default_flow_style=False, sort_keys=False)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, sort_by: Optional[str] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6491,6 +6491,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         quiet: Whether to suppress progress updates and summary banners on sys.stderr.
         top_limit: If provided, restrict the output results to the top N highest-threat findings.
         count_only: Whether to print only the total count of matching findings.
+        sort_by: Optional field to sort results by ('threat', 'path', or 'line').
 
     Returns:
         The number of suspicious files detected.
@@ -6583,7 +6584,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
             if count_only:
                 pass
-            elif top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
+            elif sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
                 result_buffer.append(record)
             elif output_format == 'json':
                 print(json.dumps(record), file=out_stream)
@@ -6633,14 +6634,34 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             summary += f" (Bypassed {matched_baseline_count} baseline findings)"
         print(summary, file=sys.stderr)
 
-    if top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
+    if sort_by is not None:
+        if sort_by == 'threat':
+            result_buffer.sort(
+                key=lambda x: get_effective_threat_level(x.get('own_conf', '0%'), x.get('gpt_conf', '')),
+                reverse=True
+            )
+        elif sort_by == 'path':
+            result_buffer.sort(
+                key=lambda x: x.get('path', '').lower()
+            )
+        elif sort_by == 'line':
+            def _parse_line(val: Any) -> int:
+                if isinstance(val, int):
+                    return val
+                m = re.search(r'\d+', str(val))
+                return int(m.group()) if m else 0
+            result_buffer.sort(
+                key=lambda x: _parse_line(x.get('line', 0))
+            )
+    elif top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
         # Sort results by effective threat level (highest first)
         result_buffer.sort(
             key=lambda x: get_effective_threat_level(x.get('own_conf', '0%'), x.get('gpt_conf', '')),
             reverse=True
         )
-        if top_limit is not None and top_limit > 0:
-            result_buffer = result_buffer[:top_limit]
+
+    if top_limit is not None and top_limit > 0:
+        result_buffer = result_buffer[:top_limit]
 
     if count_only:
         final_count = threats_found
@@ -6663,10 +6684,10 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         use_color_output = out_stream.isatty() if hasattr(out_stream, 'isatty') else False
         report = generate_console_report(result_buffer, use_color=use_color_output)
         print(report, file=out_stream)
-    elif output_format == 'json' and top_limit is not None:
+    elif output_format == 'json' and (sort_by is not None or top_limit is not None):
         for record in result_buffer:
             print(json.dumps(record), file=out_stream)
-    elif output_format == 'csv' and top_limit is not None:
+    elif output_format == 'csv' and (sort_by is not None or top_limit is not None):
         for record in result_buffer:
             writer.writerow([record.get(k, '') for k in keys])
 
@@ -9923,6 +9944,13 @@ def main():
         dest='count_only',
         help='Print only the total count of suspicious findings.'
     )
+    output_group.add_argument(
+        '--sort-by', '--sort',
+        type=str,
+        choices=['threat', 'path', 'line'],
+        dest='sort_by',
+        help='Sort output results by "threat" (highest threat first), "path" (file path alphabetically), or "line" (line number numerically).'
+    )
 
     args = parser.parse_args()
 
@@ -10357,7 +10385,8 @@ def main():
             baseline_file=args.baseline,
             quiet=args.quiet,
             top_limit=args.top,
-            count_only=args.count_only
+            count_only=args.count_only,
+            sort_by=args.sort_by
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
