@@ -877,16 +877,14 @@ def _quote_for_ui(path: str) -> str:
 
 def update_clear_target_visibility(*args: Any) -> None:
     """Dynamically display or hide clear_target_btn based on whether textbox has input."""
-    if clear_target_btn is None or textbox is None or not hasattr(textbox, "get"):
+    if clear_target_btn is None or textbox is None:
         return
     try:
         val = textbox.get()
         if isinstance(val, str) and val.strip():
-            if hasattr(clear_target_btn, "grid"):
-                clear_target_btn.grid(row=0, column=2, padx=(0, 5))
+            clear_target_btn.grid(row=0, column=2, padx=(0, 5))
         else:
-            if hasattr(clear_target_btn, "grid_remove"):
-                clear_target_btn.grid_remove()
+            clear_target_btn.grid_remove()
     except Exception:
         pass
 
@@ -947,7 +945,7 @@ def _get_target_path() -> str:
 def _get_initial_dir() -> Optional[str]:
     """Find a starting folder for file dialogs based on what is currently entered."""
     path_str = ""
-    if textbox and hasattr(textbox, "get"):
+    if textbox:
         try:
             val = textbox.get()
             if isinstance(val, str):
