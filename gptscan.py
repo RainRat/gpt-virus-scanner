@@ -4367,6 +4367,7 @@ def show_keyboard_shortcuts() -> None:
         (f"{mod}+A", "Select All Items"),
         (f"{mod}+C", "Copy File Path"),
         (f"{mod}+Shift+C", "Copy as Markdown Table"),
+        (f"{mod}+H", "Copy SHA-256 Hash"),
         (f"{mod}+S", "Copy Code Snippet"),
         (f"{mod}+J", "Copy Results as JSON Array"),
         (f"{mod}+G", "Analyze Selected with AI"),
