@@ -913,11 +913,11 @@ def _set_scan_target(path: Union[str, Iterable[str]]) -> None:
         scan_button.focus_set()
 
 
-def _generic_scan_click(get_data_func: Callable[[], Union[List[str], List[Tuple[str, bytes]]]], title: str, failure_msg: str, error_title: str, is_snippets: bool = False) -> None:
+def _generic_scan_click(get_data_func: Callable[[], Any], title: str, failure_msg: str, error_title: str, is_snippets: bool = False) -> None:
     """Helper to handle the boilerplate of scan_*_click functions.
 
     Args:
-        get_data_func: A function that returns a list of paths or snippets to scan.
+        get_data_func: A function that returns a list of paths, snippets, or a (paths, snippets) tuple to scan.
         title: The title used for info messages.
         failure_msg: The message shown if no data is found.
         error_title: The title used for error messages.
@@ -926,7 +926,15 @@ def _generic_scan_click(get_data_func: Callable[[], Union[List[str], List[Tuple[
     try:
         data = get_data_func()
         if data:
-            if is_snippets:
+            if isinstance(data, tuple) and len(data) == 2 and isinstance(data[0], list) and isinstance(data[1], list):
+                paths, snippets = data
+                if paths or snippets:
+                    if paths:
+                        _set_scan_target(paths)
+                    button_click(extra_snippets=snippets)
+                else:
+                    messagebox.showinfo(title, failure_msg)
+            elif is_snippets:
                 button_click(extra_snippets=data)
             else:
                 _set_scan_target(data)
@@ -3564,17 +3572,12 @@ def scan_startup_items_click():
 
 def scan_system_services_click():
     """Scan all system services (systemd files on Linux, Service PathName on Windows)."""
-    try:
-        paths = get_system_service_paths()
-        snippets = get_system_service_commands()
-        if paths or snippets:
-            if paths:
-                _set_scan_target(paths)
-            button_click(extra_snippets=snippets)
-        else:
-            messagebox.showinfo("System Services", "No system services were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("System Services Error", f"Could not scan system services: {e}")
+    _generic_scan_click(
+        lambda: (get_system_service_paths(), get_system_service_commands()),
+        "System Services",
+        "No system services were found to scan.",
+        "System Services Error"
+    )
 
 
 def scan_ssh_config_click():
@@ -3734,16 +3737,12 @@ def get_system_audit_data() -> Tuple[List[str], List[Tuple[str, bytes]]]:
 
 def scan_system_audit_click():
     """Perform a comprehensive system audit scan (Profiles, History, Path, SSH, Processes, Tasks, Startup, Services, EnvVars)."""
-    try:
-        all_paths, all_snippets = get_system_audit_data()
-
-        if all_paths or all_snippets:
-            _set_scan_target(all_paths)
-            button_click(extra_snippets=all_snippets)
-        else:
-            messagebox.showinfo("System Audit", "No system items were found to scan.")
-    except Exception as e:
-        messagebox.showwarning("System Audit Error", f"Could not perform system audit: {e}")
+    _generic_scan_click(
+        get_system_audit_data,
+        "System Audit",
+        "No system items were found to scan.",
+        "System Audit Error"
+    )
 
 
 def button_click(extra_snippets: Optional[List[Tuple[str, bytes]]] = None, fail_threshold: Optional[int] = None, modified_since: Optional[float] = None) -> None:
