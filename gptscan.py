@@ -4315,7 +4315,9 @@ def manage_extensions() -> None:
     ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT, ipady=5)
 
     center_window(manage_win, root)
-    manage_win.focus_set()
+    ext_listbox.focus_set()
+    if Config.extensions_set:
+        ext_listbox.select_set(0)
 
 
 def show_keyboard_shortcuts() -> None:
