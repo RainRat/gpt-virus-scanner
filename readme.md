@@ -505,8 +505,13 @@ python3 gptscan.py ./my_project --cli --fail-threshold 70
 #### CLI Options Reference
 You can customize terminal scans using these command line options.
 
+##### General Options
+*   `-h`, `--help`: Show the help message and exit.
+*   `-v`, `--version`: Show the program's version number and exit.
+
 ##### Scan Options
-*   `target` (or other arguments): The folder, file, pattern, or web link to scan.
+*   `target`: The folder, file, pattern, or web link to scan.
+*   `files`: Additional folders, files, patterns, or web links to scan.
 *   `-p`, `--path <path>`: Alternative way to specify a folder, file, or web link to scan.
 *   `-d`, `--deep`: Scan the whole file instead of just the beginning and end. This is more thorough but slower.
 *   `--dry-run`: Preview which files would be scanned without actually checking them.
