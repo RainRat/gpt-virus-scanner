@@ -41,6 +41,33 @@ def test_get_python_package_paths_mocked(monkeypatch):
     assert "/env/site-packages" in paths
     assert "/random/path" not in paths # Should be filtered out as it doesn't contain 'site-packages' and is not from site.get*
 
+def test_get_python_package_paths_exceptions_and_missing_attrs(monkeypatch):
+    """Verify get_python_package_paths handles exceptions and missing site attributes gracefully."""
+    import site
+
+    def raising_getsitepackages():
+        raise RuntimeError("Error fetching site packages")
+
+    def raising_getusersitepackages():
+        raise RuntimeError("Error fetching user site packages")
+
+    monkeypatch.setattr(site, "getsitepackages", raising_getsitepackages, raising=False)
+    monkeypatch.setattr(site, "getusersitepackages", raising_getusersitepackages, raising=False)
+    monkeypatch.setattr(sys, "path", ["/fallback/site-packages"])
+
+    def mock_isdir(p):
+        return True
+    monkeypatch.setattr(os.path, "isdir", mock_isdir)
+
+    paths = get_python_package_paths()
+    assert "/fallback/site-packages" in paths
+
+    monkeypatch.delattr(site, "getsitepackages", raising=False)
+    monkeypatch.delattr(site, "getusersitepackages", raising=False)
+
+    paths_no_attr = get_python_package_paths()
+    assert "/fallback/site-packages" in paths_no_attr
+
 def test_scan_python_packages_click(monkeypatch):
     """Verify the GUI callback for scanning Python packages."""
     target_paths = []
