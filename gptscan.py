@@ -4484,7 +4484,7 @@ def show_keyboard_shortcuts() -> None:
     close_btn.pack(side=tk.RIGHT)
 
     center_window(win, root)
-    win.focus_set()
+    close_btn.focus_set()
 
 
 def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str] = None) -> Generator[Tuple[str, bytes], None, None]:

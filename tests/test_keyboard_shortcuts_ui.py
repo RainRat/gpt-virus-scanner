@@ -50,6 +50,7 @@ def mock_shortcuts_env(monkeypatch):
         'toplevel': mock_toplevel,
         'canvas': mock_canvas,
         'notebook': mock_notebook,
+        'button': mock_button,
         'labels': []
     }
 
@@ -71,7 +72,7 @@ def test_show_keyboard_shortcuts_opens_window(mock_shortcuts_env):
     captured['toplevel'].title.assert_called_with("Keyboard Shortcuts")
     captured['toplevel'].transient.assert_called_with(gptscan.root)
     captured['toplevel'].grab_set.assert_called_once()
-    captured['toplevel'].focus_set.assert_called_once()
+    captured['button'].focus_set.assert_called_once()
 
     # Verify Notebook and Canvas were instantiated
     gptscan.ttk.Notebook.assert_called_once()
