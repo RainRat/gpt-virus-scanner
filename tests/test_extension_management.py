@@ -124,7 +124,7 @@ def test_manage_extensions_add(mock_gui_env, monkeypatch):
     monkeypatch.setattr(Config, "save_extensions", MagicMock())
 
     manage_extensions()
-    add_btn, add_cmd = captured['buttons']['Add...']
+    add_btn, add_cmd = captured['buttons']['Add Extension...']
     add_cmd()
 
     assert ".rb" in Config.extensions_set
@@ -139,7 +139,7 @@ def test_manage_extensions_add_bulk(mock_gui_env, monkeypatch):
     monkeypatch.setattr(Config, "save_extensions", MagicMock())
 
     manage_extensions()
-    add_btn, add_cmd = captured['buttons']['Add...']
+    add_btn, add_cmd = captured['buttons']['Add Extension...']
     add_cmd()
 
     assert ".rb" in Config.extensions_set
