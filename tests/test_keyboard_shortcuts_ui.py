@@ -46,12 +46,26 @@ def mock_shortcuts_env(monkeypatch):
     mock_separator = MagicMock()
     monkeypatch.setattr(gptscan.ttk, 'Separator', MagicMock(return_value=mock_separator))
 
+    separators = []
+
+    class MockSeparator:
+        def __init__(self, master=None, **kwargs):
+            self.master = master
+            self.kwargs = kwargs
+            self.grid_calls = []
+            separators.append(self)
+        def grid(self, **kwargs):
+            self.grid_calls.append(kwargs)
+
+    monkeypatch.setattr(gptscan.ttk, 'Separator', MockSeparator)
+
     captured = {
         'toplevel': mock_toplevel,
         'canvas': mock_canvas,
         'notebook': mock_notebook,
         'button': mock_button,
-        'labels': []
+        'labels': [],
+        'separators': separators,
     }
 
     # Intercept label creation
@@ -149,3 +163,18 @@ def test_show_keyboard_shortcuts_no_root(monkeypatch):
     with patch('tkinter.Toplevel') as mock_toplevel:
         gptscan.show_keyboard_shortcuts()
         mock_toplevel.assert_not_called()
+
+def test_show_keyboard_shortcuts_separator_grid_rows(mock_shortcuts_env):
+    captured = mock_shortcuts_env
+    gptscan.show_keyboard_shortcuts()
+
+    # Verify separators were created and gridded on distinct odd rows (1, 3, 5, ...)
+    separators = captured['separators']
+    assert len(separators) > 0
+    for sep in separators:
+        assert len(sep.grid_calls) == 1
+        grid_kwargs = sep.grid_calls[0]
+        row = grid_kwargs.get('row')
+        assert row is not None
+        # Odd row indicates row_idx + 1 (i.e. below row_idx = i * 2)
+        assert row % 2 == 1

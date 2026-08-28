@@ -4461,18 +4461,19 @@ def show_keyboard_shortcuts() -> None:
         scrollable_content.columnconfigure(1, weight=3)
 
         for i, (key, desc) in enumerate(shortcuts):
+            row_idx = i * 2
             # Key label - make it look like a keyboard shortcut (bold)
             key_lbl = ttk.Label(scrollable_content, text=key, font=('TkDefaultFont', 9, 'bold'), foreground="#1a1a1a")
-            key_lbl.grid(row=i, column=0, sticky="w", pady=4, padx=(5, 10))
+            key_lbl.grid(row=row_idx, column=0, sticky="w", pady=(4, 2), padx=(5, 10))
 
             # Description label
             desc_lbl = ttk.Label(scrollable_content, text=desc, font=('TkDefaultFont', 9), wraplength=300)
-            desc_lbl.grid(row=i, column=1, sticky="w", pady=4)
+            desc_lbl.grid(row=row_idx, column=1, sticky="w", pady=(4, 2))
 
             # Draw a subtle separator line if not the last one
             if i < len(shortcuts) - 1:
                 sep = ttk.Separator(scrollable_content, orient=tk.HORIZONTAL)
-                sep.grid(row=i, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+                sep.grid(row=row_idx + 1, column=0, columnspan=2, sticky="ew", pady=(2, 2))
 
         # Bind recursively after populating
         bind_mouse_wheel_recursive(scrollable_content)
