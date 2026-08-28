@@ -5802,9 +5802,6 @@ def batch_ai_analysis_events(
         total = len(requests)
         progress = 0
 
-        def wait_notifier(_wait_time: float) -> None:
-            enqueue_ui_update(update_status, "Waiting for API rate limit...")
-
         async def run_request(request: Dict[str, Any]):
             nonlocal progress
             if cancel_event.is_set():
@@ -5814,7 +5811,7 @@ def batch_ai_analysis_events(
                 Config.taskdesc,
                 rate_limiter=rate_limiter,
                 semaphore=semaphore,
-                wait_callback=wait_notifier,
+                wait_callback=lambda _wait_time: enqueue_ui_update(update_status, "Waiting for API rate limit..."),
             )
             progress += 1
 
