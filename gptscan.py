@@ -5320,7 +5320,7 @@ def scan_files(
         use_gpt: Whether to request AI analysis when the local model is confident.
         cancel_event: An event to trigger and signal scan cancellation.
         rate_limit: Maximum number of AI requests permitted per minute.
-        max_concurrent_requests: Maximum number of AI requests executed concurrently.
+        max_concurrent_requests: Maximum number of AI requests to run at the same time.
         dry_run: Whether to list files that would be scanned without running the model or API.
         exclude_patterns: List of glob patterns to exclude from the scan.
         extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
