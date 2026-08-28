@@ -135,11 +135,13 @@ def test_show_keyboard_shortcuts_darwin_modifier(mock_shortcuts_env, monkeypatch
     assert "Cmd+F" in label_texts
     assert "Cmd+O" in label_texts
     assert "Cmd+Shift+P" in label_texts
+    assert "Cmd+H" in label_texts
     assert "Cmd+G" in label_texts
     assert "Cmd+T" in label_texts
     assert "Cmd+L" in label_texts
     # Verify Ctrl+F is NOT used on Mac
     assert "Ctrl+F" not in label_texts
+    assert "Ctrl+H" not in label_texts
 
 def test_show_keyboard_shortcuts_linux_modifier(mock_shortcuts_env, monkeypatch):
     captured = mock_shortcuts_env
@@ -152,11 +154,13 @@ def test_show_keyboard_shortcuts_linux_modifier(mock_shortcuts_env, monkeypatch)
     assert "Ctrl+F" in label_texts
     assert "Ctrl+O" in label_texts
     assert "Ctrl+Shift+P" in label_texts
+    assert "Ctrl+H" in label_texts
     assert "Ctrl+G" in label_texts
     assert "Ctrl+T" in label_texts
     assert "Ctrl+L" in label_texts
     # Verify Cmd+F is NOT used on Linux
     assert "Cmd+F" not in label_texts
+    assert "Cmd+H" not in label_texts
 
 def test_show_keyboard_shortcuts_no_root(monkeypatch):
     monkeypatch.setattr(gptscan, 'root', None)
