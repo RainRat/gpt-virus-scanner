@@ -7890,6 +7890,38 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             root.clipboard_append(html_content)
             set_local_status("Result copied as HTML.", temporary=True)
 
+    def copy_as_markdown_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            md = generate_markdown(results)
+            root.clipboard_clear()
+            root.clipboard_append(md)
+            set_local_status("Result copied as Markdown.", temporary=True)
+
+    def copy_as_yaml_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            yaml_content = generate_yaml(results)
+            root.clipboard_clear()
+            root.clipboard_append(yaml_content)
+            set_local_status("Result copied as YAML.", temporary=True)
+
+    def copy_as_xml_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            xml_content = generate_xml(results)
+            root.clipboard_clear()
+            root.clipboard_append(xml_content)
+            set_local_status("Result copied as XML.", temporary=True)
+
+    def copy_as_sarif_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            sarif_log = generate_sarif(results)
+            root.clipboard_clear()
+            root.clipboard_append(json.dumps(sarif_log, indent=2))
+            set_local_status("Result copied as SARIF.", temporary=True)
+
     def copy_sha256_details():
         path = path_entry.get()
         snippet = snippet_text.get("1.0", tk.END).strip()
@@ -7973,7 +8005,11 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_menu.add_command(label="Copy as CSV", command=copy_as_csv_details)
     copy_menu.add_command(label="Copy as HTML", command=copy_as_html_details)
     copy_menu.add_command(label="Copy as JSON", command=copy_as_json_details, accelerator="Ctrl+J")
+    copy_menu.add_command(label="Copy as Markdown", command=copy_as_markdown_details)
+    copy_menu.add_command(label="Copy as SARIF", command=copy_as_sarif_details)
     copy_menu.add_command(label="Copy as Triage Report", command=copy_as_report_details, accelerator="Ctrl+Shift+R")
+    copy_menu.add_command(label="Copy as XML", command=copy_as_xml_details)
+    copy_menu.add_command(label="Copy as YAML", command=copy_as_yaml_details)
     copy_menu.add_command(label="Copy Code", command=copy_code, accelerator="Ctrl+S")
     copy_menu_btn["menu"] = copy_menu
 
@@ -8551,6 +8587,23 @@ def copy_as_html(event: Optional[tk.Event] = None) -> None:
     tree.clipboard_clear()
     tree.clipboard_append(html_content)
     update_status(f"Copied {len(results)} item(s) as HTML.")
+
+
+def copy_as_sarif(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as SARIF JSON to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+    sarif_log = generate_sarif(results)
+
+    tree.clipboard_clear()
+    tree.clipboard_append(json.dumps(sarif_log, indent=2))
+    update_status(f"Copied {len(results)} item(s) as SARIF.")
 
 
 def view_online(event_or_path: Union[tk.Event, str, None] = None, line: Optional[Union[int, str]] = None) -> None:
@@ -9469,6 +9522,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     copy_submenu.add_command(label="As HTML", command=copy_as_html)
     copy_submenu.add_command(label="As Markdown Table", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
     copy_submenu.add_command(label="As JSON Array", command=copy_as_json, accelerator="Ctrl+J")
+    copy_submenu.add_command(label="As SARIF", command=copy_as_sarif)
     copy_submenu.add_command(label="As YAML", command=copy_as_yaml)
     copy_submenu.add_command(label="As XML", command=copy_as_xml)
     copy_submenu.add_command(label="As Triage Report", command=copy_as_report, accelerator="Ctrl+Shift+R")
