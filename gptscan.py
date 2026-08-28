@@ -3071,10 +3071,8 @@ def insert_tree_row(values: Tuple[Any, ...]) -> None:
     if tree and _matches_filter(values):
         wrapped_values, tags = _prepare_tree_row(values)
         row_tags = list(tags)
-        children = tree.get_children()
-        if isinstance(children, (list, tuple)):
-            if len(children) % 2 == 1:
-                row_tags.append('odd')
+        if len(tree.get_children()) % 2 == 1:
+            row_tags.append('odd')
         tree.insert("", tk.END, values=wrapped_values, tags=tuple(row_tags))
 
 
