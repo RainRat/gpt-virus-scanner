@@ -4158,6 +4158,7 @@ def manage_exclusions() -> None:
         if not selection:
             return
 
+        first_sel = selection[0]
         patterns_to_remove = {ignore_listbox.get(i) for i in selection}
         if not messagebox.askyesno("Confirm Removal", f"Remove {len(patterns_to_remove)} exclusion(s)?", parent=manage_win):
             return
@@ -4166,6 +4167,11 @@ def manage_exclusions() -> None:
             remove_from_ignore_file(patterns_to_remove)
             refresh_list()
             _apply_filter()
+            if Config.ignore_patterns:
+                new_idx = min(first_sel, len(Config.ignore_patterns) - 1)
+                ignore_listbox.select_set(new_idx)
+                if hasattr(ignore_listbox, "see"):
+                    ignore_listbox.see(new_idx)
         except Exception as e:
             messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
 

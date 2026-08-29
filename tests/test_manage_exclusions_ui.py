@@ -44,6 +44,7 @@ def mock_gui_env(monkeypatch, tmp_path):
         def pack(self, **kwargs): pass
         def config(self, **kwargs): pass
         def yview(self, *args): pass
+        def see(self, index): pass
         def bind(self, sequence, func, add=None):
             self.bindings[sequence] = func
         def select_set(self, first, last=None):
@@ -312,4 +313,27 @@ def test_manage_exclusions_initial_focus_and_selection(mock_gui_env):
     lb = captured['listbox']
 
     assert lb.focused is True
+    assert lb.selection == [0]
+
+def test_manage_exclusions_selection_persistence_after_removal(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = ["p1", "p2", "p3"]
+    mock_mb.askyesno.return_value = True
+
+    manage_exclusions()
+    lb = captured['listbox']
+
+    # Remove index 0 ("p1"). Remaining: ["p2", "p3"]. Selection should update to index 0 ("p2").
+    lb.selection = [0]
+    btn_remove, remove_cmd = captured['buttons']['Remove Selected']
+    remove_cmd()
+
+    assert Config.ignore_patterns == ["p2", "p3"]
+    assert lb.selection == [0]
+
+    # Remove last item (index 1, "p3"). Remaining: ["p2"]. Selection should update to index 0 ("p2").
+    lb.selection = [1]
+    remove_cmd()
+
+    assert Config.ignore_patterns == ["p2"]
     assert lb.selection == [0]
