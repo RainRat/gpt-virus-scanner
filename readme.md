@@ -124,7 +124,7 @@ Open the scanner window by running the appropriate command for your operating sy
     python gptscan.py
     ```
 
-Access these options from the **Browse** menu:
+Access these options from the **Scan** menu:
 #### Common Scans
 *   **Scan File(s)... (Ctrl+Shift+O):** Select specific files to scan.
 *   **Scan Folder... (Ctrl+Shift+F):** Select an entire folder to scan.
