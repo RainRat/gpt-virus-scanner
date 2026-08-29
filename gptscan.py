@@ -7633,9 +7633,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         if hasattr(snippet_font, "configure"):
             try:
                 snippet_font.configure(size=current_font_size)
-                set_local_status(f"Font size: {current_font_size}pt", temporary=True)
             except Exception:
                 pass
+        set_local_status(f"Font size: {current_font_size}pt", temporary=True)
 
     def zoom_in():
         nonlocal current_font_size

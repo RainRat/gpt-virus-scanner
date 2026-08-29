@@ -63,6 +63,12 @@ def mock_view_details_env(monkeypatch):
         def __init__(self, *args, **kwargs):
             self.content = ""
             self.tags = []
+            self.bindings = {}
+        def bind(self, sequence, func=None, add=None):
+            if not hasattr(self, 'bindings'):
+                self.bindings = {}
+            if func is not None:
+                self.bindings[sequence] = func
         def delete(self, start, end): self.content = ""
         def insert(self, idx, val): self.content += val
         def get(self, start, end): return self.content

@@ -146,6 +146,74 @@ def test_view_details_zoom_and_robust_shortcuts(mock_view_details_env):
     mock_tree.selection_set.assert_called_with("item2")
 
 
+def test_view_details_mouse_wheel_and_keyboard_zoom_controls(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+
+    captured_bindings = {}
+    mock_toplevel.bind.side_effect = lambda event, func: captured_bindings.update({event: func})
+
+    setup_details(mock_view_details_env, "item1", "test.py", snippet="code snippet")
+
+    st = captured['scrolledtexts'][-1]
+    assert hasattr(st, 'bindings')
+    assert '<MouseWheel>' in st.bindings
+    assert '<Button-4>' in st.bindings
+    assert '<Button-5>' in st.bindings
+
+    mouse_wheel_handler = st.bindings['<MouseWheel>']
+    btn4_handler = st.bindings['<Button-4>']
+    btn5_handler = st.bindings['<Button-5>']
+
+    status_bar = captured['labels'][0]
+
+    # Mouse wheel with Control held
+    event_ctrl_up = MagicMock()
+    event_ctrl_up.state = 0x4
+    event_ctrl_up.delta = 120
+
+    res = mouse_wheel_handler(event_ctrl_up)
+    assert res == "break"
+    assert status_bar.config_data.get('text', '').startswith("Font size:")
+
+    event_ctrl_down = MagicMock()
+    event_ctrl_down.state = 0x4
+    event_ctrl_down.delta = -120
+
+    res = mouse_wheel_handler(event_ctrl_down)
+    assert res == "break"
+
+    # Mouse wheel without Control held
+    event_no_ctrl = MagicMock()
+    event_no_ctrl.state = 0
+    event_no_ctrl.delta = 120
+    res = mouse_wheel_handler(event_no_ctrl)
+    assert res is None
+
+    # Linux scroll up/down
+    res_b4 = btn4_handler(event_ctrl_up)
+    assert res_b4 == "break"
+
+    res_b5 = btn5_handler(event_ctrl_down)
+    assert res_b5 == "break"
+
+    # Keyboard shortcuts and boundary limits
+    zoom_in_handler = captured_bindings.get('<Control-plus>') or captured_bindings.get('<Control-equal>')
+    assert zoom_in_handler is not None
+
+    for _ in range(40):
+        zoom_in_handler(None)
+    assert status_bar.config_data.get('text') == "Font size: 36pt"
+
+    zoom_out_handler = captured_bindings['<Control-minus>']
+    for _ in range(40):
+        zoom_out_handler(None)
+    assert status_bar.config_data.get('text') == "Font size: 6pt"
+
+    zoom_reset_handler = captured_bindings['<Control-0>']
+    zoom_reset_handler(None)
+    assert "Font size:" in status_bar.config_data.get('text', '')
+
+
 def test_view_details_autofocus(mock_view_details_env, monkeypatch):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
