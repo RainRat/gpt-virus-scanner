@@ -514,14 +514,14 @@ You can customize terminal scans using these command line options.
 *   `files`: Additional folders, files, patterns, or web links to scan.
 *   `-p`, `--path <path>`: Alternative way to specify a folder, file, or web link to scan.
 *   `-d`, `--deep`: Scan the whole file instead of just the beginning and end. This is more thorough but slower.
-*   `--dry-run`: Preview which files would be scanned without actually checking them.
+*   `--dry-run`: Preview which files would be scanned without checking them.
 *   `--extensions <exts>`: Only scan these file types (for example: `py,js`).
 *   `-e`, `--exclude <patterns>`: Ignore files or folders matching these patterns (for example: `node_modules/*`).
 *   `--exclude-file <file>`: Read a list of exclude patterns from a file.
 *   `--file-list <file>`: Read a list of files to scan from a text file.
 *   `--all-files`: Scan every file, even if it is not a script.
 *   `--fail-threshold <num>`: Exit with code `1` if any file has a threat level at or above this number (0-100).
-*   `-t`, `--threshold <num>`, `--min-threat <num>`, `--min-threat-level <num>`: Set the minimum threat level (0-100) to show in results (default is 50).
+*   `-t`, `--threshold <num>`: Set the minimum threat level (0-100) to show in results (default is 50).
 *   `--stdin`: Scan code piped from another command.
 *   `-c`, `--clipboard`: Scan code currently copied in the system clipboard.
 *   `--import-results <target>` / `--import <target>`: Import results from a previous scan file, directory, or web link. Use `-` to read from the terminal.
@@ -665,7 +665,7 @@ You can tailor the scanner to your needs:
 *   **File Size:** The scanner skips files larger than 10MB during folder scans. You can adjust this limit in the **Scan Options** panel or by using the `--max-size` flag. Files you select individually are always scanned, regardless of their size.
 *   **Deep Scan:** Scan the entire file instead of just the beginning and end. This is more thorough but slower. Use the **Deep Scan** checkbox or the `-d` or `--deep` flag.
 *   **Scan All Files:** By default, the scanner only checks script-like files (like `.py` or `.js`). Use the **Scan All Files** checkbox or the `--all-files` flag to check every file.
-*   **Dry Run:** Preview which files would be scanned without actually checking them. Use the **Dry Run** checkbox or the `--dry-run` flag.
+*   **Dry Run:** Preview which files would be scanned without checking them. Use the **Dry Run** checkbox or the `--dry-run` flag.
 
 ## Advanced Usage
 ### Training the Model
