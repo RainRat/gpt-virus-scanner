@@ -10003,6 +10003,12 @@ def main():
         dest='sort_by',
         help='Sort output results by "threat" (highest threat first), "path" (file path alphabetically), or "line" (line number numerically).'
     )
+    output_group.add_argument(
+        '--min-threat', '--min-threat-level',
+        type=int,
+        dest='min_threat',
+        help='Set the minimum threat level (0-100) to include in results.'
+    )
 
     args = parser.parse_args()
 
@@ -10057,7 +10063,10 @@ def main():
                 "For example: '10MB' or '500KB'."
             )
 
-    Config.THRESHOLD = args.threshold
+    if args.min_threat is not None:
+        Config.THRESHOLD = args.min_threat
+    else:
+        Config.THRESHOLD = args.threshold
 
     scan_target = args.target or args.path
 
