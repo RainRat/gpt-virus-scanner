@@ -4305,7 +4305,7 @@ def manage_extensions() -> None:
     ext_listbox.bind("<Command-a>", select_all)
     manage_win.bind("<Escape>", lambda e: manage_win.destroy())
 
-    ttk.Button(btn_frame, text="Add...", command=add_extension).pack(side=tk.LEFT, padx=(0, 5), ipady=5)
+    ttk.Button(btn_frame, text="Add Extension...", command=add_extension).pack(side=tk.LEFT, padx=(0, 5), ipady=5)
     ttk.Button(btn_frame, text="Add from File...", command=add_from_file).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Reset to Defaults", command=reset_defaults).pack(side=tk.LEFT, padx=5, ipady=5)
