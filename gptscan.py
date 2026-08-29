@@ -5695,9 +5695,6 @@ def scan_files(
             semaphore = asyncio.Semaphore(max_concurrent_requests)
             wait_messages: List[str] = []
 
-            def wait_notifier(_wait_time: float) -> None:
-                wait_messages.append("Waiting for API rate limit...")
-
             async def run_request(request: Dict[str, Any]):
                 if cancel_event.is_set():
                     return request, None
@@ -5706,7 +5703,7 @@ def scan_files(
                     Config.taskdesc,
                     rate_limiter=rate_limiter,
                     semaphore=semaphore,
-                    wait_callback=wait_notifier,
+                    wait_callback=lambda _wait_time: wait_messages.append("Waiting for API rate limit..."),
                 )
                 return request, json_data
 
