@@ -152,13 +152,13 @@ def test_manage_extensions_add_bulk(mock_gui_env, monkeypatch):
 
 def test_manage_extensions_remove(mock_gui_env, monkeypatch):
     captured, mock_sd, mock_mb, mock_top = mock_gui_env
-    Config.extensions_set = {".py", ".js"}
+    Config.extensions_set = {".py", ".js", ".ts"}
     mock_mb.askyesno.return_value = True
     monkeypatch.setattr(Config, "save_extensions", MagicMock())
 
     manage_extensions()
     lb = captured['listbox']
-    # Select .js (index 0 because they are sorted)
+    # Sorted: .js, .py, .ts. Select .js (index 0)
     lb.selection = [0]
 
     remove_btn, remove_cmd = captured['buttons']['Remove Selected']
@@ -166,6 +166,25 @@ def test_manage_extensions_remove(mock_gui_env, monkeypatch):
 
     assert ".js" not in Config.extensions_set
     assert ".py" in Config.extensions_set
+    assert lb.selection == [0]  # .py moved to index 0 and was re-selected
+
+def test_manage_extensions_remove_last_item_reselects_previous(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py", ".js"}
+    mock_mb.askyesno.return_value = True
+    monkeypatch.setattr(Config, "save_extensions", MagicMock())
+
+    manage_extensions()
+    lb = captured['listbox']
+    # Sorted: .js, .py. Select .py (index 1)
+    lb.selection = [1]
+
+    remove_btn, remove_cmd = captured['buttons']['Remove Selected']
+    remove_cmd()
+
+    assert ".py" not in Config.extensions_set
+    assert ".js" in Config.extensions_set
+    assert lb.selection == [0]  # .js at index 0 selected
 
 def test_manage_extensions_initial_focus_and_selection(mock_gui_env):
     captured, mock_sd, mock_mb, mock_top = mock_gui_env

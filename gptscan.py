@@ -4158,6 +4158,7 @@ def manage_exclusions() -> None:
         if not selection:
             return
 
+        first_sel = selection[0]
         patterns_to_remove = {ignore_listbox.get(i) for i in selection}
         if not messagebox.askyesno("Confirm Removal", f"Remove {len(patterns_to_remove)} exclusion(s)?", parent=manage_win):
             return
@@ -4166,6 +4167,9 @@ def manage_exclusions() -> None:
             remove_from_ignore_file(patterns_to_remove)
             refresh_list()
             _apply_filter()
+            if Config.ignore_patterns:
+                new_idx = min(first_sel, len(Config.ignore_patterns) - 1)
+                ignore_listbox.select_set(new_idx)
         except Exception as e:
             messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
 
@@ -4271,6 +4275,7 @@ def manage_extensions() -> None:
         if not selection:
             return
 
+        first_sel = selection[0]
         exts_to_remove = {ext_listbox.get(i) for i in selection}
         if not messagebox.askyesno("Confirm Removal", f"Remove {len(exts_to_remove)} extension(s)?", parent=manage_win):
             return
@@ -4280,6 +4285,9 @@ def manage_extensions() -> None:
                 Config.extensions_set.discard(ext)
             Config.save_extensions()
             refresh_list()
+            if Config.extensions_set:
+                new_idx = min(first_sel, len(sorted(Config.extensions_set)) - 1)
+                ext_listbox.select_set(new_idx)
         except Exception as e:
             messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
 
