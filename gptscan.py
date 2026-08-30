@@ -7409,7 +7409,7 @@ def _get_tree_results_as_dicts(item_ids: Iterable[str]) -> List[Dict[str, Any]]:
 def export_results(event: Optional[tk.Event] = None) -> None:
     """Save the current Treeview contents to a file chosen by the user.
 
-    Supports CSV, HTML, JSON, SARIF, and Console Triage Report formats.
+    Supports CSV, Markdown, HTML, JSON, YAML, SARIF, XML, and Console Triage Report formats.
 
     Returns
     -------
