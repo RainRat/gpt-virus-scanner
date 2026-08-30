@@ -185,7 +185,24 @@ def test_manage_exclusions_remove_selected(mock_gui_env):
     assert "p2" not in Config.ignore_patterns
     assert "p1" in Config.ignore_patterns
     assert "p3" in Config.ignore_patterns
+    assert lb.selection == [1]  # Selected "p3" which took index 1
     assert gptscan._apply_filter.called
+
+def test_manage_exclusions_remove_last_item_reselects_previous(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = ["p1", "p2"]
+    mock_mb.askyesno.return_value = True
+
+    manage_exclusions()
+    lb = captured['listbox']
+    lb.selection = [1] # Select last item "p2"
+
+    remove_btn, remove_cmd = captured['buttons']['Remove Selected']
+    remove_cmd()
+
+    assert "p2" not in Config.ignore_patterns
+    assert "p1" in Config.ignore_patterns
+    assert lb.selection == [0]  # Selected "p1" at index 0
 
 def test_manage_exclusions_add_pattern_cancel(mock_gui_env):
     captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
