@@ -456,9 +456,9 @@ Scan code sent from another command in the terminal:
 echo "import os; os.system('rm -rf /')" | python3 gptscan.py --stdin --cli
 ```
 
-Filter out known findings using a previous scan report as a baseline:
+Filter out known findings using a previous scan report as a baseline and save bypassed findings separately:
 ```bash
-python3 gptscan.py ./my_project --baseline previous_report.json --cli
+python3 gptscan.py ./my_project --baseline previous_report.json --baseline-output bypassed.json --cli
 ```
 
 Save scan results to a file (CSV, JSON, HTML, etc.):
@@ -526,6 +526,7 @@ You can customize terminal scans using these command line options.
 *   `-c`, `--clipboard`: Scan code currently copied in the system clipboard.
 *   `--import-results <target>` / `--import <target>`: Import results from a previous scan file, directory, or web link. Use `-` to read from the terminal.
 *   `--baseline <file>`: A previous scan report (in any supported format) to act as a baseline. Findings matching this baseline are filtered out.
+*   `--baseline-output <file>`: Save findings that match the baseline to a separate file (in the specified output format).
 *   `--max-size <size>`: The maximum file size to scan (for example: `10MB`). Default is 10MB.
 *   `--modified <time>`: Only scan files changed within this time (for example: `24h`, `1h`, `7d`).
 *   `--downloads`: Scan the standard Downloads folder.
