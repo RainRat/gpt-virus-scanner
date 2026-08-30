@@ -6473,7 +6473,36 @@ def generate_yaml(results: List[Dict[str, Any]]) -> str:
     return yaml.safe_dump(results, default_flow_style=False, sort_keys=False)
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, sort_by: Optional[str] = None) -> int:
+def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output_format: str = 'csv') -> None:
+    """Helper function to save scan finding dicts to a file in the specified format."""
+    keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
+    fmt = (output_format or 'csv').lower()
+    with open(file_path, 'w', encoding='utf-8') as out_stream:
+        if fmt == 'sarif':
+            sarif_log = generate_sarif(results)
+            print(json.dumps(sarif_log, indent=2), file=out_stream)
+        elif fmt == 'html':
+            print(generate_html(results), file=out_stream)
+        elif fmt in ('markdown', 'md'):
+            print(generate_markdown(results), file=out_stream)
+        elif fmt == 'xml':
+            print(generate_xml(results), file=out_stream)
+        elif fmt in ('yaml', 'yml'):
+            print(generate_yaml(results), file=out_stream)
+        elif fmt == 'report':
+            report = generate_console_report(results, use_color=False)
+            print(report, file=out_stream)
+        elif fmt == 'json':
+            for record in results:
+                print(json.dumps(record), file=out_stream)
+        else:  # default csv
+            writer = csv.writer(out_stream)
+            writer.writerow(keys)
+            for record in results:
+                writer.writerow([record.get(k, '') for k in keys])
+
+
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, sort_by: Optional[str] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6491,6 +6520,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         import_file: Path to a previous scan report to import and process.
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
         baseline_file: Path to a previous report file to use as a baseline to filter out existing findings.
+        baseline_output_file: Path to save findings that were bypassed due to matching the baseline.
         quiet: Whether to suppress progress updates and summary banners on sys.stderr.
         top_limit: If provided, restrict the output results to the top N highest-threat findings.
         count_only: Whether to print only the total count of matching findings.
@@ -6509,6 +6539,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     baseline_set = set()
     matched_baseline_count = 0
+    bypassed_baseline_records = []
     if baseline_file:
         try:
             baseline_items = load_report_file(baseline_file)
@@ -6567,6 +6598,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 record_sig = get_finding_signature(record)
                 if record_sig in baseline_set:
                     matched_baseline_count += 1
+                    if baseline_output_file:
+                        bypassed_baseline_records.append(record)
                     continue
 
             # Determine if this finding counts as a threat based on the threshold
@@ -6696,6 +6729,14 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     if output_file:
         out_stream.close()
+
+    if baseline_output_file:
+        try:
+            export_results_to_file(baseline_output_file, bypassed_baseline_records, output_format=output_format)
+            if not quiet:
+                print(f"Exported {len(bypassed_baseline_records)} bypassed baseline findings to {baseline_output_file}.", file=sys.stderr)
+        except Exception as e:
+            print(f"Error saving baseline output file {baseline_output_file}: {e}", file=sys.stderr)
 
     return threats_found
 
@@ -9744,6 +9785,11 @@ def main():
         help='A previous report file (any supported format) to act as a baseline. Existing findings in this baseline will be filtered out.'
     )
     scan_group.add_argument(
+        '--baseline-output',
+        type=str,
+        help='Save findings that match the baseline to a separate file (in the specified output format).'
+    )
+    scan_group.add_argument(
         '--max-size',
         type=str,
         help='The maximum file size to scan (for example: "10MB"). Default is 10MB.'
@@ -10449,6 +10495,7 @@ def main():
             import_file=args.import_results,
             modified_since=modified_since,
             baseline_file=args.baseline,
+            baseline_output_file=args.baseline_output,
             quiet=args.quiet,
             top_limit=args.top,
             count_only=args.count_only,
