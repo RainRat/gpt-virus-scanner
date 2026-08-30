@@ -58,6 +58,28 @@ def test_get_scheduled_task_commands_linux_all():
                         assert tasks[3] == ("[Cron] System (test_task)", b"/usr/local/bin/daily_backup.sh")
                         assert tasks[4] == ("[Cron] System (test_task)", b"/usr/bin/reboot_task")
 
+def test_get_scheduled_task_commands_linux_exceptions_and_env_vars():
+    mock_crontab_l = "SHELL=/bin/bash\nPATH=/usr/bin\n"
+
+    with patch("sys.platform", "linux"):
+        with patch("subprocess.check_output", return_value=mock_crontab_l):
+            with patch("os.path.exists", return_value=True):
+                with patch("gptscan.Path") as mock_path_cls:
+                    mock_cron_d = MagicMock()
+                    mock_cron_d.is_dir.return_value = True
+                    mock_cron_d.iterdir.side_effect = PermissionError("Permission denied reading cron.d")
+                    mock_path_cls.return_value = mock_cron_d
+
+                    with patch("builtins.open", side_effect=PermissionError("Permission denied reading /etc/crontab")):
+                        tasks = get_scheduled_task_commands()
+                        assert tasks == []
+
+def test_get_scheduled_task_commands_outer_exception():
+    with patch("subprocess.check_output", side_effect=RuntimeError("Unexpected system failure")):
+        with patch("sys.platform", "win32"):
+            tasks = get_scheduled_task_commands()
+            assert tasks == []
+
 def test_get_scheduled_task_commands_windows():
     # schtasks /query /fo CSV /v output
     mock_csv = '"HostName","TaskName","Next Run Time","Status","Last Run Time","Last Result","Creator","Schedule","Task To Run","Path","Run As User"\n' \
