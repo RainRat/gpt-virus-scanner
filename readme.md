@@ -124,8 +124,22 @@ Open the scanner window by running the appropriate command for your operating sy
     python gptscan.py
     ```
 
-Access these options from the **Scan** menu:
-#### Common Scans
+Access menu actions from the top menu bar:
+
+#### File Menu
+*   **Import Results... (Ctrl+O):** Load previous scan results from a file, directory, or web link.
+*   **Import from Clipboard (Ctrl+V):** Load scan results pasted from your clipboard.
+*   **Import from Web Link...:** Load scan results directly from a web link.
+*   **Export Results... (Ctrl+E):** Save your scan results to a file (CSV, JSON, HTML, SARIF, Markdown, XML, or YAML).
+*   **Manage Exclusions...:** Add or remove path patterns to exclude from scanning.
+*   **Manage Extensions...:** Select which file extensions to check during scans.
+*   **Copy as CLI Command (Ctrl+Shift+E):** Copy your current window settings as a terminal command.
+*   **Clear Results (Ctrl+Shift+Delete):** Clear all findings from the results list.
+*   **Clear AI Cache:** Delete cached AI analysis responses.
+*   **Clear Path History:** Clear the recent target path history dropdown list.
+
+#### Scan Menu
+##### Common Scans
 *   **Scan File(s)... (Ctrl+Shift+O):** Select specific files to scan.
 *   **Scan Folder... (Ctrl+Shift+F):** Select an entire folder to scan.
 *   **Scan Recently Modified...:** Scan files changed within a certain time (like the last 24 hours).
@@ -133,7 +147,7 @@ Access these options from the **Scan** menu:
 *   **Scan File List...:** Scan a list of files from a text file.
 *   **Scan Clipboard (Ctrl+Shift+V):** Scan code you have copied to your clipboard.
 
-#### Git Integration
+##### Git Integration
 *   **Scan Git Diff (Ctrl+Shift+D):** Scan your current project changes as a diff.
 *   **Scan Recent Commits...:** Scan files from the most recent commits.
 *   **Scan Git Hooks (Ctrl+Shift+G):** Scan your local and global Git hooks for suspicious scripts.
@@ -143,7 +157,7 @@ Access these options from the **Scan** menu:
 *   **Scan Git Reflog...:** Scan recent entries in your Git reflog to find lost code or secrets.
 *   **Scan Git Revision...:** Scan files from a specific Git branch or commit.
 
-#### System Scans
+##### System Scans
 *   **Scan System Audit (Ctrl+Shift+I):** Run a full check of your system, including all items listed below.
 *   **Scan Shell Profiles (Ctrl+Shift+B):** Scan your shell configuration files (like `.bashrc` or `.zshrc`) for dangerous aliases.
 *   **Scan Shell History (Ctrl+Shift+H):** Scan your terminal history for dangerous commands.
