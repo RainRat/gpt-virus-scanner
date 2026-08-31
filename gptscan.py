@@ -3469,48 +3469,50 @@ def get_git_reflog_snippets(path: str = ".", count: int = 5) -> List[Tuple[str, 
 
 def scan_git_history_click(count=None):
     """Scan recent Git commits."""
-    try:
-        if count is None:
-            count = simpledialog.askinteger("Scan Recent Commits", "Enter number of recent commits to scan:", initialvalue=5, minvalue=1, maxvalue=100)
-        if count is None:
-            return
+    if count is None:
+        count = simpledialog.askinteger("Scan Recent Commits", "Enter number of recent commits to scan:", initialvalue=5, minvalue=1, maxvalue=100)
+    if count is None:
+        return
 
-        scan_path = textbox.get()
-        git_roots = shlex.split(scan_path, posix=(sys.platform != "win32")) if scan_path else ["."]
-
-        all_snippets = []
+    def get_history_snippets():
+        git_roots = _normalize_targets(_get_target_path())
+        snippets = []
         for root_dir in git_roots:
-            all_snippets.extend(get_git_history_snippets(root_dir, count=count))
+            snippets.extend(get_git_history_snippets(root_dir, count=count))
+        return snippets
 
-        if all_snippets:
-            button_click(extra_snippets=all_snippets)
-        else:
-            messagebox.showinfo("Git History", f"No recent commits were found to scan in '{scan_path or '.'}'.")
-    except Exception as e:
-        messagebox.showwarning("Git History Error", f"Could not scan Git history: {e}")
+    scan_path = textbox.get() if textbox else ""
+    _generic_scan_click(
+        get_history_snippets,
+        "Git History",
+        f"No recent commits were found to scan in '{scan_path or '.'}'.",
+        "Git History Error",
+        is_snippets=True
+    )
 
 
 def scan_git_reflog_click(count=None):
     """Scan recent entries in the Git reflog."""
-    try:
-        if count is None:
-            count = simpledialog.askinteger("Scan Git Reflog", "Enter number of recent reflog entries to scan:", initialvalue=5, minvalue=1, maxvalue=100)
-        if count is None:
-            return
+    if count is None:
+        count = simpledialog.askinteger("Scan Git Reflog", "Enter number of recent reflog entries to scan:", initialvalue=5, minvalue=1, maxvalue=100)
+    if count is None:
+        return
 
-        scan_path = textbox.get()
-        git_roots = shlex.split(scan_path, posix=(sys.platform != "win32")) if scan_path else ["."]
-
-        all_snippets = []
+    def get_reflog_snippets():
+        git_roots = _normalize_targets(_get_target_path())
+        snippets = []
         for root_dir in git_roots:
-            all_snippets.extend(get_git_reflog_snippets(root_dir, count=count))
+            snippets.extend(get_git_reflog_snippets(root_dir, count=count))
+        return snippets
 
-        if all_snippets:
-            button_click(extra_snippets=all_snippets)
-        else:
-            messagebox.showinfo("Git Reflog", f"No recent reflog entries were found to scan in '{scan_path or '.'}'.")
-    except Exception as e:
-        messagebox.showwarning("Git Reflog Error", f"Could not scan Git reflog: {e}")
+    scan_path = textbox.get() if textbox else ""
+    _generic_scan_click(
+        get_reflog_snippets,
+        "Git Reflog",
+        f"No recent reflog entries were found to scan in '{scan_path or '.'}'.",
+        "Git Reflog Error",
+        is_snippets=True
+    )
 
 
 def scan_git_revision_click():
