@@ -656,7 +656,7 @@ The scanner provides several ways to analyze and manage your results:
     *   **View Online:** Open the source file in your web browser (for Git projects and remote web links).
 *   **Export & Import:**
     *   **Export Results:** Save your scan to a file (CSV, Markdown, HTML, JSON, SARIF, XML, or YAML) via **File > Export Results...**.
-    *   **Import Results:** Load previous scan results from any of the supported formats via **File > Import Results...** or by pasting them from your clipboard (`Ctrl+V`).
+    *   **Import Results:** Load previous scan results from any of the supported formats (JSON, SARIF, CSV, Markdown, HTML, XML, YAML, Triage Reports) via **File > Import Results...** or by pasting them from your clipboard (`Ctrl+V`).
 
 ## Customizing the Scanner
 You can tailor the scanner to your needs:
