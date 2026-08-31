@@ -4177,11 +4177,12 @@ def manage_exclusions() -> None:
         ignore_listbox.select_set(0, tk.END)
         return "break"
 
-    # Keyboard Bindings
+    # Keyboard & Mouse Bindings
     ignore_listbox.bind("<Delete>", remove_selected)
     ignore_listbox.bind("<BackSpace>", remove_selected)
     ignore_listbox.bind("<Control-a>", select_all)
     ignore_listbox.bind("<Command-a>", select_all)
+    ignore_listbox.bind("<Double-1>", remove_selected)
     manage_win.bind("<Escape>", lambda e: manage_win.destroy())
 
     ttk.Button(btn_frame, text="Add Pattern...", command=add_pattern).pack(side=tk.LEFT, padx=(0, 5), ipady=5)
@@ -4306,11 +4307,12 @@ def manage_extensions() -> None:
         ext_listbox.select_set(0, tk.END)
         return "break"
 
-    # Keyboard Bindings
+    # Keyboard & Mouse Bindings
     ext_listbox.bind("<Delete>", remove_selected)
     ext_listbox.bind("<BackSpace>", remove_selected)
     ext_listbox.bind("<Control-a>", select_all)
     ext_listbox.bind("<Command-a>", select_all)
+    ext_listbox.bind("<Double-1>", remove_selected)
     manage_win.bind("<Escape>", lambda e: manage_win.destroy())
 
     ttk.Button(btn_frame, text="Add Extension...", command=add_extension).pack(side=tk.LEFT, padx=(0, 5), ipady=5)

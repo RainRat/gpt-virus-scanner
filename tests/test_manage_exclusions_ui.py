@@ -290,7 +290,24 @@ def test_manage_exclusions_keyboard_bindings(mock_gui_env):
     assert "<BackSpace>" in lb.bindings
     assert "<Control-a>" in lb.bindings
     assert "<Command-a>" in lb.bindings
+    assert "<Double-1>" in lb.bindings
     assert mock_top.bind.called  # Esc is bound to mock_top Toplevel window
+
+def test_manage_exclusions_double_click_remove(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = ["p1", "p2"]
+    mock_mb.askyesno.return_value = True
+
+    manage_exclusions()
+    lb = captured['listbox']
+    lb.selection = [0]
+
+    # Trigger Double-1
+    double_click_func = lb.bindings["<Double-1>"]
+    double_click_func(None)
+
+    assert "p1" not in Config.ignore_patterns
+    assert "p2" in Config.ignore_patterns
 
 def test_manage_exclusions_keyboard_select_all(mock_gui_env):
     captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
