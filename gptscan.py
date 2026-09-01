@@ -8898,11 +8898,7 @@ def focus_filter(event: Optional[tk.Event] = None) -> str:
 
 def on_filter_escape(event: Optional[tk.Event] = None) -> str:
     """Clear the search query, refresh results, shift focus to tree, and break event propagation."""
-    if filter_var:
-        filter_var.set("")
-    _apply_filter()
-    if tree:
-        tree.focus_set()
+    on_root_escape(event)
     return "break"
 
 
