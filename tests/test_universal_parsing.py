@@ -173,3 +173,22 @@ def test_scan_files_clipboard_ipynb_expansion(mock_tf_env, monkeypatch):
     assert len(results) == 1
     assert "[Clipboard] [Cell 1]" in results[0][0]
     assert b"clipboard cell" in results[0][5].encode('utf-8')
+
+
+def test_unpack_corrupted_zip_exception_handling():
+    corrupted_zip_content = b"PK\x03\x04corrupted_zip_data_that_fails_zipfile_parsing"
+    results = list(unpack_content("corrupt.zip", corrupted_zip_content))
+    assert results == [("corrupt.zip", corrupted_zip_content)]
+
+
+def test_unpack_corrupted_tar_exception_handling(mocker):
+    mocker.patch("tarfile.is_tarfile", side_effect=OSError("Disk read error"))
+    results = list(unpack_content("corrupt.bin", b"not_a_valid_tar_file"))
+    assert results == []
+
+
+def test_unpack_tar_open_exception_handling(mocker):
+    dummy_tar_header = b"\x00" * 257 + b"ustar" + b"\x00" * 100
+    mocker.patch("tarfile.open", side_effect=tarfile.ReadError("Corrupted archive"))
+    results = list(unpack_content("header.tar", dummy_tar_header))
+    assert results == [("header.tar", dummy_tar_header)]
