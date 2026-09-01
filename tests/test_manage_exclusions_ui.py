@@ -288,6 +288,8 @@ def test_manage_exclusions_keyboard_bindings(mock_gui_env):
     # Check that bindings exist
     assert "<Delete>" in lb.bindings
     assert "<BackSpace>" in lb.bindings
+    assert "<Return>" in lb.bindings
+    assert "<KP_Enter>" in lb.bindings
     assert "<Control-a>" in lb.bindings
     assert "<Command-a>" in lb.bindings
     assert mock_top.bind.called  # Esc is bound to mock_top Toplevel window
@@ -317,6 +319,22 @@ def test_manage_exclusions_keyboard_remove(mock_gui_env):
     # Trigger Delete
     delete_func = lb.bindings["<Delete>"]
     delete_func(None)
+
+    assert "p1" not in Config.ignore_patterns
+    assert "p2" in Config.ignore_patterns
+
+def test_manage_exclusions_keyboard_return_remove(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = ["p1", "p2"]
+    mock_mb.askyesno.return_value = True
+
+    manage_exclusions()
+    lb = captured['listbox']
+    lb.selection = [0]
+
+    # Trigger Return
+    return_func = lb.bindings["<Return>"]
+    return_func(None)
 
     assert "p1" not in Config.ignore_patterns
     assert "p2" in Config.ignore_patterns

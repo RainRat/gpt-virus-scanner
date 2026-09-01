@@ -4180,6 +4180,8 @@ def manage_exclusions() -> None:
     # Keyboard Bindings
     ignore_listbox.bind("<Delete>", remove_selected)
     ignore_listbox.bind("<BackSpace>", remove_selected)
+    ignore_listbox.bind("<Return>", remove_selected)
+    ignore_listbox.bind("<KP_Enter>", remove_selected)
     ignore_listbox.bind("<Control-a>", select_all)
     ignore_listbox.bind("<Command-a>", select_all)
     manage_win.bind("<Escape>", lambda e: manage_win.destroy())
@@ -4309,6 +4311,8 @@ def manage_extensions() -> None:
     # Keyboard Bindings
     ext_listbox.bind("<Delete>", remove_selected)
     ext_listbox.bind("<BackSpace>", remove_selected)
+    ext_listbox.bind("<Return>", remove_selected)
+    ext_listbox.bind("<KP_Enter>", remove_selected)
     ext_listbox.bind("<Control-a>", select_all)
     ext_listbox.bind("<Command-a>", select_all)
     manage_win.bind("<Escape>", lambda e: manage_win.destroy())
