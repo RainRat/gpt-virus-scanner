@@ -4394,6 +4394,23 @@ def show_keyboard_shortcuts() -> None:
     notebook = ttk.Notebook(main_frame)
     notebook.pack(fill=tk.BOTH, expand=True)
 
+    def _next_tab(event=None):
+        num_tabs = len(notebook.tabs())
+        if num_tabs > 1:
+            current = notebook.index("current")
+            notebook.select((current + 1) % num_tabs)
+        return "break"
+
+    def _prev_tab(event=None):
+        num_tabs = len(notebook.tabs())
+        if num_tabs > 1:
+            current = notebook.index("current")
+            notebook.select((current - 1) % num_tabs)
+        return "break"
+
+    win.bind('<Right>', _next_tab)
+    win.bind('<Left>', _prev_tab)
+
     # Determine modifier based on OS
     mod = "Cmd" if sys.platform == "darwin" else "Ctrl"
 

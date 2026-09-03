@@ -101,6 +101,23 @@ def test_show_keyboard_shortcuts_bindings(mock_shortcuts_env):
 
     assert '<Escape>' in bindings
     assert '<Return>' in bindings
+    assert '<Right>' in bindings
+    assert '<Left>' in bindings
+
+    # Mock notebook tabs for switching test
+    captured['notebook'].tabs.return_value = ['tab1', 'tab2', 'tab3']
+    captured['notebook'].index.return_value = 0
+
+    # Test Right arrow key (next tab)
+    res_right = bindings['<Right>'](None)
+    assert res_right == "break"
+    captured['notebook'].select.assert_called_with(1)
+
+    # Test Left arrow key (prev tab)
+    captured['notebook'].index.return_value = 0
+    res_left = bindings['<Left>'](None)
+    assert res_left == "break"
+    captured['notebook'].select.assert_called_with(2)
 
     # Trigger Esc binding and check it destroys Toplevel
     bindings['<Escape>'](None)
