@@ -8501,6 +8501,8 @@ def check_virustotal(event_or_path: Union[tk.Event, str, None] = None) -> None:
     if isinstance(event_or_path, str):
         targets.append((event_or_path, None))
     else:
+        if not tree:
+            return
         selection = tree.selection()
         if not selection:
             return
