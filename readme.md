@@ -124,8 +124,20 @@ Open the scanner window by running the appropriate command for your operating sy
     python gptscan.py
     ```
 
-Access these options from the **Scan** menu:
-#### Common Scans
+#### File Menu
+*   **Import Results... (Ctrl+O):** Import scan results from a previous report file, folder, or web link.
+*   **Import from Clipboard (Ctrl+V):** Import scan results directly from your clipboard.
+*   **Import from Web Link...:** Import scan results directly from a web link.
+*   **Export Results... (Ctrl+E):** Save current scan results to a file in your choice of format (JSON, CSV, SARIF, HTML, Markdown, XML, YAML).
+*   **Manage Exclusions...:** View and manage path exclusion patterns ignored during scans.
+*   **Manage Extensions...:** View and manage target file extensions included in scans.
+*   **Copy as CLI Command (Ctrl+Shift+E):** Copy equivalent command line flags based on your current GUI settings.
+*   **Clear Results (Ctrl+Shift+Delete):** Clear all entries from the results list.
+*   **Clear AI Cache:** Delete cached AI analysis responses from local storage.
+*   **Clear Path History:** Reset the recent target path history in the selection dropdown.
+
+#### Scan Menu
+##### Common Scans
 *   **Scan File(s)... (Ctrl+Shift+O):** Select specific files to scan.
 *   **Scan Folder... (Ctrl+Shift+F):** Select an entire folder to scan.
 *   **Scan Recently Modified...:** Scan files changed within a certain time (like the last 24 hours).
