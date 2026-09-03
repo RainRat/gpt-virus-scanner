@@ -100,3 +100,53 @@ def test_update_button_states_handles_none(monkeypatch):
     monkeypatch.setattr(gptscan, 'tree', None)
     # Should not raise error
     gptscan.update_button_states()
+
+def test_update_button_states_context_menu_enabled(mock_ui_env, monkeypatch):
+    mock_context_menu = MagicMock()
+    monkeypatch.setattr(gptscan, 'context_menu', mock_context_menu)
+    monkeypatch.setattr(gptscan, 'current_cancel_event', None)
+    monkeypatch.setattr(gptscan.Config, 'GPT_ENABLED', True)
+
+    mock_ui_env['tree'].selection.return_value = ("item1",)
+    monkeypatch.setattr(gptscan, '_get_item_raw_values', lambda iid: ["sample.py", "100%"])
+
+    gptscan.update_button_states()
+
+    mock_context_menu.entryconfig.assert_any_call("View Details...", state="normal")
+    mock_context_menu.entryconfig.assert_any_call("Rescan Selected", state="normal")
+    mock_context_menu.entryconfig.assert_any_call("Analyze with AI", state="normal")
+    mock_context_menu.entryconfig.assert_any_call("Exclude Selected", state="normal")
+    mock_context_menu.entryconfig.assert_any_call("Open", state="normal")
+    mock_context_menu.entryconfig.assert_any_call("Show in Folder", state="normal")
+    mock_context_menu.entryconfig.assert_any_call("Check on VirusTotal", state="normal")
+    mock_context_menu.entryconfig.assert_any_call("View Online", state="normal")
+
+def test_update_button_states_context_menu_url_virtual_path(mock_ui_env, monkeypatch):
+    mock_context_menu = MagicMock()
+    monkeypatch.setattr(gptscan, 'context_menu', mock_context_menu)
+    monkeypatch.setattr(gptscan, 'current_cancel_event', None)
+
+    mock_ui_env['tree'].selection.return_value = ("item1",)
+    monkeypatch.setattr(gptscan, '_get_item_raw_values', lambda iid: ["[URL] https://example.com", "100%"])
+
+    gptscan.update_button_states()
+
+    mock_context_menu.entryconfig.assert_any_call("View Online", state="normal")
+    mock_context_menu.entryconfig.assert_any_call("Open", state="disabled")
+    mock_context_menu.entryconfig.assert_any_call("Show in Folder", state="disabled")
+    mock_context_menu.entryconfig.assert_any_call("Rescan Selected", state="disabled")
+
+def test_update_button_states_tclerror_handling(mock_ui_env, monkeypatch):
+    mock_context_menu = MagicMock()
+    mock_intel_menu = MagicMock()
+
+    mock_context_menu.entryconfig.side_effect = tk.TclError("Menu error")
+    mock_intel_menu.entryconfig.side_effect = tk.TclError("Menu error")
+
+    monkeypatch.setattr(gptscan, 'context_menu', mock_context_menu)
+    monkeypatch.setattr(gptscan, 'intel_menu', mock_intel_menu)
+    monkeypatch.setattr(gptscan, 'tk', tk)
+    mock_ui_env['tree'].selection.return_value = ("item1",)
+
+    # Should gracefully catch TclError without raising exception
+    gptscan.update_button_states()
