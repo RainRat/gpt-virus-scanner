@@ -456,6 +456,11 @@ Scan code sent from another command in the terminal:
 echo "import os; os.system('rm -rf /')" | python3 gptscan.py --stdin --cli
 ```
 
+Import and display results from a previous scan file, directory, or web link:
+```bash
+python3 gptscan.py --import-results previous_report.json --cli
+```
+
 Filter out known findings using a previous scan report as a baseline and save bypassed findings separately:
 ```bash
 python3 gptscan.py ./my_project --baseline previous_report.json --baseline-output bypassed.json --cli
