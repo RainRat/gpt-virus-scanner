@@ -89,6 +89,37 @@ def test_on_filter_escape_resets_and_focuses(mock_ui_env, monkeypatch):
     assert res == "break"
 
 
+def test_on_filter_escape_empty_query_focuses_tree(mock_ui_env, monkeypatch):
+    """Test that on_filter_escape shifts focus to tree even when query is already empty."""
+    mock_filter_var = MagicMock()
+    mock_filter_var.get.return_value = ""
+    monkeypatch.setattr(gptscan, 'filter_var', mock_filter_var)
+    monkeypatch.setattr(gptscan, 'current_cancel_event', None)
+
+    res = gptscan.on_filter_escape()
+
+    mock_ui_env['tree'].focus_set.assert_called_once()
+    assert res == "break"
+
+
+def test_on_filter_escape_whitespace_query_clears_and_focuses(mock_ui_env, monkeypatch):
+    """Test that on_filter_escape clears whitespace-only query, refreshes results, and focuses tree."""
+    mock_filter_var = MagicMock()
+    mock_filter_var.get.return_value = "   "
+    mock_apply_filter = MagicMock()
+
+    monkeypatch.setattr(gptscan, 'filter_var', mock_filter_var)
+    monkeypatch.setattr(gptscan, '_apply_filter', mock_apply_filter)
+    monkeypatch.setattr(gptscan, 'current_cancel_event', None)
+
+    res = gptscan.on_filter_escape()
+
+    mock_filter_var.set.assert_called_once_with("")
+    mock_apply_filter.assert_called_once()
+    mock_ui_env['tree'].focus_set.assert_called_once()
+    assert res == "break"
+
+
 def test_clear_filter_button_visibility_toggles(monkeypatch):
     """Test that _apply_filter toggles clear_filter_btn visibility based on filter_var content."""
     mock_clear_btn = MagicMock()

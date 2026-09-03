@@ -126,15 +126,15 @@ Open the scanner window by running the appropriate command for your operating sy
 
 #### File Menu
 *   **Import Results... (Ctrl+O):** Import scan results from a previous report file, folder, or web link.
-*   **Import from Clipboard (Ctrl+V):** Import scan results directly from your clipboard.
-*   **Import from Web Link...:** Import scan results directly from a web link.
-*   **Export Results... (Ctrl+E):** Save current scan results to a file in your choice of format (JSON, CSV, SARIF, HTML, Markdown, XML, YAML).
+*   **Import from Clipboard (Ctrl+V):** Import scan results from your clipboard.
+*   **Import from Web Link...:** Import scan results from a web link.
+*   **Export Results... (Ctrl+E):** Save current scan results to a file (JSON, CSV, TSV, SARIF, HTML, Markdown, XML, or YAML).
 *   **Manage Exclusions...:** View and manage path exclusion patterns ignored during scans.
 *   **Manage Extensions...:** View and manage target file extensions included in scans.
-*   **Copy as CLI Command (Ctrl+Shift+E):** Copy equivalent command line flags based on your current GUI settings.
+*   **Copy as CLI Command (Ctrl+Shift+E):** Copy equivalent command-line flags for your current GUI settings.
 *   **Clear Results (Ctrl+Shift+Delete):** Clear all entries from the results list.
 *   **Clear AI Cache:** Delete cached AI analysis responses from local storage.
-*   **Clear Path History:** Reset the recent target path history in the selection dropdown.
+*   **Clear Path History:** Reset the recent target path history.
 
 #### Scan Menu
 ##### Common Scans
@@ -145,7 +145,7 @@ Open the scanner window by running the appropriate command for your operating sy
 *   **Scan File List...:** Scan a list of files from a text file.
 *   **Scan Clipboard (Ctrl+Shift+V):** Scan code you have copied to your clipboard.
 
-#### Git Integration
+##### Git Integration
 *   **Scan Git Diff (Ctrl+Shift+D):** Scan your current project changes as a diff.
 *   **Scan Recent Commits...:** Scan files from the most recent commits.
 *   **Scan Git Hooks (Ctrl+Shift+G):** Scan your local and global Git hooks for suspicious scripts.
@@ -155,7 +155,7 @@ Open the scanner window by running the appropriate command for your operating sy
 *   **Scan Git Reflog...:** Scan recent entries in your Git reflog to find lost code or secrets.
 *   **Scan Git Revision...:** Scan files from a specific Git branch or commit.
 
-#### System Scans
+##### System Scans
 *   **Scan System Audit (Ctrl+Shift+I):** Run a full check of your system, including all items listed below.
 *   **Scan Shell Profiles (Ctrl+Shift+B):** Scan your shell configuration files (like `.bashrc` or `.zshrc`) for dangerous aliases.
 *   **Scan Shell History (Ctrl+Shift+H):** Scan your terminal history for dangerous commands.

@@ -83,6 +83,15 @@ def test_export_results_to_file_csv(tmp_path):
     assert lines[0] == "path,own_conf,admin_desc,end-user_desc,gpt_conf,snippet,line"
     assert "src/vulnerable.py" in lines[1]
 
+def test_export_results_to_file_tsv(tmp_path):
+    output_file = tmp_path / "results.tsv"
+    export_results_to_file(str(output_file), SAMPLE_RESULTS, output_format="tsv")
+    assert output_file.exists()
+    content = output_file.read_text(encoding="utf-8")
+    lines = content.strip().splitlines()
+    assert lines[0] == "path\town_conf\tadmin_desc\tend-user_desc\tgpt_conf\tsnippet\tline"
+    assert "src/vulnerable.py" in lines[1]
+
 def test_export_results_to_file_default_fallback(tmp_path):
     output_file = tmp_path / "results.unknown"
     export_results_to_file(str(output_file), SAMPLE_RESULTS, output_format="unknown_format")
