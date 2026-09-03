@@ -6893,6 +6893,40 @@ def parse_triage_report(content: str) -> List[Dict[str, Any]]:
     return final_results
 
 
+def parse_sarif_content(sarif_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Parse scan findings from a parsed SARIF dictionary.
+
+    Args:
+        sarif_data: The parsed SARIF dictionary.
+
+    Returns:
+        A list of result dictionaries.
+    """
+    mapped_results = []
+    for run in sarif_data.get("runs", []):
+        for result in run.get("results", []):
+            props = result.get("properties", {})
+            mapped = {
+                "path": "",
+                "own_conf": props.get("own_conf", ""),
+                "admin_desc": props.get("admin_desc") or result.get("message", {}).get("text", ""),
+                "end-user_desc": props.get("end-user_desc", ""),
+                "gpt_conf": props.get("gpt_conf", ""),
+                "snippet": props.get("snippet", ""),
+                "line": "-"
+            }
+            locations = result.get("locations", [])
+            if locations:
+                phys_loc = locations[0].get("physicalLocation", {})
+                uri = phys_loc.get("artifactLocation", {}).get("uri", "")
+                mapped["path"] = uri.replace("/", os.sep)
+                region = phys_loc.get("region", {})
+                if "startLine" in region:
+                    mapped["line"] = region["startLine"]
+            mapped_results.append(mapped)
+    return mapped_results
+
+
 def parse_xml_content(content: str) -> List[Dict[str, Any]]:
     """Parse scan findings from an XML string.
 
@@ -7007,45 +7041,18 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     elif (content.strip().startswith('<') and ('<findings' in content.lower() or content.startswith('<?xml'))) or ext == '.xml':
         # XML report format
         data_to_import = parse_xml_content(content)
-    elif content.startswith('[') or (ext in ('.json', '.jsonl', '.ndjson')):
-        if content.startswith('['):
-            # Standard JSON list
-            data_to_import = json.loads(content)
-        else:
-            # Try to parse as single JSON object first
-            try:
-                item = json.loads(content)
-                if isinstance(item, list):
-                    data_to_import = item
-                else:
-                    data_to_import = [item]
-            except json.JSONDecodeError:
-                # Fallback to NDJSON
-                data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
-    elif (content.startswith('{') and '"runs"' in content) or ext == '.sarif':
-        # SARIF format
-        sarif_data = json.loads(content)
-        for run in sarif_data.get("runs", []):
-            for result in run.get("results", []):
-                props = result.get("properties", {})
-                mapped = {
-                    "path": "",
-                    "own_conf": props.get("own_conf", ""),
-                    "admin_desc": props.get("admin_desc") or result.get("message", {}).get("text", ""),
-                    "end-user_desc": props.get("end-user_desc", ""),
-                    "gpt_conf": props.get("gpt_conf", ""),
-                    "snippet": props.get("snippet", ""),
-                    "line": "-"
-                }
-                locations = result.get("locations", [])
-                if locations:
-                    phys_loc = locations[0].get("physicalLocation", {})
-                    uri = phys_loc.get("artifactLocation", {}).get("uri", "")
-                    mapped["path"] = uri.replace("/", os.sep)
-                    region = phys_loc.get("region", {})
-                    if "startLine" in region:
-                        mapped["line"] = region["startLine"]
-                data_to_import.append(mapped)
+    elif content.strip().startswith(('[', '{')) or (ext in ('.json', '.jsonl', '.ndjson', '.sarif')):
+        try:
+            parsed_json = json.loads(content)
+            if isinstance(parsed_json, dict) and ("runs" in parsed_json or ext == '.sarif'):
+                data_to_import = parse_sarif_content(parsed_json)
+            elif isinstance(parsed_json, list):
+                data_to_import = parsed_json
+            elif isinstance(parsed_json, dict):
+                data_to_import = [parsed_json]
+        except json.JSONDecodeError:
+            # Fallback to NDJSON
+            data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
     elif ext == '.csv' or ',' in content.splitlines()[0]:
         # CSV format
         f = io.StringIO(content)
