@@ -254,7 +254,26 @@ def test_manage_extensions_keyboard_bindings(mock_gui_env):
     assert "<BackSpace>" in lb.bindings
     assert "<Control-a>" in lb.bindings
     assert "<Command-a>" in lb.bindings
+    assert "<Double-1>" in lb.bindings
     assert mock_top.bind.called  # Esc is bound to mock_top Toplevel window
+
+def test_manage_extensions_double_click_remove(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py", ".js"}
+    mock_mb.askyesno.return_value = True
+    monkeypatch.setattr(Config, "save_extensions", MagicMock())
+
+    manage_extensions()
+    lb = captured['listbox']
+    # .js is index 0 because sorted
+    lb.selection = [0]
+
+    # Trigger Double-1
+    double_click_func = lb.bindings["<Double-1>"]
+    double_click_func(None)
+
+    assert ".js" not in Config.extensions_set
+    assert ".py" in Config.extensions_set
 
 def test_manage_extensions_keyboard_select_all(mock_gui_env):
     captured, mock_sd, mock_mb, mock_top = mock_gui_env
