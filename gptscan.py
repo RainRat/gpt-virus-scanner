@@ -3094,13 +3094,12 @@ def update_tree_row(item_id: str, values: Tuple[Any, ...]) -> None:
             wrapped_values, tags = _prepare_tree_row(values)
             row_tags = list(tags)
             children = tree.get_children()
-            if isinstance(children, (list, tuple)):
-                try:
-                    idx = children.index(item_id)
-                    if idx % 2 == 1:
-                        row_tags.append('odd')
-                except ValueError:
-                    pass
+            try:
+                idx = children.index(item_id)
+                if idx % 2 == 1:
+                    row_tags.append('odd')
+            except ValueError:
+                pass
             tree.item(item_id, values=wrapped_values, tags=tuple(row_tags))
         else:
             tree.delete(item_id)
