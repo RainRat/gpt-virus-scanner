@@ -6537,6 +6537,11 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
         elif fmt == 'json':
             for record in results:
                 print(json.dumps(record), file=out_stream)
+        elif fmt == 'tsv':
+            writer = csv.writer(out_stream, delimiter='\t')
+            writer.writerow(keys)
+            for record in results:
+                writer.writerow([record.get(k, '') for k in keys])
         else:  # default csv
             writer = csv.writer(out_stream)
             writer.writerow(keys)
@@ -6553,7 +6558,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         show_all: Whether to emit every scanned file.
         use_gpt: Whether to request GPT analysis for confident detections.
         rate_limit: Maximum allowed GPT requests per minute.
-        output_format: Format of the output ('csv', 'json', 'sarif', 'html', 'markdown', 'xml', 'yaml', or 'report'). Defaults to 'csv'.
+        output_format: Format of the output ('csv', 'tsv', 'json', 'sarif', 'html', 'markdown', 'xml', 'yaml', or 'report'). Defaults to 'csv'.
         dry_run: Whether to simulate the scan.
         exclude_patterns: List of glob patterns to exclude from the scan.
         fail_threshold: Threat level threshold to trigger a failure count.
@@ -6575,8 +6580,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     out_stream = open(output_file, 'w', encoding='utf-8') if output_file else sys.stdout
 
-    if output_format == 'csv' and not count_only:
-        writer = csv.writer(out_stream)
+    if output_format in ('csv', 'tsv') and not count_only:
+        writer = csv.writer(out_stream, delimiter='\t' if output_format == 'tsv' else ',')
         writer.writerow(keys)
 
     baseline_set = set()
@@ -6667,7 +6672,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             elif output_format == 'json':
                 print(json.dumps(record), file=out_stream)
             else:
-                writer.writerow(data)
+                writer.writerow([record.get(k, '') for k in keys])
         elif event_type == 'progress':
             current, total, status = data
             final_progress = (current, total)
@@ -6765,7 +6770,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     elif output_format == 'json' and (sort_by is not None or top_limit is not None):
         for record in result_buffer:
             print(json.dumps(record), file=out_stream)
-    elif output_format == 'csv' and (sort_by is not None or top_limit is not None):
+    elif output_format in ('csv', 'tsv') and (sort_by is not None or top_limit is not None):
         for record in result_buffer:
             writer.writerow([record.get(k, '') for k in keys])
 
@@ -7020,11 +7025,11 @@ def parse_yaml_content(content: str) -> List[Dict[str, Any]]:
 
 
 def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Parse report content in JSON, SARIF, XML, YAML, Markdown, HTML, Triage Report, or CSV format.
+    """Parse report content in JSON, SARIF, XML, YAML, Markdown, HTML, Triage Report, TSV, or CSV format.
 
     Args:
         content: The raw string content of the report.
-        filename_hint: Optional filename or extension hint (e.g., '.json', '.csv', '.xml').
+        filename_hint: Optional filename or extension hint (e.g., '.json', '.csv', '.tsv', '.xml').
 
     Returns:
         A list of standardized result dictionaries.
@@ -7037,7 +7042,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     if filename_hint:
         ext = os.path.splitext(filename_hint)[1].lower()
 
-    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml'):
+    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.tsv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml'):
         raise ValueError(f"Unsupported file extension: {ext}")
 
     data_to_import = []
@@ -7091,7 +7096,12 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
         except json.JSONDecodeError:
             # Fallback to NDJSON
             data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
-    elif ext == '.csv' or ',' in content.splitlines()[0]:
+    elif ext == '.tsv' or (ext != '.csv' and content.splitlines() and '\t' in content.splitlines()[0] and '|' not in content.splitlines()[0]):
+        # TSV format
+        f = io.StringIO(content)
+        reader = csv.DictReader(f, delimiter='\t')
+        data_to_import = list(reader)
+    elif ext == '.csv' or (content.splitlines() and ',' in content.splitlines()[0]):
         # CSV format
         f = io.StringIO(content)
         reader = csv.DictReader(f)
@@ -7164,7 +7174,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
 
 
 def load_report_file(file_path: str) -> List[Dict[str, Any]]:
-    """Parse a report file in JSON, SARIF, XML, YAML, Markdown, HTML, Triage Report, or CSV format,
+    """Parse a report file in JSON, SARIF, XML, YAML, Markdown, HTML, Triage Report, TSV, or CSV format,
     or recursively find and parse all supported files if file_path is a directory.
 
     Args:
@@ -7174,7 +7184,7 @@ def load_report_file(file_path: str) -> List[Dict[str, Any]]:
         A list of standardized result dictionaries.
     """
     if os.path.isdir(file_path):
-        supported_exts = ('.json', '.jsonl', '.ndjson', '.csv', '.sarif', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml')
+        supported_exts = ('.json', '.jsonl', '.ndjson', '.csv', '.tsv', '.sarif', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml')
         all_results = []
         files = []
         for r_dir, _, filenames in os.walk(file_path):
@@ -7328,11 +7338,12 @@ def import_results(event: Optional[tk.Event] = None) -> None:
 
     file_paths = filedialog.askopenfilenames(
         filetypes=[
-            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml;*.txt;*.log;*.xml;*.yaml;*.yml"),
+            ("All supported formats", "*.json;*.jsonl;*.ndjson;*.csv;*.tsv;*.sarif;*.md;*.markdown;*.html;*.htm;*.xhtml;*.txt;*.log;*.xml;*.yaml;*.yml"),
             ("JSON files", "*.json;*.jsonl;*.ndjson"),
             ("YAML files", "*.yaml;*.yml"),
             ("SARIF files", "*.sarif"),
             ("CSV files", "*.csv"),
+            ("TSV files", "*.tsv"),
             ("Markdown files", "*.md;*.markdown"),
             ("HTML files", "*.html;*.htm;*.xhtml"),
             ("XML files", "*.xml"),
@@ -7518,6 +7529,7 @@ def export_results(event: Optional[tk.Event] = None) -> None:
         defaultextension=".csv",
         filetypes=[
             ("CSV files", "*.csv"),
+            ("TSV files", "*.tsv"),
             ("Markdown files", "*.md"),
             ("HTML files", "*.html"),
             ("JSON files", "*.json"),
@@ -7559,6 +7571,8 @@ def export_results(event: Optional[tk.Event] = None) -> None:
         elif ext in ('.txt', '.log'):
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(generate_console_report(results, use_color=False))
+        elif ext == '.tsv':
+            export_results_to_file(file_path, results, output_format='tsv')
         else: # Default to CSV
             with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
                 writer = csv.writer(csv_file)
@@ -10073,6 +10087,7 @@ def main():
     output_group.add_argument('-o', '--output', type=str, help='Save the results to a file.')
     output_group.add_argument('-j', '--json', action='store_true', help='Print or save scan results in JSON format.')
     output_group.add_argument('--csv', action='store_true', help='Print or save scan results in CSV format.')
+    output_group.add_argument('--tsv', action='store_true', help='Print or save scan results in TSV format.')
     output_group.add_argument('--sarif', action='store_true', help='Save scan results in SARIF format.')
     output_group.add_argument('--html', action='store_true', help='Create an interactive HTML report.')
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report.')
@@ -10273,6 +10288,8 @@ def main():
             output_format = 'json'
         elif args.csv:
             output_format = 'csv'
+        elif args.tsv:
+            output_format = 'tsv'
         elif args.sarif:
             output_format = 'sarif'
         elif args.html:
@@ -10298,6 +10315,8 @@ def main():
                 output_format = 'markdown'
             elif ext == '.csv':
                 output_format = 'csv'
+            elif ext == '.tsv':
+                output_format = 'tsv'
             elif ext == '.xml':
                 output_format = 'xml'
             elif ext in ('.yaml', '.yml'):
