@@ -4126,6 +4126,13 @@ def manage_exclusions() -> None:
                             Config.ignore_patterns.append(p)
                     refresh_list()
                     _apply_filter()
+                    last_pat = new_patterns[-1]
+                    if last_pat in Config.ignore_patterns:
+                        idx = Config.ignore_patterns.index(last_pat)
+                        ignore_listbox.selection_clear(0, tk.END)
+                        ignore_listbox.select_set(idx)
+                        ignore_listbox.activate(idx)
+                        ignore_listbox.see(idx)
                 except Exception as e:
                     messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
 
@@ -4139,6 +4146,11 @@ def manage_exclusions() -> None:
                     Config.ignore_patterns.append(rel_path)
                     refresh_list()
                     _apply_filter()
+                    idx = Config.ignore_patterns.index(rel_path)
+                    ignore_listbox.selection_clear(0, tk.END)
+                    ignore_listbox.select_set(idx)
+                    ignore_listbox.activate(idx)
+                    ignore_listbox.see(idx)
             except Exception as e:
                 messagebox.showerror("Error", f"Could not add file: {e}", parent=manage_win)
 
@@ -4152,6 +4164,11 @@ def manage_exclusions() -> None:
                     Config.ignore_patterns.append(rel_path)
                     refresh_list()
                     _apply_filter()
+                    idx = Config.ignore_patterns.index(rel_path)
+                    ignore_listbox.selection_clear(0, tk.END)
+                    ignore_listbox.select_set(idx)
+                    ignore_listbox.activate(idx)
+                    ignore_listbox.see(idx)
             except Exception as e:
                 messagebox.showerror("Error", f"Could not add folder: {e}", parent=manage_win)
 
@@ -4244,6 +4261,7 @@ def manage_extensions() -> None:
             import re
             parts = re.split(r'[\s,]+', ext_str)
             added_any = False
+            last_ext = None
             for p in parts:
                 p = p.strip().lower()
                 if not p:
@@ -4253,10 +4271,19 @@ def manage_extensions() -> None:
                 if p not in Config.extensions_set:
                     Config.extensions_set.add(p)
                     added_any = True
+                    last_ext = p
             if added_any:
                 try:
                     Config.save_extensions()
                     refresh_list()
+                    if last_ext:
+                        sorted_exts = sorted(Config.extensions_set)
+                        if last_ext in sorted_exts:
+                            idx = sorted_exts.index(last_ext)
+                            ext_listbox.selection_clear(0, tk.END)
+                            ext_listbox.select_set(idx)
+                            ext_listbox.activate(idx)
+                            ext_listbox.see(idx)
                 except Exception as e:
                     messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
 
@@ -4272,6 +4299,13 @@ def manage_extensions() -> None:
                     Config.extensions_set.add(ext)
                     Config.save_extensions()
                     refresh_list()
+                    sorted_exts = sorted(Config.extensions_set)
+                    if ext in sorted_exts:
+                        idx = sorted_exts.index(ext)
+                        ext_listbox.selection_clear(0, tk.END)
+                        ext_listbox.select_set(idx)
+                        ext_listbox.activate(idx)
+                        ext_listbox.see(idx)
                 except Exception as e:
                     messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
 
