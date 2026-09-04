@@ -1029,7 +1029,16 @@ def normalize_and_validate_url(url_str: str) -> Optional[str]:
 
 def select_url_click() -> None:
     """Handle the web link input dialog and populate the textbox."""
-    url_selected = simpledialog.askstring("Scan Web Link", "Enter a script web link to scan (http/https):")
+    initial_url = ""
+    try:
+        if root:
+            clip = str(root.clipboard_get()).strip()
+            if clip.startswith("http://") or clip.startswith("https://"):
+                initial_url = clip
+    except Exception:
+        pass
+
+    url_selected = simpledialog.askstring("Scan Web Link", "Enter a script web link to scan (http/https):", parent=root, initialvalue=initial_url)
     if url_selected is not None:
         normalized_url = normalize_and_validate_url(url_selected)
         if normalized_url:
@@ -3525,7 +3534,7 @@ def scan_git_revision_click():
             messagebox.showwarning("Git Error", "Target path is not part of a Git repository.")
             return
 
-        ref = simpledialog.askstring("Scan Git Revision", "Enter a Git revision (e.g., main, HEAD~1, or a commit hash):")
+        ref = simpledialog.askstring("Scan Git Revision", "Enter a Git revision (e.g., main, HEAD~1, or a commit hash):", parent=root)
         if not ref:
             return
 
@@ -7435,7 +7444,16 @@ def import_from_url() -> None:
     if not tree:
         return
 
-    url = simpledialog.askstring("Import from Web Link", "Enter the web link of the scan results to import:")
+    initial_url = ""
+    try:
+        if root:
+            clip = str(root.clipboard_get()).strip()
+            if clip.startswith("http://") or clip.startswith("https://"):
+                initial_url = clip
+    except Exception:
+        pass
+
+    url = simpledialog.askstring("Import from Web Link", "Enter the web link of the scan results to import:", parent=root, initialvalue=initial_url)
     if url is None:
         return
 

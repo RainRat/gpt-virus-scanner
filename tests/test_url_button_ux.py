@@ -68,13 +68,59 @@ def test_select_url_click_updates_textbox(mock_gui, monkeypatch):
     test_url = "https://example.com/malicious.sh"
     mock_button_click = MagicMock()
     monkeypatch.setattr(gptscan, "button_click", mock_button_click)
+    gptscan.root.clipboard_get.side_effect = Exception("Empty clipboard")
 
     with patch("gptscan.simpledialog.askstring", return_value=test_url) as mock_ask:
         gptscan.select_url_click()
 
-        mock_ask.assert_called_once_with("Scan Web Link", "Enter a script web link to scan (http/https):")
+        mock_ask.assert_called_once_with(
+            "Scan Web Link",
+            "Enter a script web link to scan (http/https):",
+            parent=gptscan.root,
+            initialvalue=""
+        )
         assert gptscan.textbox.get() == test_url
         mock_button_click.assert_called_once()
+
+def test_select_url_click_autofills_clipboard_url(mock_gui, monkeypatch):
+    """Test that select_url_click auto-fills initialvalue if clipboard contains an HTTP/HTTPS URL."""
+    clip_url = "https://github.com/user/repo/blob/main/script.py"
+    gptscan.root.clipboard_get.return_value = clip_url
+
+    mock_button_click = MagicMock()
+    monkeypatch.setattr(gptscan, "button_click", mock_button_click)
+
+    with patch("gptscan.simpledialog.askstring", return_value=clip_url) as mock_ask:
+        gptscan.select_url_click()
+
+        mock_ask.assert_called_once_with(
+            "Scan Web Link",
+            "Enter a script web link to scan (http/https):",
+            parent=gptscan.root,
+            initialvalue=clip_url
+        )
+        assert gptscan.textbox.get() == clip_url
+        mock_button_click.assert_called_once()
+
+def test_import_from_url_autofills_clipboard_url(monkeypatch):
+    """Test that import_from_url auto-fills initialvalue if clipboard contains an HTTP/HTTPS URL."""
+    clip_url = "https://example.com/results.json"
+    mock_root = MagicMock()
+    mock_root.clipboard_get.return_value = clip_url
+    monkeypatch.setattr(gptscan, "root", mock_root)
+    monkeypatch.setattr(gptscan, "tree", MagicMock())
+
+    with patch("gptscan.simpledialog.askstring", return_value=clip_url) as mock_ask:
+        with patch("gptscan.fetch_url_content", return_value=b"[]"):
+            with patch("gptscan._finalize_import") as mock_finalize:
+                gptscan.import_from_url()
+
+                mock_ask.assert_called_once_with(
+                    "Import from Web Link",
+                    "Enter the web link of the scan results to import:",
+                    parent=mock_root,
+                    initialvalue=clip_url
+                )
 
 def test_select_url_click_cancel(mock_gui, monkeypatch):
     """Test that select_url_click does nothing if cancelled."""

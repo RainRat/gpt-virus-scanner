@@ -13,7 +13,7 @@ def test_scan_git_revision_click_success(monkeypatch):
     monkeypatch.setattr(gptscan, '_get_git_info', lambda path: ("/repo", "path"))
 
     # Mock user input for revision
-    monkeypatch.setattr(gptscan.simpledialog, 'askstring', lambda title, prompt: "HEAD~1")
+    monkeypatch.setattr(gptscan.simpledialog, 'askstring', lambda title, prompt, *args, **kwargs: "HEAD~1")
 
     # Mock changed files
     mock_changed = ["/repo/file1.py", "/repo/file2.py"]
@@ -60,7 +60,7 @@ def test_scan_git_revision_click_cancel(monkeypatch):
     monkeypatch.setattr(gptscan, '_get_git_info', lambda path: ("/repo", "."))
 
     # Mock user cancel
-    monkeypatch.setattr(gptscan.simpledialog, 'askstring', lambda title, prompt: None)
+    monkeypatch.setattr(gptscan.simpledialog, 'askstring', lambda title, prompt, *args, **kwargs: None)
 
     mock_get_git = MagicMock()
     monkeypatch.setattr(gptscan, 'get_git_changed_files', mock_get_git)
@@ -75,7 +75,7 @@ def test_scan_git_revision_click_no_files(monkeypatch):
     """Test when no files are changed in the given revision."""
     monkeypatch.setattr(gptscan, 'textbox', MagicMock(get=lambda: "."), raising=False)
     monkeypatch.setattr(gptscan, '_get_git_info', lambda path: ("/repo", "."))
-    monkeypatch.setattr(gptscan.simpledialog, 'askstring', lambda title, prompt: "main")
+    monkeypatch.setattr(gptscan.simpledialog, 'askstring', lambda title, prompt, *args, **kwargs: "main")
 
     # Mock no changed files
     monkeypatch.setattr(gptscan, 'get_git_changed_files', MagicMock(return_value=[]))
