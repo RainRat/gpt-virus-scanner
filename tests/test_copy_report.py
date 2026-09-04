@@ -327,3 +327,171 @@ def test_copy_as_sarif_details_logic(mock_view_details_env):
 
     status_bar = captured['labels'][0]
     assert status_bar.config_data.get('text') == "Result copied as SARIF."
+
+
+def test_copy_path_no_tree(monkeypatch):
+    """Test copy_path returns early when tree is None."""
+    monkeypatch.setattr(gptscan, 'tree', None)
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+    gptscan.copy_path()
+    mock_update_status.assert_not_called()
+
+
+def test_copy_path_no_selection(monkeypatch):
+    """Test copy_path returns early when no items are selected in tree."""
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = []
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+
+    gptscan.copy_path()
+
+    mock_tree.clipboard_clear.assert_not_called()
+    mock_update_status.assert_not_called()
+
+
+def test_copy_path_success_single_and_multiple(monkeypatch):
+    """Test copy_path copies single and multiple file paths to clipboard."""
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ["item1", "item2"]
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+
+    def mock_get_item_raw_values(item_id):
+        if item_id == "item1":
+            return ["/path/to/file1.py", "10", "90%", "80%", "admin", "user", "snippet1"]
+        elif item_id == "item2":
+            return ["/path/to/file2.py", "20", "85%", "75%", "admin2", "user2", "snippet2"]
+        return None
+
+    monkeypatch.setattr(gptscan, '_get_item_raw_values', mock_get_item_raw_values)
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+
+    gptscan.copy_path()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    mock_tree.clipboard_append.assert_called_once_with("/path/to/file1.py\n/path/to/file2.py")
+    mock_update_status.assert_called_once_with("Copied 2 path(s) to clipboard.")
+
+
+def test_copy_sha256_no_tree_or_selection(monkeypatch):
+    """Test copy_sha256 returns early when tree is None or selection is empty."""
+    monkeypatch.setattr(gptscan, 'tree', None)
+    gptscan.copy_sha256()
+
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = []
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+
+    gptscan.copy_sha256()
+
+    mock_tree.clipboard_clear.assert_not_called()
+    mock_update_status.assert_not_called()
+
+
+def test_copy_sha256_single_and_multiple(monkeypatch):
+    """Test copy_sha256 formatting for single and multiple selected files."""
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ["item1"]
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+
+    monkeypatch.setattr(gptscan, '_get_item_raw_values', lambda item_id: ["file1.py", "1", "90%", "80%", "a", "u", "snip1"])
+    monkeypatch.setattr(gptscan, 'get_effective_sha256', lambda path, snip: "1234567890abcdef")
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+
+    gptscan.copy_sha256()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    mock_tree.clipboard_append.assert_called_once_with("1234567890abcdef")
+    mock_update_status.assert_called_once_with("SHA256 copied: 12345678...")
+
+    # Multi-item test
+    mock_tree.reset_mock()
+    mock_update_status.reset_mock()
+    mock_tree.selection.return_value = ["item1", "item2"]
+    monkeypatch.setattr(gptscan, 'get_effective_sha256', lambda path, snip: f"hash_{path}")
+
+    def mock_raw(item_id):
+        return [f"{item_id}.py", "1", "90%", "80%", "a", "u", "snip"]
+
+    monkeypatch.setattr(gptscan, '_get_item_raw_values', mock_raw)
+
+    gptscan.copy_sha256()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    mock_tree.clipboard_append.assert_called_once_with("hash_item1.py\nhash_item2.py")
+    mock_update_status.assert_called_once_with("Copied 2 SHA256 hashes.")
+
+
+def test_copy_sha256_failure_warning(monkeypatch):
+    """Test copy_sha256 shows warning dialog when hash calculation fails."""
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ["item1"]
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+
+    monkeypatch.setattr(gptscan, '_get_item_raw_values', lambda item_id: ["file1.py", "1", "90%", "80%", "a", "u", "snip1"])
+    monkeypatch.setattr(gptscan, 'get_effective_sha256', lambda path, snip: None)
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan.messagebox, 'showwarning', mock_msgbox)
+
+    gptscan.copy_sha256()
+
+    mock_tree.clipboard_clear.assert_not_called()
+    mock_msgbox.assert_called_once_with("Error", "Could not calculate file hashes.")
+
+
+def test_copy_snippet_no_tree_or_selection(monkeypatch):
+    """Test copy_snippet returns early when tree is None or selection is empty."""
+    monkeypatch.setattr(gptscan, 'tree', None)
+    gptscan.copy_snippet()
+
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = []
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+
+    gptscan.copy_snippet()
+
+    mock_tree.clipboard_clear.assert_not_called()
+    mock_update_status.assert_not_called()
+
+
+def test_copy_snippet_single_and_multiple(monkeypatch):
+    """Test copy_snippet formatting for single and multiple selections."""
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ["item1"]
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+
+    monkeypatch.setattr(gptscan, '_get_item_raw_values', lambda item_id: ["file1.py", "90%", "80%", "a", "u", "print('hello')", "1"])
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+
+    gptscan.copy_snippet()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    mock_tree.clipboard_append.assert_called_once_with("print('hello')")
+    mock_update_status.assert_called_once_with("Copied 1 snippets.")
+
+    # Multiple items selection
+    mock_tree.reset_mock()
+    mock_update_status.reset_mock()
+    mock_tree.selection.return_value = ["item1", "item2"]
+
+    def mock_raw(item_id):
+        if item_id == "item1":
+            return ["file1.py", "90%", "80%", "a", "u", "snip1", "1"]
+        return ["file2.py", "85%", "75%", "a", "u", "snip2", "2"]
+
+    monkeypatch.setattr(gptscan, '_get_item_raw_values', mock_raw)
+
+    gptscan.copy_snippet()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    mock_tree.clipboard_append.assert_called_once_with("--- file1.py ---\nsnip1\n\n--- file2.py ---\nsnip2")
+    mock_update_status.assert_called_once_with("Copied 2 snippets.")
