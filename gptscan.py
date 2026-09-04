@@ -7178,11 +7178,17 @@ def load_report_file(file_path: str) -> List[Dict[str, Any]]:
     or recursively find and parse all supported files if file_path is a directory.
 
     Args:
-        file_path: Path to the report file or directory.
+        file_path: Path to the report file or directory, or 'clipboard' to read system clipboard.
 
     Returns:
         A list of standardized result dictionaries.
     """
+    if not os.path.exists(file_path) and file_path.lower() in ('clipboard', 'clipboard:', '[clipboard]'):
+        content = get_cli_clipboard_content()
+        if not content or not content.strip():
+            raise ValueError("Clipboard content is empty or unavailable.")
+        return parse_report_content(content)
+
     if os.path.isdir(file_path):
         supported_exts = ('.json', '.jsonl', '.ndjson', '.csv', '.tsv', '.sarif', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml')
         all_results = []
@@ -7254,9 +7260,14 @@ def import_results_from_content_generator(content: str, filename_hint: Optional[
 
 
 def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None, None]:
-    """Generator that yields events from an imported report file, directory, or URL."""
+    """Generator that yields events from an imported report file, directory, URL, or clipboard."""
     try:
-        if file_path.lower().startswith(('http://', 'https://')):
+        if not os.path.exists(file_path) and file_path.lower() in ('clipboard', 'clipboard:', '[clipboard]'):
+            content = get_cli_clipboard_content()
+            if not content or not content.strip():
+                raise ValueError("Clipboard content is empty or unavailable.")
+            yield from import_results_from_content_generator(content, filename_hint="clipboard.json")
+        elif file_path.lower().startswith(('http://', 'https://')):
             content_bytes = fetch_url_content(file_path)
             content = content_bytes.decode('utf-8', errors='ignore')
             if not content.strip():
@@ -9842,12 +9853,12 @@ def main():
     scan_group.add_argument(
         '--import-results', '--import',
         type=str,
-        help='Import results from a previous scan file, directory, or web link. Use "-" to read from the terminal.'
+        help='Import results from a previous scan file, directory, web link, or clipboard. Use "-" to read from terminal stdin, or "clipboard" to read from system clipboard.'
     )
     scan_group.add_argument(
         '--baseline',
         type=str,
-        help='A previous report file (any supported format) to act as a baseline. Existing findings in this baseline will be filtered out.'
+        help='A previous report file (any supported format, or "clipboard") to act as a baseline. Existing findings in this baseline will be filtered out.'
     )
     scan_group.add_argument(
         '--baseline-output',
