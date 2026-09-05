@@ -4394,6 +4394,19 @@ def show_keyboard_shortcuts() -> None:
     notebook = ttk.Notebook(main_frame)
     notebook.pack(fill=tk.BOTH, expand=True)
 
+    def cycle_tab(direction: int) -> None:
+        try:
+            current = notebook.index("current")
+            total = len(notebook.tabs())
+            if total > 0:
+                new_idx = (current + direction) % total
+                notebook.select(new_idx)
+        except Exception:
+            pass
+
+    win.bind('<Left>', lambda e: cycle_tab(-1))
+    win.bind('<Right>', lambda e: cycle_tab(1))
+
     # Determine modifier based on OS
     mod = "Cmd" if sys.platform == "darwin" else "Ctrl"
 
