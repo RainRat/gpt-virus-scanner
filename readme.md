@@ -135,9 +135,12 @@ Open the scanner window by running the appropriate command for your operating sy
 *   **Clear Results (Ctrl+Shift+Delete):** Clear all entries from the results list.
 *   **Clear AI Cache:** Delete cached AI analysis responses from local storage.
 *   **Clear Path History:** Reset the recent target path history.
+*   **Exit:** Close and exit the scanner application.
 
 #### Scan Menu
 ##### Common Scans
+*   **Scan Now (Enter):** Start scanning the current target path.
+*   **Cancel Scan (Esc):** Stop the active scan.
 *   **Scan File(s)... (Ctrl+Shift+O):** Select specific files to scan.
 *   **Scan Folder... (Ctrl+Shift+F):** Select an entire folder to scan.
 *   **Scan Recently Modified...:** Scan files changed within a certain time (like the last 24 hours).
@@ -183,6 +186,10 @@ Open the scanner window by running the appropriate command for your operating sy
 *   **Scan Downloads (Ctrl+Shift+J):** Scan your standard Downloads folder for suspicious files.
 *   **Scan Desktop (Ctrl+Shift+L):** Scan your standard Desktop folder for suspicious files.
 *   **Scan Temporary Folders (Ctrl+Shift+Z):** Scan common temporary folders for suspicious files.
+
+#### Help Menu
+*   **Keyboard Shortcuts...:** Open the keyboard shortcuts reference dialog window.
+*   **About:** Display the application version and general information.
 
 
 ### Keyboard Shortcuts
