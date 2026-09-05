@@ -612,6 +612,7 @@ You can customize terminal scans using these command line options.
 *   `--report`: Output a detailed triage report to the terminal.
 *   `--top <N>` / `--limit <N>`: Limit output results to the top N highest-risk findings.
 *   `-C`, `--count`: Print only the total count of matching findings.
+*   `-l`, `--paths-only`, `--files-with-matches`: Print only unique file paths of matching suspicious findings, one per line.
 *   `--sort-by <field>` / `--sort <field>`: Sort scan results by `threat` (highest threat score first), `path` (file path alphabetically), or `line` (line number numerically).
 *   `--min-threat <num>` / `--min-threat-level <num>`: Set the minimum threat level threshold (0-100) to include in output results.
 
