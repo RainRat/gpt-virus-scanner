@@ -182,3 +182,53 @@ def test_show_keyboard_shortcuts_separator_grid_rows(mock_shortcuts_env):
         assert row is not None
         # Odd row indicates row_idx + 1 (i.e. below row_idx = i * 2)
         assert row % 2 == 1
+
+def test_show_keyboard_shortcuts_mouse_wheel_scrolling(mock_shortcuts_env, monkeypatch):
+    captured = mock_shortcuts_env
+    gptscan.show_keyboard_shortcuts()
+
+    mock_canvas = captured['canvas']
+    mouse_wheel_calls = [call for call in mock_canvas.bind.call_args_list if call[0][0] == "<MouseWheel>"]
+    assert len(mouse_wheel_calls) > 0
+    _on_mouse_wheel = mouse_wheel_calls[0][0][1]
+
+    # Test win32 platform
+    monkeypatch.setattr(sys, 'platform', 'win32')
+    event_win = MagicMock(delta=120)
+    _on_mouse_wheel(event_win)
+    mock_canvas.yview_scroll.assert_called_with(-1, "units")
+
+    # Test darwin platform
+    monkeypatch.setattr(sys, 'platform', 'darwin')
+    event_mac = MagicMock(delta=5)
+    _on_mouse_wheel(event_mac)
+    mock_canvas.yview_scroll.assert_called_with(-5, "units")
+
+    # Test linux platform
+    monkeypatch.setattr(sys, 'platform', 'linux')
+    event_linux_up = MagicMock(num=4)
+    _on_mouse_wheel(event_linux_up)
+    mock_canvas.yview_scroll.assert_called_with(-1, "units")
+
+    event_linux_down = MagicMock(num=5)
+    _on_mouse_wheel(event_linux_down)
+    mock_canvas.yview_scroll.assert_called_with(1, "units")
+
+def test_show_keyboard_shortcuts_recursive_widget_binding(mock_shortcuts_env):
+    nested_child = MagicMock()
+    nested_child.winfo_children.return_value = []
+
+    child_widget = MagicMock()
+    child_widget.winfo_children.return_value = [nested_child]
+
+    mock_frame = MagicMock()
+    mock_frame.winfo_children.return_value = [child_widget]
+
+    with patch('gptscan.ttk.Frame', return_value=mock_frame):
+        gptscan.show_keyboard_shortcuts()
+
+    assert nested_child.bind.call_count >= 3
+    bound_events = [call[0][0] for call in nested_child.bind.call_args_list]
+    assert "<MouseWheel>" in bound_events
+    assert "<Button-4>" in bound_events
+    assert "<Button-5>" in bound_events
