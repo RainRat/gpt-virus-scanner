@@ -6549,7 +6549,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
                 writer.writerow([record.get(k, '') for k in keys])
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, sort_by: Optional[str] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6572,6 +6572,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         top_limit: If provided, restrict the output results to the top N highest-threat findings.
         count_only: Whether to print only the total count of matching findings.
         sort_by: Optional field to sort results by ('threat', 'path', or 'line').
+        paths_only: Whether to print only unique file paths of suspicious findings line-by-line.
 
     Returns:
         The number of suspicious files detected.
@@ -6580,7 +6581,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     out_stream = open(output_file, 'w', encoding='utf-8') if output_file else sys.stdout
 
-    if output_format in ('csv', 'tsv') and not count_only:
+    if output_format in ('csv', 'tsv') and not count_only and not paths_only:
         writer = csv.writer(out_stream, delimiter='\t' if output_format == 'tsv' else ',')
         writer.writerow(keys)
 
@@ -6667,7 +6668,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
             if count_only:
                 pass
-            elif sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
+            elif paths_only or sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
                 result_buffer.append(record)
             elif output_format == 'json':
                 print(json.dumps(record), file=out_stream)
@@ -6751,6 +6752,13 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         if top_limit is not None and top_limit >= 0:
             final_count = min(threats_found, top_limit)
         print(final_count, file=out_stream)
+    elif paths_only:
+        seen_paths = set()
+        for record in result_buffer:
+            p = record.get('path', '')
+            if p and p not in seen_paths:
+                seen_paths.add(p)
+                print(p, file=out_stream)
     elif output_format == 'sarif':
         sarif_log = generate_sarif(result_buffer)
         print(json.dumps(sarif_log, indent=2), file=out_stream)
@@ -10114,6 +10122,12 @@ def main():
         help='Print only the total count of suspicious findings.'
     )
     output_group.add_argument(
+        '-l', '--paths-only', '--files-with-matches',
+        action='store_true',
+        dest='paths_only',
+        help='Print only the unique file paths of suspicious findings.'
+    )
+    output_group.add_argument(
         '--sort-by', '--sort',
         type=str,
         choices=['threat', 'path', 'line'],
@@ -10569,7 +10583,8 @@ def main():
             quiet=args.quiet,
             top_limit=args.top,
             count_only=args.count_only,
-            sort_by=args.sort_by
+            sort_by=args.sort_by,
+            paths_only=args.paths_only
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
