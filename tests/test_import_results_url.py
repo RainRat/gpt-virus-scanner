@@ -162,3 +162,52 @@ def test_import_results_generator_file(monkeypatch, tmp_path):
     assert len(result_events) == 1
     assert result_events[0][1][0] == "local.py"
     mock_fetch.assert_not_called()
+
+
+def test_import_from_url_clipboard_prefill(monkeypatch):
+    """Verify that import_from_url pre-fills initialvalue if clipboard has an http/https URL."""
+    clip_url = "https://example.com/clipboard_report.json"
+    mock_root = MagicMock()
+    mock_root.clipboard_get.return_value = clip_url
+    monkeypatch.setattr(gptscan, "root", mock_root)
+    monkeypatch.setattr(gptscan, "tree", MagicMock())
+
+    askstring_calls = []
+    def mock_askstring(title, prompt, **kwargs):
+        askstring_calls.append(kwargs)
+        return clip_url
+
+    monkeypatch.setattr(gptscan.tkinter.simpledialog, "askstring", mock_askstring)
+    monkeypatch.setattr(gptscan, "fetch_url_content", lambda u: b'[{"path":"a.py","own_conf":"80%"}]')
+    monkeypatch.setattr(gptscan, "_finalize_import", MagicMock())
+    monkeypatch.setattr(gptscan, "update_status", MagicMock())
+
+    gptscan.import_from_url()
+
+    assert len(askstring_calls) == 1
+    assert askstring_calls[0].get("initialvalue") == clip_url
+    assert askstring_calls[0].get("parent") == mock_root
+
+
+def test_import_from_url_clipboard_empty_or_non_url(monkeypatch):
+    """Verify that import_from_url handles non-URL or empty clipboard content gracefully."""
+    mock_root = MagicMock()
+    mock_root.clipboard_get.return_value = "/local/path/to/file.py"
+    monkeypatch.setattr(gptscan, "root", mock_root)
+    monkeypatch.setattr(gptscan, "tree", MagicMock())
+
+    askstring_calls = []
+    def mock_askstring(title, prompt, **kwargs):
+        askstring_calls.append(kwargs)
+        return "https://example.com/manual.json"
+
+    monkeypatch.setattr(gptscan.tkinter.simpledialog, "askstring", mock_askstring)
+    monkeypatch.setattr(gptscan, "fetch_url_content", lambda u: b'[{"path":"a.py","own_conf":"80%"}]')
+    monkeypatch.setattr(gptscan, "_finalize_import", MagicMock())
+    monkeypatch.setattr(gptscan, "update_status", MagicMock())
+
+    gptscan.import_from_url()
+
+    assert len(askstring_calls) == 1
+    assert askstring_calls[0].get("initialvalue") == ""
+    assert askstring_calls[0].get("parent") == mock_root

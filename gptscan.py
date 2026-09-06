@@ -7435,7 +7435,15 @@ def import_from_url() -> None:
     if not tree:
         return
 
-    url = simpledialog.askstring("Import from Web Link", "Enter the web link of the scan results to import:")
+    initial_val = ""
+    try:
+        clip_content = root.clipboard_get().strip() if root else ""
+        if clip_content.startswith(("http://", "https://")):
+            initial_val = clip_content
+    except Exception:
+        pass
+
+    url = simpledialog.askstring("Import from Web Link", "Enter the web link of the scan results to import:", initialvalue=initial_val, parent=root)
     if url is None:
         return
 
@@ -7451,13 +7459,13 @@ def import_from_url() -> None:
         data_to_import = parse_report_content(content, filename_hint=normalized_url)
 
         if not data_to_import:
-            messagebox.showwarning("Import Warning", "No valid scan results found at the provided web link.")
+            messagebox.showwarning("Import Warning", "No valid scan results found at the provided web link.", parent=root)
             return
 
         _finalize_import(data_to_import, normalized_url)
 
     except Exception as err:
-        messagebox.showerror("Import Failed", f"Could not import results from web link:\n{err}")
+        messagebox.showerror("Import Failed", f"Could not import results from web link:\n{err}", parent=root)
 
 
 def clear_ai_cache() -> None:
