@@ -72,9 +72,43 @@ def test_select_url_click_updates_textbox(mock_gui, monkeypatch):
     with patch("gptscan.simpledialog.askstring", return_value=test_url) as mock_ask:
         gptscan.select_url_click()
 
-        mock_ask.assert_called_once_with("Scan Web Link", "Enter a script web link to scan (http/https):")
+        mock_ask.assert_called_once_with("Scan Web Link", "Enter a script web link to scan (http/https):", parent=gptscan.root)
         assert gptscan.textbox.get() == test_url
         mock_button_click.assert_called_once()
+
+def test_select_url_click_prefills_clipboard_url(mock_gui, monkeypatch):
+    """Test that select_url_click pre-fills initialvalue if clipboard contains an http/https URL."""
+    clip_url = "https://github.com/user/repo/blob/main/test.py"
+    gptscan.root.clipboard_get.return_value = clip_url
+
+    mock_button_click = MagicMock()
+    monkeypatch.setattr(gptscan, "button_click", mock_button_click)
+
+    with patch("gptscan.simpledialog.askstring", return_value=clip_url) as mock_ask:
+        gptscan.select_url_click()
+
+        mock_ask.assert_called_once_with(
+            "Scan Web Link",
+            "Enter a script web link to scan (http/https):",
+            parent=gptscan.root,
+            initialvalue=clip_url
+        )
+
+def test_select_url_click_ignores_non_url_clipboard(mock_gui, monkeypatch):
+    """Test that select_url_click does not pre-fill initialvalue if clipboard is non-URL text."""
+    gptscan.root.clipboard_get.return_value = "some random plain text"
+
+    mock_button_click = MagicMock()
+    monkeypatch.setattr(gptscan, "button_click", mock_button_click)
+
+    with patch("gptscan.simpledialog.askstring", return_value="https://example.com") as mock_ask:
+        gptscan.select_url_click()
+
+        mock_ask.assert_called_once_with(
+            "Scan Web Link",
+            "Enter a script web link to scan (http/https):",
+            parent=gptscan.root
+        )
 
 def test_select_url_click_cancel(mock_gui, monkeypatch):
     """Test that select_url_click does nothing if cancelled."""

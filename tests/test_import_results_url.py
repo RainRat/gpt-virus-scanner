@@ -24,22 +24,38 @@ def test_import_from_url_success(monkeypatch):
     monkeypatch.setattr(gptscan, "tree", mock_tree)
     monkeypatch.setattr(gptscan.tkinter.simpledialog, "askstring", lambda *args, **kwargs: mock_url)
 
-    # Mock network call
+def test_import_from_url_prefills_clipboard_url(monkeypatch):
+    """Test that import_from_url pre-fills initialvalue if clipboard contains an http/https URL."""
+    clip_url = "https://example.com/report.sarif"
+    mock_root = MagicMock()
+    mock_root.clipboard_get.return_value = clip_url
+    monkeypatch.setattr(gptscan, "root", mock_root)
+    monkeypatch.setattr(gptscan, "tree", MagicMock())
+
+    data = [{"path": "test.py", "own_conf": "85%"}]
+    content = json.dumps(data).encode('utf-8')
+
     mock_fetch = MagicMock(return_value=content)
     monkeypatch.setattr(gptscan, "fetch_url_content", mock_fetch)
-
-    # Mock internal helpers
     mock_finalize = MagicMock()
     monkeypatch.setattr(gptscan, "_finalize_import", mock_finalize)
     monkeypatch.setattr(gptscan, "update_status", MagicMock())
 
-    gptscan.import_from_url()
+    with patch("gptscan.simpledialog.askstring", return_value=clip_url) as mock_ask:
+        gptscan.import_from_url()
 
-    mock_fetch.assert_called_once_with(mock_url)
+        mock_ask.assert_called_once_with(
+            "Import from Web Link",
+            "Enter the web link of the scan results to import:",
+            parent=mock_root,
+            initialvalue=clip_url
+        )
+
+    mock_fetch.assert_called_once_with(clip_url)
     mock_finalize.assert_called_once()
     args, _ = mock_finalize.call_args
     assert args[0][0]["path"] == "test.py"
-    assert args[1] == mock_url
+    assert args[1] == clip_url
 
 def test_import_from_url_schemeless(monkeypatch):
     """Test importing scan results from a scheme-less URL successfully after auto-normalization."""
