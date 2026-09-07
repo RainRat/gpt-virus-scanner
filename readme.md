@@ -468,6 +468,16 @@ Scan code sent from another command in the terminal:
 echo "import os; os.system('rm -rf /')" | python3 gptscan.py --stdin --cli
 ```
 
+Scan code currently copied to your system clipboard:
+```bash
+python3 gptscan.py --clipboard --cli
+```
+
+Scan a list of target files listed in a text file:
+```bash
+python3 gptscan.py --file-list targets.txt --cli
+```
+
 Import and display results from a previous scan file, directory, or web link:
 ```bash
 python3 gptscan.py --import-results previous_report.json --cli
