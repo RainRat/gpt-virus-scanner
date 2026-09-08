@@ -704,7 +704,11 @@ def get_model() -> Any:
             if _tf_module is None:
                 import tensorflow as tf
                 _tf_module = tf
-            _model_cache = _tf_module.keras.models.load_model('scripts.h5', compile=False)
+            try:
+                _model_cache = _tf_module.keras.models.load_model('scripts.h5', compile=False)
+            except Exception:
+                import tf_keras
+                _model_cache = tf_keras.models.load_model('scripts.h5', compile=False)
     return _model_cache
 
 
@@ -9402,10 +9406,10 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     api_key_var.trace_add("write", on_api_key_change)
 
-    ttk.Label(provider_frame, text="API Base Web Link:").grid(row=3, column=0, sticky='w', padx=(10, 5), pady=5)
+    ttk.Label(provider_frame, text="API Base URL:").grid(row=3, column=0, sticky='w', padx=(10, 5), pady=5)
     api_entry = ttk.Entry(provider_frame)
     api_entry.grid(row=3, column=1, columnspan=3, sticky='ew', padx=(5, 10), pady=5)
-    bind_hover_message(api_entry, "Set a custom web link for the AI service (e.g., http://localhost:11434/v1 for Ollama).")
+    bind_hover_message(api_entry, "Set a custom API base URL for the AI service (e.g., http://localhost:11434/v1 for Ollama).")
 
     api_base_var = tk.StringVar(value=Config.api_base or "")
     api_entry.config(textvariable=api_base_var)
