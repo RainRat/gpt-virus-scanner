@@ -329,18 +329,16 @@ def parse_ignore_file(file_path: Union[Path, str]) -> List[str]:
         A list of non-empty, non-comment pattern strings.
     """
     patterns = []
-    try:
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                parts = line.split('#', 1)
-                pattern = parts[0].strip()
-                if pattern:
-                    patterns.append(pattern)
-    except (OSError, UnicodeError):
-        pass
+    lines = load_file(str(file_path), mode='multi_line')
+    if isinstance(lines, list):
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split('#', 1)
+            pattern = parts[0].strip()
+            if pattern:
+                patterns.append(pattern)
     return patterns
 
 
@@ -617,14 +615,7 @@ class Config:
         else:
             cls.set_extensions(loaded_extensions)
 
-        loaded_ignores = load_file('.gptscanignore', mode='multi_line')
-        cls.ignore_patterns = []
-        if loaded_ignores:
-            cls.ignore_patterns = [
-                line.strip().split('#')[0].strip() for line in loaded_ignores
-                if line.strip() and not line.strip().startswith('#')
-                and line.strip().split('#')[0].strip()
-            ]
+        cls.ignore_patterns = parse_ignore_file('.gptscanignore')
 
         cls.load_settings()
         cls.load_cache()
