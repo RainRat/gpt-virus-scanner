@@ -25,6 +25,40 @@ def test_get_git_reflog_snippets_success(mocker):
     assert snippets[1][0] == "[Git Reflog] def5678 HEAD@{1}: commit: second commit"
     assert snippets[1][1] == b"diff content 2"
 
+def test_get_git_reflog_snippets_partial_failure_and_empty_lines(mocker):
+    mocker.patch('gptscan._get_git_info', return_value=('/fake/root', 'rel/path'))
+
+    # Reflog output containing an empty line, a single-token line (no subject), and standard lines
+    reflog_output = "\n  \nabc1234 HEAD@{0}: commit: first\nfailed123\ndef5678\n"
+
+    def mock_check_output(cmd, **kwargs):
+        if cmd[1] == "reflog":
+            return reflog_output
+        elif cmd[1] == "show":
+            commit = cmd[3]
+            if commit == "failed123":
+                raise subprocess.CalledProcessError(1, cmd)
+            elif commit == "abc1234":
+                return "diff for abc1234"
+            elif commit == "def5678":
+                return "diff for def5678"
+        return ""
+
+    mocker.patch('subprocess.check_output', side_effect=mock_check_output)
+
+    snippets = get_git_reflog_snippets(count=5)
+    assert len(snippets) == 2
+    assert snippets[0][0] == "[Git Reflog] abc1234 HEAD@{0}: commit: first"
+    assert snippets[0][1] == b"diff for abc1234"
+    assert snippets[1][0] == "[Git Reflog] def5678 "
+    assert snippets[1][1] == b"diff for def5678"
+
+def test_get_git_reflog_snippets_cmd_exception(mocker):
+    mocker.patch('gptscan._get_git_info', return_value=('/fake/root', 'rel/path'))
+    mocker.patch('subprocess.check_output', side_effect=subprocess.CalledProcessError(1, ['git', 'reflog']))
+
+    assert get_git_reflog_snippets() == []
+
 def test_scan_git_reflog_click_cancel(mocker):
     # Mock simpledialog to return None (cancel)
     mocker.patch('tkinter.simpledialog.askinteger', return_value=None)
