@@ -6534,7 +6534,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
         elif fmt == 'report':
             report = generate_console_report(results, use_color=False)
             print(report, file=out_stream)
-        elif fmt == 'json':
+        elif fmt in ('json', 'ndjson', 'jsonl'):
             for record in results:
                 print(json.dumps(record), file=out_stream)
         elif fmt == 'tsv':
@@ -6558,7 +6558,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         show_all: Whether to emit every scanned file.
         use_gpt: Whether to request GPT analysis for confident detections.
         rate_limit: Maximum allowed GPT requests per minute.
-        output_format: Format of the output ('csv', 'tsv', 'json', 'sarif', 'html', 'markdown', 'xml', 'yaml', or 'report'). Defaults to 'csv'.
+        output_format: Format of the output ('csv', 'tsv', 'json', 'ndjson', 'jsonl', 'sarif', 'html', 'markdown', 'xml', 'yaml', or 'report'). Defaults to 'csv'.
         dry_run: Whether to simulate the scan.
         exclude_patterns: List of glob patterns to exclude from the scan.
         fail_threshold: Threat level threshold to trigger a failure count.
@@ -6669,7 +6669,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 pass
             elif sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
                 result_buffer.append(record)
-            elif output_format == 'json':
+            elif output_format in ('json', 'ndjson', 'jsonl'):
                 print(json.dumps(record), file=out_stream)
             else:
                 writer.writerow([record.get(k, '') for k in keys])
@@ -6767,7 +6767,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         use_color_output = out_stream.isatty() if hasattr(out_stream, 'isatty') else False
         report = generate_console_report(result_buffer, use_color=use_color_output)
         print(report, file=out_stream)
-    elif output_format == 'json' and (sort_by is not None or top_limit is not None):
+    elif output_format in ('json', 'ndjson', 'jsonl') and (sort_by is not None or top_limit is not None):
         for record in result_buffer:
             print(json.dumps(record), file=out_stream)
     elif output_format in ('csv', 'tsv') and (sort_by is not None or top_limit is not None):
@@ -7533,6 +7533,7 @@ def export_results(event: Optional[tk.Event] = None) -> None:
             ("Markdown files", "*.md"),
             ("HTML files", "*.html"),
             ("JSON files", "*.json"),
+            ("NDJSON files", "*.ndjson;*.jsonl"),
             ("YAML files", "*.yaml;*.yml"),
             ("SARIF files", "*.sarif"),
             ("XML files", "*.xml"),
@@ -7552,6 +7553,8 @@ def export_results(event: Optional[tk.Event] = None) -> None:
         if ext == '.json':
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(results, f, indent=2)
+        elif ext in ('.ndjson', '.jsonl'):
+            export_results_to_file(file_path, results, output_format='ndjson')
         elif ext in ('.yaml', '.yml'):
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(generate_yaml(results))
@@ -10092,6 +10095,7 @@ def main():
     output_group.add_argument('-a', '--show-all', action='store_true', help='Show all scanned files, even safe ones.')
     output_group.add_argument('-o', '--output', type=str, help='Save the results to a file.')
     output_group.add_argument('-j', '--json', action='store_true', help='Print or save scan results in JSON format.')
+    output_group.add_argument('--ndjson', '--jsonl', action='store_true', help='Print or save scan results in NDJSON (JSON Lines) format.')
     output_group.add_argument('--csv', action='store_true', help='Print or save scan results in CSV format.')
     output_group.add_argument('--tsv', action='store_true', help='Print or save scan results in TSV format.')
     output_group.add_argument('--sarif', action='store_true', help='Save scan results in SARIF format.')
@@ -10292,6 +10296,8 @@ def main():
         output_format = 'report' if sys.stdout.isatty() else 'csv'
         if args.json:
             output_format = 'json'
+        elif args.ndjson:
+            output_format = 'ndjson'
         elif args.csv:
             output_format = 'csv'
         elif args.tsv:
@@ -10311,8 +10317,10 @@ def main():
         elif args.output:
             # Infer format from extension
             ext = Path(args.output).suffix.lower()
-            if ext in ('.json', '.ndjson'):
+            if ext == '.json':
                 output_format = 'json'
+            elif ext in ('.ndjson', '.jsonl'):
+                output_format = 'ndjson'
             elif ext == '.sarif':
                 output_format = 'sarif'
             elif ext in ('.html', '.htm'):
