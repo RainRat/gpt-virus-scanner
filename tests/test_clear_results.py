@@ -19,11 +19,13 @@ def test_clear_results(monkeypatch):
     mock_progress_bar = MagicMock()
     mock_status_label = MagicMock()
     mock_root = MagicMock()
+    mock_update_button_states = MagicMock()
 
     monkeypatch.setattr(gptscan, 'tree', mock_tree)
     monkeypatch.setattr(gptscan, 'progress_bar', mock_progress_bar)
     monkeypatch.setattr(gptscan, 'status_label', mock_status_label)
     monkeypatch.setattr(gptscan, 'root', mock_root)
+    monkeypatch.setattr(gptscan, 'update_button_states', mock_update_button_states)
 
     # Pre-checks
     mock_tree.get_children.return_value = ('item1', 'item2')
@@ -39,6 +41,7 @@ def test_clear_results(monkeypatch):
     # update_status calls status_label.config and root.update_idletasks
     mock_status_label.config.assert_called_with(text="Ready")
     mock_root.update_idletasks.assert_called()
+    mock_update_button_states.assert_called_once()
 
 
 def test_clear_results_event_with_focused_entry(monkeypatch):

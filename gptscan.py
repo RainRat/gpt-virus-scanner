@@ -7486,6 +7486,7 @@ def clear_results(event: Optional[tk.Event] = None) -> Optional[str]:
     if progress_bar:
         progress_bar["value"] = 0
     update_status("Ready")
+    update_button_states()
     return "break"
 
 
