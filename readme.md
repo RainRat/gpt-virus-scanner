@@ -184,6 +184,10 @@ Open the scanner window by running the appropriate command for your operating sy
 *   **Scan Desktop (Ctrl+Shift+L):** Scan your standard Desktop folder for suspicious files.
 *   **Scan Temporary Folders (Ctrl+Shift+Z):** Scan common temporary folders for suspicious files.
 
+#### Help Menu
+*   **Keyboard Shortcuts...:** Open the interactive reference dialog for keyboard shortcuts and navigation tips.
+*   **About:** Display application version and overview information.
+
 
 ### Keyboard Shortcuts
 The scanner includes shortcuts for faster navigation.
