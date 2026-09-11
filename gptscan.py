@@ -1029,7 +1029,28 @@ def normalize_and_validate_url(url_str: str) -> Optional[str]:
 
 def select_url_click() -> None:
     """Handle the web link input dialog and populate the textbox."""
-    url_selected = simpledialog.askstring("Scan Web Link", "Enter a script web link to scan (http/https):")
+    initial_val = None
+    if root:
+        try:
+            clip = root.clipboard_get()
+            if isinstance(clip, str):
+                clip_clean = clip.strip()
+                if clip_clean.lower().startswith(('http://', 'https://')):
+                    initial_val = clip_clean
+        except Exception:
+            pass
+
+    kwargs = {}
+    if root:
+        kwargs["parent"] = root
+    if initial_val:
+        kwargs["initialvalue"] = initial_val
+
+    url_selected = simpledialog.askstring(
+        "Scan Web Link",
+        "Enter a script web link to scan (http/https):",
+        **kwargs
+    )
     if url_selected is not None:
         normalized_url = normalize_and_validate_url(url_selected)
         if normalized_url:
@@ -7459,7 +7480,24 @@ def import_from_url() -> None:
     if not tree:
         return
 
-    url = simpledialog.askstring("Import from Web Link", "Enter the web link of the scan results to import:")
+    initial_val = None
+    if root:
+        try:
+            clip = root.clipboard_get()
+            if isinstance(clip, str):
+                clip_clean = clip.strip()
+                if clip_clean.lower().startswith(('http://', 'https://')):
+                    initial_val = clip_clean
+        except Exception:
+            pass
+
+    kwargs = {}
+    if root:
+        kwargs["parent"] = root
+    if initial_val:
+        kwargs["initialvalue"] = initial_val
+
+    url = simpledialog.askstring("Import from Web Link", "Enter the web link of the scan results to import:", **kwargs)
     if url is None:
         return
 
