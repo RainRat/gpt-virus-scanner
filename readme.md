@@ -69,6 +69,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
             ```bash
             python3 -m pip install "tensorflow<2.16" openai numpy
             ```
+            *Note: Keep the quotation marks around `"tensorflow<2.16"` to prevent shell globbing errors in zsh.*
         *   **For Python 3.12:**
             ```bash
             python3 -m pip install tensorflow openai numpy
