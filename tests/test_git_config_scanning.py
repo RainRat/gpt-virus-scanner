@@ -93,3 +93,59 @@ def test_system_audit_includes_git_config(monkeypatch):
     _, kwargs = mock_button_click.call_args
     snippets = kwargs["extra_snippets"]
     assert ("Git Config", b"Dangerous") in snippets
+
+
+def test_get_git_config_snippets_non_worktree_exception(monkeypatch):
+    def mock_check_output(cmd, **kwargs):
+        if cmd[:2] == ["git", "rev-parse"]:
+            raise subprocess.CalledProcessError(1, cmd)
+        if "--global" in cmd:
+            return "alias.g\n!echo global\0"
+        if "--local" in cmd:
+            return "alias.l\n!echo local\0"
+        return ""
+
+    monkeypatch.setattr(subprocess, "check_output", mock_check_output)
+
+    snippets = gptscan.get_git_config_snippets()
+    assert len(snippets) == 1
+    assert snippets[0][0] == "Global Git Config [Alias: g]"
+    assert snippets[0][1] == b"echo global"
+
+
+def test_get_git_config_snippets_cmd_exception(monkeypatch):
+    def mock_check_output(cmd, **kwargs):
+        if cmd[:2] == ["git", "rev-parse"]:
+            return b"true"
+        if "--global" in cmd:
+            raise subprocess.CalledProcessError(1, cmd)
+        if "--local" in cmd:
+            raise OSError("git error")
+        return ""
+
+    monkeypatch.setattr(subprocess, "check_output", mock_check_output)
+
+    snippets = gptscan.get_git_config_snippets()
+    assert snippets == []
+
+
+def test_get_git_config_snippets_filtering_edge_cases(monkeypatch):
+    def mock_check_output(cmd, **kwargs):
+        if cmd[:2] == ["git", "rev-parse"]:
+            return b"true"
+        if "--global" in cmd:
+            return (
+                "alias.st\nstatus\0"
+                "alias.empty\n!\0"
+                "core.editor\n\0"
+                "invalid_entry_no_newline\0"
+                "alias.valid\n!ls -la\0"
+            )
+        return ""
+
+    monkeypatch.setattr(subprocess, "check_output", mock_check_output)
+
+    snippets = gptscan.get_git_config_snippets()
+    assert len(snippets) == 1
+    assert snippets[0][0] == "Global Git Config [Alias: valid]"
+    assert snippets[0][1] == b"ls -la"
