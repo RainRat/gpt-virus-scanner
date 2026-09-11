@@ -92,6 +92,36 @@ class TestStartupScanning(unittest.TestCase):
         self.assertEqual(results[0][0], "[Autostart] test.desktop")
         self.assertEqual(results[0][1], b"test-cmd --start")
 
+    @patch('gptscan.subprocess.check_output')
+    @patch('gptscan.sys.platform', 'win32')
+    def test_get_startup_item_commands_windows_exception(self, mock_check_output):
+        mock_check_output.side_effect = Exception("Subprocess error")
+        results = gptscan.get_startup_item_commands()
+        self.assertEqual(results, [])
+
+    @patch('gptscan.Path.exists')
+    @patch('gptscan.Path.glob')
+    @patch('gptscan.sys.platform', 'linux')
+    def test_get_startup_item_commands_linux_missing_exec_and_oserror(self, mock_glob, mock_exists):
+        mock_exists.return_value = True
+
+        mock_file1 = MagicMock(spec=Path)
+        mock_file1.name = "noexec.desktop"
+        mock_file2 = MagicMock(spec=Path)
+        mock_file2.name = "error.desktop"
+
+        mock_glob.return_value = [mock_file1, mock_file2]
+
+        def custom_open(path, *args, **kwargs):
+            if "error.desktop" in str(path):
+                raise OSError("Read error")
+            return mock_open(read_data="[Desktop Entry]\nComment=No Exec line here\n")()
+
+        with patch('gptscan.open', side_effect=custom_open):
+            results = gptscan.get_startup_item_commands()
+
+        self.assertEqual(results, [])
+
     @patch('gptscan.Path.exists')
     @patch('gptscan.Path.glob')
     @patch('gptscan.plistlib.load')
@@ -111,6 +141,55 @@ class TestStartupScanning(unittest.TestCase):
         self.assertTrue(len(results) >= 1)
         self.assertEqual(results[0][0], "[LaunchAgent] com.test.plist")
         self.assertEqual(results[0][1], b"/usr/bin/test -v")
+
+    @patch('gptscan.Path.exists')
+    @patch('gptscan.Path.glob')
+    @patch('gptscan.plistlib.load')
+    @patch('gptscan.sys.platform', 'darwin')
+    def test_get_startup_item_commands_macos_program_key_and_string_args(self, mock_plist_load, mock_glob, mock_exists):
+        mock_exists.return_value = True
+
+        mock_file1 = MagicMock(spec=Path)
+        mock_file1.name = "com.program.plist"
+        mock_file2 = MagicMock(spec=Path)
+        mock_file2.name = "com.stringargs.plist"
+        mock_file3 = MagicMock(spec=Path)
+        mock_file3.name = "com.corrupt.plist"
+
+        mock_glob.return_value = [mock_file1, mock_file2, mock_file3]
+
+        plist_data = {
+            "com.program.plist": {"Program": "/usr/bin/program-exec"},
+            "com.stringargs.plist": {"ProgramArguments": "/usr/bin/single-arg"},
+            "com.corrupt.plist": None
+        }
+
+        def mock_open_side_effect(path, *args, **kwargs):
+            filename = getattr(path, 'name', str(path))
+            if filename in plist_data and plist_data[filename] is None:
+                raise OSError("Corrupt file")
+            m = mock_open()()
+            m.filename = filename
+            return m
+
+        def side_effect_plist(f):
+            filename = getattr(f, 'filename', '')
+            if filename in plist_data and plist_data[filename] is not None:
+                return plist_data[filename]
+            raise Exception("Corrupt plist")
+
+        mock_plist_load.side_effect = side_effect_plist
+
+        with patch('gptscan.open', side_effect=mock_open_side_effect):
+            results = gptscan.get_startup_item_commands()
+
+        # Each search dir processes the glob list
+        items = [r for r in results if r[0].startswith("[LaunchAgent]")]
+        self.assertTrue(len(items) >= 2)
+        prog_item = next(r for r in items if "com.program.plist" in r[0])
+        str_item = next(r for r in items if "com.stringargs.plist" in r[0])
+        self.assertEqual(prog_item[1], b"/usr/bin/program-exec")
+        self.assertEqual(str_item[1], b"/usr/bin/single-arg")
 
 if __name__ == '__main__':
     unittest.main()
