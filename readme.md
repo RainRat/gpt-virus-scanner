@@ -157,6 +157,7 @@ Open the scanner window by running the appropriate command for your operating sy
 *   **Scan Git Conflicts:** Scan files with Git merge conflicts for suspicious code introduced during merging.
 *   **Scan Git Configuration:** Scan Git settings for dangerous aliases or editors.
 *   **Scan Git Reflog...:** Scan recent entries in your Git reflog to find lost code or secrets.
+*   **Scan Git Submodules:** Scan all Git submodules in the repository.
 *   **Scan Git Revision...:** Scan files from a specific Git branch or commit.
 
 ##### System Scans
@@ -455,6 +456,11 @@ Scan all files with Git merge conflicts:
 python3 gptscan.py --git-conflicts --cli
 ```
 
+Scan all Git submodules in your repository:
+```bash
+python3 gptscan.py --git-submodules --cli
+```
+
 Scan recent entries in the Git reflog:
 ```bash
 python3 gptscan.py --git-reflog 5 --cli
@@ -578,6 +584,7 @@ You can customize terminal scans using these command line options.
 *   `--git-config`: Scan for dangerous Git configuration settings.
 *   `--git-stash`: Scan all Git stashes.
 *   `--git-conflicts`: Scan files with Git merge conflicts.
+*   `--git-submodules`: Scan all Git submodules in the repository.
 *   `--git-history [<count>]`: Scan recent Git commits. You can optionally set the number of commits (default is 5).
 *   `--git-reflog [<count>]`: Scan recent entries in your Git reflog. You can optionally set the number of entries (default is 5).
 

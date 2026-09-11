@@ -587,7 +587,7 @@ class Config:
         is_help_or_version = any(arg in sys.argv for arg in ['-h', '--help', '-v', '--version'])
         is_cli_without_gpt = ('--cli' in sys.argv or any(arg in sys.argv for arg in [
             '--audit', '--git-changes', '--git-diff', '--git-hooks', '--git-config',
-            '--git-stash', '--git-conflicts', '--git-history', '--git-reflog',
+            '--git-stash', '--git-conflicts', '--git-history', '--git-reflog', '--git-submodules',
             '--shell-profiles', '--shell-history', '--system-path', '--running-processes',
             '--scheduled-tasks', '--startup-items', '--system-services', '--python-packages',
             '--browser-bookmarks', '--nodejs-packages', '--browser-extensions', '--editor-extensions',
@@ -2018,6 +2018,47 @@ def get_environment_variable_snippets() -> List[Tuple[str, bytes]]:
     return snippets
 
 
+def get_git_submodule_paths(path: str = ".") -> List[str]:
+    """Find all folders containing Git submodules in the repository."""
+    paths = []
+    toplevel, _ = _get_git_info(path)
+    if toplevel is None:
+        return []
+
+    try:
+        output = subprocess.check_output(
+            ["git", "submodule", "status", "--recursive"],
+            cwd=toplevel,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+        for line in output.splitlines():
+            line = line.strip()
+            if line:
+                parts = line.split()
+                if len(parts) >= 2:
+                    submodule_rel_path = parts[1]
+                    abs_path = os.path.join(toplevel, submodule_rel_path)
+                    if os.path.exists(abs_path):
+                        paths.append(abs_path)
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        gitmodules_path = os.path.join(toplevel, ".gitmodules")
+        if os.path.isfile(gitmodules_path):
+            try:
+                with open(gitmodules_path, "r", encoding="utf-8", errors="ignore") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("path ="):
+                            rel_path = line.split("=", 1)[1].strip()
+                            abs_path = os.path.join(toplevel, rel_path)
+                            if os.path.exists(abs_path):
+                                paths.append(abs_path)
+            except Exception:
+                pass
+
+    return sorted(set(paths))
+
+
 def get_git_stash_snippets(path: str = ".") -> List[Tuple[str, bytes]]:
     """Collect the content of all Git stashes as snippets."""
     snippets = []
@@ -3324,6 +3365,16 @@ def scan_git_hooks_click():
         "Git Hooks",
         "No Git hooks found to scan.",
         "Git Hooks Error"
+    )
+
+
+def scan_git_submodules_click():
+    """Scan all Git submodules in the repository."""
+    _generic_scan_click(
+        lambda: get_git_submodule_paths(_get_target_path()),
+        "Git Submodules",
+        "No Git submodules found to scan in the target path.",
+        "Git Submodules Error"
     )
 
 
@@ -9188,6 +9239,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         git_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
         git_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
         git_menu.add_command(label="Scan Git Conflicts", command=scan_git_conflicts_click)
+        git_menu.add_command(label="Scan Git Submodules", command=scan_git_submodules_click)
         git_menu.add_command(label="Scan Git Stashes", command=scan_git_stash_click, accelerator="Ctrl+Shift+Q")
         git_menu.add_separator()
 
@@ -9979,6 +10031,11 @@ def main():
         help='Scan files with Git merge conflicts.'
     )
     git_group.add_argument(
+        '--git-submodules',
+        action='store_true',
+        help='Scan all Git submodules in the repository.'
+    )
+    git_group.add_argument(
         '--git-history',
         type=int,
         nargs='?',
@@ -10217,7 +10274,7 @@ def main():
         if not any([
             args.target, args.path, args.stdin, args.clipboard, args.import_results, args.baseline, args.files,
             args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
-            args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.shell_profiles, args.shell_history, args.system_path,
+            args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
             args.system_services, args.audit, args.modified, args.downloads, args.desktop,
             args.python_packages, args.nodejs_packages, args.ruby_gems, args.php_packages,
@@ -10266,7 +10323,7 @@ def main():
     cli_targets_or_flags = [
         args.stdin, args.clipboard, args.import_results, args.baseline,
         args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
-        args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.shell_profiles, args.shell_history, args.system_path,
+        args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
         args.running_processes, args.scheduled_tasks, args.startup_items,
         args.system_services, args.audit, args.modified, args.downloads, args.desktop,
         args.python_packages, args.nodejs_packages, args.ruby_gems, args.php_packages,
@@ -10361,7 +10418,12 @@ def main():
             for root_dir in git_roots:
                 extra_snippets.extend(get_git_reflog_snippets(root_dir, count=args.git_reflog))
 
-        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_conflicts and not args.git_history and not args.git_reflog and not args.clipboard and not extra_snippets:
+        if args.git_submodules:
+            git_roots = list(scan_targets) if scan_targets else ["."]
+            for root_dir in git_roots:
+                scan_targets.extend(get_git_submodule_paths(root_dir))
+
+        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_conflicts and not args.git_history and not args.git_reflog and not args.git_submodules and not args.clipboard and not extra_snippets:
             # Default to current folder if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
