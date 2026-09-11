@@ -128,7 +128,7 @@ Open the scanner window by running the appropriate command for your operating sy
 *   **Import Results... (Ctrl+O):** Import scan results from a previous report file, folder, or web link.
 *   **Import from Clipboard (Ctrl+V):** Import scan results from your clipboard.
 *   **Import from Web Link...:** Import scan results from a web link.
-*   **Export Results... (Ctrl+E):** Save current scan results to a file (JSON, CSV, TSV, SARIF, HTML, Markdown, XML, or YAML).
+*   **Export Results... (Ctrl+E):** Save current scan results to a file (JSON, NDJSON, CSV, TSV, SARIF, HTML, Markdown, XML, or YAML).
 *   **Manage Exclusions...:** View and manage path exclusion patterns ignored during scans.
 *   **Manage Extensions...:** View and manage target file extensions included in scans.
 *   **Copy as CLI Command (Ctrl+Shift+E):** Copy equivalent command-line flags for your current GUI settings.
@@ -512,6 +512,7 @@ python3 gptscan.py ./my_project --output results.html --cli
 #### Output Formats
 By default, the scanner prints human-readable text to the terminal. You can customize the output format with these flags:
 *   `--json`: Print or save results in JSON format.
+*   `--ndjson` / `--jsonl`: Print or save results in NDJSON (JSON Lines) format.
 *   `--csv`: Print or save results in CSV format.
 *   `--tsv`: Print or save results in TSV format.
 *   `--sarif`: Save results in SARIF format (useful for security scanning tools).
@@ -630,6 +631,7 @@ You can customize terminal scans using these command line options.
 *   `-a`, `--show-all`: Show all scanned files, even safe ones (threat level under threshold).
 *   `-o`, `--output <file>`: Save the scan results to a file.
 *   `-j`, `--json`: Output or save results in JSON format.
+*   `--ndjson`, `--jsonl`: Output or save results in NDJSON (JSON Lines) format.
 *   `--csv`: Output or save results in CSV format.
 *   `--tsv`: Output or save results in TSV format.
 *   `--sarif`: Save results in SARIF format.
@@ -703,8 +705,8 @@ The scanner provides several ways to analyze and manage your results:
     *   **Check on VirusTotal:** Search for the file's hash on VirusTotal.
     *   **View Online:** Open the source file in your web browser (for Git projects and remote web links).
 *   **Export & Import:**
-    *   **Export Results:** Save your scan to a file (CSV, TSV, Markdown, HTML, JSON, SARIF, XML, or YAML) via **File > Export Results...**.
-    *   **Import Results:** Load previous scan results from any supported format (JSON, SARIF, CSV, TSV, Markdown, HTML, XML, YAML, Triage Reports) via **File > Import Results...** or by pasting from your clipboard (`Ctrl+V`).
+    *   **Export Results:** Save your scan to a file (CSV, TSV, Markdown, HTML, JSON, NDJSON, SARIF, XML, or YAML) via **File > Export Results...**.
+    *   **Import Results:** Load previous scan results from any supported format (JSON, NDJSON, SARIF, CSV, TSV, Markdown, HTML, XML, YAML, Triage Reports) via **File > Import Results...** or by pasting from your clipboard (`Ctrl+V`).
 
 ## Customizing the Scanner
 You can tailor the scanner to your needs:
