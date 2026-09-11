@@ -468,9 +468,10 @@ Scan code sent from another command in the terminal:
 echo "import os; os.system('rm -rf /')" | python3 gptscan.py --stdin --cli
 ```
 
-Import and display results from a previous scan file, directory, or web link:
+Import and display results from a previous scan file, directory, web link, or clipboard:
 ```bash
 python3 gptscan.py --import-results previous_report.json --cli
+python3 gptscan.py --import-results clipboard --cli
 ```
 
 Filter out known findings using a previous scan report as a baseline and save bypassed findings separately:
@@ -542,8 +543,8 @@ You can customize terminal scans using these command line options.
 *   `-t`, `--threshold <num>`: Set the minimum threat level (0-100) to show in results (default is 50).
 *   `--stdin`: Scan code piped from another command.
 *   `-c`, `--clipboard`: Scan code currently copied in the system clipboard.
-*   `--import-results <target>` / `--import <target>`: Import results from a previous scan file, directory, or web link. Use `-` to read from the terminal.
-*   `--baseline <file>`: A previous scan report (in any supported format) to act as a baseline. Findings matching this baseline are filtered out.
+*   `--import-results <target>` / `--import <target>`: Import results from a previous scan file, directory, web link, or clipboard (`clipboard`). Use `-` to read from the terminal.
+*   `--baseline <file>`: A previous scan report (in any supported format, or `clipboard`) to act as a baseline. Findings matching this baseline are filtered out.
 *   `--baseline-output <file>`: Save findings that match the baseline to a separate file (in the specified output format).
 *   `--max-size <size>`: The maximum file size to scan (for example: `10MB`). Default is 10MB.
 *   `--modified <time>`: Only scan files changed within this time (for example: `24h`, `1h`, `7d`).
