@@ -62,3 +62,25 @@ def test_get_git_diff_specific_path(tmp_path, monkeypatch):
 
     # Diff of the specific subdir
     assert "subdir/file1.txt" in get_git_diff(str(subdir))
+
+def test_get_git_diff_called_process_error_handling():
+    """Test get_git_diff exception handling when subprocess raises CalledProcessError."""
+    from unittest.mock import patch
+    with patch("subprocess.check_output") as mock_check_output:
+        # First call for rev-parse returns valid toplevel
+        # Second call for git diff raises CalledProcessError
+        mock_check_output.side_effect = [
+            "/mock/repo",
+            subprocess.CalledProcessError(128, "git diff")
+        ]
+        assert get_git_diff() == ""
+
+def test_get_git_diff_os_error_handling():
+    """Test get_git_diff exception handling when subprocess raises OSError."""
+    from unittest.mock import patch
+    with patch("subprocess.check_output") as mock_check_output:
+        mock_check_output.side_effect = [
+            "/mock/repo",
+            OSError("Command failed")
+        ]
+        assert get_git_diff() == ""

@@ -207,3 +207,47 @@ def test_get_git_changed_files_subdir_scoping(tmp_path):
     # Only the sub file should be in results
     assert os.path.abspath(sub_file) in result_paths
     assert os.path.abspath(root_file) not in result_paths
+
+def test_get_git_changed_files_non_head_ref_skips_untracked():
+    """Verify that when ref is not 'HEAD', git ls-files for untracked files is skipped."""
+    with patch("subprocess.check_output") as mock_check_output, \
+         patch("os.path.exists") as mock_exists:
+        # First call: rev-parse
+        # Second call: git diff with custom ref "HEAD~1"
+        mock_check_output.side_effect = [
+            "",
+            "modified_in_commit.py\n"
+        ]
+        mock_exists.return_value = True
+
+        files = get_git_changed_files(ref="HEAD~1")
+
+        assert len(files) == 1
+        assert mock_check_output.call_count == 2
+        # Check that git diff ref argument was "HEAD~1"
+        cmd = mock_check_output.call_args_list[1][0][0]
+        assert "HEAD~1" in cmd
+
+def test_get_git_changed_files_non_head_ref_real_git(tmp_path):
+    """Verify comparing against historical commit ref in a real git repository."""
+    subprocess.run(["git", "init"], cwd=str(tmp_path), check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=str(tmp_path), check=True)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=str(tmp_path), check=True)
+
+    file1 = tmp_path / "file1.py"
+    file1.write_text("v1")
+    subprocess.run(["git", "add", "file1.py"], cwd=str(tmp_path), check=True)
+    subprocess.run(["git", "commit", "-m", "first commit"], cwd=str(tmp_path), check=True)
+
+    file1.write_text("v2")
+    subprocess.run(["git", "commit", "-am", "second commit"], cwd=str(tmp_path), check=True)
+
+    # Untracked file should be ignored when ref != "HEAD"
+    untracked = tmp_path / "untracked.py"
+    untracked.write_text("untracked")
+
+    results = get_git_changed_files(str(tmp_path), ref="HEAD~1")
+    result_paths = [os.path.abspath(r) for r in results]
+
+    assert os.path.abspath(file1) in result_paths
+    assert os.path.abspath(untracked) not in result_paths
