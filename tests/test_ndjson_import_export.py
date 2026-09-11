@@ -92,7 +92,7 @@ def test_export_results_gui_ndjson(monkeypatch, tmp_path):
     gptscan.export_results()
 
     assert file_path.exists()
-    lines = [l.strip() for l in file_path.read_text(encoding="utf-8").splitlines() if l.strip()]
+    lines = [line.strip() for line in file_path.read_text(encoding="utf-8").splitlines() if line.strip()]
     assert len(lines) == 1
     data = json.loads(lines[0])
     assert data["path"] == "gui_test.py"
@@ -119,7 +119,7 @@ def test_ndjson_cli_flag_output(capsys, monkeypatch):
 
     assert threats == 1
     captured = capsys.readouterr()
-    lines = [l.strip() for l in captured.out.splitlines() if l.strip()]
+    lines = [line.strip() for line in captured.out.splitlines() if line.strip()]
     assert len(lines) == 1
     record = json.loads(lines[0])
     assert record["path"] == "suspicious.py"

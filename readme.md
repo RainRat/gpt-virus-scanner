@@ -493,7 +493,6 @@ Scan a list of target files listed in a text file:
 python3 gptscan.py --file-list targets.txt --cli
 ```
 
-Import and display results from a previous scan file, directory, or web link:
 Import and display results from a previous scan file, directory, web link, or clipboard:
 ```bash
 python3 gptscan.py --import-results previous_report.json --cli

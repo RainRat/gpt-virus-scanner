@@ -20,7 +20,7 @@ def test_get_git_submodule_paths_success(monkeypatch, tmp_path):
 
     monkeypatch.setattr(gptscan, "_get_git_info", lambda p: (str(tmp_path), "."))
 
-    mock_status_output = f" e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 libs/submod1 (heads/main)\n"
+    mock_status_output = " e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 libs/submod1 (heads/main)\n"
 
     def mock_check_output(cmd, cwd=None, **kwargs):
         if "submodule" in cmd:
