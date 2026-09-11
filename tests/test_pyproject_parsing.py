@@ -458,3 +458,16 @@ shell = "echo deep"
     assert scripts["pyproject.toml [Script: expr_task]"] == "sys.platform"
     assert scripts["pyproject.toml [Script: script_task]"] == "my_module:main"
     assert scripts["pyproject.toml [Script: deep]"] == "echo deep"
+
+
+def test_pyproject_single_quoted_script_value():
+    """Verify single-quoted script values in pyproject.toml are extracted and un-quoted."""
+    content = b"""
+[tool.pdm.scripts]
+single_val = 'echo single'
+"""
+    results = list(unpack_content("pyproject.toml", content))
+    scripts = {s[0]: s[1].decode() for s in results}
+
+    assert "pyproject.toml [Script: single_val]" in scripts
+    assert scripts["pyproject.toml [Script: single_val]"] == "echo single"
