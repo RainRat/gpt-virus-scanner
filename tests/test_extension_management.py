@@ -237,11 +237,14 @@ def test_manage_extensions_reset(mock_gui_env, monkeypatch):
     monkeypatch.setattr(Config, "save_extensions", MagicMock())
 
     manage_extensions()
+    lb = captured['listbox']
+
     reset_btn, reset_cmd = captured['buttons']['Reset to Defaults']
     reset_cmd()
 
     assert ".py" in Config.extensions_set
     assert ".custom" not in Config.extensions_set
+    assert lb.selection == [0]
     Config.save_extensions.assert_called()
 
 def test_manage_extensions_keyboard_bindings(mock_gui_env):
