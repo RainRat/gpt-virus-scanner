@@ -4338,6 +4338,11 @@ def manage_extensions() -> None:
             Config.set_extensions(Config.DEFAULT_EXTENSIONS)
             Config.save_extensions()
             refresh_list()
+            if Config.extensions_set:
+                ext_listbox.selection_clear(0, tk.END)
+                ext_listbox.select_set(0)
+                ext_listbox.activate(0)
+                ext_listbox.see(0)
         except Exception as e:
             messagebox.showerror("Error", f"Could not reset extensions: {e}", parent=manage_win)
 
