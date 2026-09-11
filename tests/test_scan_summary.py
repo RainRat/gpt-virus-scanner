@@ -45,7 +45,20 @@ def test_format_scan_summary_none_bytes():
     assert "KiB/s" not in summary
 
 def test_format_scan_summary_large_throughput():
-    # 10 MiB / 1s = 10 MiB/s
     size = 10 * 1024 * 1024
     summary = format_scan_summary(total_scanned=1, threats_found=0, total_bytes=size, elapsed_time=1.0)
     assert "10.0 MiB/s" in summary
+
+def test_format_scan_summary_use_color_with_threats():
+    summary = format_scan_summary(total_scanned=10, threats_found=3, high_risk=2, medium_risk=1, use_color=True)
+    assert "\033[1;91m3\033[0m suspicious files found" in summary
+
+def test_format_scan_summary_use_color_zero_threats():
+    summary = format_scan_summary(total_scanned=10, threats_found=0, use_color=True)
+    assert "\033[" not in summary
+    assert "0 suspicious files found" in summary
+
+def test_format_scan_summary_use_color_disabled():
+    summary = format_scan_summary(total_scanned=10, threats_found=3, high_risk=2, medium_risk=1, use_color=False)
+    assert "\033[" not in summary
+    assert "3 suspicious files found" in summary
