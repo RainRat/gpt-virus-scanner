@@ -182,3 +182,46 @@ def test_show_keyboard_shortcuts_separator_grid_rows(mock_shortcuts_env):
         assert row is not None
         # Odd row indicates row_idx + 1 (i.e. below row_idx = i * 2)
         assert row % 2 == 1
+
+def test_show_keyboard_shortcuts_tab_cycling(mock_shortcuts_env):
+    captured = mock_shortcuts_env
+    bindings = {}
+    captured['toplevel'].bind.side_effect = lambda event, func: bindings.update({event: func})
+
+    mock_notebook = captured['notebook']
+    mock_notebook.tabs.return_value = ["tab1", "tab2", "tab3"]
+    current_tab = {"idx": 0}
+
+    def mock_index(tab_id):
+        if tab_id == "current":
+            return current_tab["idx"]
+        return tab_id
+
+    def mock_select(tab_id):
+        current_tab["idx"] = tab_id
+
+    mock_notebook.index.side_effect = mock_index
+    mock_notebook.select.side_effect = mock_select
+
+    gptscan.show_keyboard_shortcuts()
+
+    assert '<Left>' in bindings
+    assert '<Right>' in bindings
+
+    # Test Right arrow cycling forward
+    bindings['<Right>'](None)
+    assert current_tab["idx"] == 1
+
+    bindings['<Right>'](None)
+    assert current_tab["idx"] == 2
+
+    # Test wrapping forward to 0
+    bindings['<Right>'](None)
+    assert current_tab["idx"] == 0
+
+    # Test Left arrow cycling backward
+    bindings['<Left>'](None)
+    assert current_tab["idx"] == 2
+
+    bindings['<Left>'](None)
+    assert current_tab["idx"] == 1
