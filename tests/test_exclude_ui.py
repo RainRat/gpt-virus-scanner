@@ -230,3 +230,48 @@ def test_exclude_paths_consolidated_logic(tmp_path, monkeypatch):
     # Check _all_results_cache
     assert len(gptscan._all_results_cache) == 1
     assert gptscan._all_results_cache[0][0] == "existing.py"
+
+
+def test_exclude_paths_empty_paths():
+    assert gptscan.exclude_paths([]) is False
+
+
+def test_exclude_paths_user_rejection(monkeypatch):
+    mock_askyesno = MagicMock(return_value=False)
+    monkeypatch.setattr(gptscan.messagebox, "askyesno", mock_askyesno)
+    assert gptscan.exclude_paths(["some_file.py"], confirm=True) is False
+    mock_askyesno.assert_called_once()
+
+
+def test_exclude_paths_exception_handling(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    mock_add_to_ignore = MagicMock(side_effect=OSError("Disk write error"))
+    monkeypatch.setattr(gptscan, "add_to_ignore_file", mock_add_to_ignore)
+    mock_showerror = MagicMock()
+    monkeypatch.setattr(gptscan.messagebox, "showerror", mock_showerror)
+
+    result = gptscan.exclude_paths(["failed_file.py"], confirm=False)
+
+    assert result is False
+    mock_showerror.assert_called_once()
+    assert "Disk write error" in str(mock_showerror.call_args[0][1])
+
+
+def test_exclude_paths_relpath_value_error(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(gptscan.Config, "ignore_patterns", [])
+
+    def mock_relpath(path, start=None):
+        raise ValueError("Cross-drive relpath error")
+
+    monkeypatch.setattr(os.path, "relpath", mock_relpath)
+    mock_add_to_ignore = MagicMock()
+    monkeypatch.setattr(gptscan, "add_to_ignore_file", mock_add_to_ignore)
+    monkeypatch.setattr(gptscan, "_apply_filter", MagicMock())
+    monkeypatch.setattr(gptscan, "update_status", MagicMock())
+
+    result = gptscan.exclude_paths(["D:\\path\\file.py"], confirm=False)
+
+    assert result is True
+    assert "D:\\path\\file.py" in gptscan.Config.ignore_patterns
+    mock_add_to_ignore.assert_called_once_with(["D:\\path\\file.py"])
