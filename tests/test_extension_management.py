@@ -49,6 +49,12 @@ def mock_gui_env(monkeypatch):
                 self.selection = list(range(first, last + 1))
             else:
                 self.selection = [first]
+        def selection_clear(self, first, last=None):
+            self.selection = []
+        def activate(self, index):
+            self.activated = index
+        def see(self, index):
+            self.seen = index
 
     monkeypatch.setattr(gptscan.tk, 'Listbox', MockListbox)
 
