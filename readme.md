@@ -72,7 +72,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
             *Note: Keep the quotation marks around `"tensorflow<2.16"` to prevent shell globbing errors in zsh.*
         *   **For Python 3.12:**
             ```bash
-            python3 -m pip install tensorflow openai numpy
+            python3 -m pip install tensorflow tf_keras openai numpy
             ```
     *   **Windows:**
         *   **For Python 3.9, 3.10, or 3.11:**
@@ -81,7 +81,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
             ```
         *   **For Python 3.12:**
             ```cmd
-            python -m pip install tensorflow openai numpy
+            python -m pip install tensorflow tf_keras openai numpy
             ```
 
 4.  **Install optional packages (if needed):**
@@ -491,6 +491,21 @@ python3 gptscan.py --clipboard --cli
 Scan a list of target files listed in a text file:
 ```bash
 python3 gptscan.py --file-list targets.txt --cli
+```
+
+Only scan specific file extensions (for example, Python and JavaScript files):
+```bash
+python3 gptscan.py ./my_project --extensions py,js --cli
+```
+
+Ignore files or folders matching specific patterns:
+```bash
+python3 gptscan.py ./my_project --exclude "node_modules/*" "*.tmp" --cli
+```
+
+Filter results by setting a minimum threat score threshold (0 to 100):
+```bash
+python3 gptscan.py ./my_project --min-threat 70 --cli
 ```
 
 Import and display results from a previous scan file, directory, web link, or clipboard:
