@@ -8100,6 +8100,18 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             root.clipboard_append(output.getvalue())
             set_local_status("Result copied as CSV.", temporary=True)
 
+    def copy_as_tsv_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            output = io.StringIO()
+            fields = ["path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet"]
+            writer = csv.DictWriter(output, fieldnames=fields, delimiter='\t')
+            writer.writeheader()
+            writer.writerows(results)
+            root.clipboard_clear()
+            root.clipboard_append(output.getvalue())
+            set_local_status("Result copied as TSV.", temporary=True)
+
     def copy_as_report_details():
         results = _get_tree_results_as_dicts([current_item_id])
         if results:
@@ -8229,6 +8241,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_menu.add_command(label="Copy Path", command=copy_path_details, accelerator="Ctrl+Shift+P")
     copy_menu.add_command(label="Copy SHA256", command=copy_sha256_details, accelerator="Ctrl+H")
     copy_menu.add_command(label="Copy as CSV", command=copy_as_csv_details)
+    copy_menu.add_command(label="Copy as TSV", command=copy_as_tsv_details)
     copy_menu.add_command(label="Copy as HTML", command=copy_as_html_details)
     copy_menu.add_command(label="Copy as JSON", command=copy_as_json_details, accelerator="Ctrl+J")
     copy_menu.add_command(label="Copy as Markdown", command=copy_as_markdown_details)
@@ -8764,6 +8777,27 @@ def copy_as_csv(event: Optional[tk.Event] = None) -> None:
     tree.clipboard_clear()
     tree.clipboard_append(output.getvalue())
     update_status(f"Copied {len(results)} item(s) as CSV.")
+
+
+def copy_as_tsv(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as TSV to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+    output = io.StringIO()
+    fields = ["path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet"]
+    writer = csv.DictWriter(output, fieldnames=fields, delimiter='\t')
+    writer.writeheader()
+    writer.writerows(results)
+
+    tree.clipboard_clear()
+    tree.clipboard_append(output.getvalue())
+    update_status(f"Copied {len(results)} item(s) as TSV.")
 
 
 def copy_as_yaml(event: Optional[tk.Event] = None) -> None:
@@ -9750,6 +9784,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     copy_submenu.add_command(label="SHA256 Hash", command=copy_sha256, accelerator="Ctrl+H")
     copy_submenu.add_command(label="Code Snippet", command=copy_snippet, accelerator="Ctrl+S")
     copy_submenu.add_command(label="As CSV", command=copy_as_csv)
+    copy_submenu.add_command(label="As TSV", command=copy_as_tsv)
     copy_submenu.add_command(label="As HTML", command=copy_as_html)
     copy_submenu.add_command(label="As Markdown Table", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
     copy_submenu.add_command(label="As JSON Array", command=copy_as_json, accelerator="Ctrl+J")
