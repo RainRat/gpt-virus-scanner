@@ -503,6 +503,11 @@ Ignore files or folders matching specific patterns:
 python3 gptscan.py ./my_project --exclude "node_modules/*" "*.tmp" --cli
 ```
 
+Ignore files or folders using patterns listed in a text file:
+```bash
+python3 gptscan.py ./my_project --exclude-file .gptscanignore --cli
+```
+
 Filter results by setting a minimum threat score threshold (0 to 100):
 ```bash
 python3 gptscan.py ./my_project --min-threat 70 --cli
