@@ -330,15 +330,14 @@ def parse_ignore_file(file_path: Union[Path, str]) -> List[str]:
     """
     patterns = []
     lines = load_file(str(file_path), mode='multi_line')
-    if isinstance(lines, list):
-        for line in lines:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            parts = line.split('#', 1)
-            pattern = parts[0].strip()
-            if pattern:
-                patterns.append(pattern)
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        parts = line.split('#', 1)
+        pattern = parts[0].strip()
+        if pattern:
+            patterns.append(pattern)
     return patterns
 
 
