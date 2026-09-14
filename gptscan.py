@@ -4245,7 +4245,10 @@ def manage_exclusions() -> None:
             _apply_filter()
             if Config.ignore_patterns:
                 new_idx = min(first_sel, len(Config.ignore_patterns) - 1)
+                ignore_listbox.selection_clear(0, tk.END)
                 ignore_listbox.select_set(new_idx)
+                ignore_listbox.activate(new_idx)
+                ignore_listbox.see(new_idx)
         except Exception as e:
             messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
 

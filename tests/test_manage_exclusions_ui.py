@@ -53,6 +53,12 @@ def mock_gui_env(monkeypatch, tmp_path):
                 self.selection = list(range(first, last + 1))
             else:
                 self.selection = [first]
+        def selection_clear(self, first, last=None):
+            self.selection = []
+        def activate(self, index):
+            self.activated = index
+        def see(self, index):
+            self.seen = index
 
     monkeypatch.setattr(gptscan.tk, 'Listbox', MockListbox)
 
@@ -365,3 +371,19 @@ def test_manage_exclusions_initial_focus_and_selection(mock_gui_env):
 
     assert lb.focused is True
     assert lb.selection == [0]
+
+def test_manage_exclusions_remove_activates_and_scrolls(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = ["p1", "p2", "p3"]
+    mock_mb.askyesno.return_value = True
+
+    manage_exclusions()
+    lb = captured['listbox']
+    lb.selection = [0]
+
+    remove_cmd = captured['buttons']['Remove Selected'][1]
+    remove_cmd()
+
+    assert lb.selection == [0]
+    assert getattr(lb, 'activated', None) == 0
+    assert getattr(lb, 'seen', None) == 0
