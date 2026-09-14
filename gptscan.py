@@ -2657,7 +2657,7 @@ def parse_percent(val: str, default: float = -1.0) -> float:
         return default
 
     text = val.strip()
-    if not text or not text.endswith('%'):
+    if not text.endswith('%'):
         return default
 
     try:
