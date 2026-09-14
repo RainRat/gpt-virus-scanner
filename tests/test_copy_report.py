@@ -495,3 +495,102 @@ def test_copy_snippet_single_and_multiple(monkeypatch):
     mock_tree.clipboard_clear.assert_called_once()
     mock_tree.clipboard_append.assert_called_once_with("--- file1.py ---\nsnip1\n\n--- file2.py ---\nsnip2")
     mock_update_status.assert_called_once_with("Copied 2 snippets.")
+
+
+def test_copy_as_formatted_no_tree_or_selection(monkeypatch):
+    """Test copy_as_* export functions return early when tree is None or selection is empty."""
+    copy_funcs = [
+        gptscan.copy_as_json,
+        gptscan.copy_as_report,
+        gptscan.copy_as_csv,
+        gptscan.copy_as_yaml,
+        gptscan.copy_as_xml,
+        gptscan.copy_as_html,
+        gptscan.copy_as_sarif,
+    ]
+
+    monkeypatch.setattr(gptscan, 'tree', None)
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+
+    for func in copy_funcs:
+        func()
+
+    mock_update_status.assert_not_called()
+
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = []
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+
+    for func in copy_funcs:
+        func()
+
+    mock_tree.clipboard_clear.assert_not_called()
+    mock_update_status.assert_not_called()
+
+
+def test_copy_as_formatted_tree_selection(monkeypatch):
+    """Test copy_as_* export functions copy formatted results and update status when items are selected."""
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ["item1"]
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+
+    sample_dicts = [
+        {
+            "path": "test_file.py",
+            "line": "10",
+            "own_conf": "80%",
+            "gpt_conf": "85%",
+            "admin_desc": "Admin note",
+            "end-user_desc": "User note",
+            "snippet": "eval(user_input)",
+        }
+    ]
+    monkeypatch.setattr(gptscan, '_get_tree_results_as_dicts', lambda item_ids: sample_dicts)
+
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+
+    gptscan.copy_as_json()
+    mock_tree.clipboard_clear.assert_called_once()
+    copied = mock_tree.clipboard_append.call_args[0][0]
+    assert "test_file.py" in copied
+    mock_update_status.assert_called_with("Copied 1 item(s) as JSON.")
+
+    mock_tree.reset_mock()
+    gptscan.copy_as_report()
+    mock_tree.clipboard_clear.assert_called_once()
+    copied = mock_tree.clipboard_append.call_args[0][0]
+    assert "test_file.py" in copied
+    mock_update_status.assert_called_with("Copied 1 item(s) as Triage Report.")
+
+    mock_tree.reset_mock()
+    gptscan.copy_as_csv()
+    copied = mock_tree.clipboard_append.call_args[0][0]
+    assert "path,line,own_conf" in copied
+    assert "test_file.py" in copied
+    mock_update_status.assert_called_with("Copied 1 item(s) as CSV.")
+
+    mock_tree.reset_mock()
+    gptscan.copy_as_yaml()
+    copied = mock_tree.clipboard_append.call_args[0][0]
+    assert "test_file.py" in copied
+    mock_update_status.assert_called_with("Copied 1 item(s) as YAML.")
+
+    mock_tree.reset_mock()
+    gptscan.copy_as_xml()
+    copied = mock_tree.clipboard_append.call_args[0][0]
+    assert "test_file.py" in copied or "<result>" in copied
+    mock_update_status.assert_called_with("Copied 1 item(s) as XML.")
+
+    mock_tree.reset_mock()
+    gptscan.copy_as_html()
+    copied = mock_tree.clipboard_append.call_args[0][0]
+    assert "test_file.py" in copied or "<html" in copied
+    mock_update_status.assert_called_with("Copied 1 item(s) as HTML.")
+
+    mock_tree.reset_mock()
+    gptscan.copy_as_sarif()
+    copied = mock_tree.clipboard_append.call_args[0][0]
+    assert "2.1.0" in copied or "test_file.py" in copied
+    mock_update_status.assert_called_with("Copied 1 item(s) as SARIF.")
