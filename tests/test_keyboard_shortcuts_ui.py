@@ -101,10 +101,15 @@ def test_show_keyboard_shortcuts_bindings(mock_shortcuts_env):
 
     assert '<Escape>' in bindings
     assert '<Return>' in bindings
+    assert '<KP_Enter>' in bindings
 
     # Trigger Esc binding and check it destroys Toplevel
     bindings['<Escape>'](None)
     captured['toplevel'].destroy.assert_called_once()
+
+    # Trigger KP_Enter binding and check it destroys Toplevel
+    bindings['<KP_Enter>'](None)
+    assert captured['toplevel'].destroy.call_count == 2
 
 def test_show_keyboard_shortcuts_content_and_tabs(mock_shortcuts_env):
     captured = mock_shortcuts_env
@@ -139,9 +144,11 @@ def test_show_keyboard_shortcuts_darwin_modifier(mock_shortcuts_env, monkeypatch
     assert "Cmd+G" in label_texts
     assert "Cmd+T" in label_texts
     assert "Cmd+L" in label_texts
+    assert "Cmd+PageUp / PageDown" in label_texts
     # Verify Ctrl+F is NOT used on Mac
     assert "Ctrl+F" not in label_texts
     assert "Ctrl+H" not in label_texts
+    assert "Ctrl+PageUp / PageDown" not in label_texts
 
 def test_show_keyboard_shortcuts_linux_modifier(mock_shortcuts_env, monkeypatch):
     captured = mock_shortcuts_env
@@ -158,9 +165,11 @@ def test_show_keyboard_shortcuts_linux_modifier(mock_shortcuts_env, monkeypatch)
     assert "Ctrl+G" in label_texts
     assert "Ctrl+T" in label_texts
     assert "Ctrl+L" in label_texts
+    assert "Ctrl+PageUp / PageDown" in label_texts
     # Verify Cmd+F is NOT used on Linux
     assert "Cmd+F" not in label_texts
     assert "Cmd+H" not in label_texts
+    assert "Cmd+PageUp / PageDown" not in label_texts
 
 def test_show_keyboard_shortcuts_no_root(monkeypatch):
     monkeypatch.setattr(gptscan, 'root', None)

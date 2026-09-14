@@ -4445,6 +4445,7 @@ def show_keyboard_shortcuts() -> None:
     # Bind Esc / Enter to close
     win.bind('<Escape>', lambda e: win.destroy())
     win.bind('<Return>', lambda e: win.destroy())
+    win.bind('<KP_Enter>', lambda e: win.destroy())
 
     main_frame = ttk.Frame(win, padding=15)
     main_frame.pack(fill=tk.BOTH, expand=True)
@@ -4508,7 +4509,7 @@ def show_keyboard_shortcuts() -> None:
         ("Left / Right", "Previous / Next Result (when input not active)"),
         ("Alt+Left / Right", "Force Previous / Next Result"),
         ("Alt+Up / Down", "Force Previous / Next Result"),
-        ("Ctrl+PageUp / PageDown", "Force Previous / Next Result"),
+        (f"{mod}+PageUp / PageDown", "Force Previous / Next Result"),
         ("F5 / R", "Rescan Current Item"),
         ("Delete", "Exclude Current Item"),
         (f"{mod}+U", "Toggle between Full Source & Snippet"),
