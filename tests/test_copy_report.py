@@ -526,6 +526,7 @@ def test_copy_as_formatted_no_tree_or_selection(monkeypatch):
         gptscan.copy_as_json,
         gptscan.copy_as_report,
         gptscan.copy_as_csv,
+        gptscan.copy_as_tsv,
         gptscan.copy_as_yaml,
         gptscan.copy_as_xml,
         gptscan.copy_as_html,
@@ -593,6 +594,13 @@ def test_copy_as_formatted_tree_selection(monkeypatch):
     assert "path,line,own_conf" in copied
     assert "test_file.py" in copied
     mock_update_status.assert_called_with("Copied 1 item(s) as CSV.")
+
+    mock_tree.reset_mock()
+    gptscan.copy_as_tsv()
+    copied = mock_tree.clipboard_append.call_args[0][0]
+    assert "path\tline\town_conf" in copied
+    assert "test_file.py" in copied
+    mock_update_status.assert_called_with("Copied 1 item(s) as TSV.")
 
     mock_tree.reset_mock()
     gptscan.copy_as_yaml()

@@ -493,7 +493,7 @@ Scan a list of target files listed in a text file:
 python3 gptscan.py --file-list targets.txt --cli
 ```
 
-Only scan specific file extensions (for example, Python and JavaScript files):
+Scan only specific file extensions (for example, Python and JavaScript files):
 ```bash
 python3 gptscan.py ./my_project --extensions py,js --cli
 ```
