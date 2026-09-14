@@ -73,3 +73,64 @@ def test_view_online_single_selection_status(mock_gui_vars):
 
         assert mock_open.call_count == 1
         mock_status_update.assert_called_with("Opening online view for my_file.py...")
+
+def test_view_online_no_tree(monkeypatch):
+    monkeypatch.setattr(gptscan, 'tree', None)
+    with patch('webbrowser.open') as mock_open:
+        gptscan.view_online()
+        mock_open.assert_not_called()
+
+def test_view_online_empty_selection(mock_gui_vars):
+    mock_tree, _ = mock_gui_vars
+    mock_tree.selection.return_value = []
+    with patch('webbrowser.open') as mock_open:
+        gptscan.view_online()
+        mock_open.assert_not_called()
+
+def test_view_online_string_path_with_explicit_line():
+    with patch('gptscan.get_online_url') as mock_get_url, \
+         patch('webbrowser.open') as mock_open, \
+         patch('gptscan.update_status'):
+        mock_get_url.return_value = "https://github.com/user/repo/blob/main/file.py#L42"
+        gptscan.view_online("file.py", line=42)
+        mock_get_url.assert_called_once_with("file.py", 42)
+        mock_open.assert_called_once_with("https://github.com/user/repo/blob/main/file.py#L42")
+
+def test_view_online_string_path_with_default_line():
+    with patch('gptscan.get_online_url') as mock_get_url, \
+         patch('webbrowser.open') as mock_open, \
+         patch('gptscan.update_status'):
+        mock_get_url.return_value = "https://github.com/user/repo/blob/main/file.py#L1"
+        gptscan.view_online("file.py")
+        mock_get_url.assert_called_once_with("file.py", 1)
+        mock_open.assert_called_once_with("https://github.com/user/repo/blob/main/file.py#L1")
+
+def test_view_online_string_path_unresolved_no_messagebox():
+    with patch('gptscan.get_online_url', return_value=None), \
+         patch('webbrowser.open') as mock_open, \
+         patch('gptscan.messagebox.showinfo') as mock_showinfo:
+        gptscan.view_online("file.py")
+        mock_open.assert_not_called()
+        mock_showinfo.assert_not_called()
+
+def test_view_online_selection_unresolved_shows_messagebox(mock_gui_vars):
+    mock_tree, _ = mock_gui_vars
+    mock_tree.selection.return_value = ['item1']
+    with patch('gptscan._get_item_raw_values', return_value=["local_file.py", "50%", "", "", "", "snippet", "10"]), \
+         patch('gptscan.get_online_url', return_value=None), \
+         patch('webbrowser.open') as mock_open, \
+         patch('gptscan.messagebox.showinfo') as mock_showinfo:
+        gptscan.view_online()
+        mock_open.assert_not_called()
+        mock_showinfo.assert_called_once()
+
+def test_view_online_selection_dash_line_number_fallback(mock_gui_vars):
+    mock_tree, _ = mock_gui_vars
+    mock_tree.selection.return_value = ['item1']
+    with patch('gptscan._get_item_raw_values', return_value=["file.py", "50%", "", "", "", "snippet", "-"]), \
+         patch('gptscan.get_online_url') as mock_get_url, \
+         patch('webbrowser.open'), \
+         patch('gptscan.update_status'):
+        mock_get_url.return_value = "http://online/file.py"
+        gptscan.view_online()
+        mock_get_url.assert_called_once_with("file.py", 1)
