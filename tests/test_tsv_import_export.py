@@ -133,3 +133,33 @@ def test_export_results_gui_tsv(monkeypatch, tmp_path):
     assert out_file.exists()
     content = out_file.read_text(encoding='utf-8')
     assert "file.py\t50%\ta\tu\t50%\tcode\t1" in content
+
+
+def test_copy_as_tsv_logic(monkeypatch):
+    """Test that copy_as_tsv correctly formats selected data as TSV and appends to clipboard."""
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ["I001"]
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+
+    test_results = [{
+        "path": "test.py",
+        "line": "10",
+        "own_conf": "90%",
+        "gpt_conf": "85%",
+        "admin_desc": "Dangerous code found",
+        "end-user_desc": "Highly suspicious",
+        "snippet": "eval(input())"
+    }]
+    monkeypatch.setattr(gptscan, '_get_tree_results_as_dicts', lambda items: test_results)
+
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
+
+    gptscan.copy_as_tsv()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    assert mock_tree.clipboard_append.call_count == 1
+    copied_content = mock_tree.clipboard_append.call_args[0][0]
+    assert "path\tline\town_conf\tgpt_conf\tadmin_desc\tend-user_desc\tsnippet" in copied_content
+    assert "test.py\t10\t90%\t85%\tDangerous code found\tHighly suspicious\teval(input())" in copied_content
+    mock_update_status.assert_called_once_with("Copied 1 item(s) as TSV.")
