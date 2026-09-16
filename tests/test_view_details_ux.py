@@ -305,3 +305,31 @@ def test_view_details_focus_transition(mock_view_details_env, monkeypatch):
     # Navigating back to item1 makes has_prev False (disabled).
     # Focus should shift back to Next > button
     button_mocks["Next >"].focus_set.assert_called()
+
+
+def test_view_details_keypad_enter_bindings(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py")
+
+    captured_bindings = {}
+    mock_toplevel.bind.side_effect = lambda event, func: captured_bindings.update({event: func})
+
+    gptscan.view_details(item_id="item1")
+
+    assert '<Shift-KP_Enter>' in captured_bindings
+    assert '<Control-KP_Enter>' in captured_bindings
+    assert '<Command-KP_Enter>' in captured_bindings
+
+    mock_open_file = MagicMock()
+    mock_show_in_folder = MagicMock()
+    monkeypatch.setattr(gptscan, 'open_file', mock_open_file)
+    monkeypatch.setattr(gptscan, 'show_in_folder', mock_show_in_folder)
+
+    captured_bindings['<Shift-KP_Enter>'](None)
+    mock_open_file.assert_called_once_with("test.py")
+
+    captured_bindings['<Control-KP_Enter>'](None)
+    mock_show_in_folder.assert_called_with("test.py")
+
+    captured_bindings['<Command-KP_Enter>'](None)
+    mock_show_in_folder.assert_called_with("test.py")
