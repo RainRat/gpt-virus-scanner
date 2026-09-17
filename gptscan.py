@@ -6628,7 +6628,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
                 writer.writerow([record.get(k, '') for k in keys])
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6650,6 +6650,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         quiet: Whether to suppress progress updates and summary banners on sys.stderr.
         top_limit: If provided, restrict the output results to the top N highest-threat findings.
         count_only: Whether to print only the total count of matching findings.
+        summary_only: Whether to print only the scan summary banner without individual findings.
         sort_by: Optional field to sort results by ('threat', 'path', or 'line').
         paths_only: Whether to print only unique file paths of suspicious findings line-by-line.
 
@@ -6660,7 +6661,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     out_stream = open(output_file, 'w', encoding='utf-8') if output_file else sys.stdout
 
-    if output_format in ('csv', 'tsv') and not count_only and not paths_only:
+    if output_format in ('csv', 'tsv') and not count_only and not summary_only and not paths_only:
         writer = csv.writer(out_stream, delimiter='\t' if output_format == 'tsv' else ',')
         writer.writerow(keys)
 
@@ -6745,7 +6746,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 else:
                     medium_risk_found += 1
 
-            if count_only:
+            if count_only or summary_only:
                 pass
             elif paths_only or sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
                 result_buffer.append(record)
@@ -6826,7 +6827,22 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     if top_limit is not None and top_limit > 0:
         result_buffer = result_buffer[:top_limit]
 
-    if count_only:
+    if summary_only:
+        total_scanned = metrics.get('total_files', final_progress[1] if final_progress is not None else 0)
+        use_summary_color = out_stream.isatty() if hasattr(out_stream, 'isatty') else False
+        summary_text = format_scan_summary(
+            total_scanned,
+            threats_found,
+            metrics.get('total_bytes'),
+            metrics.get('elapsed_time'),
+            use_color=use_summary_color,
+            high_risk=high_risk_found,
+            medium_risk=medium_risk_found
+        )
+        if baseline_file:
+            summary_text += f" (Bypassed {matched_baseline_count} baseline findings)"
+        print(summary_text, file=out_stream)
+    elif count_only:
         final_count = threats_found
         if top_limit is not None and top_limit >= 0:
             final_count = min(threats_found, top_limit)
@@ -10280,6 +10296,12 @@ def main():
         help='Print only the total count of suspicious findings.'
     )
     output_group.add_argument(
+        '-s', '--summary-only',
+        action='store_true',
+        dest='summary_only',
+        help='Print only the scan summary banner without individual findings.'
+    )
+    output_group.add_argument(
         '-l', '--paths-only', '--files-with-matches',
         action='store_true',
         dest='paths_only',
@@ -10750,6 +10772,7 @@ def main():
             quiet=args.quiet,
             top_limit=args.top,
             count_only=args.count_only,
+            summary_only=args.summary_only,
             sort_by=args.sort_by,
             paths_only=args.paths_only
         )
