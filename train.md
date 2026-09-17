@@ -45,7 +45,7 @@ Train the local detection model for the GPT Virus Scanner. The model learns to i
        *Note: Keep the quotation marks around `"tensorflow<2.16"` to prevent shell globbing errors in zsh.*
      - **For Python 3.12:**
        ```bash
-       python3 -m pip install tensorflow numpy pyyaml
+       python3 -m pip install tensorflow tf_keras numpy pyyaml
        ```
    - **Windows:**
      - **For Python 3.9, 3.10, or 3.11:**
@@ -54,7 +54,7 @@ Train the local detection model for the GPT Virus Scanner. The model learns to i
        ```
      - **For Python 3.12:**
        ```cmd
-       python -m pip install tensorflow numpy pyyaml
+       python -m pip install tensorflow tf_keras numpy pyyaml
        ```
 
 ## Configuration
