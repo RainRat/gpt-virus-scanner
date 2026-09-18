@@ -152,6 +152,7 @@ Open the scanner window by running the appropriate command for your operating sy
 
 ##### Git Integration
 *   **Scan Git Diff (Ctrl+Shift+D):** Scan your current project changes as a diff.
+*   **Scan Git Staged Files:** Scan files currently staged in Git.
 *   **Scan Recent Commits...:** Scan files from the most recent commits.
 *   **Scan Git Hooks (Ctrl+Shift+G):** Scan your local and global Git hooks for suspicious scripts.
 *   **Scan Git Stashes (Ctrl+Shift+Q):** Scan all Git stashes for suspicious code changes.
@@ -437,6 +438,11 @@ Scan changes in your local project as a diff:
 python3 gptscan.py --git-diff --cli
 ```
 
+Scan files currently staged in Git:
+```bash
+python3 gptscan.py --git-staged --cli
+```
+
 Scan local and global Git hooks for dangerous scripts:
 ```bash
 python3 gptscan.py --git-hooks --cli
@@ -601,6 +607,7 @@ You can customize terminal scans using these command line options.
 ##### Git Integration
 *   `--git-changes [<commit>]`: Only scan files changed in Git. You can optionally provide a branch or commit (default is `HEAD`).
 *   `--git-diff [<commit>]`: Scan current Git changes as a diff. You can optionally provide a branch or commit (default is `HEAD`).
+*   `--git-staged`: Scan files currently staged in Git.
 *   `--git-hooks`: Scan local and global Git hooks.
 *   `--git-config`: Scan for dangerous Git configuration settings.
 *   `--git-stash`: Scan all Git stashes.

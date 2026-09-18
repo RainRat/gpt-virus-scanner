@@ -585,7 +585,7 @@ class Config:
 
         is_help_or_version = any(arg in sys.argv for arg in ['-h', '--help', '-v', '--version'])
         is_cli_without_gpt = ('--cli' in sys.argv or any(arg in sys.argv for arg in [
-            '--audit', '--git-changes', '--git-diff', '--git-hooks', '--git-config',
+            '--audit', '--git-changes', '--git-diff', '--git-staged', '--git-hooks', '--git-config',
             '--git-stash', '--git-conflicts', '--git-history', '--git-reflog', '--git-submodules',
             '--shell-profiles', '--shell-history', '--system-path', '--running-processes',
             '--scheduled-tasks', '--startup-items', '--system-services', '--python-packages',
@@ -2568,6 +2568,34 @@ def get_git_changed_files(path: str = ".", ref: str = "HEAD") -> List[str]:
     return [p for f in files if os.path.exists(p := os.path.join(toplevel, f))]
 
 
+def get_git_staged_files(path: str = ".") -> List[str]:
+    """Get a list of staged files from git.
+
+    Args:
+        path: The folder or file path.
+    """
+    toplevel, rel_target = _get_git_info(path)
+    if toplevel is None:
+        return []
+
+    targets = [rel_target]
+
+    files = set()
+    try:
+        cmd = ["git", "diff", "--name-only", "--cached", "--"] + targets
+        output = subprocess.check_output(
+            cmd,
+            cwd=toplevel,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+        files.update(line.strip() for line in output.splitlines() if line.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+
+    return [p for f in sorted(files) if os.path.exists(p := os.path.join(toplevel, f))]
+
+
 def get_git_diff(path: str = ".", ref: str = "HEAD") -> str:
     """Get the Git changes (diff) as a string.
 
@@ -3345,6 +3373,16 @@ def scan_git_diff_click():
         "No Git changes detected (staged or unstaged) in the target path.",
         "Git Diff Error",
         is_snippets=True
+    )
+
+
+def scan_git_staged_click():
+    """Scan files currently staged in Git."""
+    _generic_scan_click(
+        lambda: get_git_staged_files(_get_target_path()),
+        "Git Staged Files",
+        "No staged Git files found in the target path.",
+        "Git Staged Files Error"
     )
 
 
@@ -9277,6 +9315,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         git_menu = tk.Menu(parent, tearoff=0)
         # Changes
         git_menu.add_command(label="Scan Git Diff", command=scan_git_diff_click, accelerator="Ctrl+Shift+D")
+        git_menu.add_command(label="Scan Git Staged Files", command=scan_git_staged_click)
         git_menu.add_command(label="Scan Git Revision...", command=scan_git_revision_click)
         git_menu.add_command(label="Scan Git Conflicts", command=scan_git_conflicts_click)
         git_menu.add_command(label="Scan Git Submodules", command=scan_git_submodules_click)
@@ -10052,6 +10091,11 @@ def main():
         help='Scan current Git changes as a diff. Optionally provide a branch or commit (for example: "HEAD~1").'
     )
     git_group.add_argument(
+        '--git-staged',
+        action='store_true',
+        help='Scan files currently staged in Git.'
+    )
+    git_group.add_argument(
         '--git-hooks',
         action='store_true',
         help='Scan local and global Git hooks.'
@@ -10315,7 +10359,7 @@ def main():
         # If we ONLY wanted to clear cache, exit now.
         if not any([
             args.target, args.path, args.stdin, args.clipboard, args.import_results, args.baseline, args.files,
-            args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
+            args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_staged, args.git_hooks, args.git_config,
             args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
             args.running_processes, args.scheduled_tasks, args.startup_items,
             args.system_services, args.audit, args.modified, args.downloads, args.desktop,
@@ -10427,6 +10471,16 @@ def main():
             if not extra_snippets:
                 print(f"No Git diff detected in provided targets (ref: {args.git_diff}).", file=sys.stderr)
 
+        if args.git_staged:
+            git_roots = scan_targets if scan_targets else ["."]
+            git_files = []
+            for root_dir in git_roots:
+                git_files.extend(get_git_staged_files(root_dir))
+
+            if not git_files:
+                print("No staged Git files detected in target folder.", file=sys.stderr)
+            scan_targets = git_files
+
         if args.git_hooks:
             # Use a copy of current targets as git roots to avoid infinite loop when extending scan_targets
             git_roots = list(scan_targets) if scan_targets else ["."]
@@ -10465,7 +10519,7 @@ def main():
             for root_dir in git_roots:
                 scan_targets.extend(get_git_submodule_paths(root_dir))
 
-        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_conflicts and not args.git_history and not args.git_reflog and not args.git_submodules and not args.clipboard and not extra_snippets:
+        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_staged and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_conflicts and not args.git_history and not args.git_reflog and not args.git_submodules and not args.clipboard and not extra_snippets:
             # Default to current folder if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
