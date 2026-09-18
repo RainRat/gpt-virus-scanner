@@ -9467,6 +9467,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         pass
     textbox.grid(row=0, column=1, sticky="ew", padx=(5, 2))
     textbox.bind('<Return>', lambda event: button_click())
+    textbox.bind('<KP_Enter>', lambda event: button_click())
 
     textbox.bind('<<ComboboxSelected>>', on_target_selected)
     try:
@@ -9675,6 +9676,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     filter_entry.grid(row=0, column=1, sticky="ew")
     filter_entry.bind('<KeyRelease>', _apply_filter)
     filter_entry.bind('<Return>', on_filter_return)
+    filter_entry.bind('<KP_Enter>', on_filter_return)
     filter_entry.bind('<Escape>', on_filter_escape)
     bind_hover_message(filter_entry, "Search results by any column (path, threat level, analysis, snippet). (Ctrl+F)")
 
@@ -9763,7 +9765,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     tree.bind('<Double-1>', on_tree_double_click)
     tree.bind('<Return>', view_details)
+    tree.bind('<KP_Enter>', view_details)
     tree.bind('<Shift-Return>', open_file)
+    tree.bind('<Shift-KP_Enter>', open_file)
     tree.grid(row=0, column=0, sticky="nsew")
 
     # --- Footer Frame ---
@@ -9876,6 +9880,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     # Bind selection and rescan keys
     root.bind('<Return>', on_root_return)
+    root.bind('<KP_Enter>', on_root_return)
     root.bind('<Control-o>', import_results)
     root.bind('<Command-o>', import_results)
     root.bind('<Control-Shift-O>', lambda event: browse_file_click())
@@ -9956,7 +9961,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<Control-s>', copy_snippet)
     tree.bind('<Command-s>', copy_snippet)
     tree.bind('<Control-Return>', show_in_folder)
+    tree.bind('<Control-KP_Enter>', show_in_folder)
     tree.bind('<Command-Return>', show_in_folder)
+    tree.bind('<Command-KP_Enter>', show_in_folder)
     tree.bind('<space>', view_details)
     tree.bind('<Delete>', lambda event: exclude_selected())
     tree.bind('<F5>', lambda event: rescan_selected())

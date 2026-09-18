@@ -30,6 +30,7 @@ def test_treeview_highlighting(monkeypatch):
     mock_all_var = MagicMock()
     mock_all_var.get.return_value = True
     monkeypatch.setattr(gptscan, 'all_var', mock_all_var)
+    monkeypatch.setattr(gptscan, 'filter_var', None)
     mock_tree = MagicMock()
     mock_tree.column.return_value = {'width': 100}
     monkeypatch.setattr(gptscan, 'tree', mock_tree, raising=False)
