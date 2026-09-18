@@ -4386,7 +4386,10 @@ def manage_extensions() -> None:
             refresh_list()
             if Config.extensions_set:
                 new_idx = min(first_sel, len(sorted(Config.extensions_set)) - 1)
+                ext_listbox.selection_clear(0, tk.END)
                 ext_listbox.select_set(new_idx)
+                ext_listbox.activate(new_idx)
+                ext_listbox.see(new_idx)
         except Exception as e:
             messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
 

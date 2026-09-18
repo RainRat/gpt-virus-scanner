@@ -173,6 +173,8 @@ def test_manage_extensions_remove(mock_gui_env, monkeypatch):
     assert ".js" not in Config.extensions_set
     assert ".py" in Config.extensions_set
     assert lb.selection == [0]  # .py moved to index 0 and was re-selected
+    assert getattr(lb, "activated", None) == 0
+    assert getattr(lb, "seen", None) == 0
 
 def test_manage_extensions_remove_last_item_reselects_previous(mock_gui_env, monkeypatch):
     captured, mock_sd, mock_mb, mock_top = mock_gui_env

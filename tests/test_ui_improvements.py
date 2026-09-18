@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 import gptscan
 import tkinter as tk
 
@@ -58,3 +58,28 @@ def test_apply_filter_empty(monkeypatch):
 
     # Verify ALL items were inserted because filter is empty
     assert mock_tree.insert.call_count == 2
+
+
+def test_clear_target_btn_hover_message(monkeypatch):
+    """Test that clear_target_btn correctly updates the status label on hover (<Enter>)."""
+    btn = MagicMock()
+    label = MagicMock()
+    label.cget.return_value = "Ready"
+    monkeypatch.setattr(gptscan, 'status_label', label)
+    monkeypatch.setattr(gptscan, 'current_cancel_event', None)
+
+    gptscan.bind_hover_message(btn, "Clear the scan target.")
+
+    btn.bind.assert_any_call("<Enter>", ANY)
+    btn.bind.assert_any_call("<Leave>", ANY)
+
+    # Retrieve the on_enter callback bound to <Enter>
+    enter_cb = None
+    for call in btn.bind.call_args_list:
+        if call[0][0] == "<Enter>":
+            enter_cb = call[0][1]
+            break
+
+    assert enter_cb is not None
+    enter_cb(MagicMock())
+    label.config.assert_called_with(text="Clear the scan target.")
