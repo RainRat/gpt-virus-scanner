@@ -189,3 +189,42 @@ def test_cli_git_submodules_option(monkeypatch, tmp_path):
     gptscan.main()
 
     assert str(sub1) in scan_called_targets
+
+
+def test_get_git_submodule_paths_status_path_with_spaces(monkeypatch, tmp_path):
+    sub_dir = tmp_path / "sub dir with spaces"
+    sub_dir.mkdir()
+
+    monkeypatch.setattr(gptscan, "_get_git_info", lambda p: (str(tmp_path), "."))
+
+    mock_output = (
+        " e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 sub dir with spaces (heads/main)\n"
+    )
+
+    monkeypatch.setattr(subprocess, "check_output", lambda cmd, **k: mock_output)
+
+    res = gptscan.get_git_submodule_paths(str(tmp_path))
+    assert res == [str(sub_dir)]
+
+
+def test_get_git_submodule_paths_fallback_gitmodules_unspaced_equals(monkeypatch, tmp_path):
+    sub_dir = tmp_path / "nospace_sub"
+    sub_dir.mkdir()
+
+    gitmodules = tmp_path / ".gitmodules"
+    gitmodules.write_text(
+        "[submodule \"pkg\"]\n"
+        "\tpath=nospace_sub\n",
+        encoding="utf-8"
+    )
+
+    monkeypatch.setattr(gptscan, "_get_git_info", lambda p: (str(tmp_path), "."))
+
+    def mock_check_output_fail(cmd, **kwargs):
+        raise subprocess.CalledProcessError(1, cmd)
+
+    monkeypatch.setattr(subprocess, "check_output", mock_check_output_fail)
+
+    res = gptscan.get_git_submodule_paths(str(tmp_path))
+    assert res == [str(sub_dir)]
+

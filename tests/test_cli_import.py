@@ -67,3 +67,26 @@ def test_run_cli_import_from_stdin_error(monkeypatch, capsys):
     assert exit_code == 0
     captured = capsys.readouterr()
     assert "Stdin failure" in captured.err
+
+
+def test_import_results_generator_stdin(monkeypatch):
+    mock_gen = MagicMock(return_value=iter([
+        ('result', ("stdin_item.py", "90%", "", "", "95%", "print()", "1"))
+    ]))
+    monkeypatch.setattr(gptscan, "import_results_from_content_generator", mock_gen)
+    monkeypatch.setattr(sys.stdin, "read", lambda: "{\"results\": []}")
+
+    events = list(gptscan.import_results_generator("-"))
+    assert len(events) == 1
+    assert events[0][0] == 'result'
+    mock_gen.assert_called_once_with("{\"results\": []}", filename_hint="stdin.json")
+
+
+def test_import_results_generator_stdin_empty(monkeypatch):
+    monkeypatch.setattr(sys.stdin, "read", lambda: "   \n")
+
+    events = list(gptscan.import_results_generator("-"))
+    assert len(events) == 1
+    assert events[0][0] == 'progress'
+    assert "Terminal input is empty" in events[0][1][2]
+

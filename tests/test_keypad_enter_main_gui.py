@@ -69,3 +69,8 @@ def test_keypad_enter_bindings_main_gui(monkeypatch):
     assert '<KP_Enter>' in root_bindings
     root_bindings['<KP_Enter>'](None)
     mock_on_root_return.assert_called_once()
+
+    # Reset global GUI state to preserve test isolation
+    monkeypatch.setattr(gptscan, 'filter_var', None)
+    monkeypatch.setattr(gptscan, 'all_var', None)
+

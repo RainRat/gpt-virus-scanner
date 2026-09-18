@@ -1203,7 +1203,7 @@ async def async_handle_gpt_response(
 
     retries = 0
     json_data: Optional[Union[Dict, str]] = None
-    # Include provider, model and prompt in cache key for robustness
+    # Include provider, model and prompt in cache key
     cache_input = f"{Config.provider}:{Config.model_name}:{taskdesc}:{snippet}"
     cache_key = hashlib.sha256(cache_input.encode('utf-8')).hexdigest()
     if cache_key in Config.gpt_cache:
@@ -2038,6 +2038,15 @@ def get_git_submodule_paths(path: str = ".") -> List[str]:
                 if len(parts) >= 2:
                     submodule_rel_path = parts[1]
                     abs_path = os.path.join(toplevel, submodule_rel_path)
+                    if not os.path.exists(abs_path) and len(parts) > 2:
+                        remainder = line.split(None, 1)[1]
+                        if remainder.endswith(")") and " (" in remainder:
+                            candidate = remainder.rsplit(" (", 1)[0]
+                        else:
+                            candidate = remainder
+                        candidate_abs = os.path.join(toplevel, candidate)
+                        if os.path.exists(candidate_abs):
+                            abs_path = candidate_abs
                     if os.path.exists(abs_path):
                         paths.append(abs_path)
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
@@ -2047,7 +2056,7 @@ def get_git_submodule_paths(path: str = ".") -> List[str]:
                 with open(gitmodules_path, "r", encoding="utf-8", errors="ignore") as f:
                     for line in f:
                         line = line.strip()
-                        if line.startswith("path ="):
+                        if re.match(r"^path\s*=", line):
                             rel_path = line.split("=", 1)[1].strip().strip("\"'")
                             abs_path = os.path.join(toplevel, rel_path)
                             if os.path.exists(abs_path):
@@ -4840,7 +4849,7 @@ def unpack_content(name: str, content: bytes, depth: int = 0, hint: Optional[str
                                     command_val = "\n".join(multiline_lines)
                             # Handle multiline arrays
                             elif command_val.startswith('['):
-                                # Check if it actually ends on this line (ignoring comments)
+                                # Check if it ends on this line (ignoring comments)
                                 temp_val = command_val
                                 # Regex to match comments outside quotes, including triple quotes
                                 comment_match = re.search(r'^(?:[^"\'#]|"{3}(?:\\.|[^\\])*?"{3}(?!")|(?<!")"(?:\\.|[^"\\])*?"(?!")|\'{3}.*?\'{3}(?!\')|(?<!\')\'(?:\\.|[^\'\\])*?\'(?!\'))*(#.*)', temp_val)
@@ -5521,7 +5530,7 @@ def scan_files(
     url_targets = []
     local_targets = []
     for t in scan_targets:
-        # Defensive str() conversion ensures robustness even if targets are not strings
+        # Defensive str() conversion handles non-string targets
         t_str = str(t)
         if t_str.lower().startswith(('http://', 'https://')):
             url_targets.append(t_str)
@@ -7410,9 +7419,14 @@ def import_results_from_content_generator(content: str, filename_hint: Optional[
 
 
 def import_results_generator(file_path: str) -> Generator[Tuple[str, Any], None, None]:
-    """Generator that yields events from an imported report file, directory, URL, or clipboard."""
+    """Generator that yields events from an imported report file, directory, URL, clipboard, or terminal input."""
     try:
-        if not os.path.exists(file_path) and file_path.lower() in ('clipboard', 'clipboard:', '[clipboard]'):
+        if not os.path.exists(file_path) and file_path == "-":
+            content = sys.stdin.read()
+            if not content.strip():
+                raise ValueError("Terminal input is empty.")
+            yield from import_results_from_content_generator(content, filename_hint="stdin.json")
+        elif not os.path.exists(file_path) and file_path.lower() in ('clipboard', 'clipboard:', '[clipboard]'):
             content = get_cli_clipboard_content()
             if not content or not content.strip():
                 raise ValueError("Clipboard content is empty or unavailable.")
