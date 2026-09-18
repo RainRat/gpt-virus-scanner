@@ -9214,10 +9214,7 @@ def on_target_selected(event: Optional[tk.Event] = None) -> None:
     """Handle recent path selection from the target combobox dropdown."""
     update_clear_target_visibility()
     if scan_button:
-        try:
-            scan_button.focus_set()
-        except Exception:
-            pass
+        scan_button.focus_set()
 
 
 def get_model_presets(provider: str) -> List[str]:
