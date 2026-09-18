@@ -32,6 +32,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 
 ### Prerequisites
 *   **Python:** Install **Python 3.9, 3.10, 3.11, or 3.12**.
+*   **Git:** Install **Git** to clone the repository and use Git integration features.
 *   **Data files:** The repository already includes the `scripts.h5` model and `task.txt` instruction files. Keep these in the project folder.
 
 ### Setup
@@ -519,10 +520,11 @@ Filter results by setting a minimum threat score threshold (0 to 100):
 python3 gptscan.py ./my_project --min-threat 70 --cli
 ```
 
-Import and display results from a previous scan file, directory, web link, or clipboard:
+Import and display results from a previous scan file, directory, web link, clipboard, or terminal input:
 ```bash
 python3 gptscan.py --import-results previous_report.json --cli
 python3 gptscan.py --import-results clipboard --cli
+cat previous_report.json | python3 gptscan.py --import-results - --cli
 ```
 
 Filter out known findings using a previous scan report as a baseline and save bypassed findings separately:
@@ -768,15 +770,27 @@ Install the required testing packages by running the appropriate command:
     ```
 
 #### 2. Run the full test suite
-To run all tests, run:
-```bash
-python3 -m pytest
-```
+To run all tests, run the command for your operating system:
+
+*   **macOS and Linux:**
+    ```bash
+    python3 -m pytest
+    ```
+*   **Windows:**
+    ```cmd
+    python -m pytest
+    ```
 
 If you are using Python 3.12, some training tests might fail due to TensorFlow library compatibility. In Python 3.12, you can ignore the training tests with this command:
-```bash
-python3 -m pytest --ignore=tests/test_train.py
-```
+
+*   **macOS and Linux:**
+    ```bash
+    python3 -m pytest --ignore=tests/test_train.py
+    ```
+*   **Windows:**
+    ```cmd
+    python -m pytest --ignore=tests/test_train.py
+    ```
 
 ## How it works
 1.  **Local Filter:** The tool uses a quick scan model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
