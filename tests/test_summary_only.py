@@ -81,3 +81,32 @@ def test_run_cli_summary_only_with_output_file(tmp_path, monkeypatch):
     assert "Scan complete: 1 file" in content
     assert "1 suspicious file found" in content
     assert "fileA.py" not in content
+
+
+def test_run_cli_summary_only_no_duplicate_on_stderr(capsys, monkeypatch):
+    """Verify that run_cli with summary_only=True and quiet=False does not duplicate the summary on stderr."""
+    sample_results = [
+        ('progress', (1, 1, 'Scanning...')),
+        ('result', ('script1.py', '90%', 'Admin note 1', 'User note 1', '90%', 'exec(bad)', '10')),
+        ('summary', (1, 1024, 0.1))
+    ]
+
+    monkeypatch.setattr(gptscan, 'scan_files', lambda *args, **kwargs: sample_results)
+
+    threats = gptscan.run_cli(
+        targets=['.'],
+        deep=False,
+        show_all=False,
+        use_gpt=False,
+        rate_limit=60,
+        quiet=False,
+        summary_only=True
+    )
+
+    captured = capsys.readouterr()
+    out = captured.out.strip()
+    err = captured.err.strip()
+
+    assert threats == 1
+    assert "Scan complete: 1 file" in out
+    assert "Scan complete: 1 file" not in err

@@ -6825,19 +6825,20 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     if final_progress is not None and not quiet:
         print(file=sys.stderr)
-        total_scanned = metrics.get('total_files', final_progress[1])
-        summary = format_scan_summary(
-            total_scanned,
-            threats_found,
-            metrics.get('total_bytes'),
-            metrics.get('elapsed_time'),
-            use_color=use_color,
-            high_risk=high_risk_found,
-            medium_risk=medium_risk_found
-        )
-        if baseline_file:
-            summary += f" (Bypassed {matched_baseline_count} baseline findings)"
-        print(summary, file=sys.stderr)
+        if not (summary_only and not output_file):
+            total_scanned = metrics.get('total_files', final_progress[1])
+            summary = format_scan_summary(
+                total_scanned,
+                threats_found,
+                metrics.get('total_bytes'),
+                metrics.get('elapsed_time'),
+                use_color=use_color,
+                high_risk=high_risk_found,
+                medium_risk=medium_risk_found
+            )
+            if baseline_file:
+                summary += f" (Bypassed {matched_baseline_count} baseline findings)"
+            print(summary, file=sys.stderr)
 
     if sort_by is not None:
         if sort_by == 'threat':
@@ -10020,7 +10021,7 @@ def main():
     scan_group = parser.add_argument_group("Scan Options")
     scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or web link to scan.')
     scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. This is slower but more thorough.')
-    scan_group.add_argument('--dry-run', action='store_true', help='Preview which files would be scanned without actually checking them.')
+    scan_group.add_argument('--dry-run', action='store_true', help='Preview which files would be scanned without checking them.')
     scan_group.add_argument(
         '--extensions',
         type=str,
