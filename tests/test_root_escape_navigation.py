@@ -52,6 +52,24 @@ def test_on_root_escape_scan_inactive_with_filter(mock_root_ui_env, monkeypatch)
     mock_root_ui_env['tree'].focus_set.assert_called_once()
     assert res == "break"
 
+
+def test_on_root_escape_auto_selects_best_result(mock_root_ui_env, monkeypatch):
+    """Test that on_root_escape automatically selects the best result when clearing filter if selection is empty."""
+    mock_root_ui_env['filter_var'].get.return_value = "term"
+    mock_auto_select = MagicMock()
+
+    mock_root_ui_env['tree'].selection.return_value = ()
+    mock_root_ui_env['tree'].get_children.return_value = ("item1",)
+
+    monkeypatch.setattr(gptscan, 'current_cancel_event', None)
+    monkeypatch.setattr(gptscan, '_auto_select_best_result', mock_auto_select)
+
+    res = gptscan.on_root_escape()
+
+    mock_root_ui_env['tree'].focus_set.assert_called_once()
+    mock_auto_select.assert_called_once()
+    assert res == "break"
+
 def test_on_root_escape_scan_inactive_no_filter(mock_root_ui_env, monkeypatch):
     """Test that when no scan is active and no filter query exists, pressing Escape does nothing."""
     mock_root_ui_env['filter_var'].get.return_value = "   "  # Whitespace only

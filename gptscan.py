@@ -9170,6 +9170,8 @@ def on_filter_escape(event: Optional[tk.Event] = None) -> str:
             _apply_filter()
         if tree:
             tree.focus_set()
+            if not tree.selection() and tree.get_children():
+                _auto_select_best_result()
     return "break"
 
 
@@ -9188,6 +9190,8 @@ def on_root_escape(event: Optional[tk.Event] = None) -> str:
         _apply_filter()
         if tree:
             tree.focus_set()
+            if not tree.selection() and tree.get_children():
+                _auto_select_best_result()
         return "break"
 
     return ""
