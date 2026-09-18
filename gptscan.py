@@ -9497,8 +9497,11 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     settings_frame = ttk.Frame(root)
     settings_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
+    boxes_frame = ttk.Frame(settings_frame)
+    boxes_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
     # --- Options Frame ---
-    options_frame = ttk.LabelFrame(settings_frame, text="Scan Options", padding=10)
+    options_frame = ttk.LabelFrame(boxes_frame, text="Scan Options", padding=10)
     options_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
     gpt_var = tk.BooleanVar(value=Config.use_ai_analysis)
@@ -9542,11 +9545,14 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(max_size_spin, "Skip files larger than this size (in Megabytes).")
 
     # --- Provider Frame ---
-    provider_frame = ttk.LabelFrame(settings_frame, text="AI Analysis", padding=10)
-    provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+    provider_frame = ttk.LabelFrame(boxes_frame, text="AI Analysis", padding=10)
+    provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
-    copy_cmd_button = ttk.Button(options_frame, text="Copy CLI Command", command=copy_cli_command)
-    copy_cmd_button.grid(row=3, column=0, columnspan=2, sticky='ew', padx=10, pady=5, ipady=5)
+    cmd_bar = ttk.Frame(settings_frame)
+    cmd_bar.pack(side=tk.TOP, fill=tk.X, pady=(5, 0))
+
+    copy_cmd_button = ttk.Button(cmd_bar, text="Copy CLI Command", command=copy_cli_command)
+    copy_cmd_button.pack(side=tk.RIGHT)
     bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
 
     provider_frame.columnconfigure(1, weight=1)
