@@ -68,6 +68,86 @@ def test_get_git_submodule_paths_empty(monkeypatch, tmp_path):
     assert res == []
 
 
+def test_get_git_submodule_paths_status_malformed_and_nonexistent_paths(monkeypatch, tmp_path):
+    sub_dir = tmp_path / "valid_sub"
+    sub_dir.mkdir()
+
+    monkeypatch.setattr(gptscan, "_get_git_info", lambda p: (str(tmp_path), "."))
+
+    mock_output = (
+        "\n"
+        "singlepart\n"
+        " e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 nonexistent_sub (heads/main)\n"
+        " e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 valid_sub (heads/main)\n"
+    )
+
+    monkeypatch.setattr(subprocess, "check_output", lambda cmd, **k: mock_output)
+
+    res = gptscan.get_git_submodule_paths(str(tmp_path))
+    assert res == [str(sub_dir)]
+
+
+def test_get_git_submodule_paths_fallback_gitmodules_quoted_paths(monkeypatch, tmp_path):
+    sub_dir = tmp_path / "quoted_sub"
+    sub_dir.mkdir()
+
+    gitmodules = tmp_path / ".gitmodules"
+    gitmodules.write_text(
+        "[submodule \"pkg\"]\n"
+        "\tpath = \"quoted_sub\"\n",
+        encoding="utf-8"
+    )
+
+    monkeypatch.setattr(gptscan, "_get_git_info", lambda p: (str(tmp_path), "."))
+
+    def mock_check_output_fail(cmd, **kwargs):
+        raise subprocess.CalledProcessError(1, cmd)
+
+    monkeypatch.setattr(subprocess, "check_output", mock_check_output_fail)
+
+    res = gptscan.get_git_submodule_paths(str(tmp_path))
+    assert res == [str(sub_dir)]
+
+
+def test_get_git_submodule_paths_fallback_gitmodules_nonexistent_path(monkeypatch, tmp_path):
+    gitmodules = tmp_path / ".gitmodules"
+    gitmodules.write_text(
+        "[submodule \"pkg\"]\n"
+        "\tpath = missing_dir\n",
+        encoding="utf-8"
+    )
+
+    monkeypatch.setattr(gptscan, "_get_git_info", lambda p: (str(tmp_path), "."))
+
+    def mock_check_output_fail(cmd, **kwargs):
+        raise subprocess.CalledProcessError(1, cmd)
+
+    monkeypatch.setattr(subprocess, "check_output", mock_check_output_fail)
+
+    res = gptscan.get_git_submodule_paths(str(tmp_path))
+    assert res == []
+
+
+def test_get_git_submodule_paths_fallback_gitmodules_open_exception(monkeypatch, tmp_path):
+    gitmodules = tmp_path / ".gitmodules"
+    gitmodules.touch()
+
+    monkeypatch.setattr(gptscan, "_get_git_info", lambda p: (str(tmp_path), "."))
+
+    def mock_check_output_fail(cmd, **kwargs):
+        raise subprocess.CalledProcessError(1, cmd)
+
+    monkeypatch.setattr(subprocess, "check_output", mock_check_output_fail)
+
+    def mock_open(*args, **kwargs):
+        raise OSError("Permission denied")
+
+    monkeypatch.setattr("builtins.open", mock_open)
+
+    res = gptscan.get_git_submodule_paths(str(tmp_path))
+    assert res == []
+
+
 def test_scan_git_submodules_click(monkeypatch, tmp_path):
     """Verify scan_git_submodules_click calls _generic_scan_click properly."""
     sub_dir = tmp_path / "sub1"
