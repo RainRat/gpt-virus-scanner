@@ -2048,7 +2048,7 @@ def get_git_submodule_paths(path: str = ".") -> List[str]:
                     for line in f:
                         line = line.strip()
                         if line.startswith("path ="):
-                            rel_path = line.split("=", 1)[1].strip()
+                            rel_path = line.split("=", 1)[1].strip().strip("\"'")
                             abs_path = os.path.join(toplevel, rel_path)
                             if os.path.exists(abs_path):
                                 paths.append(abs_path)
