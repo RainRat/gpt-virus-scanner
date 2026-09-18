@@ -548,6 +548,7 @@ By default, the scanner prints human-readable text to the terminal. You can cust
 *   `--yaml` / `--yml`: Create a YAML report (requires the `pyyaml` package).
 *   `--report`: Output a detailed triage report to the terminal.
 *   `-C`, `--count`: Print only the total count of suspicious findings.
+*   `-s`, `--summary-only`: Print only the scan summary banner without individual findings.
 *   `-l`, `--paths-only`, `--files-with-matches`: Print only unique file paths of suspicious findings line-by-line.
 
 To save the formatted output directly to a file, combine any format flag with the `--output` (or `-o`) option:
@@ -669,6 +670,7 @@ You can customize terminal scans using these command line options.
 *   `--report`: Output a detailed triage report to the terminal.
 *   `--top <N>` / `--limit <N>`: Limit output results to the top N highest-risk findings.
 *   `-C`, `--count`: Print only the total count of matching findings.
+*   `-s`, `--summary-only`: Print only the scan summary banner without individual findings.
 *   `-l`, `--paths-only`, `--files-with-matches`: Print only unique file paths of suspicious findings line-by-line.
 *   `--sort-by <field>` / `--sort <field>`: Sort scan results by `threat` (highest threat score first), `path` (file path alphabetically), or `line` (line number numerically).
 *   `--min-threat <num>` / `--min-threat-level <num>`: Set the minimum threat level threshold (0-100) to include in output results.
