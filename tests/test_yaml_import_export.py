@@ -47,10 +47,39 @@ def test_parse_yaml_content_valid():
 
 def test_parse_yaml_content_invalid():
     """Verify that parse_yaml_content handles invalid syntax safely."""
-    # Malformed YAML syntax raises ValueError
     malformed_yaml = "-\n  path: [unclosed"
     with pytest.raises(ValueError, match="Failed to parse YAML content"):
         gptscan.parse_yaml_content(malformed_yaml)
+
+def test_parse_yaml_content_single_dict_mapping():
+    yaml_input = "path: single.py\nline: '5'\nown_conf: 50%"
+    results = gptscan.parse_yaml_content(yaml_input)
+    assert len(results) == 1
+    assert results[0]["path"] == "single.py"
+    assert results[0]["line"] == "5"
+
+def test_parse_yaml_content_empty_or_none_content():
+    assert gptscan.parse_yaml_content("") == []
+    assert gptscan.parse_yaml_content("   \n  ") == []
+    assert gptscan.parse_yaml_content("# comment only") == []
+
+def test_parse_yaml_content_scalar_content():
+    assert gptscan.parse_yaml_content("12345") == []
+    assert gptscan.parse_yaml_content('"plain text string"') == []
+    assert gptscan.parse_yaml_content("true") == []
+
+def test_parse_yaml_content_missing_yaml_module(monkeypatch):
+    import builtins
+    orig_import = builtins.__import__
+
+    def mock_import(name, *args, **kwargs):
+        if name == 'yaml':
+            raise ImportError("No module named 'yaml'")
+        return orig_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, '__import__', mock_import)
+    with pytest.raises(ImportError, match="PyYAML is required for YAML import"):
+        gptscan.parse_yaml_content("path: test.py")
 
 def test_parse_report_content_auto_detect_yaml():
     """Verify that parse_report_content correctly auto-detects and parses YAML."""
