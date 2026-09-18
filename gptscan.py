@@ -6995,10 +6995,12 @@ def get_finding_signature(item: Dict[str, Any]) -> Tuple[str, str]:
     return (normalized_path, snippet)
 
 
+_ANSI_ESCAPE_PATTERN = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+
+
 def strip_ansi(text: str) -> str:
     """Remove ANSI escape sequences from a string."""
-    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-    return ansi_escape.sub('', text)
+    return _ANSI_ESCAPE_PATTERN.sub('', text)
 
 
 def parse_triage_report(content: str) -> List[Dict[str, Any]]:
