@@ -80,6 +80,7 @@ def test_set_scanning_state_updates_buttons(monkeypatch):
     # Setup mocks
     mock_scan_button = MagicMock()
     monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
+    monkeypatch.setattr(gptscan, 'dry_var', None, raising=False)
 
     # Test scanning=True
     gptscan.set_scanning_state(True)
@@ -95,6 +96,7 @@ def test_finish_scan_state_resets_state(monkeypatch):
     monkeypatch.setattr(gptscan, 'current_cancel_event', mock_event)
     mock_scan_button = MagicMock()
     monkeypatch.setattr(gptscan, 'scan_button', mock_scan_button, raising=False)
+    monkeypatch.setattr(gptscan, 'dry_var', None, raising=False)
 
     # Mock status_label
     mock_status_label = MagicMock()
