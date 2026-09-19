@@ -6678,7 +6678,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
                 writer.writerow([record.get(k, '') for k in keys])
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6703,6 +6703,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         summary_only: Whether to print only the scan summary banner without individual findings.
         sort_by: Optional field to sort results by ('threat', 'path', or 'line').
         paths_only: Whether to print only unique file paths of suspicious findings line-by-line.
+        files_without_matches: Whether to print only unique file paths of clean scanned files line-by-line.
 
     Returns:
         The number of suspicious files detected.
@@ -6711,7 +6712,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     out_stream = open(output_file, 'w', encoding='utf-8') if output_file else sys.stdout
 
-    if output_format in ('csv', 'tsv') and not count_only and not summary_only and not paths_only:
+    if output_format in ('csv', 'tsv') and not count_only and not summary_only and not paths_only and not files_without_matches:
         writer = csv.writer(out_stream, delimiter='\t' if output_format == 'tsv' else ',')
         writer.writerow(keys)
 
@@ -6754,7 +6755,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         event_gen = scan_files(
             targets,
             deep,
-            show_all,
+            show_all or files_without_matches,
             use_gpt,
             cancel_event,
             rate_limit=rate_limit,
@@ -6798,8 +6799,11 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
             if count_only or summary_only:
                 pass
-            elif paths_only or sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
+            elif paths_only or files_without_matches or sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
                 result_buffer.append(record)
+            elif not is_threat and not show_all:
+                # If this record was emitted because files_without_matches forced show_all, skip printing in standard format
+                pass
             elif output_format in ('json', 'ndjson', 'jsonl'):
                 print(json.dumps(record), file=out_stream)
             else:
@@ -6903,11 +6907,29 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         unique_paths = []
         for record in result_buffer:
             p = record.get('path', '')
-            if p and p not in seen_paths:
+            conf = get_effective_threat_level(record.get('own_conf', ''), record.get('gpt_conf', ''))
+            is_threat = (conf >= fail_threshold) if fail_threshold is not None else (conf >= Config.THRESHOLD)
+            if is_threat and p and p not in seen_paths:
                 seen_paths.add(p)
                 unique_paths.append(p)
         for p in unique_paths:
             print(p, file=out_stream)
+    elif files_without_matches:
+        suspicious_paths = set()
+        all_scanned_paths = []
+        seen_scanned = set()
+        for record in result_buffer:
+            p = record.get('path', '')
+            conf = get_effective_threat_level(record.get('own_conf', ''), record.get('gpt_conf', ''))
+            is_threat = (conf >= fail_threshold) if fail_threshold is not None else (conf >= Config.THRESHOLD)
+            if is_threat:
+                suspicious_paths.add(p)
+            if p and p not in seen_scanned:
+                seen_scanned.add(p)
+                all_scanned_paths.append(p)
+        for p in all_scanned_paths:
+            if p not in suspicious_paths:
+                print(p, file=out_stream)
     elif output_format == 'sarif':
         sarif_log = generate_sarif(result_buffer)
         print(json.dumps(sarif_log, indent=2), file=out_stream)
@@ -10389,6 +10411,12 @@ def main():
         help='Print only unique file paths of suspicious findings line-by-line.'
     )
     output_group.add_argument(
+        '-L', '--files-without-matches',
+        action='store_true',
+        dest='files_without_matches',
+        help='Print only unique file paths of clean scanned files line-by-line.'
+    )
+    output_group.add_argument(
         '--sort-by', '--sort',
         type=str,
         choices=['threat', 'path', 'line'],
@@ -10865,7 +10893,8 @@ def main():
             count_only=args.count_only,
             summary_only=args.summary_only,
             sort_by=args.sort_by,
-            paths_only=args.paths_only
+            paths_only=args.paths_only,
+            files_without_matches=args.files_without_matches
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
