@@ -96,3 +96,90 @@ def test_import_results_generator_sarif(tmp_path):
     assert "backdoor.js" in path
     assert admin_desc == "Backdoor pattern"
     assert str(line) == "12"
+
+
+def test_parse_sarif_content_empty_input():
+    assert gptscan.parse_sarif_content({}) == []
+    assert gptscan.parse_sarif_content({"runs": []}) == []
+    assert gptscan.parse_sarif_content({"runs": [{"results": []}]}) == []
+
+
+def test_parse_sarif_content_missing_locations_and_properties():
+    sarif_minimal = {
+        "runs": [
+            {
+                "results": [
+                    {
+                        "message": {"text": "Generic finding message"}
+                    }
+                ]
+            }
+        ]
+    }
+    res_minimal = gptscan.parse_sarif_content(sarif_minimal)
+    assert len(res_minimal) == 1
+    assert res_minimal[0] == {
+        "path": "",
+        "own_conf": "",
+        "admin_desc": "Generic finding message",
+        "end-user_desc": "",
+        "gpt_conf": "",
+        "snippet": "",
+        "line": "-"
+    }
+
+
+def test_parse_sarif_content_properties_override_message():
+    sarif_override = {
+        "runs": [
+            {
+                "results": [
+                    {
+                        "message": {"text": "Fallback message"},
+                        "locations": [],
+                        "properties": {
+                            "admin_desc": "Explicit admin note",
+                            "own_conf": "70%",
+                            "end-user_desc": "User summary",
+                            "gpt_conf": "80%",
+                            "snippet": "var a = 1;"
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+    res_override = gptscan.parse_sarif_content(sarif_override)
+    assert len(res_override) == 1
+    assert res_override[0]["path"] == ""
+    assert res_override[0]["line"] == "-"
+    assert res_override[0]["admin_desc"] == "Explicit admin note"
+    assert res_override[0]["own_conf"] == "70%"
+    assert res_override[0]["end-user_desc"] == "User summary"
+    assert res_override[0]["gpt_conf"] == "80%"
+    assert res_override[0]["snippet"] == "var a = 1;"
+
+
+def test_parse_sarif_content_missing_start_line():
+    sarif_no_start_line = {
+        "runs": [
+            {
+                "results": [
+                    {
+                        "locations": [
+                            {
+                                "physicalLocation": {
+                                    "artifactLocation": {"uri": "src/app.py"},
+                                    "region": {"endLine": 10}
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+    res_no_start_line = gptscan.parse_sarif_content(sarif_no_start_line)
+    assert len(res_no_start_line) == 1
+    assert res_no_start_line[0]["path"] in ("src/app.py", "src\\app.py")
+    assert res_no_start_line[0]["line"] == "-"
