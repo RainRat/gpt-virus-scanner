@@ -2003,7 +2003,7 @@ def get_system_service_commands() -> List[Tuple[str, bytes]]:
                     command = item.get("PathName")
                     if command and command.strip():
                         items.append((f"[Service] {name}", command.encode('utf-8')))
-    except Exception:
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError, json.JSONDecodeError):
         pass
     return items
 
