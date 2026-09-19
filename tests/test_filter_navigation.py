@@ -185,3 +185,32 @@ def test_filter_tooltips_include_keyboard_shortcuts(monkeypatch):
 
     assert mock_btn in bound_messages
     assert "(Esc)" in bound_messages[mock_btn]
+
+
+def test_filter_entry_down_arrow_binding(monkeypatch):
+    """Test that filter_entry binds <Down> to on_filter_return during GUI creation."""
+    mock_filter_entry = MagicMock()
+    filter_bindings = {}
+    mock_filter_entry.bind.side_effect = lambda event, func: filter_bindings.update({event: func})
+
+    mock_combo = MagicMock()
+    mock_combo.get.return_value = "openai"
+
+    mock_tree = MagicMock()
+
+    mock_root = MagicMock()
+
+    monkeypatch.setattr(gptscan, 'filter_entry', mock_filter_entry)
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+    monkeypatch.setattr(gptscan, 'root', mock_root)
+
+    with monkeypatch.context() as m:
+        m.setattr(gptscan.tk, 'Tk', lambda: mock_root)
+        m.setattr(gptscan.ttk, 'Entry', lambda *a, **kw: mock_filter_entry)
+        m.setattr(gptscan.ttk, 'Combobox', lambda *a, **kw: mock_combo)
+        m.setattr(gptscan.ttk, 'Treeview', lambda *a, **kw: mock_tree)
+
+        gptscan.create_gui()
+
+    assert '<Down>' in filter_bindings
+    assert filter_bindings['<Down>'] == gptscan.on_filter_return
