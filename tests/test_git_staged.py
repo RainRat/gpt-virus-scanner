@@ -18,6 +18,23 @@ def test_get_git_staged_files_error_handling():
         assert mock_check_output.call_count == 1
 
 
+def test_get_git_staged_files_subprocess_error_after_rev_parse():
+    toplevel = os.getcwd()
+    with patch("subprocess.check_output") as mock_check_output:
+        mock_check_output.side_effect = [
+            toplevel,
+            subprocess.CalledProcessError(1, "git diff --cached"),
+        ]
+        assert get_git_staged_files() == []
+
+    with patch("subprocess.check_output") as mock_check_output:
+        mock_check_output.side_effect = [
+            toplevel,
+            OSError("git command failed"),
+        ]
+        assert get_git_staged_files() == []
+
+
 def test_get_git_staged_files_no_staged_files():
     """Test when git reports no staged files."""
     with patch("subprocess.check_output") as mock_check_output:
