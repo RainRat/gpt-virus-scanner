@@ -950,8 +950,7 @@ def _get_initial_dir() -> Optional[str]:
     if textbox:
         try:
             val = textbox.get()
-            if isinstance(val, str):
-                path_str = val.strip()
+            path_str = val.strip()
         except Exception:
             pass
 
