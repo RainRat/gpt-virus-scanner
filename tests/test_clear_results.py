@@ -36,6 +36,7 @@ def test_clear_results(monkeypatch):
     # Assertions
     assert res == "break"
     mock_tree.delete.assert_called_with('item1', 'item2')
+    mock_tree.selection_remove.assert_called_with(mock_tree.selection())
     # For progress_bar['value'] = 0
     mock_progress_bar.__setitem__.assert_called_with('value', 0)
     # update_status calls status_label.config and root.update_idletasks
