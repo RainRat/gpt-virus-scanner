@@ -569,12 +569,46 @@ python3 gptscan.py ./my_project --sort-by path --cli
 ```
 
 #### CI/CD & Exit Codes
-You can use the scanner in CI/CD pipelines (like GitHub Actions) to prevent malicious or dangerous code from being committed.
+Run the scanner in CI/CD pipelines (such as GitHub Actions) to prevent malicious or dangerous code from entering your repository.
 
-Use the `--fail-threshold` option followed by a threat level (0 to 100) to fail the scan. If any scanned file meets or exceeds this threat level, the script will exit with code `1`, stopping your build or pipeline:
+Use the `--fail-threshold` option with a threat level (0 to 100). If any scanned file meets or exceeds this threat level, the script exits with code `1` and stops your build or pipeline:
 ```bash
 # Fail the build if any file has a threat level of 70 or higher
 python3 gptscan.py ./my_project --cli --fail-threshold 70
+```
+
+##### GitHub Actions Example
+Add a `.github/workflows/scan.yml` file to your repository to automatically scan changes on pull requests and pushes:
+
+```yaml
+name: Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  gptscan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install tensorflow tf_keras openai numpy
+
+      - name: Run GPT Virus Scanner
+        run: |
+          python gptscan.py . --cli --fail-threshold 70
 ```
 
 #### CLI Options Reference
