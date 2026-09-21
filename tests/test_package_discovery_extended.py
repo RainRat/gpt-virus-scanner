@@ -10,6 +10,7 @@ from gptscan import (
     get_php_packages_paths,
     get_rust_packages_paths,
     get_go_packages_paths,
+    get_nodejs_package_paths,
     get_documents_paths
 )
 
@@ -204,3 +205,29 @@ def test_get_documents_paths_windows_error(monkeypatch, tmp_path):
 
     paths = [_norm(p) for p in get_documents_paths()]
     assert _norm(str(docs_dir)) in paths
+
+
+def test_package_discovery_subprocess_exceptions(monkeypatch, tmp_path):
+    """Verify package discovery functions gracefully handle FileNotFoundError and OSError in subprocess calls."""
+    monkeypatch.setattr(os.path, "isdir", lambda x: True)
+    fake_home = tmp_path / "home"
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+
+    for exc in (FileNotFoundError("Command not found"), OSError("Execution failed")):
+        monkeypatch.setattr(subprocess, "check_output", MagicMock(side_effect=exc))
+
+        # Test ruby gems fallbacks
+        ruby_paths = get_ruby_gems_paths()
+        assert isinstance(ruby_paths, list)
+
+        # Test php packages fallbacks
+        php_paths = get_php_packages_paths()
+        assert isinstance(php_paths, list)
+
+        # Test go packages fallbacks
+        go_paths = get_go_packages_paths()
+        assert isinstance(go_paths, list)
+
+        # Test nodejs packages fallbacks
+        node_paths = get_nodejs_package_paths()
+        assert isinstance(node_paths, list)
