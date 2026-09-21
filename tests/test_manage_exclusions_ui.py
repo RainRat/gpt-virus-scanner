@@ -371,6 +371,8 @@ def test_manage_exclusions_initial_focus_and_selection(mock_gui_env):
 
     assert lb.focused is True
     assert lb.selection == [0]
+    assert getattr(lb, 'activated', None) == 0
+    assert getattr(lb, 'seen', None) == 0
 
 def test_manage_exclusions_remove_activates_and_scrolls(mock_gui_env):
     captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env

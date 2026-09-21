@@ -4323,6 +4323,8 @@ def manage_exclusions() -> None:
     ignore_listbox.focus_set()
     if Config.ignore_patterns:
         ignore_listbox.select_set(0)
+        ignore_listbox.activate(0)
+        ignore_listbox.see(0)
 
 
 def manage_extensions() -> None:
