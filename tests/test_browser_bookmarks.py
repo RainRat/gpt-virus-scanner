@@ -303,3 +303,75 @@ def test_get_browser_bookmarks_snippets_corrupted_files(tmp_path, monkeypatch):
     # Should handle both corrupted files gracefully without raising exception
     snippets = get_browser_bookmarks_snippets()
     assert snippets == []
+
+def test_get_browser_bookmarks_snippets_windows_no_env(monkeypatch):
+    monkeypatch.setattr("sys.platform", "win32")
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+    monkeypatch.delenv("APPDATA", raising=False)
+
+    snippets = get_browser_bookmarks_snippets()
+    assert snippets == []
+
+def test_get_browser_bookmarks_snippets_linux_brave(tmp_path, monkeypatch):
+    brave_bookmarks = tmp_path / ".config" / "BraveSoftware" / "Brave-Browser" / "Default" / "Bookmarks"
+    brave_bookmarks.parent.mkdir(parents=True)
+
+    bookmarks_data = {
+        "roots": {
+            "bookmark_bar": {
+                "type": "folder",
+                "children": [
+                    {
+                        "name": "Brave Bookmarklet",
+                        "type": "url",
+                        "url": "javascript:alert('Brave')"
+                    }
+                ]
+            }
+        }
+    }
+    brave_bookmarks.write_text(json.dumps(bookmarks_data), encoding="utf-8")
+
+    monkeypatch.setattr("sys.platform", "linux")
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    snippets = get_browser_bookmarks_snippets()
+
+    titles = [s[0] for s in snippets]
+    contents = [s[1].decode('utf-8') for s in snippets]
+
+    assert "[Brave Bookmark] Brave Bookmarklet" in titles
+    assert "javascript:alert('Brave')" in contents
+
+def test_get_browser_bookmarks_snippets_non_dict_roots(tmp_path, monkeypatch):
+    chrome_bookmarks = tmp_path / ".config" / "google-chrome" / "Default" / "Bookmarks"
+    chrome_bookmarks.parent.mkdir(parents=True)
+
+    bookmarks_data = {
+        "roots": {
+            "version": 1,
+            "metadata": "non_dict_root",
+            "bookmark_bar": {
+                "type": "folder",
+                "children": [
+                    {
+                        "name": "Valid Bookmarklet",
+                        "type": "url",
+                        "url": "javascript:console.log('Valid')"
+                    }
+                ]
+            }
+        }
+    }
+    chrome_bookmarks.write_text(json.dumps(bookmarks_data), encoding="utf-8")
+
+    monkeypatch.setattr("sys.platform", "linux")
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    snippets = get_browser_bookmarks_snippets()
+
+    titles = [s[0] for s in snippets]
+    contents = [s[1].decode('utf-8') for s in snippets]
+
+    assert "[Chrome Bookmark] Valid Bookmarklet" in titles
+    assert "javascript:console.log('Valid')" in contents
