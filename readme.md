@@ -563,9 +563,9 @@ To limit output to the top N highest-risk findings, use `--top` (or `--limit`):
 python3 gptscan.py ./my_project --top 10 --report --cli
 ```
 
-To sort output findings by threat score, file path, or line number, use `--sort-by` (or `--sort`):
+To sort output findings by threat score, file path, or line number, use `--sort-by` (or `--sort`). You can also invert the sorting order with `-r` (or `--reverse`):
 ```bash
-python3 gptscan.py ./my_project --sort-by path --cli
+python3 gptscan.py ./my_project --sort-by path --reverse --cli
 ```
 
 #### CI/CD & Exit Codes
@@ -675,6 +675,7 @@ You can customize terminal scans using these command line options.
 *   `-s`, `--summary-only`: Print only the scan summary banner without individual findings.
 *   `-l`, `--paths-only`, `--files-with-matches`: Print only unique file paths of suspicious findings line-by-line.
 *   `--sort-by <field>` / `--sort <field>`: Sort scan results by `threat` (highest threat score first), `path` (file path alphabetically), or `line` (line number numerically).
+*   `-r`, `--reverse`: Reverse the sort order of scan results.
 *   `--min-threat <num>` / `--min-threat-level <num>`: Set the minimum threat level threshold (0-100) to include in output results.
 
 ### Setting up AI Analysis
