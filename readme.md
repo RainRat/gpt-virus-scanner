@@ -578,6 +578,39 @@ Use the `--fail-threshold` option followed by a threat level (0 to 100) to fail 
 python3 gptscan.py ./my_project --cli --fail-threshold 70
 ```
 
+##### GitHub Actions Example
+Create a workflow file at `.github/workflows/scan.yml` to automatically scan pull requests and commits:
+```yaml
+name: Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install tensorflow tf_keras openai numpy
+
+      - name: Run GPT Scanner
+        run: |
+          python3 gptscan.py . --cli --fail-threshold 70
+```
+
 #### CLI Options Reference
 You can customize terminal scans using these command line options.
 
