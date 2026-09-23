@@ -214,3 +214,26 @@ def test_filter_entry_down_arrow_binding(monkeypatch):
 
     assert '<Down>' in filter_bindings
     assert filter_bindings['<Down>'] == gptscan.on_filter_return
+
+
+def test_apply_filter_auto_selects_best_result_and_updates_button_states(monkeypatch):
+    """Test that _apply_filter automatically selects the best result and updates button states when results match."""
+    mock_tree = MagicMock()
+    mock_tree.get_children.return_value = ("item1", "item2")
+    mock_auto_select = MagicMock()
+    mock_update_buttons = MagicMock()
+
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+    monkeypatch.setattr(gptscan, 'clear_filter_btn', None)
+    monkeypatch.setattr(gptscan, 'filter_var', None)
+    monkeypatch.setattr(gptscan, 'all_var', None)
+    monkeypatch.setattr(gptscan, '_all_results_cache', [("file1.py", "80%", "", "", "", "eval()", 1)])
+    monkeypatch.setattr(gptscan, '_auto_select_best_result', mock_auto_select)
+    monkeypatch.setattr(gptscan, 'update_button_states', mock_update_buttons)
+    monkeypatch.setattr(gptscan, 'update_tree_columns', lambda: None)
+    monkeypatch.setattr(gptscan, '_prepare_tree_row', lambda vals: (vals, ("high-risk",)))
+
+    gptscan._apply_filter()
+
+    mock_auto_select.assert_called_once()
+    mock_update_buttons.assert_called_once()
