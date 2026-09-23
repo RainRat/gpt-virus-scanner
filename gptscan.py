@@ -9218,6 +9218,26 @@ def focus_filter(event: Optional[tk.Event] = None) -> str:
     return "break"
 
 
+def on_target_escape(event: Optional[tk.Event] = None) -> str:
+    """Clear the target path entry when Escape is pressed while focused in the target textbox."""
+    if current_cancel_event is not None:
+        cancel_scan()
+        return "break"
+
+    if textbox:
+        try:
+            val = textbox.get()
+            if isinstance(val, str) and val.strip():
+                textbox.delete(0, tk.END)
+                update_clear_target_visibility()
+                textbox.focus_set()
+                return "break"
+        except Exception:
+            pass
+
+    return on_root_escape(event)
+
+
 def on_filter_escape(event: Optional[tk.Event] = None) -> str:
     """Clear the search query, refresh results, shift focus to tree, and break event propagation."""
     res = on_root_escape(event)
@@ -9519,9 +9539,10 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
     clear_target_btn = ttk.Button(input_frame, text="×", width=3, command=clear_target)
     clear_target_btn.grid(row=0, column=2, padx=(0, 5))
-    bind_hover_message(clear_target_btn, "Clear the scan target.")
+    bind_hover_message(clear_target_btn, "Clear the scan target. (Esc)")
 
     textbox.bind('<KeyRelease>', lambda e: update_clear_target_visibility())
+    textbox.bind('<Escape>', on_target_escape)
     update_clear_target_visibility()
 
     root.bind('<Escape>', on_root_escape)
