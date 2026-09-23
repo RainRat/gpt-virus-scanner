@@ -875,7 +875,7 @@ def update_clear_target_visibility(*args: Any) -> None:
         return
     try:
         val = textbox.get()
-        if isinstance(val, str) and val.strip():
+        if val.strip():
             clear_target_btn.grid(row=0, column=2, padx=(0, 5))
         else:
             clear_target_btn.grid_remove()
