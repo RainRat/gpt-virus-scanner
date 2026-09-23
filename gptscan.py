@@ -1475,7 +1475,7 @@ def get_ruby_gems_paths() -> List[str]:
                                         shell=is_win).strip()
         if output:
             paths.append(output)
-    except Exception:
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         pass
 
     # 3. Common fallback paths
@@ -1500,7 +1500,7 @@ def get_php_packages_paths() -> List[str]:
                                         shell=is_win).strip()
         if output:
             paths.append(output)
-    except Exception:
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         pass
 
     # 2. Common fallback paths
@@ -1557,7 +1557,7 @@ def get_go_packages_paths() -> List[str]:
                 if p:
                     paths.append(os.path.join(p, "pkg", "mod"))
                     paths.append(os.path.join(p, "src"))
-    except Exception:
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         pass
 
     # 3. Default location
@@ -1962,7 +1962,7 @@ def get_nodejs_package_paths() -> List[str]:
                                         shell=is_win).strip()
         if output:
             paths.append(output)
-    except Exception:
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         pass
 
     # 2. Common system paths (Unix-like)
