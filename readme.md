@@ -520,6 +520,11 @@ Filter results by setting a minimum threat score threshold (0 to 100):
 python3 gptscan.py ./my_project --min-threat 70 --cli
 ```
 
+Limit directory traversal depth when scanning folders (for example, top-level files only):
+```bash
+python3 gptscan.py ./my_project --max-depth 1 --cli
+```
+
 Import and display results from a previous scan file, directory, web link, clipboard, or terminal input:
 ```bash
 python3 gptscan.py --import-results previous_report.json --cli
