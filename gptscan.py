@@ -9501,19 +9501,13 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     textbox = ttk.Combobox(input_frame, values=Config.recent_paths)
     path_to_use = initial_path if initial_path else (Config.last_path if Config.last_path else os.getcwd())
     textbox.insert(0, path_to_use)
-    try:
-        textbox.select_range(0, tk.END)
-    except Exception:
-        pass
+    textbox.select_range(0, tk.END)
     textbox.grid(row=0, column=1, sticky="ew", padx=(5, 2))
     textbox.bind('<Return>', lambda event: button_click())
     textbox.bind('<KP_Enter>', lambda event: button_click())
 
     textbox.bind('<<ComboboxSelected>>', on_target_selected)
-    try:
-        textbox.focus_set()
-    except Exception:
-        pass
+    textbox.focus_set()
     bind_hover_message(textbox, "Enter one or more files, folders, or glob patterns (e.g., src/**/*.py) to scan. Separate multiple targets with spaces.")
 
     def clear_target():
