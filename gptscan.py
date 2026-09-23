@@ -3127,6 +3127,9 @@ def _apply_filter(*args: Any) -> None:
             update_status("Ready")
 
     update_tree_columns()
+    if tree.get_children():
+        _auto_select_best_result()
+    update_button_states()
 
 
 def _prepare_tree_row(values: Tuple[Any, ...]) -> Tuple[List[Any], Tuple[str, ...]]:
