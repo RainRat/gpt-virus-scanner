@@ -2671,14 +2671,22 @@ def collect_files(targets: Union[str, List[str]], modified_since: Optional[float
                 results.append(p)
             elif p.is_dir():
                 if max_depth is not None:
-                    for f in p.rglob('*'):
-                        try:
-                            if f.is_file() and len(f.relative_to(p).parts) <= max_depth:
-                                results.append(f)
-                        except (ValueError, OSError):
-                            pass
+                    if max_depth <= 0:
+                        continue
+                    try:
+                        for f in p.rglob('*'):
+                            try:
+                                if f.is_file() and len(f.relative_to(p).parts) <= max_depth:
+                                    results.append(f)
+                            except (ValueError, OSError):
+                                pass
+                    except OSError:
+                        pass
                 else:
-                    results.extend([f for f in p.rglob('*') if f.is_file()])
+                    try:
+                        results.extend([f for f in p.rglob('*') if f.is_file()])
+                    except OSError:
+                        pass
 
     # Use dict keys to remove duplicates while preserving insertion order.
     unique_files = list(dict.fromkeys(results))
@@ -3137,7 +3145,7 @@ def _apply_filter(*args: Any) -> None:
 
     update_tree_columns()
     if tree.get_children():
-        _auto_select_best_result()
+        _auto_select_best_result(focus_tree=False)
     update_button_states()
 
 
@@ -3229,8 +3237,8 @@ def update_tree_columns() -> None:
         tree["displaycolumns"] = ("path", "line", "own_conf", "snippet")
 
 
-def _auto_select_best_result() -> None:
-    """Select the most relevant result (first threat, or first file) and focus it."""
+def _auto_select_best_result(focus_tree: bool = True) -> None:
+    """Select the most relevant result (first threat, or first file) and optionally focus the tree."""
     if not tree:
         return
 
@@ -3249,7 +3257,8 @@ def _auto_select_best_result() -> None:
     tree.selection_set(target_item)
     tree.focus(target_item)
     tree.see(target_item)
-    tree.focus_set()
+    if focus_tree:
+        tree.focus_set()
 
 
 def set_scanning_state(is_scanning: bool) -> None:

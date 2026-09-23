@@ -28,10 +28,13 @@ def restore_config_and_gui_state():
     orig_use_ai_analysis = gptscan.Config.use_ai_analysis
     orig_provider = gptscan.Config.provider
     orig_model_name = gptscan.Config.model_name
+    orig_root = getattr(gptscan, "root", None)
     orig_tree = getattr(gptscan, "tree", None)
     orig_textbox = getattr(gptscan, "textbox", None)
     orig_filter_entry = getattr(gptscan, "filter_entry", None)
     orig_filter_var = getattr(gptscan, "filter_var", None)
+    orig_clear_target_btn = getattr(gptscan, "clear_target_btn", None)
+    orig_clear_filter_btn = getattr(gptscan, "clear_filter_btn", None)
 
     yield
 
@@ -43,10 +46,13 @@ def restore_config_and_gui_state():
     gptscan.Config.use_ai_analysis = orig_use_ai_analysis
     gptscan.Config.provider = orig_provider
     gptscan.Config.model_name = orig_model_name
+    gptscan.root = orig_root
     gptscan.tree = orig_tree
     gptscan.textbox = orig_textbox
     gptscan.filter_entry = orig_filter_entry
     gptscan.filter_var = orig_filter_var
+    gptscan.clear_target_btn = orig_clear_target_btn
+    gptscan.clear_filter_btn = orig_clear_filter_btn
 
 
 @pytest.fixture

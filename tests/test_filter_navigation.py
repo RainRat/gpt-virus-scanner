@@ -235,5 +235,28 @@ def test_apply_filter_auto_selects_best_result_and_updates_button_states(monkeyp
 
     gptscan._apply_filter()
 
-    mock_auto_select.assert_called_once()
+    mock_auto_select.assert_called_once_with(focus_tree=False)
     mock_update_buttons.assert_called_once()
+
+
+def test_auto_select_best_result_focus_tree_parameter(monkeypatch):
+    """Test that _auto_select_best_result respects focus_tree to avoid stealing focus."""
+    mock_tree = MagicMock()
+    mock_tree.get_children.return_value = ["item1"]
+    mock_tree.item.return_value = {"tags": ("high-risk",)}
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+
+    # When focus_tree=False, tree.focus_set() should NOT be called
+    gptscan._auto_select_best_result(focus_tree=False)
+    mock_tree.selection_set.assert_called_with("item1")
+    mock_tree.focus.assert_called_with("item1")
+    mock_tree.see.assert_called_with("item1")
+    mock_tree.focus_set.assert_not_called()
+
+    # When focus_tree=True, tree.focus_set() SHOULD be called
+    mock_tree.reset_mock()
+    mock_tree.get_children.return_value = ["item1"]
+    mock_tree.item.return_value = {"tags": ("high-risk",)}
+    gptscan._auto_select_best_result(focus_tree=True)
+    mock_tree.selection_set.assert_called_with("item1")
+    mock_tree.focus_set.assert_called_once()

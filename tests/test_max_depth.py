@@ -88,3 +88,19 @@ def test_cli_invalid_max_depth():
     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     assert res.returncode != 0
     assert "Value for --max-depth must be a non-negative integer" in res.stderr
+
+
+def test_collect_files_negative_depth_and_oserror(tmp_path, monkeypatch):
+    test_file = tmp_path / "test.py"
+    test_file.write_text("print(1)")
+
+    # Negative depth should return no files from directory
+    assert collect_files(str(tmp_path), max_depth=-1) == []
+
+    # If rglob raises OSError during directory traversal, it should be handled gracefully
+    def mock_rglob(*args, **kwargs):
+        raise OSError("Permission denied")
+
+    monkeypatch.setattr(Path, "rglob", mock_rglob)
+    assert collect_files(str(tmp_path), max_depth=1) == []
+    assert collect_files(str(tmp_path)) == []
