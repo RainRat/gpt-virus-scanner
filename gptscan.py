@@ -9694,6 +9694,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     filter_entry.bind('<Return>', on_filter_return)
     filter_entry.bind('<KP_Enter>', on_filter_return)
     filter_entry.bind('<Escape>', on_filter_escape)
+    filter_entry.bind('<Down>', on_filter_return)
     bind_hover_message(filter_entry, "Search results by any column (path, threat level, analysis, snippet). (Ctrl+F)")
 
     def clear_filter():
