@@ -1,5 +1,6 @@
-import gptscan
 from pathlib import Path
+from unittest.mock import MagicMock, PropertyMock
+import gptscan
 
 def test_collect_files_single_file(tmp_path):
     f = tmp_path / "file.txt"
@@ -81,3 +82,31 @@ def test_collect_files_directory_as_list_element(tmp_path):
     f.touch()
     results = gptscan.collect_files([str(d)])
     assert results == [f]
+
+
+def test_collect_files_modified_since_stat_error(tmp_path, monkeypatch):
+    f1 = tmp_path / "f1.txt"
+    f2 = tmp_path / "f2.txt"
+    f1.touch()
+    f2.touch()
+
+    original_stat = Path.stat
+
+    def mock_stat(self, *args, **kwargs):
+        st = original_stat(self, *args, **kwargs)
+        if self.name == "f1.txt":
+            mock_st = MagicMock()
+            mock_st.st_mode = st.st_mode
+            type(mock_st).st_mtime = PropertyMock(side_effect=OSError("Access denied"))
+            return mock_st
+        elif self.name == "f2.txt":
+            mock_st = MagicMock()
+            mock_st.st_mode = st.st_mode
+            type(mock_st).st_mtime = PropertyMock(side_effect=FileNotFoundError("Missing file"))
+            return mock_st
+        return st
+
+    monkeypatch.setattr(Path, "stat", mock_stat)
+
+    results = gptscan.collect_files([str(f1), str(f2)], modified_since=100.0)
+    assert results == []

@@ -16,6 +16,31 @@ def test_git_not_found_or_error():
         # rev-parse is attempted first
         assert mock_check_output.call_count == 1
 
+
+def test_get_git_changed_files_ls_files_error_handling():
+    toplevel = os.getcwd()
+    with patch("subprocess.check_output") as mock_check_output, \
+         patch("os.path.exists", return_value=True):
+        mock_check_output.side_effect = [
+            toplevel,
+            "staged.py\n",
+            subprocess.CalledProcessError(1, "git ls-files"),
+        ]
+        files = get_git_changed_files()
+        assert len(files) == 1
+        assert os.path.abspath(files[0]) == os.path.join(toplevel, "staged.py")
+
+    with patch("subprocess.check_output") as mock_check_output, \
+         patch("os.path.exists", return_value=True):
+        mock_check_output.side_effect = [
+            toplevel,
+            "staged.py\n",
+            OSError("git ls-files failed"),
+        ]
+        files = get_git_changed_files()
+        assert len(files) == 1
+        assert os.path.abspath(files[0]) == os.path.join(toplevel, "staged.py")
+
 def test_no_changes():
     """Test when git reports no changed files."""
     with patch("subprocess.check_output") as mock_check_output:
