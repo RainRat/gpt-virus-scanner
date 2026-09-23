@@ -2645,13 +2645,14 @@ def _normalize_targets(targets: Union[str, List[str], Path]) -> List[str]:
     return list(dict.fromkeys(str(t) for t in targets))
 
 
-def collect_files(targets: Union[str, List[str]], modified_since: Optional[float] = None) -> List[Path]:
+def collect_files(targets: Union[str, List[str]], modified_since: Optional[float] = None, max_depth: Optional[int] = None) -> List[Path]:
     """Collect files from a single path or a list of paths (files, folders, or patterns).
 
     Args:
         targets: A single folder path or a list of file/folder paths or glob patterns.
             Multiple targets can be provided in a single space-separated string.
         modified_since: A timestamp. If provided, only files modified after this time are returned.
+        max_depth: Maximum directory traversal depth (e.g., 1 for top-level folder files only).
 
     Returns:
         A unique list of files to scan.
@@ -2669,7 +2670,15 @@ def collect_files(targets: Union[str, List[str]], modified_since: Optional[float
             if p.is_file():
                 results.append(p)
             elif p.is_dir():
-                results.extend([f for f in p.rglob('*') if f.is_file()])
+                if max_depth is not None:
+                    for f in p.rglob('*'):
+                        try:
+                            if f.is_file() and len(f.relative_to(p).parts) <= max_depth:
+                                results.append(f)
+                        except (ValueError, OSError):
+                            pass
+                else:
+                    results.extend([f for f in p.rglob('*') if f.is_file()])
 
     # Use dict keys to remove duplicates while preserving insertion order.
     unique_files = list(dict.fromkeys(results))
@@ -5488,6 +5497,7 @@ def scan_files(
     extra_snippets: Optional[List[Tuple[str, bytes]]] = None,
     fail_threshold: Optional[int] = None,
     modified_since: Optional[float] = None,
+    max_depth: Optional[int] = None,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for dangerous content and optionally use AI for analysis.
 
@@ -5504,6 +5514,7 @@ def scan_files(
         extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
         fail_threshold: Stop with an error if a file threat level is at or above this limit (0-100).
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
+        max_depth: Maximum directory traversal depth when collecting files.
 
     Yields:
         Tuples indicating events:
@@ -5541,7 +5552,7 @@ def scan_files(
     explicit_targets = {Path(t) for t in local_targets}
     explicit_files = {f for f in explicit_targets if f.is_file()}
 
-    file_list = collect_files(local_targets, modified_since=modified_since)
+    file_list = collect_files(local_targets, modified_since=modified_since, max_depth=max_depth)
 
     if exclude_patterns:
         file_list = [
@@ -6679,7 +6690,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
                 writer.writerow([record.get(k, '') for k in keys])
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6696,6 +6707,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
         import_file: Path to a previous scan report to import and process.
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
+        max_depth: Maximum directory traversal depth when collecting files.
         baseline_file: Path to a previous report file to use as a baseline to filter out existing findings.
         baseline_output_file: Path to save findings that were bypassed due to matching the baseline.
         quiet: Whether to suppress progress updates and summary banners on sys.stderr.
@@ -6767,6 +6779,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             extra_snippets=extra_snippets,
             fail_threshold=fail_threshold,
             modified_since=modified_since,
+            max_depth=max_depth,
         )
 
     for event_type, data in event_gen:
@@ -10155,6 +10168,11 @@ def main():
         help='The maximum file size to scan (for example: "10MB"). Default is 10MB.'
     )
     scan_group.add_argument(
+        '--max-depth',
+        type=int,
+        help='Limit directory traversal depth when collecting files (for example: 1 for top-level folder files only).'
+    )
+    scan_group.add_argument(
         '--modified',
         type=str,
         help="Only scan files changed within this time (for example: '24h', '1h', '7d')."
@@ -10461,6 +10479,9 @@ def main():
 
     if args.top is not None and args.top <= 0:
         parser.error("Value for --top / --limit must be a positive integer.")
+
+    if args.max_depth is not None and args.max_depth < 0:
+        parser.error("Value for --max-depth must be a non-negative integer.")
 
     if args.clear_cache:
         Config.gpt_cache = {}
@@ -10922,7 +10943,8 @@ def main():
             sort_by=args.sort_by,
             paths_only=args.paths_only,
             files_without_matches=args.files_without_matches,
-            reverse_sort=args.reverse_sort
+            reverse_sort=args.reverse_sort,
+            max_depth=args.max_depth
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
