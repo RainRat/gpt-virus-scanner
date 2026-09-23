@@ -7696,6 +7696,7 @@ def clear_results(event: Optional[tk.Event] = None) -> Optional[str]:
         items = tree.get_children()
         if items:
             tree.delete(*items)
+        tree.selection_remove(tree.selection())
     if progress_bar:
         progress_bar["value"] = 0
     update_status("Ready")
