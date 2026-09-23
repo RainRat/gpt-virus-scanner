@@ -21,7 +21,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 
 ### File Format Support
 *   **Notebook Support:** Scan cells in `.ipynb` files for dangerous commands.
-*   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, and Docker Compose.
+*   **Project & Build Files:** Scan `package.json`, `composer.json`, `pyproject.toml`, `requirements.txt`, `deno.json`, `deno.jsonc`, `Dockerfile`, `Makefile`, and Docker Compose.
 *   **Archives:** Open `.zip`, `.tar`, and `.tar.gz` files automatically to scan the contents.
 *   **Automation Tasks:** Scan GitHub Actions, GitLab CI, and other YAML workflows for suspicious commands.
 *   **Web Files:** Scan HTML, SVG, and Markdown files for embedded scripts.
@@ -146,7 +146,7 @@ Open the scanner window by running the appropriate command for your operating sy
 ##### Common Scans
 *   **Scan File(s)... (Ctrl+Shift+O):** Select specific files to scan.
 *   **Scan Folder... (Ctrl+Shift+F):** Select an entire folder to scan.
-*   **Scan Recently Modified...:** Scan files changed within a certain time (like the last 24 hours).
+*   **Scan Recently Modified:** Scan files changed within a selected time frame (preset options for 1 hour, 24 hours, 7 days, or a custom duration).
 *   **Scan Web Link... (Ctrl+Shift+U):** Scan code or archives directly from a web link.
 *   **Scan File List...:** Scan a list of files from a text file.
 *   **Scan Clipboard (Ctrl+Shift+V):** Scan code you have copied to your clipboard.
