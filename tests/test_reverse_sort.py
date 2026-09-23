@@ -102,3 +102,25 @@ def test_cli_reverse_flags(monkeypatch, tmp_path):
     gptscan.main()
     assert mock_run_cli.call_count == 1
     assert mock_run_cli.call_args.kwargs.get("reverse_sort") is True
+
+
+def test_reverse_sort_live_scan(monkeypatch, capsys):
+    events = [
+        ('result', ("low.py", "20%", "", "", "", "low", "1")),
+        ('result', ("high.py", "90%", "", "", "", "high", "1")),
+        ('summary', (2, 100, 1.0))
+    ]
+    def mock_scan_files(*args, **kwargs):
+        yield from events
+    monkeypatch.setattr(gptscan, "scan_files", mock_scan_files)
+
+    gptscan.run_cli(["dummy"], deep=False, show_all=True, use_gpt=False, rate_limit=60, output_format="csv", quiet=True, reverse_sort=True)
+    out = capsys.readouterr().out
+    lines = [line.split(",")[0] for line in out.strip().splitlines() if line]
+    assert lines == ["path", "low.py", "high.py"]
+
+    gptscan.run_cli(["dummy"], deep=False, show_all=True, use_gpt=False, rate_limit=60, output_format="json", quiet=True, reverse_sort=True)
+    out_json = capsys.readouterr().out
+    paths = [json.loads(line)["path"] for line in out_json.strip().splitlines() if line]
+    assert paths == ["low.py", "high.py"]
+

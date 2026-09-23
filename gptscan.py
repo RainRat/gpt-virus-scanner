@@ -1475,7 +1475,7 @@ def get_ruby_gems_paths() -> List[str]:
                                         shell=is_win).strip()
         if output:
             paths.append(output)
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+    except (subprocess.SubprocessError, FileNotFoundError, OSError, RuntimeError):
         pass
 
     # 3. Common fallback paths
@@ -1500,7 +1500,7 @@ def get_php_packages_paths() -> List[str]:
                                         shell=is_win).strip()
         if output:
             paths.append(output)
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+    except (subprocess.SubprocessError, FileNotFoundError, OSError, RuntimeError):
         pass
 
     # 2. Common fallback paths
@@ -1557,7 +1557,7 @@ def get_go_packages_paths() -> List[str]:
                 if p:
                     paths.append(os.path.join(p, "pkg", "mod"))
                     paths.append(os.path.join(p, "src"))
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+    except (subprocess.SubprocessError, FileNotFoundError, OSError, RuntimeError):
         pass
 
     # 3. Default location
@@ -1962,7 +1962,7 @@ def get_nodejs_package_paths() -> List[str]:
                                         shell=is_win).strip()
         if output:
             paths.append(output)
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+    except (subprocess.SubprocessError, FileNotFoundError, OSError, RuntimeError):
         pass
 
     # 2. Common system paths (Unix-like)
@@ -6801,7 +6801,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
             if count_only or summary_only:
                 pass
-            elif paths_only or files_without_matches or sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
+            elif reverse_sort or paths_only or files_without_matches or sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
                 result_buffer.append(record)
             elif not is_threat and not show_all:
                 # If this record was emitted because files_without_matches forced show_all, skip printing in standard format
@@ -6950,10 +6950,10 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         use_color_output = out_stream.isatty() if hasattr(out_stream, 'isatty') else False
         report = generate_console_report(result_buffer, use_color=use_color_output)
         print(report, file=out_stream)
-    elif output_format in ('json', 'ndjson', 'jsonl') and (sort_by is not None or top_limit is not None):
+    elif output_format in ('json', 'ndjson', 'jsonl') and (reverse_sort or sort_by is not None or top_limit is not None):
         for record in result_buffer:
             print(json.dumps(record), file=out_stream)
-    elif output_format in ('csv', 'tsv') and (sort_by is not None or top_limit is not None):
+    elif output_format in ('csv', 'tsv') and (reverse_sort or sort_by is not None or top_limit is not None):
         for record in result_buffer:
             writer.writerow([record.get(k, '') for k in keys])
 
