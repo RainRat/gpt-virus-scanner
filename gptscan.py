@@ -6679,7 +6679,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
                 writer.writerow([record.get(k, '') for k in keys])
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6705,6 +6705,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         sort_by: Optional field to sort results by ('threat', 'path', or 'line').
         paths_only: Whether to print only unique file paths of suspicious findings line-by-line.
         files_without_matches: Whether to print only unique file paths of clean scanned files line-by-line.
+        reverse_sort: Whether to reverse the sort order of scan results.
 
     Returns:
         The number of suspicious files detected.
@@ -6858,11 +6859,12 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         if sort_by == 'threat':
             result_buffer.sort(
                 key=lambda x: get_effective_threat_level(x.get('own_conf', '0%'), x.get('gpt_conf', '')),
-                reverse=True
+                reverse=not reverse_sort
             )
         elif sort_by == 'path':
             result_buffer.sort(
-                key=lambda x: x.get('path', '').lower()
+                key=lambda x: x.get('path', '').lower(),
+                reverse=reverse_sort
             )
         elif sort_by == 'line':
             def _parse_line(val: Any) -> int:
@@ -6871,13 +6873,14 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 m = re.search(r'\d+', str(val))
                 return int(m.group()) if m else 0
             result_buffer.sort(
-                key=lambda x: _parse_line(x.get('line', 0))
+                key=lambda x: _parse_line(x.get('line', 0)),
+                reverse=reverse_sort
             )
-    elif top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
-        # Sort results by effective threat level (highest first)
+    elif reverse_sort or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
+        # Sort results by effective threat level (highest first by default, reversed if reverse_sort)
         result_buffer.sort(
             key=lambda x: get_effective_threat_level(x.get('own_conf', '0%'), x.get('gpt_conf', '')),
-            reverse=True
+            reverse=not reverse_sort
         )
 
     if top_limit is not None and top_limit > 0:
@@ -10442,6 +10445,12 @@ def main():
         help='Sort output results by "threat" (highest threat first), "path" (file path alphabetically), or "line" (line number numerically).'
     )
     output_group.add_argument(
+        '-r', '--reverse',
+        action='store_true',
+        dest='reverse_sort',
+        help='Reverse the sort order of scan results.'
+    )
+    output_group.add_argument(
         '--min-threat', '--min-threat-level',
         type=int,
         dest='min_threat',
@@ -10912,7 +10921,8 @@ def main():
             summary_only=args.summary_only,
             sort_by=args.sort_by,
             paths_only=args.paths_only,
-            files_without_matches=args.files_without_matches
+            files_without_matches=args.files_without_matches,
+            reverse_sort=args.reverse_sort
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
