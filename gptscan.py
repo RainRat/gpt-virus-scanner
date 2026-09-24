@@ -2941,7 +2941,7 @@ def get_file_sha256(file_path_or_data: Union[str, Path, bytes]) -> str:
             for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
-    except Exception:
+    except (OSError, IOError):
         return ""
 
 
