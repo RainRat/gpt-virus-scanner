@@ -76,3 +76,46 @@ def test_sort_visual_indicators_fallback():
     # Check that 'line' now has the descending indicator and others are clean
     assert headings_text["line"] == "Line ▼"
     assert headings_text["path"] == "File Path"
+
+
+def test_sort_column_recalculates_zebra_striping():
+    tv = MagicMock()
+    tv.get_children.return_value = ["item1", "item2", "item3"]
+
+    values_map = {
+        "item1": "b.py",
+        "item2": "a.py",
+        "item3": "c.py",
+    }
+    tv.set.side_effect = lambda k, col: values_map[k]
+
+    item_tags = {
+        "item1": ["odd"],
+        "item2": ["high-risk"],
+        "item3": ["medium-risk", "odd"],
+    }
+
+    def mock_item(k, option=None, **kwargs):
+        if option == "tags":
+            return tuple(item_tags[k])
+        if "tags" in kwargs:
+            item_tags[k] = list(kwargs["tags"])
+        return MagicMock()
+
+    tv.item.side_effect = mock_item
+    tv.__getitem__.side_effect = lambda key: ["path", "own_conf"] if key == "columns" else MagicMock()
+    tv.heading.side_effect = lambda col, option=None, text=None, command=None: MagicMock()
+
+    # Sort by path ascending: expected order item2 ("a.py"), item1 ("b.py"), item3 ("c.py")
+    gptscan.sort_column(tv, "path", reverse=False)
+
+    # Index 0: item2 ("a.py") -> even -> 'odd' should not be present, 'high-risk' preserved
+    assert "odd" not in item_tags["item2"]
+    assert "high-risk" in item_tags["item2"]
+
+    # Index 1: item1 ("b.py") -> odd -> 'odd' should be present
+    assert "odd" in item_tags["item1"]
+
+    # Index 2: item3 ("c.py") -> even -> 'odd' removed, 'medium-risk' preserved
+    assert "odd" not in item_tags["item3"]
+    assert "medium-risk" in item_tags["item3"]

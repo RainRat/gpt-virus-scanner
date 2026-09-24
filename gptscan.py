@@ -3051,6 +3051,17 @@ def sort_column(tv: ttk.Treeview, col: str, reverse: bool) -> None:
 
     for index, (_, k) in enumerate(values_with_ids):
         tv.move(k, "", index)
+        try:
+            cur_tags = list(tv.item(k, 'tags'))
+            if index % 2 == 1:
+                if 'odd' not in cur_tags:
+                    cur_tags.append('odd')
+            else:
+                if 'odd' in cur_tags:
+                    cur_tags.remove('odd')
+            tv.item(k, tags=tuple(cur_tags))
+        except Exception:
+            pass
 
     # Clean up all column headers first
     columns = []
