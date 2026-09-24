@@ -59,3 +59,36 @@ run:
     # Note: current implementation of list parsing in gptscan.py:
     # it accumulates list items and joins them with \n.
     # So we expect one snippet: 'echo "start"\nline 1\nline 2\necho "end"'
+
+def test_yaml_multiline_block_with_empty_lines():
+    """Verify that multi-line block scalars containing blank lines are correctly preserved in YAML scripts."""
+    yaml_content = b"""
+script: |
+  echo "step 1"
+
+  echo "step 2"
+
+  echo "step 3"
+"""
+    results = list(unpack_content("workflow.yml", yaml_content))
+    scripts = [r[1].decode('utf-8') for r in results]
+    assert len(scripts) == 1
+    assert 'echo "step 1"' in scripts[0]
+    assert 'echo "step 2"' in scripts[0]
+    assert 'echo "step 3"' in scripts[0]
+    assert '\n\n' in scripts[0]
+
+def test_yaml_list_block_with_empty_lines():
+    """Verify that multi-line block scalars inside YAML list items containing blank lines are correctly preserved."""
+    yaml_content = b"""
+steps:
+  - run:
+      - |
+        echo "list item step 1"
+
+        echo "list item step 2"
+"""
+    results = list(unpack_content("workflow.yml", yaml_content))
+    scripts = [r[1].decode('utf-8') for r in results]
+    assert len(scripts) == 1
+    assert 'echo "list item step 1"\n\necho "list item step 2"' in scripts[0]
