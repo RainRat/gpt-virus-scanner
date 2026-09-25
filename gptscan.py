@@ -6651,6 +6651,71 @@ def generate_xml(results: List[Dict[str, Any]]) -> str:
     return '<?xml version="1.0" encoding="utf-8"?>\n' + raw_bytes.decode("utf-8")
 
 
+def generate_junit(results: List[Dict[str, Any]]) -> str:
+    """Generate a JUnit XML report from the scan results.
+
+    Args:
+        results: List of standardized result dictionaries.
+
+    Returns:
+        The JUnit XML report as a string.
+    """
+    import xml.etree.ElementTree as ET
+
+    total_tests = len(results)
+    failures = 0
+    for r in results:
+        conf = get_effective_threat_level(r.get("own_conf", "0%"), r.get("gpt_conf", ""))
+        if conf >= Config.THRESHOLD:
+            failures += 1
+
+    testsuites_el = ET.Element("testsuites", name="gptscan", tests=str(total_tests), failures=str(failures))
+    testsuite_el = ET.SubElement(testsuites_el, "testsuite", name="gptscan.findings", tests=str(total_tests), failures=str(failures))
+
+    for r in results:
+        file_path = str(r.get("path", "unknown"))
+        line_num = str(r.get("line", "-"))
+        own_conf = str(r.get("own_conf", "0%"))
+        gpt_conf = str(r.get("gpt_conf", ""))
+        admin_desc = str(r.get("admin_desc", ""))
+        end_user_desc = str(r.get("end-user_desc", ""))
+        snippet = str(r.get("snippet", ""))
+
+        effective_conf = get_effective_threat_level(own_conf, gpt_conf)
+        test_name = f"Line {line_num} - Threat {own_conf}" if line_num != "-" else f"Threat {own_conf}"
+
+        testcase_el = ET.SubElement(
+            testsuite_el,
+            "testcase",
+            classname=file_path,
+            name=test_name,
+            time="0"
+        )
+
+        if effective_conf >= Config.THRESHOLD:
+            msg = f"Threat Level {own_conf}"
+            if gpt_conf:
+                msg += f" (GPT: {gpt_conf})"
+            desc = admin_desc or end_user_desc or "Suspicious code detected"
+            fail_text = f"Path: {file_path}\nLine: {line_num}\nLocal Conf: {own_conf}\nGPT Conf: {gpt_conf}\nAdmin: {admin_desc}\nUser: {end_user_desc}\nSnippet:\n{snippet}"
+
+            failure_el = ET.SubElement(
+                testcase_el,
+                "failure",
+                message=f"{msg}: {desc}",
+                type="Threat"
+            )
+            failure_el.text = fail_text
+
+    try:
+        ET.indent(testsuites_el, space="  ")
+    except AttributeError:
+        pass
+
+    raw_bytes = ET.tostring(testsuites_el, encoding="utf-8")
+    return '<?xml version="1.0" encoding="utf-8"?>\n' + raw_bytes.decode("utf-8")
+
+
 def generate_yaml(results: List[Dict[str, Any]]) -> str:
     """Generate a YAML report from the scan results.
 
@@ -6682,6 +6747,8 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
             print(generate_markdown(results), file=out_stream)
         elif fmt == 'xml':
             print(generate_xml(results), file=out_stream)
+        elif fmt in ('junit', 'junit-xml'):
+            print(generate_junit(results), file=out_stream)
         elif fmt in ('yaml', 'yml'):
             print(generate_yaml(results), file=out_stream)
         elif fmt == 'report':
@@ -6826,7 +6893,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
             if count_only or summary_only:
                 pass
-            elif reverse_sort or paths_only or files_without_matches or sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
+            elif reverse_sort or paths_only or files_without_matches or sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml', 'junit'):
                 result_buffer.append(record)
             elif not is_threat and not show_all:
                 # If this record was emitted because files_without_matches forced show_all, skip printing in standard format
@@ -6901,7 +6968,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 key=lambda x: _parse_line(x.get('line', 0)),
                 reverse=reverse_sort
             )
-    elif reverse_sort or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml'):
+    elif reverse_sort or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml', 'junit'):
         # Sort results by effective threat level (highest first by default, reversed if reverse_sort)
         result_buffer.sort(
             key=lambda x: get_effective_threat_level(x.get('own_conf', '0%'), x.get('gpt_conf', '')),
@@ -6968,6 +7035,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         print(generate_markdown(result_buffer), file=out_stream)
     elif output_format == 'xml':
         print(generate_xml(result_buffer), file=out_stream)
+    elif output_format == 'junit':
+        print(generate_junit(result_buffer), file=out_stream)
     elif output_format == 'yaml':
         print(generate_yaml(result_buffer), file=out_stream)
     elif output_format == 'report':
@@ -7207,6 +7276,85 @@ def parse_xml_content(content: str) -> List[Dict[str, Any]]:
         raise ValueError(f"Failed to parse XML content: {e}")
 
 
+def parse_junit_content(content: str) -> List[Dict[str, Any]]:
+    """Parse scan findings from a JUnit XML string.
+
+    Args:
+        content: The raw JUnit XML string content.
+
+    Returns:
+        A list of result dictionaries.
+    """
+    import xml.etree.ElementTree as ET
+    try:
+        root_el = ET.fromstring(content)
+        testcases = root_el.findall(".//testcase")
+        if not testcases and root_el.tag not in ("testsuites", "testsuite"):
+            return []
+
+        data = []
+        for case in testcases:
+            file_path = case.get("classname", "")
+            name = case.get("name", "")
+            failure = case.find("failure")
+
+            line = "-"
+            own_conf = "0%"
+            gpt_conf = ""
+            admin_desc = ""
+            end_user_desc = ""
+            snippet = ""
+
+            line_m = re.search(r"Line\s+(\d+)", name)
+            if line_m:
+                line = line_m.group(1)
+            threat_m = re.search(r"Threat\s+(\d+%)", name)
+            if threat_m:
+                own_conf = threat_m.group(1)
+
+            if failure is not None:
+                fail_body = failure.text or ""
+                p_m = re.search(r"^Path:\s*(.*)$", fail_body, re.MULTILINE)
+                if p_m and p_m.group(1).strip():
+                    file_path = p_m.group(1).strip()
+                l_m = re.search(r"^Line:\s*(.*)$", fail_body, re.MULTILINE)
+                if l_m and l_m.group(1).strip():
+                    line = l_m.group(1).strip()
+                c_m = re.search(r"^Local Conf:\s*(.*)$", fail_body, re.MULTILINE)
+                if c_m and c_m.group(1).strip():
+                    own_conf = c_m.group(1).strip()
+                g_m = re.search(r"^GPT Conf:\s*(.*)$", fail_body, re.MULTILINE)
+                if g_m and g_m.group(1).strip():
+                    gpt_conf = g_m.group(1).strip()
+                a_m = re.search(r"^Admin:\s*(.*)$", fail_body, re.MULTILINE)
+                if a_m and a_m.group(1).strip():
+                    admin_desc = a_m.group(1).strip()
+                u_m = re.search(r"^User:\s*(.*)$", fail_body, re.MULTILINE)
+                if u_m and u_m.group(1).strip():
+                    end_user_desc = u_m.group(1).strip()
+
+                s_m = re.search(r"Snippet:\n(.*)$", fail_body, re.DOTALL)
+                if s_m:
+                    snippet = s_m.group(1)
+                elif not admin_desc and not end_user_desc:
+                    msg = failure.get("message", "")
+                    if msg:
+                        admin_desc = msg
+
+            data.append({
+                "path": file_path,
+                "line": line,
+                "own_conf": own_conf,
+                "admin_desc": admin_desc,
+                "end-user_desc": end_user_desc,
+                "gpt_conf": gpt_conf,
+                "snippet": snippet,
+            })
+        return data
+    except Exception as e:
+        raise ValueError(f"Failed to parse JUnit XML content: {e}")
+
+
 def parse_yaml_content(content: str) -> List[Dict[str, Any]]:
     """Parse scan findings from a YAML string.
 
@@ -7235,11 +7383,11 @@ def parse_yaml_content(content: str) -> List[Dict[str, Any]]:
 
 
 def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Parse report content in JSON, SARIF, XML, YAML, Markdown, HTML, Triage Report, TSV, or CSV format.
+    """Parse report content in JSON, SARIF, XML, JUnit XML, YAML, Markdown, HTML, Triage Report, TSV, or CSV format.
 
     Args:
         content: The raw string content of the report.
-        filename_hint: Optional filename or extension hint (e.g., '.json', '.csv', '.tsv', '.xml').
+        filename_hint: Optional filename or extension hint (e.g., '.json', '.csv', '.tsv', '.xml', '.junit').
 
     Returns:
         A list of standardized result dictionaries.
@@ -7252,13 +7400,15 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     if filename_hint:
         ext = os.path.splitext(filename_hint)[1].lower()
 
-    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.tsv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml'):
+    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.tsv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml', '.junit'):
         raise ValueError(f"Unsupported file extension: {ext}")
 
     data_to_import = []
 
     # Auto-detection logic
-    if (content.strip().startswith('<') and ('<table' in content.lower() or '<tr' in content.lower())) or ext in ('.html', '.htm', '.xhtml'):
+    if (content.strip().startswith('<') and ('<testsuites' in content.lower() or '<testsuite' in content.lower())) or ext == '.junit':
+        data_to_import = parse_junit_content(content)
+    elif (content.strip().startswith('<') and ('<table' in content.lower() or '<tr' in content.lower())) or ext in ('.html', '.htm', '.xhtml'):
         # HTML report format
         # Use regex to find rows, ignoring the header row
         rows = re.findall(r'<tr\b[^>]*>(.*?)</tr>', content, re.DOTALL | re.IGNORECASE)
@@ -7293,7 +7443,10 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
                 data_to_import.append(item)
     elif (content.strip().startswith('<') and ('<findings' in content.lower() or content.startswith('<?xml'))) or ext == '.xml':
         # XML report format
-        data_to_import = parse_xml_content(content)
+        if '<testsuites' in content.lower() or '<testsuite' in content.lower():
+            data_to_import = parse_junit_content(content)
+        else:
+            data_to_import = parse_xml_content(content)
     elif content.strip().startswith(('[', '{')) or (ext in ('.json', '.jsonl', '.ndjson', '.sarif')):
         try:
             parsed_json = json.loads(content)
@@ -7782,6 +7935,7 @@ def export_results(event: Optional[tk.Event] = None) -> None:
             ("YAML files", "*.yaml;*.yml"),
             ("SARIF files", "*.sarif"),
             ("XML files", "*.xml"),
+            ("JUnit XML files", "*.junit;*.junit.xml"),
             ("Triage reports", "*.txt;*.log"),
             ("All files", "*.*")
         ],
@@ -7813,6 +7967,12 @@ def export_results(event: Optional[tk.Event] = None) -> None:
         elif ext == '.md':
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(generate_markdown(results))
+        elif ext == '.xml' and 'junit' in file_path.lower():
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(generate_junit(results))
+        elif ext == '.junit':
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(generate_junit(results))
         elif ext == '.xml':
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(generate_xml(results))
@@ -8281,6 +8441,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             root.clipboard_append(xml_content)
             set_local_status("Result copied as XML.", temporary=True)
 
+    def copy_as_junit_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            junit_content = generate_junit(results)
+            root.clipboard_clear()
+            root.clipboard_append(junit_content)
+            set_local_status("Result copied as JUnit XML.", temporary=True)
+
     def copy_as_sarif_details():
         results = _get_tree_results_as_dicts([current_item_id])
         if results:
@@ -8377,6 +8545,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_menu.add_command(label="Copy as SARIF", command=copy_as_sarif_details)
     copy_menu.add_command(label="Copy as Triage Report", command=copy_as_report_details, accelerator="Ctrl+Shift+R")
     copy_menu.add_command(label="Copy as XML", command=copy_as_xml_details)
+    copy_menu.add_command(label="Copy as JUnit XML", command=copy_as_junit_details)
     copy_menu.add_command(label="Copy as YAML", command=copy_as_yaml_details)
     copy_menu.add_command(label="Copy Code", command=copy_code, accelerator="Ctrl+S")
     copy_menu_btn["menu"] = copy_menu
@@ -8964,6 +9133,23 @@ def copy_as_xml(event: Optional[tk.Event] = None) -> None:
     tree.clipboard_clear()
     tree.clipboard_append(xml_content)
     update_status(f"Copied {len(results)} item(s) as XML.")
+
+
+def copy_as_junit(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as JUnit XML to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+    junit_content = generate_junit(results)
+
+    tree.clipboard_clear()
+    tree.clipboard_append(junit_content)
+    update_status(f"Copied {len(results)} item(s) as JUnit XML.")
 
 
 def copy_as_html(event: Optional[tk.Event] = None) -> None:
@@ -9951,6 +10137,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     copy_submenu.add_command(label="As SARIF", command=copy_as_sarif)
     copy_submenu.add_command(label="As YAML", command=copy_as_yaml)
     copy_submenu.add_command(label="As XML", command=copy_as_xml)
+    copy_submenu.add_command(label="As JUnit XML", command=copy_as_junit)
     copy_submenu.add_command(label="As Triage Report", command=copy_as_report, accelerator="Ctrl+Shift+R")
     context_menu.add_cascade(label="Copy", menu=copy_submenu)
 
@@ -10434,6 +10621,7 @@ def main():
     output_group.add_argument('--html', action='store_true', help='Create an interactive HTML report.')
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report.')
     output_group.add_argument('--xml', action='store_true', help='Create an XML report.')
+    output_group.add_argument('--junit', action='store_true', help='Save scan results in JUnit XML format.')
     output_group.add_argument('--yaml', '--yml', action='store_true', dest='yaml', help='Create a YAML report.')
     output_group.add_argument('--report', action='store_true', help='Print a detailed triage report to the terminal.')
     output_group.add_argument(
@@ -10684,6 +10872,8 @@ def main():
             output_format = 'markdown'
         elif args.xml:
             output_format = 'xml'
+        elif args.junit:
+            output_format = 'junit'
         elif args.yaml:
             output_format = 'yaml'
         elif args.report:
@@ -10705,6 +10895,8 @@ def main():
                 output_format = 'csv'
             elif ext == '.tsv':
                 output_format = 'tsv'
+            elif ext == '.junit' or (ext == '.xml' and 'junit' in args.output.lower()):
+                output_format = 'junit'
             elif ext == '.xml':
                 output_format = 'xml'
             elif ext in ('.yaml', '.yml'):

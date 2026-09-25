@@ -130,7 +130,7 @@ Open the scanner window by running the appropriate command for your operating sy
 *   **Import Results... (Ctrl+O):** Import scan results from a previous report file, folder, or web link.
 *   **Import from Clipboard (Ctrl+V):** Import scan results from your clipboard.
 *   **Import from Web Link...:** Import scan results from a web link.
-*   **Export Results... (Ctrl+E):** Save current scan results to a file (JSON, NDJSON, CSV, TSV, SARIF, HTML, Markdown, XML, or YAML).
+*   **Export Results... (Ctrl+E):** Save current scan results to a file (JSON, NDJSON, CSV, TSV, SARIF, HTML, Markdown, XML, JUnit XML, or YAML).
 *   **Manage Exclusions...:** View and manage path exclusion patterns ignored during scans.
 *   **Manage Extensions...:** View and manage target file extensions included in scans.
 *   **Copy as CLI Command (Ctrl+Shift+E):** Copy equivalent command-line flags for your current GUI settings.
@@ -552,6 +552,7 @@ By default, the scanner prints human-readable text to the terminal. You can cust
 *   `--html`: Create an interactive HTML report.
 *   `--md` / `--markdown`: Create a Markdown report.
 *   `--xml`: Create an XML report.
+*   `--junit`: Save results in JUnit XML format (useful for CI/CD test reporting).
 *   `--yaml` / `--yml`: Create a YAML report (requires the `pyyaml` package).
 *   `--report`: Output a detailed triage report to the terminal.
 *   `-C`, `--count`: Print only the total count of suspicious findings.
@@ -707,6 +708,7 @@ You can customize terminal scans using these command line options.
 *   `--html`: Create an interactive HTML report.
 *   `--md`, `--markdown`: Create a Markdown report.
 *   `--xml`: Create an XML report.
+*   `--junit`: Save results in JUnit XML format.
 *   `--yaml`, `--yml`: Create a YAML report.
 *   `--report`: Output a detailed triage report to the terminal.
 *   `--top <N>` / `--limit <N>`: Limit output results to the top N highest-risk findings.
@@ -777,8 +779,8 @@ The scanner provides several ways to analyze and manage your results:
     *   **Check on VirusTotal:** Search for the file's hash on VirusTotal.
     *   **View Online:** Open the source file in your web browser (for Git projects and remote web links).
 *   **Export & Import:**
-    *   **Export Results:** Save your scan to a file (CSV, TSV, Markdown, HTML, JSON, NDJSON, SARIF, XML, or YAML) via **File > Export Results...**.
-    *   **Import Results:** Load previous scan results from any supported format (JSON, NDJSON, SARIF, CSV, TSV, Markdown, HTML, XML, YAML, Triage Reports) via **File > Import Results...** or by pasting from your clipboard (`Ctrl+V`).
+    *   **Export Results:** Save your scan to a file (CSV, TSV, Markdown, HTML, JSON, NDJSON, SARIF, XML, JUnit XML, or YAML) via **File > Export Results...**.
+    *   **Import Results:** Load previous scan results from any supported format (JSON, NDJSON, SARIF, CSV, TSV, Markdown, HTML, XML, JUnit XML, YAML, Triage Reports) via **File > Import Results...** or by pasting from your clipboard (`Ctrl+V`).
 
 ## Customizing the Scanner
 You can tailor the scanner to your needs:
