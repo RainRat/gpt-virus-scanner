@@ -128,6 +128,7 @@ def test_show_keyboard_shortcuts_content_and_tabs(mock_shortcuts_env):
     assert "Enter" in label_texts
     assert "Esc" in label_texts
     assert "Space / Enter" in label_texts
+    assert "Delete / Backspace" in label_texts
 
 def test_show_keyboard_shortcuts_darwin_modifier(mock_shortcuts_env, monkeypatch):
     captured = mock_shortcuts_env
@@ -284,3 +285,11 @@ def test_show_keyboard_shortcuts_recursive_widget_binding(mock_shortcuts_env):
     assert "<MouseWheel>" in bound_events
     assert "<Button-4>" in bound_events
     assert "<Button-5>" in bound_events
+
+
+def test_backspace_key_binding_in_gui_source():
+    """Verify that <BackSpace> and <Delete> are both bound on tree in create_gui."""
+    import inspect
+    source = inspect.getsource(gptscan.create_gui)
+    assert "tree.bind('<Delete>', lambda event: exclude_selected())" in source
+    assert "tree.bind('<BackSpace>', lambda event: exclude_selected())" in source

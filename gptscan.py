@@ -4563,7 +4563,7 @@ def show_keyboard_shortcuts() -> None:
     results_shortcuts = [
         ("Space / Enter", "View Result Details"),
         ("F5 / R", "Rescan Selected Items"),
-        ("Delete", "Exclude Selected Items"),
+        ("Delete / Backspace", "Exclude Selected Items"),
         (f"{mod}+A", "Select All Items"),
         (f"{mod}+C", "Copy File Path"),
         (f"{mod}+Shift+C", "Copy as Markdown Table"),
@@ -4585,7 +4585,7 @@ def show_keyboard_shortcuts() -> None:
         ("Alt+Up / Down", "Force Previous / Next Result"),
         (f"{mod}+PageUp / PageDown", "Force Previous / Next Result"),
         ("F5 / R", "Rescan Current Item"),
-        ("Delete", "Exclude Current Item"),
+        ("Delete / Backspace", "Exclude Current Item"),
         (f"{mod}+U", "Toggle between Full Source & Snippet"),
         (f"{mod}++ / -", "Zoom In / Out Code Viewer"),
         (f"{mod}+0", "Reset Code Viewer Zoom"),
@@ -8593,7 +8593,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Control-Next>', navigate_next)
     details_win.bind('<Command-Prior>', navigate_prev)
     details_win.bind('<Command-Next>', navigate_next)
-    details_win.bind('<Delete>', lambda e: on_exclude())
+    details_win.bind('<Delete>', lambda e: on_exclude() if not is_input_focused() else None)
+    details_win.bind('<BackSpace>', lambda e: on_exclude() if not is_input_focused() else None)
     details_win.bind('<Escape>', lambda e: details_win.destroy())
     details_win.bind('<Shift-Return>', lambda e: open_file(path_entry.get()))
     details_win.bind('<Shift-KP_Enter>', lambda e: open_file(path_entry.get()))
@@ -10050,6 +10051,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     tree.bind('<Command-KP_Enter>', show_in_folder)
     tree.bind('<space>', view_details)
     tree.bind('<Delete>', lambda event: exclude_selected())
+    tree.bind('<BackSpace>', lambda event: exclude_selected())
     tree.bind('<F5>', lambda event: rescan_selected())
     tree.bind('r', lambda event: rescan_selected())
 
