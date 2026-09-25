@@ -95,7 +95,8 @@ class TestStartupScanning(unittest.TestCase):
     @patch('gptscan.subprocess.check_output')
     @patch('gptscan.sys.platform', 'win32')
     def test_get_startup_item_commands_windows_exception(self, mock_check_output):
-        mock_check_output.side_effect = Exception("Subprocess error")
+        import subprocess
+        mock_check_output.side_effect = subprocess.CalledProcessError(1, ["powershell"])
         results = gptscan.get_startup_item_commands()
         self.assertEqual(results, [])
 
@@ -176,7 +177,8 @@ class TestStartupScanning(unittest.TestCase):
             filename = getattr(f, 'filename', '')
             if filename in plist_data and plist_data[filename] is not None:
                 return plist_data[filename]
-            raise Exception("Corrupt plist")
+            import plistlib
+            raise plistlib.InvalidFileException("Corrupt plist")
 
         mock_plist_load.side_effect = side_effect_plist
 

@@ -2280,7 +2280,7 @@ def get_startup_item_commands() -> List[Tuple[str, bytes]]:
                                         command = " ".join(args) if isinstance(args, list) else str(args)
                                 if command and command.strip():
                                     items.append((f"[LaunchAgent] {p.name}", command.encode('utf-8')))
-                        except Exception:
+                        except (OSError, plistlib.InvalidFileException, ValueError, TypeError, AttributeError):
                             pass
         else:
             # Linux - Scan .desktop files in autostart folders
@@ -2299,9 +2299,9 @@ def get_startup_item_commands() -> List[Tuple[str, bytes]]:
                                         if command:
                                             items.append((f"[Autostart] {p.name}", command.encode('utf-8')))
                                         break
-                        except Exception:
+                        except OSError:
                             pass
-    except Exception:
+    except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError, OSError):
         pass
 
     return items
