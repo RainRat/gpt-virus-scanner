@@ -1609,7 +1609,7 @@ def get_documents_paths() -> List[str]:
             docs_path, _ = winreg.QueryValueEx(key, "Personal")
             if docs_path:
                 paths.append(docs_path)
-        except Exception:
+        except (OSError, AttributeError):
             pass
 
     return sorted(_normalize_and_filter_dirs(paths))
@@ -1628,7 +1628,7 @@ def get_env_file_paths() -> List[str]:
                 for p in d.glob(pattern):
                     if p.is_file():
                         paths.append(str(p.absolute()))
-            except Exception:
+            except OSError:
                 pass
 
     return sorted(set(paths))

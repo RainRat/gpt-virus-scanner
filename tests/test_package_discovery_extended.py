@@ -195,7 +195,7 @@ def test_get_documents_paths_windows_error(monkeypatch, tmp_path):
     monkeypatch.setattr(Path, "home", lambda: fake_home)
 
     mock_winreg = MagicMock()
-    mock_winreg.OpenKey.side_effect = Exception("Registry error")
+    mock_winreg.OpenKey.side_effect = OSError("Registry error")
     mock_winreg.HKEY_CURRENT_USER = "HKCU"
     monkeypatch.setitem(sys.modules, "winreg", mock_winreg)
 
