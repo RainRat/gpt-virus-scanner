@@ -642,6 +642,7 @@ You can customize terminal scans using these command line options.
 *   `--baseline <file>`: A previous scan report (in any supported format, or `clipboard`) to act as a baseline. Findings matching this baseline are filtered out.
 *   `--baseline-output <file>`: Save findings that match the baseline to a separate file (in the specified output format).
 *   `--max-size <size>`: The maximum file size to scan (for example: `10MB`). Default is 10MB.
+*   `--max-depth <depth>`: Limit directory traversal depth when collecting files (for example: `1` for top-level folder files only).
 *   `--modified <time>`: Only scan files changed within this time (for example: `24h`, `1h`, `7d`).
 *   `--downloads`: Scan the standard Downloads folder.
 *   `--desktop`: Scan your standard Desktop folder.
