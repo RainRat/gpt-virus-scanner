@@ -333,3 +333,25 @@ def test_view_details_keypad_enter_bindings(mock_view_details_env, monkeypatch):
 
     captured_bindings['<Command-KP_Enter>'](None)
     mock_show_in_folder.assert_called_with("test.py")
+
+
+def test_view_details_backspace_binding(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py")
+
+    captured_bindings = {}
+    mock_toplevel.bind.side_effect = lambda event, func: captured_bindings.update({event: func})
+
+    gptscan.view_details(item_id="item1")
+
+    assert '<Delete>' in captured_bindings
+    assert '<BackSpace>' in captured_bindings
+
+    mock_focused = MagicMock()
+    mock_focused.winfo_class.return_value = "Text"
+    mock_toplevel.focus_get.return_value = mock_focused
+
+    with patch.object(gptscan, 'exclude_paths') as mock_exclude:
+        captured_bindings['<BackSpace>'](None)
+        captured_bindings['<Delete>'](None)
+        mock_exclude.assert_not_called()
