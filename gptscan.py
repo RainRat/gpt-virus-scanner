@@ -2254,10 +2254,14 @@ def get_startup_item_commands() -> List[Tuple[str, bytes]]:
                 data = json.loads(output)
                 if isinstance(data, dict):
                     data = [data]
+                elif not isinstance(data, list):
+                    data = []
                 for item in data:
+                    if not isinstance(item, dict):
+                        continue
                     name = item.get("Name", "Unknown")
                     command = item.get("Command")
-                    if command and command.strip():
+                    if command and isinstance(command, str) and command.strip():
                         items.append((f"[Startup] {name}", command.encode('utf-8')))
         elif sys.platform == "darwin":
             # macOS - Scan LaunchAgents and LaunchDaemons
@@ -2301,7 +2305,7 @@ def get_startup_item_commands() -> List[Tuple[str, bytes]]:
                                         break
                         except OSError:
                             pass
-    except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError, OSError):
+    except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError, OSError, ValueError, TypeError, AttributeError):
         pass
 
     return items

