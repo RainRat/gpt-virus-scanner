@@ -2978,6 +2978,28 @@ def get_virustotal_url(path: str, snippet: Optional[str] = None) -> Optional[str
     return None
 
 
+def render_cli_progress_bar(current: int, total: int, width: int = 10) -> str:
+    """Render a clean visual progress bar string for CLI terminal output.
+
+    Args:
+        current: Number of completed items.
+        total: Total number of items.
+        width: Width of the progress bar in characters.
+
+    Returns:
+        Formatted progress bar string e.g. '[█████░░░░░]  50%'
+    """
+    if total <= 0:
+        pct = 0
+        filled = 0
+    else:
+        clamped_current = min(max(0, current), total)
+        pct = int((clamped_current / total) * 100)
+        filled = int((clamped_current / total) * width)
+    unfilled = width - filled
+    return f"[{'█' * filled}{'░' * unfilled}] {pct:3d}%"
+
+
 def format_scan_summary(total_scanned: int, threats_found: int, total_bytes: Optional[int] = None, elapsed_time: Optional[float] = None, use_color: bool = False, high_risk: int = 0, medium_risk: int = 0) -> str:
     """Format a human-readable summary of the scan results.
 
@@ -6931,7 +6953,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                     threat_suffix = f" ({threat_display} suspicious: {high_risk_found} high, {medium_risk_found} medium)"
                 else:
                     threat_suffix = ""
-                msg = f"{status} ({current}/{total}){threat_suffix}" if status else f"Scanning: {current}/{total} files{threat_suffix}"
+                bar = render_cli_progress_bar(current, total)
+                msg = f"{bar} {status} ({current}/{total}){threat_suffix}" if status else f"{bar} Scanning: {current}/{total} files{threat_suffix}"
 
                 # Use \r to overwrite same line, and pad with spaces to clear any previous longer line.
                 # Adjust padding for zero-width ANSI color codes (total 11 chars).
