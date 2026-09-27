@@ -7397,6 +7397,118 @@ def parse_yaml_content(content: str) -> List[Dict[str, Any]]:
         raise ValueError(f"Failed to parse YAML content: {e}")
 
 
+def parse_markdown_content(content: str) -> List[Dict[str, Any]]:
+    """Parse scan findings from a Markdown string.
+
+    Args:
+        content: The raw Markdown string content.
+
+    Returns:
+        A list of result dictionaries.
+    """
+    content = content.strip()
+    if not content:
+        return []
+
+    # Check for Detailed Findings sections first
+    file_sections = re.split(r'^###\s+File:\s*`?(.*?)`?\s*$', content, flags=re.MULTILINE)
+
+    results = []
+    if len(file_sections) > 1:
+        # file_sections[0] is header, then alternating pairs of (path, body)
+        for i in range(1, len(file_sections), 2):
+            path = file_sections[i].strip('` ').strip()
+            body = file_sections[i + 1] if i + 1 < len(file_sections) else ''
+
+            line = '-'
+            own_conf = '0%'
+            gpt_conf = ''
+            admin_desc = ''
+            end_user_desc = ''
+            snippet = ''
+
+            line_m = re.search(r'^\s*-\s*\*\*Detected Line:\*\*\s*(.*)$', body, re.MULTILINE)
+            if line_m:
+                line = line_m.group(1).strip()
+
+            local_m = re.search(r'^\s*-\s*\*\*Local Threat:\*\*\s*(.*)$', body, re.MULTILINE)
+            if local_m:
+                own_conf = local_m.group(1).strip()
+
+            ai_m = re.search(r'^\s*-\s*\*\*AI Threat:\*\*\s*(.*)$', body, re.MULTILINE)
+            if ai_m:
+                gpt_conf = ai_m.group(1).strip()
+
+            admin_m = re.search(r'\*\*Administrator Notes:\*\*\s*\n(.*?)(?=\n\n\*\*End-User|\n\n####|\n####|$)', body, re.DOTALL)
+            if admin_m:
+                admin_desc = admin_m.group(1).strip()
+
+            user_m = re.search(r'\*\*End-User Notes:\*\*\s*\n(.*?)(?=\n\n####|\n####|$)', body, re.DOTALL)
+            if user_m:
+                end_user_desc = user_m.group(1).strip()
+
+            snippet_m = re.search(r'####\s+Code Snippet\s*\n(`{3,4})[^\n]*\n(.*?)\n\1', body, re.DOTALL)
+            if snippet_m:
+                snippet = snippet_m.group(2)
+
+            results.append({
+                'path': path,
+                'line': line,
+                'own_conf': own_conf,
+                'gpt_conf': gpt_conf,
+                'admin_desc': admin_desc,
+                'end-user_desc': end_user_desc,
+                'snippet': snippet
+            })
+        return results
+
+    # Fallback to Summary Table parsing if no detailed file sections
+    lines = content.splitlines()
+    headers = []
+    for idx, line in enumerate(lines):
+        if '|' in line and any(h in line for h in ['Path', 'Line', 'Threat Level', 'Analysis', 'Snippet']):
+            headers = [h.strip() for h in line.strip('|').split('|')]
+            start_idx = idx + 2
+            for row_line in lines[start_idx:]:
+                if '|' not in row_line:
+                    continue
+                cols = [c.strip() for c in re.split(r'(?<!\\)\|', row_line.strip('|'))]
+                if len(cols) >= len(headers):
+                    item = dict(zip(headers, cols))
+                    analysis = item.get('Analysis', '')
+                    if analysis:
+                        admin_match = re.search(r'\*\*Admin:\*\*\s*(.*?)(?:\s*<br>\s*\*\*User:\*\*|$)', analysis)
+                        user_match = re.search(r'\*\*User:\*\*\s*(.*)', analysis)
+                        item['admin_desc'] = html.unescape(admin_match.group(1).replace('<br>', '\n').replace('\\|', '|')).strip() if admin_match else ''
+                        item['end-user_desc'] = html.unescape(user_match.group(1).replace('<br>', '\n').replace('\\|', '|')).strip() if user_match else ''
+                        del item['Analysis']
+
+                    if 'Threat Level' in item:
+                        item['gpt_conf'] = item['Threat Level']
+                        del item['Threat Level']
+
+                    if 'Snippet' in item:
+                        raw_snippet = item['Snippet']
+                        if raw_snippet.startswith('<code>') and raw_snippet.endswith('</code>'):
+                            raw_snippet = raw_snippet[6:-7]
+                        else:
+                            raw_snippet = raw_snippet.strip('`')
+                        item['snippet'] = html.unescape(raw_snippet).replace('\\|', '|')
+                        del item['Snippet']
+
+                    if 'Path' in item:
+                        item['path'] = html.unescape(item['Path']).replace('\\|', '|')
+                        del item['Path']
+                    if 'Line' in item:
+                        item['line'] = item['Line']
+                        del item['Line']
+
+                    results.append(item)
+            break
+
+    return results
+
+
 def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:
     """Parse report content in JSON, SARIF, XML, JUnit XML, YAML, Markdown, HTML, Triage Report, TSV, or CSV format.
 
@@ -7484,56 +7596,9 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
         f = io.StringIO(content)
         reader = csv.DictReader(f)
         data_to_import = list(reader)
-    elif ext in ('.md', '.markdown') or '|' in content:
-        # Markdown table format
-        lines = content.splitlines()
-        headers = []
-        for idx, line in enumerate(lines):
-            if '|' in line and any(h in line for h in ['Path', 'Line', 'Threat Level', 'Analysis', 'Snippet']):
-                headers = [h.strip() for h in line.strip('|').split('|')]
-                start_idx = idx + 2 # Skip header and separator
-                for row_line in lines[start_idx:]:
-                    if '|' not in row_line:
-                        continue
-                    # Split by | but ignore escaped \|
-                    cols = [c.strip() for c in re.split(r'(?<!\\)\|', row_line.strip('|'))]
-                    if len(cols) >= len(headers):
-                        item = dict(zip(headers, cols))
-                        if 'Threat Level' in item:
-                            item['gpt_conf'] = item['Threat Level']
-
-                        # Specialized logic for Markdown Analysis and Snippet
-                        analysis = item.get('Analysis', '')
-                        if analysis:
-                            # Reconstruct Admin and User notes from Analysis column
-                            # Admin: ... <br> User: ...
-                            admin_match = re.search(r'\*\*Admin:\*\*\s*(.*?)(?:\s*<br>\s*\*\*User:\*\*|$)', analysis)
-                            user_match = re.search(r'\*\*User:\*\*\s*(.*)', analysis)
-
-                            item['admin_desc'] = html.unescape(admin_match.group(1).replace('<br>', '\n').replace('\\|', '|')).strip() if admin_match else ""
-                            item['end-user_desc'] = html.unescape(user_match.group(1).replace('<br>', '\n').replace('\\|', '|')).strip() if user_match else ""
-                            del item['Analysis']
-
-                        if 'Threat Level' in item:
-                            item['gpt_conf'] = item['Threat Level']
-                            del item['Threat Level']
-
-                        # Clean up Snippet (remove backticks or <code> tags)
-                        if 'Snippet' in item:
-                            raw_snippet = item['Snippet']
-                            if raw_snippet.startswith('<code>') and raw_snippet.endswith('</code>'):
-                                raw_snippet = raw_snippet[6:-7]
-                            else:
-                                raw_snippet = raw_snippet.strip('`')
-
-                            item['snippet'] = html.unescape(raw_snippet).replace('\\|', '|')
-                            del item['Snippet']
-
-                        if 'Path' in item:
-                            item['Path'] = html.unescape(item['Path']).replace('\\|', '|')
-
-                        data_to_import.append(item)
-                break
+    elif ext in ('.md', '.markdown') or '### File:' in content or ('|' in content and 'Threat Level' in content):
+        # Markdown format
+        data_to_import = parse_markdown_content(content)
     elif ext in ('.txt', '.log') or '--- GPT SCAN - CONSOLE TRIAGE REPORT' in content:
         # Triage Report format
         data_to_import = parse_triage_report(content)
