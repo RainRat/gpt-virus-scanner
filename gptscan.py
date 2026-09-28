@@ -8807,8 +8807,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Control-u>', lambda e: toggle_source())
     details_win.bind('<Command-u>', lambda e: toggle_source())
     details_win.bind('<F5>', lambda e: on_rescan())
-    details_win.bind('r', lambda e: on_rescan())
-    details_win.bind('R', lambda e: on_rescan())
+    details_win.bind('r', lambda e: on_rescan() if not is_input_focused() else None)
+    details_win.bind('R', lambda e: on_rescan() if not is_input_focused() else None)
 
     # Bind zoom keyboard shortcuts safely
     for key in ('<Control-plus>', '<Control-equal>', '<Control-minus>', '<Control-0>',
