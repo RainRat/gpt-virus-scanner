@@ -1703,14 +1703,14 @@ def get_python_package_paths() -> List[str]:
     if hasattr(site, 'getsitepackages'):
         try:
             paths.extend(site.getsitepackages())
-        except Exception:
+        except (AttributeError, OSError, RuntimeError):
             pass
 
     # 2. User site-packages
     if hasattr(site, 'getusersitepackages'):
         try:
             paths.append(site.getusersitepackages())
-        except Exception:
+        except (AttributeError, OSError, RuntimeError):
             pass
 
     # 3. Fallback/Environment-specific paths from sys.path
