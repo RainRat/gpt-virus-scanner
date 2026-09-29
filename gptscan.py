@@ -7397,6 +7397,54 @@ def parse_yaml_content(content: str) -> List[Dict[str, Any]]:
         raise ValueError(f"Failed to parse YAML content: {e}")
 
 
+def parse_html_content(content: str) -> List[Dict[str, Any]]:
+    """Parse scan findings from an HTML report string.
+
+    Args:
+        content: The raw HTML report string.
+
+    Returns:
+        A list of result dictionaries.
+    """
+    if not content or not content.strip():
+        return []
+
+    data_to_import = []
+    # Use regex to find rows, ignoring the header row
+    rows = re.findall(r'<tr\b[^>]*>(.*?)</tr>', content, re.DOTALL | re.IGNORECASE)
+    for row_content in rows:
+        if '<th' in row_content.lower():
+            continue
+
+        cells = re.findall(r'<td\b[^>]*>(.*?)</td>', row_content, re.DOTALL | re.IGNORECASE)
+        if len(cells) >= 5:
+            # Path, Line, Threat Level, Analysis, Links (optional), Snippet
+            # Snippet is usually in the last cell, which is at index 5 if Links is present
+            snippet_cell = cells[5] if len(cells) >= 6 else cells[4]
+            # Snippet is inside <pre><code>
+            snippet_match = re.search(r'<pre><code>(.*?)</code></pre>', snippet_cell, re.DOTALL | re.IGNORECASE)
+            snippet_raw = snippet_match.group(1) if snippet_match else snippet_cell
+
+            analysis_cell = cells[3]
+            admin_match = re.search(r'<strong>Admin:</strong>\s*(.*?)(?:\s*<br>\s*<strong>User:</strong>|$)', analysis_cell, re.DOTALL | re.IGNORECASE)
+            user_match = re.search(r'<strong>User:</strong>\s*(.*)', analysis_cell, re.DOTALL | re.IGNORECASE)
+
+            admin_desc = html.unescape(admin_match.group(1).strip().replace('<br>', '\n')) if admin_match else ""
+            user_desc = html.unescape(user_match.group(1).strip().replace('<br>', '\n')) if user_match else ""
+
+            item = {
+                "path": html.unescape(cells[0].strip()),
+                "line": html.unescape(cells[1].strip()),
+                "own_conf": html.unescape(cells[2].strip()),
+                "admin_desc": admin_desc,
+                "end-user_desc": user_desc,
+                "snippet": html.unescape(snippet_raw.strip())
+            }
+            data_to_import.append(item)
+
+    return data_to_import
+
+
 def parse_report_content(content: str, filename_hint: Optional[str] = None) -> List[Dict[str, Any]]:
     """Parse report content in JSON, SARIF, XML, JUnit XML, YAML, Markdown, HTML, Triage Report, TSV, or CSV format.
 
@@ -7424,38 +7472,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     if (content.strip().startswith('<') and ('<testsuites' in content.lower() or '<testsuite' in content.lower())) or ext == '.junit':
         data_to_import = parse_junit_content(content)
     elif (content.strip().startswith('<') and ('<table' in content.lower() or '<tr' in content.lower())) or ext in ('.html', '.htm', '.xhtml'):
-        # HTML report format
-        # Use regex to find rows, ignoring the header row
-        rows = re.findall(r'<tr\b[^>]*>(.*?)</tr>', content, re.DOTALL | re.IGNORECASE)
-        for row_content in rows:
-            if '<th' in row_content.lower():
-                continue
-
-            cells = re.findall(r'<td\b[^>]*>(.*?)</td>', row_content, re.DOTALL | re.IGNORECASE)
-            if len(cells) >= 5:
-                # Path, Line, Threat Level, Analysis, Links (optional), Snippet
-                # Snippet is usually in the last cell, which is at index 5 if Links is present
-                snippet_cell = cells[5] if len(cells) >= 6 else cells[4]
-                # Snippet is inside <pre><code>
-                snippet_match = re.search(r'<pre><code>(.*?)</code></pre>', snippet_cell, re.DOTALL | re.IGNORECASE)
-                snippet_raw = snippet_match.group(1) if snippet_match else snippet_cell
-
-                analysis_cell = cells[3]
-                admin_match = re.search(r'<strong>Admin:</strong>\s*(.*?)(?:\s*<br>\s*<strong>User:</strong>|$)', analysis_cell, re.DOTALL | re.IGNORECASE)
-                user_match = re.search(r'<strong>User:</strong>\s*(.*)', analysis_cell, re.DOTALL | re.IGNORECASE)
-
-                admin_desc = html.unescape(admin_match.group(1).strip().replace('<br>', '\n')) if admin_match else ""
-                user_desc = html.unescape(user_match.group(1).strip().replace('<br>', '\n')) if user_match else ""
-
-                item = {
-                    "path": html.unescape(cells[0].strip()),
-                    "line": html.unescape(cells[1].strip()),
-                    "own_conf": html.unescape(cells[2].strip()),
-                    "admin_desc": admin_desc,
-                    "end-user_desc": user_desc,
-                    "snippet": html.unescape(snippet_raw.strip())
-                }
-                data_to_import.append(item)
+        data_to_import = parse_html_content(content)
     elif (content.strip().startswith('<') and ('<findings' in content.lower() or content.startswith('<?xml'))) or ext == '.xml':
         # XML report format
         if '<testsuites' in content.lower() or '<testsuite' in content.lower():
