@@ -9409,6 +9409,12 @@ def copy_cli_command(event: Optional[tk.Event] = None) -> None:
     if scan_all_var and scan_all_var.get():
         cmd_parts.append("--all-files")
 
+    # Max File Size
+    if Config.MAX_FILE_SIZE != 10 * 1024 * 1024:
+        mb_val = int(Config.MAX_FILE_SIZE / (1024 * 1024))
+        if mb_val > 0:
+            cmd_parts.extend(["--max-size", f"{mb_val}MB"])
+
     # Threshold
     if Config.THRESHOLD != 50:
         cmd_parts.extend(["--threshold", str(Config.THRESHOLD)])
@@ -9416,12 +9422,15 @@ def copy_cli_command(event: Optional[tk.Event] = None) -> None:
     # AI Analysis
     if gpt_var and gpt_var.get():
         cmd_parts.append("--use-gpt")
-        if Config.provider != "openai":
-            cmd_parts.extend(["--provider", Config.provider])
-        if Config.model_name:
-            cmd_parts.extend(["--model", Config.model_name])
-        if Config.api_base:
-            cmd_parts.extend(["--api-base", Config.api_base])
+        provider_val = provider_var.get() if provider_var else Config.provider
+        if provider_val and provider_val != "openai":
+            cmd_parts.extend(["--provider", provider_val])
+        model_val = model_var.get().strip() if model_var else Config.model_name
+        if model_val:
+            cmd_parts.extend(["--model", model_val])
+        api_base_val = api_base_var.get().strip() if api_base_var else Config.api_base
+        if api_base_val:
+            cmd_parts.extend(["--api-base", api_base_val])
 
     cmd = " ".join(cmd_parts)
     if root:
