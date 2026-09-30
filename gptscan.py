@@ -7350,7 +7350,7 @@ def parse_xml_content(content: str) -> List[Dict[str, Any]]:
                 item[key] = child.text if child is not None and child.text is not None else ""
             data.append(item)
         return data
-    except Exception as e:
+    except (ET.ParseError, TypeError, ValueError, AttributeError) as e:
         raise ValueError(f"Failed to parse XML content: {e}")
 
 
@@ -7429,7 +7429,7 @@ def parse_junit_content(content: str) -> List[Dict[str, Any]]:
                 "snippet": snippet,
             })
         return data
-    except Exception as e:
+    except (ET.ParseError, TypeError, ValueError, AttributeError) as e:
         raise ValueError(f"Failed to parse JUnit XML content: {e}")
 
 
@@ -7456,7 +7456,7 @@ def parse_yaml_content(content: str) -> List[Dict[str, Any]]:
         if isinstance(data, list):
             return data
         return []
-    except Exception as e:
+    except (yaml.YAMLError, TypeError, ValueError, AttributeError) as e:
         raise ValueError(f"Failed to parse YAML content: {e}")
 
 
