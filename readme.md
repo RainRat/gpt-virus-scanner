@@ -791,6 +791,7 @@ You can tailor the scanner to your needs:
 *   **Exclusions:** Ignore specific files or folders by using **File > Manage Exclusions...** or by adding patterns to a `.gptscanignore` file. In the terminal, use the `-e` or `--exclude` flag, or provide a pattern file using `--exclude-file`.
 *   **Extensions:** Control which file types are scanned by using **File > Manage Extensions...** or by editing the `extensions.txt` file. In the terminal, use the `--extensions` flag.
 *   **File Size:** The scanner skips files larger than 10MB during folder scans. You can adjust this limit in the **Scan Options** panel or by using the `--max-size` flag. Files you select individually are always scanned, regardless of their size.
+*   **Directory Depth:** Limit how deep the scanner searches folders (for example, use `--max-depth 1` to scan top-level files only).
 *   **Deep Scan:** Scan the entire file instead of just the beginning and end. This is more thorough but slower. Use the **Deep Scan** checkbox or the `-d` or `--deep` flag.
 *   **Scan All Files:** By default, the scanner only checks script-like files (like `.py` or `.js`). Use the **Scan All Files** checkbox or the `--all-files` flag to check every file.
 *   **Dry Run:** Preview which files would be scanned without checking them. Use the **Dry Run** checkbox or the `--dry-run` flag.
