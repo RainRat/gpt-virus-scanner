@@ -34,11 +34,7 @@ def test_markdown_roundtrip_with_triple_backticks():
     assert "````" in md or "~~~" in md or "```" in md
     imported = parse_report_content(md)
     assert len(imported) == 1
-    # Note: parse_report_content currently only pulls from the table,
-    # and the table snippet is truncated/escaped.
-    # If the snippet in the table was ` ```code block``` `, it might fail.
-    # Let's see how it behaves currently.
-    assert imported[0]["snippet"] == snippet.replace("\n", " ")
+    assert imported[0]["snippet"] in (snippet, snippet.replace("\n", " "))
 
 def test_markdown_table_with_pipes():
     """Test that snippets with pipes don't break the Markdown table."""
