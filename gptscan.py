@@ -2152,7 +2152,7 @@ def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
                     for p in cron_d.iterdir():
                         if p.is_file():
                             cron_files.append(str(p))
-                except Exception:
+                except (OSError, PermissionError):
                     pass
 
             for cron_path in cron_files:
@@ -2171,9 +2171,9 @@ def get_scheduled_task_commands() -> List[Tuple[str, bytes]]:
                                         parts = line.split(None, 2)
                                         if len(parts) > 2:
                                             tasks.append((f"[Cron] System ({os.path.basename(cron_path)})", parts[2].encode('utf-8')))
-                    except Exception:
+                    except (OSError, IOError, PermissionError, UnicodeDecodeError):
                         pass
-    except Exception:
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError, csv.Error, UnicodeDecodeError, RuntimeError):
         pass
 
     return tasks
