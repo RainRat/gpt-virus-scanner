@@ -155,6 +155,7 @@ Open the scanner window by running the appropriate command for your operating sy
 *   **Scan Git Diff (Ctrl+Shift+D):** Scan your current project changes as a diff.
 *   **Scan Git Staged Files:** Scan files currently staged in Git.
 *   **Scan Git Untracked Files:** Scan files currently untracked in Git.
+*   **Scan Git Ignored Files:** Scan files currently ignored in Git (.gitignore).
 *   **Scan Recent Commits...:** Scan files from the most recent commits.
 *   **Scan Git Hooks (Ctrl+Shift+G):** Scan your local and global Git hooks for suspicious scripts.
 *   **Scan Git Stashes (Ctrl+Shift+Q):** Scan all Git stashes for suspicious code changes.
@@ -450,6 +451,11 @@ Scan files currently untracked in Git:
 python3 gptscan.py --git-untracked --cli
 ```
 
+Scan files currently ignored in Git (.gitignore):
+```bash
+python3 gptscan.py --git-ignored --cli
+```
+
 Scan local and global Git hooks for dangerous scripts:
 ```bash
 python3 gptscan.py --git-hooks --cli
@@ -660,6 +666,7 @@ You can customize terminal scans using these command line options.
 *   `--git-diff [<commit>]`: Scan current Git changes as a diff. You can optionally provide a branch or commit (default is `HEAD`).
 *   `--git-staged`: Scan files currently staged in Git.
 *   `--git-untracked`: Scan files currently untracked in Git.
+*   `--git-ignored`: Scan files currently ignored in Git (.gitignore).
 *   `--git-hooks`: Scan local and global Git hooks.
 *   `--git-config`: Scan for dangerous Git configuration settings.
 *   `--git-stash`: Scan all Git stashes.
