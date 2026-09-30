@@ -1387,7 +1387,7 @@ def get_shell_profile_paths() -> List[str]:
                 for p_str in data:
                     if p_str and os.path.exists(p_str):
                         paths.append(p_str)
-        except Exception:
+        except (subprocess.SubprocessError, FileNotFoundError, OSError, json.JSONDecodeError):
             pass
 
     return sorted(set(paths))
