@@ -10757,13 +10757,13 @@ def main():
 
     cli_targets_or_flags = [
         args.stdin, args.clipboard, args.import_results, args.baseline,
-        args.env_vars, args.file_list, args.git_changes, args.git_diff, args.git_hooks, args.git_config,
+        args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_staged, args.git_hooks, args.git_config,
         args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
         args.running_processes, args.scheduled_tasks, args.startup_items,
         args.system_services, args.audit, args.modified, args.downloads, args.desktop,
         args.python_packages, args.nodejs_packages, args.ruby_gems, args.php_packages,
         args.rust_packages, args.go_packages, args.java_packages, args.dotnet_packages,
-        args.browser_extensions, args.editor_extensions, args.ssh_config, args.network_config, args.temp, args.documents
+        args.browser_bookmarks, args.browser_extensions, args.editor_extensions, args.ssh_config, args.network_config, args.temp, args.documents
     ]
     cli_mode = args.cli or any(cli_targets_or_flags)
 

@@ -129,3 +129,21 @@ def test_cli_system_scan_flags_not_found_warning_and_quiet_suppression(monkeypat
     gptscan.main()
     captured_quiet = capsys.readouterr()
     assert captured_quiet.err == ""
+
+
+@pytest.mark.parametrize("flag", ["--git-staged", "--browser-bookmarks", "--env-files"])
+def test_cli_mode_implied_by_scan_flags(monkeypatch, flag):
+    called_run_cli = False
+
+    def mock_run_cli(*args, **kwargs):
+        nonlocal called_run_cli
+        called_run_cli = True
+        return 0
+
+    monkeypatch.setattr(gptscan, "run_cli", mock_run_cli)
+    # Intentionally omitted --cli flag from sys.argv
+    monkeypatch.setattr("sys.argv", ["gptscan.py", flag])
+
+    gptscan.main()
+
+    assert called_run_cli is True
