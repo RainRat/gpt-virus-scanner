@@ -40,6 +40,7 @@ def reset_config():
     orig_model = Config.model_name
     orig_api_base = Config.api_base
     orig_last_path = Config.last_path
+    orig_max_file_size = Config.MAX_FILE_SIZE
 
     yield
 
@@ -48,6 +49,7 @@ def reset_config():
     Config.model_name = orig_model
     Config.api_base = orig_api_base
     Config.last_path = orig_last_path
+    Config.MAX_FILE_SIZE = orig_max_file_size
 
 def test_copy_cli_command_basic(mock_gui_vars):
     with patch('gptscan.root', MagicMock()) as mock_root, \
@@ -127,3 +129,32 @@ def test_copy_cli_command_with_scan_all(mock_gui_vars):
         gptscan.copy_cli_command()
         command = mock_root.clipboard_append.call_args[0][0]
         assert "--all-files" in command
+
+def test_copy_cli_command_max_size(mock_gui_vars):
+    Config.MAX_FILE_SIZE = 50 * 1024 * 1024
+    with patch('gptscan.root', MagicMock()) as mock_root, \
+         patch('gptscan.update_status'):
+        gptscan.copy_cli_command()
+        command = mock_root.clipboard_append.call_args[0][0]
+        assert "--max-size 50MB" in command
+
+def test_copy_cli_command_widget_vars(mock_gui_vars):
+    mock_gui_vars['gpt'].get.return_value = True
+    mock_provider_var = MagicMock()
+    mock_provider_var.get.return_value = "openrouter"
+    mock_model_var = MagicMock()
+    mock_model_var.get.return_value = "anthropic/claude-3.5-sonnet"
+    mock_api_base_var = MagicMock()
+    mock_api_base_var.get.return_value = "https://custom.openrouter.ai/api/v1"
+
+    with patch('gptscan.provider_var', mock_provider_var), \
+         patch('gptscan.model_var', mock_model_var), \
+         patch('gptscan.api_base_var', mock_api_base_var), \
+         patch('gptscan.root', MagicMock()) as mock_root, \
+         patch('gptscan.update_status'):
+        gptscan.copy_cli_command()
+        command = mock_root.clipboard_append.call_args[0][0]
+        assert "--use-gpt" in command
+        assert "--provider openrouter" in command
+        assert "--model anthropic/claude-3.5-sonnet" in command
+        assert "--api-base https://custom.openrouter.ai/api/v1" in command
