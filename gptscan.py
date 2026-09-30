@@ -10630,6 +10630,12 @@ def main():
     output_group.add_argument('-q', '--quiet', action='store_true', help='Suppress progress and summary messages in terminal output.')
     output_group.add_argument('-a', '--show-all', action='store_true', help='Show all scanned files, even safe ones.')
     output_group.add_argument('-o', '--output', type=str, help='Save the results to a file.')
+    output_group.add_argument(
+        '-f', '--format',
+        type=str.lower,
+        choices=['json', 'ndjson', 'jsonl', 'csv', 'tsv', 'sarif', 'html', 'md', 'markdown', 'xml', 'junit', 'yaml', 'yml', 'report'],
+        help='Set output format (json, ndjson, csv, tsv, sarif, html, markdown, xml, junit, yaml, report).'
+    )
     output_group.add_argument('-j', '--json', action='store_true', help='Print or save scan results in JSON format.')
     output_group.add_argument('--ndjson', '--jsonl', action='store_true', help='Print or save scan results in NDJSON (JSON Lines) format.')
     output_group.add_argument('--csv', action='store_true', help='Print or save scan results in CSV format.')
@@ -10873,7 +10879,26 @@ def main():
             scan_targets = ["."]
 
         output_format = 'report' if sys.stdout.isatty() else 'csv'
-        if args.json:
+        if args.format:
+            fmt_lower = args.format.lower()
+            fmt_map = {
+                'json': 'json',
+                'ndjson': 'ndjson',
+                'jsonl': 'ndjson',
+                'csv': 'csv',
+                'tsv': 'tsv',
+                'sarif': 'sarif',
+                'html': 'html',
+                'md': 'markdown',
+                'markdown': 'markdown',
+                'xml': 'xml',
+                'junit': 'junit',
+                'yaml': 'yaml',
+                'yml': 'yaml',
+                'report': 'report',
+            }
+            output_format = fmt_map.get(fmt_lower, fmt_lower)
+        elif args.json:
             output_format = 'json'
         elif args.ndjson:
             output_format = 'ndjson'
