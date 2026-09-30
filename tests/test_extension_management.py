@@ -119,6 +119,8 @@ def test_manage_extensions_init(mock_gui_env):
     assert mock_top.title.call_args[0][0] == "Manage Extensions"
     assert captured['listbox'].items == [".js", ".py"]
     assert captured['listbox'].selection == [0]
+    assert getattr(captured['listbox'], 'activated', None) == 0
+    assert getattr(captured['listbox'], 'seen', None) == 0
 
 def test_manage_extensions_add(mock_gui_env, monkeypatch):
     captured, mock_sd, mock_mb, mock_top = mock_gui_env

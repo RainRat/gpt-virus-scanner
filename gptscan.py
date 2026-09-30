@@ -4577,6 +4577,8 @@ def manage_extensions() -> None:
     ext_listbox.focus_set()
     if Config.extensions_set:
         ext_listbox.select_set(0)
+        ext_listbox.activate(0)
+        ext_listbox.see(0)
 
 
 def show_keyboard_shortcuts() -> None:
