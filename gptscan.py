@@ -282,6 +282,32 @@ def load_file(filename: str, mode: str = 'single_line') -> Union[str, List[str]]
         return ''
 
 
+def load_config_file(file_path: str) -> Dict[str, Any]:
+    """Load configuration options from a JSON configuration file.
+
+    Args:
+        file_path: Path to the JSON configuration file.
+
+    Returns:
+        A dictionary containing parsed configuration parameters.
+
+    Raises:
+        ValueError: If the file is missing or contains invalid JSON/data.
+    """
+    if not os.path.isfile(file_path):
+        raise ValueError(f"Configuration file not found: {file_path}")
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            raise ValueError("Configuration file content must be a JSON object.")
+        return data
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in configuration file: {e}")
+    except OSError as e:
+        raise ValueError(f"Could not read configuration file: {e}")
+
+
 def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = None) -> bytes:
     """Fetches content from a web link with safety limits. Automatically resolves GitHub/GitLab links.
 
@@ -10488,6 +10514,12 @@ def main():
         help='Read a list of exclude patterns from a file.'
     )
     scan_group.add_argument(
+        '--config', '--config-file',
+        type=str,
+        dest='config_file',
+        help='Load default scan settings from a JSON configuration file.'
+    )
+    scan_group.add_argument(
         '--file-list',
         type=argparse.FileType('r'),
         help='Read a list of files to scan from a text file.'
@@ -10866,6 +10898,13 @@ def main():
     if args.max_depth is not None and args.max_depth < 0:
         parser.error("Value for --max-depth must be a non-negative integer.")
 
+    config_opts = {}
+    if args.config_file:
+        try:
+            config_opts = load_config_file(args.config_file)
+        except ValueError as e:
+            parser.error(str(e))
+
     if args.clear_cache:
         Config.gpt_cache = {}
         Config.save_cache()
@@ -10884,45 +10923,92 @@ def main():
         ]):
             sys.exit(0)
 
-    Config.provider = args.provider
+    # Provider & API settings
+    provider_val = args.provider if 'provider' in sys.argv or '--provider' in sys.argv else config_opts.get('provider', args.provider)
+    Config.provider = provider_val
+
     if args.api_key:
         Config.apikey = args.api_key
         Config.save_apikey()
+    elif config_opts.get('api_key'):
+        Config.apikey = config_opts['api_key']
 
-    if args.api_base:
-        Config.api_base = args.api_base
+    api_base_val = args.api_base if args.api_base is not None else config_opts.get('api_base')
+    if api_base_val:
+        Config.api_base = api_base_val
 
-    if args.model:
-        Config.model_name = args.model
+    model_val = args.model if args.model is not None else config_opts.get('model')
+    if model_val:
+        Config.model_name = model_val
     elif Config.provider == 'ollama':
         Config.model_name = 'llama3.2'
 
-    if args.extensions:
-        extension_list = [ext.strip() for ext in args.extensions.split(',') if ext.strip()]
+    # Extensions & Scan flags
+    ext_val = args.extensions if args.extensions is not None else config_opts.get('extensions')
+    if ext_val:
+        if isinstance(ext_val, list):
+            extension_list = [str(ext).strip() for ext in ext_val if str(ext).strip()]
+        else:
+            extension_list = [ext.strip() for ext in str(ext_val).split(',') if ext.strip()]
         Config.set_extensions(extension_list, missing=False)
 
-    if args.all_files:
+    if args.all_files or config_opts.get('all_files'):
         Config.scan_all_files = True
 
-    if args.max_size:
+    if args.deep or config_opts.get('deep'):
+        args.deep = True
+
+    if args.use_gpt or config_opts.get('use_gpt'):
+        args.use_gpt = True
+
+    if 'rate_limit' in config_opts and '--rate-limit' not in sys.argv:
         try:
-            Config.MAX_FILE_SIZE = parse_size_string(args.max_size)
+            args.rate_limit = int(config_opts['rate_limit'])
+        except (ValueError, TypeError):
+            pass
+
+    if 'max_depth' in config_opts and args.max_depth is None:
+        try:
+            args.max_depth = int(config_opts['max_depth'])
+            if args.max_depth < 0:
+                parser.error("Value for max_depth in config file must be a non-negative integer.")
+        except (ValueError, TypeError):
+            pass
+
+    if 'format' in config_opts and not args.format and not args.json and not args.ndjson and not args.csv and not args.tsv and not args.sarif and not args.html and not args.markdown and not args.xml and not args.junit and not args.yaml and not args.report:
+        args.format = str(config_opts['format']).lower()
+
+    max_size_val = args.max_size if args.max_size is not None else config_opts.get('max_size')
+    if max_size_val:
+        try:
+            if isinstance(max_size_val, int):
+                Config.MAX_FILE_SIZE = max_size_val
+            else:
+                Config.MAX_FILE_SIZE = parse_size_string(str(max_size_val))
         except ValueError:
             parser.error(
-                f"Invalid format for --max-size: '{args.max_size}'. "
+                f"Invalid format for max_size: '{max_size_val}'. "
                 "Please use a number followed by a unit like KB, MB, or GB. "
                 "For example: '10MB' or '500KB'."
             )
 
-    if args.min_threat is not None:
+    if '--min-threat' in sys.argv or '--min-threat-level' in sys.argv:
         Config.THRESHOLD = args.min_threat
+    elif '-t' in sys.argv or '--threshold' in sys.argv:
+        Config.THRESHOLD = args.threshold
+    elif 'threshold' in config_opts or 'min_threat' in config_opts:
+        thresh_val = config_opts.get('min_threat', config_opts.get('threshold'))
+        try:
+            Config.THRESHOLD = int(thresh_val)
+        except (ValueError, TypeError):
+            Config.THRESHOLD = args.threshold
     else:
         Config.THRESHOLD = args.threshold
 
     scan_target = args.target or args.path
 
     cli_targets_or_flags = [
-        args.stdin, args.clipboard, args.import_results, args.baseline,
+        args.config_file, args.stdin, args.clipboard, args.import_results, args.baseline,
         args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_staged, args.git_untracked, args.git_hooks, args.git_config,
         args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
         args.running_processes, args.scheduled_tasks, args.startup_items,
@@ -11044,6 +11130,14 @@ def main():
             for root_dir in git_roots:
                 scan_targets.extend(get_git_submodule_paths(root_dir))
 
+        if not scan_targets and not args.target and not args.path:
+            cfg_target = config_opts.get('target') or config_opts.get('targets') or config_opts.get('path')
+            if cfg_target:
+                if isinstance(cfg_target, list):
+                    scan_targets.extend([str(t) for t in cfg_target if t])
+                elif isinstance(cfg_target, str) and cfg_target.strip():
+                    scan_targets.append(cfg_target.strip())
+
         if not scan_targets and not args.git_changes and not args.git_diff and not args.git_staged and not args.git_untracked and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_conflicts and not args.git_history and not args.git_reflog and not args.git_submodules and not args.clipboard and not extra_snippets:
             # Default to current folder if no targets provided and NOT using git-changes
             scan_targets = ["."]
@@ -11130,7 +11224,23 @@ def main():
             except Exception as e:
                 parser.error(f"Could not read exclude file '{args.exclude_file}': {e}")
 
-        final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or []) + exclude_file_patterns))
+        config_excludes = []
+        if 'exclude' in config_opts:
+            cex = config_opts['exclude']
+            if isinstance(cex, list):
+                config_excludes.extend([str(x) for x in cex if x])
+            elif isinstance(cex, str) and cex.strip():
+                config_excludes.append(cex.strip())
+
+        final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or []) + exclude_file_patterns + config_excludes))
+
+        if not scan_targets and not args.target and not args.path:
+            cfg_target = config_opts.get('target') or config_opts.get('targets') or config_opts.get('path')
+            if cfg_target:
+                if isinstance(cfg_target, list):
+                    scan_targets.extend([str(t) for t in cfg_target if t])
+                elif isinstance(cfg_target, str) and cfg_target.strip():
+                    scan_targets.append(cfg_target.strip())
 
         if args.stdin:
             try:
