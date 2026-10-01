@@ -386,3 +386,40 @@ def test_view_details_rescan_r_bindings(mock_view_details_env, monkeypatch):
 
     captured_bindings['r'](None)
     mock_thread.assert_called_once()
+
+
+def test_copy_shortcut_input_focus_guard(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py")
+
+    captured_bindings = {}
+    mock_toplevel.bind.side_effect = lambda event, func: captured_bindings.update({event: func})
+
+    gptscan.view_details(item_id="item1")
+
+    assert '<Control-c>' in captured_bindings
+    assert '<Command-c>' in captured_bindings
+
+    from gptscan import root as mock_root
+
+    # 1. When focus is on an input widget (e.g. Text), pressing Ctrl+C or Cmd+C should NOT trigger copy_path_details
+    mock_focused = MagicMock()
+    mock_focused.winfo_class.return_value = "Text"
+    mock_toplevel.focus_get.return_value = mock_focused
+
+    mock_root.clipboard_clear.reset_mock()
+    mock_root.clipboard_append.reset_mock()
+
+    captured_bindings['<Control-c>'](None)
+    captured_bindings['<Command-c>'](None)
+    mock_root.clipboard_append.assert_not_called()
+
+    # 2. When focus is NOT on an input widget, pressing Ctrl+C or Cmd+C SHOULD trigger copy_path_details
+    mock_toplevel.focus_get.return_value = None
+
+    captured_bindings['<Control-c>'](None)
+    mock_root.clipboard_append.assert_called_once_with("test.py")
+
+    mock_root.clipboard_append.reset_mock()
+    captured_bindings['<Command-c>'](None)
+    mock_root.clipboard_append.assert_called_once_with("test.py")
