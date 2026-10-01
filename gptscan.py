@@ -11127,7 +11127,7 @@ def main():
                             pat = parts[0].strip()
                             if pat:
                                 exclude_file_patterns.append(pat)
-            except Exception as e:
+            except OSError as e:
                 parser.error(f"Could not read exclude file '{args.exclude_file}': {e}")
 
         final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or []) + exclude_file_patterns))
