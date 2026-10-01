@@ -265,6 +265,7 @@ The scanner includes shortcuts for faster navigation.
 | `Ctrl+U` | Toggle Full Source |
 | `Ctrl++` / `Ctrl+-` | Zoom In / Out Code Viewer |
 | `Ctrl+0` | Reset Code Viewer Zoom |
+| `Ctrl+C` | Copy File Path |
 | `Ctrl+S` | Copy Code Snippet |
 | `Ctrl+Shift+C` | Copy AI Analysis |
 | `Ctrl+Shift+P` | Copy File Path |

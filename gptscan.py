@@ -4666,6 +4666,7 @@ def show_keyboard_shortcuts() -> None:
         (f"{mod}+U", "Toggle between Full Source & Snippet"),
         (f"{mod}++ / -", "Zoom In / Out Code Viewer"),
         (f"{mod}+0", "Reset Code Viewer Zoom"),
+        (f"{mod}+C", "Copy File Path (when input not active)"),
         (f"{mod}+S", "Copy Code Snippet"),
         (f"{mod}+Shift+C", "Copy AI Analysis"),
         (f"{mod}+Shift+P", "Copy File Path"),
@@ -8931,6 +8932,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Control-KP_Enter>', lambda e: show_in_folder(path_entry.get()))
     details_win.bind('<Command-Return>', lambda e: show_in_folder(path_entry.get()))
     details_win.bind('<Command-KP_Enter>', lambda e: show_in_folder(path_entry.get()))
+    details_win.bind('<Control-c>', lambda e: copy_path_details() if not is_input_focused() else None)
+    details_win.bind('<Command-c>', lambda e: copy_path_details() if not is_input_focused() else None)
     details_win.bind('<Control-s>', lambda e: copy_code())
     details_win.bind('<Command-s>', lambda e: copy_code())
     details_win.bind('<Control-j>', lambda e: copy_as_json_details())
