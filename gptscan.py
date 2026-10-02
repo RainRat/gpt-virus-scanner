@@ -9662,12 +9662,9 @@ def on_filter_return(event: Optional[tk.Event] = None) -> str:
     """Move focus from the filter entry to the results tree."""
     if tree:
         tree.focus_set()
-        # If nothing is selected, select the first item to allow immediate keyboard navigation
+        # If nothing is selected, select the best result to allow immediate keyboard navigation
         if not tree.selection() and tree.get_children():
-            first_item = tree.get_children()[0]
-            tree.selection_set(first_item)
-            tree.focus(first_item)
-            tree.see(first_item)
+            _auto_select_best_result()
     return "break"
 
 
