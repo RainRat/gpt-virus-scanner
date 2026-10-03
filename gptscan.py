@@ -1690,7 +1690,7 @@ def get_system_service_paths() -> List[str]:
                 # Skip symlinks to avoid duplicate scanning of units
                 if p.is_file() and not p.is_symlink():
                     paths.append(str(p))
-            except Exception:
+            except (OSError, RuntimeError):
                 pass
 
     return sorted(set(paths))
