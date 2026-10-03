@@ -241,7 +241,7 @@ The scanner includes shortcuts for faster navigation.
 | **Results List** | |
 | `Space` / `Enter` | View Details |
 | `F5` / `r` | Rescan |
-| `Delete` | Exclude |
+| `Delete` / `Backspace` | Exclude |
 | `Ctrl+A` | Select All |
 | `Ctrl+C` | Copy File Path |
 | `Ctrl+Shift+C` | Copy as Markdown Table |
@@ -261,7 +261,7 @@ The scanner includes shortcuts for faster navigation.
 | `Alt+Up` / `Alt+Down` | Force Previous / Next Result |
 | `Ctrl+PageUp` / `Ctrl+PageDown` | Force Previous / Next Result |
 | `F5` / `r` | Rescan |
-| `Delete` | Exclude |
+| `Delete` / `Backspace` | Exclude |
 | `Ctrl+U` | Toggle Full Source |
 | `Ctrl++` / `Ctrl+-` | Zoom In / Out Code Viewer |
 | `Ctrl+0` | Reset Code Viewer Zoom |
