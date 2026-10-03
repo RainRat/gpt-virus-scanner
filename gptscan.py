@@ -4658,9 +4658,11 @@ def show_keyboard_shortcuts() -> None:
     details_shortcuts = [
         ("Esc", "Close Details Window"),
         ("Left / Right", "Previous / Next Result (when input not active)"),
+        ("Home / End", "First / Last Result (when input not active)"),
         ("Alt+Left / Right", "Force Previous / Next Result"),
         ("Alt+Up / Down", "Force Previous / Next Result"),
         (f"{mod}+PageUp / PageDown", "Force Previous / Next Result"),
+        (f"{mod}+Home / End", "Force First / Last Result"),
         ("F5 / R", "Rescan Current Item"),
         ("Delete / Backspace", "Exclude Current Item"),
         (f"{mod}+U", "Toggle between Full Source & Snippet"),
@@ -8891,6 +8893,26 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         except ValueError:
             pass
 
+    def navigate_first(event: Optional[tk.Event] = None) -> None:
+        """Navigate to the first scan result in the details view."""
+        all_visible = tree.get_children()
+        if all_visible:
+            new_id = all_visible[0]
+            if new_id != current_item_id:
+                tree.selection_set(new_id)
+                tree.see(new_id)
+                refresh_content(new_id)
+
+    def navigate_last(event: Optional[tk.Event] = None) -> None:
+        """Navigate to the last scan result in the details view."""
+        all_visible = tree.get_children()
+        if all_visible:
+            new_id = all_visible[-1]
+            if new_id != current_item_id:
+                tree.selection_set(new_id)
+                tree.see(new_id)
+                refresh_content(new_id)
+
     def on_prev():
         if is_input_focused():
             return
@@ -8900,6 +8922,16 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         if is_input_focused():
             return
         navigate_next()
+
+    def on_first():
+        if is_input_focused():
+            return
+        navigate_first()
+
+    def on_last():
+        if is_input_focused():
+            return
+        navigate_last()
 
     prev_btn = ttk.Button(nav_header, text="< Previous", command=on_prev)
     prev_btn.pack(side=tk.LEFT, ipady=2)
@@ -8922,6 +8954,12 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Control-Next>', navigate_next)
     details_win.bind('<Command-Prior>', navigate_prev)
     details_win.bind('<Command-Next>', navigate_next)
+    details_win.bind('<Home>', lambda e: on_first())
+    details_win.bind('<End>', lambda e: on_last())
+    details_win.bind('<Control-Home>', navigate_first)
+    details_win.bind('<Control-End>', navigate_last)
+    details_win.bind('<Command-Home>', navigate_first)
+    details_win.bind('<Command-End>', navigate_last)
     details_win.bind('<Delete>', lambda e: on_exclude() if not is_input_focused() else None)
     details_win.bind('<BackSpace>', lambda e: on_exclude() if not is_input_focused() else None)
     details_win.bind('<Escape>', lambda e: details_win.destroy())

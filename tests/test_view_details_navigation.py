@@ -262,3 +262,66 @@ def test_navigate_value_error_fallback(mock_details_navigation_env):
     # current_item_id is item1, which is not in get_children(), causing ValueError which should be caught
     alt_right_handler(None)
     mock_tree.selection_set.assert_not_called()
+
+
+def test_navigate_first_and_last_flow(mock_details_navigation_env):
+    mock_tree, mock_toplevel, captured_bindings, captured_buttons = (
+        mock_details_navigation_env
+    )
+    _populate_tree_items(mock_tree, ["item1", "item2", "item3", "item4"])
+    mock_toplevel.focus_get.return_value = None
+
+    gptscan.view_details(item_id="item2")
+
+    end_handler = captured_bindings["<End>"]
+    home_handler = captured_bindings["<Home>"]
+    ctrl_home_handler = captured_bindings["<Control-Home>"]
+    ctrl_end_handler = captured_bindings["<Control-End>"]
+
+    # End key: navigate to last item (item4)
+    end_handler(None)
+    mock_tree.selection_set.assert_called_with("item4")
+
+    # Home key: navigate to first item (item1)
+    mock_tree.selection_set.reset_mock()
+    home_handler(None)
+    mock_tree.selection_set.assert_called_with("item1")
+
+    # Ctrl+End: force navigate to last item
+    mock_tree.selection_set.reset_mock()
+    ctrl_end_handler(None)
+    mock_tree.selection_set.assert_called_with("item4")
+
+    # Ctrl+Home: force navigate to first item
+    mock_tree.selection_set.reset_mock()
+    ctrl_home_handler(None)
+    mock_tree.selection_set.assert_called_with("item1")
+
+
+def test_navigate_first_and_last_focused_guard(mock_details_navigation_env):
+    mock_tree, mock_toplevel, captured_bindings, captured_buttons = (
+        mock_details_navigation_env
+    )
+    _populate_tree_items(mock_tree, ["item1", "item2", "item3"])
+
+    mock_focus_widget = MagicMock()
+    mock_focus_widget.winfo_class.return_value = "Entry"
+    mock_toplevel.focus_get.return_value = mock_focus_widget
+
+    gptscan.view_details(item_id="item2")
+
+    home_handler = captured_bindings["<Home>"]
+    end_handler = captured_bindings["<End>"]
+    ctrl_home_handler = captured_bindings["<Control-Home>"]
+
+    # When focused in Entry, Home/End shouldn't trigger tree navigation
+    mock_tree.selection_set.reset_mock()
+    home_handler(None)
+    mock_tree.selection_set.assert_not_called()
+
+    end_handler(None)
+    mock_tree.selection_set.assert_not_called()
+
+    # Ctrl+Home (forced) still navigates even if input widget is focused
+    ctrl_home_handler(None)
+    mock_tree.selection_set.assert_called_with("item1")
