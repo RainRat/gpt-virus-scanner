@@ -5587,6 +5587,7 @@ def scan_files(
     fail_threshold: Optional[int] = None,
     modified_since: Optional[float] = None,
     max_depth: Optional[int] = None,
+    include_patterns: Optional[List[str]] = None,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for dangerous content and optionally use AI for analysis.
 
@@ -5604,6 +5605,7 @@ def scan_files(
         fail_threshold: Stop with an error if a file threat level is at or above this limit (0-100).
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
         max_depth: Maximum directory traversal depth when collecting files.
+        include_patterns: List of glob patterns to explicitly include in the scan.
 
     Yields:
         Tuples indicating events:
@@ -5643,10 +5645,31 @@ def scan_files(
 
     file_list = collect_files(local_targets, modified_since=modified_since, max_depth=max_depth)
 
+    def _path_matches_patterns(f: Path, patterns: List[str], targets: List[str]) -> bool:
+        for p in patterns:
+            if f.match(p):
+                return True
+            for target in targets:
+                try:
+                    tgt_path = Path(target).resolve()
+                    f_abs = f.resolve()
+                    rel = f_abs.relative_to(tgt_path)
+                    if rel.match(p) or any(parent.match(p) for parent in rel.parents if str(parent) != '.'):
+                        return True
+                except (ValueError, OSError):
+                    pass
+        return False
+
     if exclude_patterns:
         file_list = [
             f for f in file_list
-            if not any(f.match(p) or any(parent.match(p) for parent in f.parents) for p in exclude_patterns)
+            if not _path_matches_patterns(f, exclude_patterns, local_targets)
+        ]
+
+    if include_patterns:
+        file_list = [
+            f for f in file_list
+            if _path_matches_patterns(f, include_patterns, local_targets)
         ]
 
     # Discover and apply local ignore patterns (.gptscanignore and .gitignore)
@@ -6846,7 +6869,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
                 writer.writerow([record.get(k, '') for k in keys])
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None, include_patterns: Optional[List[str]] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6874,6 +6897,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         paths_only: Whether to print only unique file paths of suspicious findings line-by-line.
         files_without_matches: Whether to print only unique file paths of clean scanned files line-by-line.
         reverse_sort: Whether to reverse the sort order of scan results.
+        include_patterns: List of glob patterns to explicitly include in the scan.
 
     Returns:
         The number of suspicious files detected.
@@ -6936,6 +6960,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             fail_threshold=fail_threshold,
             modified_since=modified_since,
             max_depth=max_depth,
+            include_patterns=include_patterns,
         )
 
     for event_type, data in event_gen:
@@ -10478,6 +10503,16 @@ def main():
         help="Only scan these file types (for example: 'py,js')."
     )
     scan_group.add_argument(
+        '-i', '--include',
+        nargs='*',
+        help="Only scan files or folders matching these patterns (for example: '*.py', 'src/*')."
+    )
+    scan_group.add_argument(
+        '--include-file',
+        type=str,
+        help='Read a list of include patterns from a file.'
+    )
+    scan_group.add_argument(
         '-e', '--exclude',
         nargs='*',
         help="Ignore files or folders matching these patterns (for example: 'node_modules/*')."
@@ -11116,6 +11151,22 @@ def main():
             elif ext in ('.txt', '.log'):
                 output_format = 'report'
 
+        include_file_patterns = []
+        if args.include_file:
+            try:
+                with open(args.include_file, "r", encoding="utf-8", errors="replace") as ef:
+                    for line in ef:
+                        line = line.strip()
+                        if line and not line.startswith('#'):
+                            parts = line.split('#', 1)
+                            pat = parts[0].strip()
+                            if pat:
+                                include_file_patterns.append(pat)
+            except OSError as e:
+                parser.error(f"Could not read include file '{args.include_file}': {e}")
+
+        final_includes = list(set((args.include or []) + include_file_patterns))
+
         exclude_file_patterns = []
         if args.exclude_file:
             try:
@@ -11127,7 +11178,7 @@ def main():
                             pat = parts[0].strip()
                             if pat:
                                 exclude_file_patterns.append(pat)
-            except Exception as e:
+            except OSError as e:
                 parser.error(f"Could not read exclude file '{args.exclude_file}': {e}")
 
         final_excludes = list(set((Config.ignore_patterns or []) + (args.exclude or []) + exclude_file_patterns))
@@ -11360,7 +11411,8 @@ def main():
             paths_only=args.paths_only,
             files_without_matches=args.files_without_matches,
             reverse_sort=args.reverse_sort,
-            max_depth=args.max_depth
+            max_depth=args.max_depth,
+            include_patterns=final_includes if final_includes else None
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
