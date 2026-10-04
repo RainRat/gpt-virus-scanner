@@ -10124,6 +10124,9 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     def clear_filter():
         filter_var.set("")
         _apply_filter()
+        if tree and tree.get_children():
+            _auto_select_best_result(focus_tree=False)
+            update_button_states()
         filter_entry.focus_set()
 
     clear_filter_btn = ttk.Button(filter_frame, text="×", width=3, command=clear_filter)
