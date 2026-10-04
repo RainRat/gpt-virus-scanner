@@ -5583,6 +5583,7 @@ def scan_files(
     max_concurrent_requests: int = Config.MAX_CONCURRENT_REQUESTS,
     dry_run: bool = False,
     exclude_patterns: Optional[List[str]] = None,
+    include_patterns: Optional[List[str]] = None,
     extra_snippets: Optional[List[Tuple[str, bytes]]] = None,
     fail_threshold: Optional[int] = None,
     modified_since: Optional[float] = None,
@@ -5600,6 +5601,7 @@ def scan_files(
         max_concurrent_requests: Maximum number of AI requests to run at the same time.
         dry_run: Whether to list files that would be scanned without running the model or API.
         exclude_patterns: List of glob patterns to exclude from the scan.
+        include_patterns: List of glob patterns to include in the scan.
         extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
         fail_threshold: Stop with an error if a file threat level is at or above this limit (0-100).
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
@@ -5642,6 +5644,12 @@ def scan_files(
     explicit_files = {f for f in explicit_targets if f.is_file()}
 
     file_list = collect_files(local_targets, modified_since=modified_since, max_depth=max_depth)
+
+    if include_patterns:
+        file_list = [
+            f for f in file_list
+            if any(f.match(p) or any(parent.match(p) for parent in f.parents) for p in include_patterns)
+        ]
 
     if exclude_patterns:
         file_list = [
@@ -6236,6 +6244,7 @@ def run_scan(
     rate_limit: int = Config.RATE_LIMIT_PER_MINUTE,
     dry_run: bool = False,
     exclude_patterns: Optional[List[str]] = None,
+    include_patterns: Optional[List[str]] = None,
     extra_snippets: Optional[List[Tuple[str, bytes]]] = None,
     fail_threshold: Optional[int] = None,
     modified_since: Optional[float] = None,
@@ -6251,6 +6260,7 @@ def run_scan(
         rate_limit: Maximum allowed AI requests per minute.
         dry_run: Whether to simulate the scan.
         exclude_patterns: List of glob patterns to exclude from the scan.
+        include_patterns: List of glob patterns to include in the scan.
         extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
         fail_threshold: Stop with an error if a file threat level is at or above this limit (0-100).
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
@@ -6265,6 +6275,7 @@ def run_scan(
         max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
         dry_run=dry_run,
         exclude_patterns=exclude_patterns,
+        include_patterns=include_patterns,
         extra_snippets=extra_snippets,
         fail_threshold=fail_threshold,
         modified_since=modified_since,
@@ -6846,7 +6857,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
                 writer.writerow([record.get(k, '') for k in keys])
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, include_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6858,6 +6869,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         output_format: Format of the output ('csv', 'tsv', 'json', 'ndjson', 'jsonl', 'sarif', 'html', 'markdown', 'xml', 'yaml', or 'report'). Defaults to 'csv'.
         dry_run: Whether to simulate the scan.
         exclude_patterns: List of glob patterns to exclude from the scan.
+        include_patterns: List of glob patterns to include in the scan.
         fail_threshold: Threat level threshold to trigger a failure count.
         output_file: Path to a file where results should be saved.
         extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
@@ -6932,6 +6944,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             max_concurrent_requests=Config.MAX_CONCURRENT_REQUESTS,
             dry_run=dry_run,
             exclude_patterns=exclude_patterns,
+            include_patterns=include_patterns,
             extra_snippets=extra_snippets,
             fail_threshold=fail_threshold,
             modified_since=modified_since,
@@ -10478,6 +10491,11 @@ def main():
         help="Only scan these file types (for example: 'py,js')."
     )
     scan_group.add_argument(
+        '-i', '--include',
+        nargs='*',
+        help="Only scan files or folders matching these patterns (for example: '*.py' or 'src/*')."
+    )
+    scan_group.add_argument(
         '-e', '--exclude',
         nargs='*',
         help="Ignore files or folders matching these patterns (for example: 'node_modules/*')."
@@ -10929,7 +10947,8 @@ def main():
         args.system_services, args.audit, args.modified, args.downloads, args.desktop,
         args.python_packages, args.nodejs_packages, args.ruby_gems, args.php_packages,
         args.rust_packages, args.go_packages, args.java_packages, args.dotnet_packages,
-        args.browser_bookmarks, args.browser_extensions, args.editor_extensions, args.ssh_config, args.network_config, args.temp, args.documents
+        args.browser_bookmarks, args.browser_extensions, args.editor_extensions, args.ssh_config, args.network_config, args.temp, args.documents,
+        args.include
     ]
     cli_mode = args.cli or any(cli_targets_or_flags)
 
@@ -11345,6 +11364,7 @@ def main():
             output_format=output_format,
             dry_run=args.dry_run,
             exclude_patterns=final_excludes,
+            include_patterns=args.include,
             fail_threshold=args.fail_threshold,
             output_file=args.output,
             extra_snippets=extra_snippets,

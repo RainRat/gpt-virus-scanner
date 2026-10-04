@@ -511,6 +511,11 @@ Scan only specific file extensions (for example, Python and JavaScript files):
 python3 gptscan.py ./my_project --extensions py,js --cli
 ```
 
+Only scan files or folders matching specific patterns:
+```bash
+python3 gptscan.py ./my_project --include "*.py" "src/*" --cli
+```
+
 Ignore files or folders matching specific patterns:
 ```bash
 python3 gptscan.py ./my_project --exclude "node_modules/*" "*.tmp" --cli
@@ -638,6 +643,7 @@ You can customize terminal scans using these command line options.
 *   `-d`, `--deep`: Scan the whole file instead of just the beginning and end. This is more thorough but slower.
 *   `--dry-run`: Preview which files would be scanned without checking them.
 *   `--extensions <exts>`: Only scan these file types (for example: `py,js`).
+*   `-i`, `--include <patterns>`: Only scan files or folders matching these patterns (for example: `*.py` or `src/*`).
 *   `-e`, `--exclude <patterns>`: Ignore files or folders matching these patterns (for example: `node_modules/*`).
 *   `--exclude-file <file>`: Read a list of exclude patterns from a file.
 *   `--file-list <file>`: Read a list of files to scan from a text file.
@@ -796,7 +802,7 @@ The scanner provides several ways to analyze and manage your results:
 You can tailor the scanner to your needs:
 *   **Git Changes Only:** Only scan files that have been modified or are untracked in Git. Use the **Git changes only** checkbox or the `--git-changes` flag.
 *   **Exclusions:** Ignore specific files or folders by using **File > Manage Exclusions...** or by adding patterns to a `.gptscanignore` file. In the terminal, use the `-e` or `--exclude` flag, or provide a pattern file using `--exclude-file`.
-*   **Extensions:** Control which file types are scanned by using **File > Manage Extensions...** or by editing the `extensions.txt` file. In the terminal, use the `--extensions` flag.
+*   **Extensions & Inclusions:** Control which file types or paths are scanned by using **File > Manage Extensions...** or editing `extensions.txt`. In the terminal, use `-i` or `--include` to match specific wildcard patterns, or `--extensions` for file extensions.
 *   **File Size:** The scanner skips files larger than 10MB during folder scans. You can adjust this limit in the **Scan Options** panel or by using the `--max-size` flag. Files you select individually are always scanned, regardless of their size.
 *   **Directory Depth:** Limit how deep the scanner searches folders (for example, use `--max-depth 1` to scan top-level files only).
 *   **Deep Scan:** Scan the entire file instead of just the beginning and end. This is more thorough but slower. Use the **Deep Scan** checkbox or the `-d` or `--deep` flag.
