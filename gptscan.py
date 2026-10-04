@@ -9611,7 +9611,7 @@ def on_target_escape(event: Optional[tk.Event] = None) -> str:
     if textbox:
         try:
             val = textbox.get()
-            if isinstance(val, str) and val.strip():
+            if val.strip():
                 textbox.delete(0, tk.END)
                 update_clear_target_visibility()
                 textbox.focus_set()
