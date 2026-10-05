@@ -8443,7 +8443,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         root.clipboard_append(path_entry.get())
         set_local_status("File path copied to clipboard.", temporary=True)
 
-    path_copy_btn = ttk.Button(header_frame, text="Copy", width=8, command=copy_path_details)
+    path_copy_btn = ttk.Button(header_frame, text="Copy Path", width=11, command=copy_path_details)
     path_copy_btn.grid(row=1, column=2, padx=2)
     bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.", label=status_bar)
 

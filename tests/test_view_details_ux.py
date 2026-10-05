@@ -35,8 +35,8 @@ def test_view_details_copy_path_moved(mock_view_details_env):
     setup_details(mock_view_details_env, "item1", "test.py")
 
     # Verify button exists with new text
-    assert "btn_Copy" in captured
-    btn_mock, copy_path_cmd = captured["btn_Copy"]
+    assert "btn_Copy Path" in captured
+    btn_mock, copy_path_cmd = captured["btn_Copy Path"]
 
     from gptscan import root as mock_root
     copy_path_cmd()
