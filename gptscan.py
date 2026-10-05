@@ -5587,6 +5587,7 @@ def scan_files(
     fail_threshold: Optional[int] = None,
     modified_since: Optional[float] = None,
     max_depth: Optional[int] = None,
+    include_patterns: Optional[List[str]] = None,
 ) -> Generator[Tuple[str, Tuple[Any, ...]], None, None]:
     """Scan files for dangerous content and optionally use AI for analysis.
 
@@ -5604,6 +5605,7 @@ def scan_files(
         fail_threshold: Stop with an error if a file threat level is at or above this limit (0-100).
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
         max_depth: Maximum directory traversal depth when collecting files.
+        include_patterns: List of glob patterns to include in the scan.
 
     Yields:
         Tuples indicating events:
@@ -5642,6 +5644,12 @@ def scan_files(
     explicit_files = {f for f in explicit_targets if f.is_file()}
 
     file_list = collect_files(local_targets, modified_since=modified_since, max_depth=max_depth)
+
+    if include_patterns:
+        file_list = [
+            f for f in file_list
+            if any(f.match(p) or any(parent.match(p) for parent in f.parents) for p in include_patterns)
+        ]
 
     if exclude_patterns:
         file_list = [
@@ -6239,6 +6247,7 @@ def run_scan(
     extra_snippets: Optional[List[Tuple[str, bytes]]] = None,
     fail_threshold: Optional[int] = None,
     modified_since: Optional[float] = None,
+    include_patterns: Optional[List[str]] = None,
 ) -> None:
     """Read scan results and send them to the UI window.
 
@@ -6254,6 +6263,7 @@ def run_scan(
         extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
         fail_threshold: Stop with an error if a file threat level is at or above this limit (0-100).
         modified_since: A timestamp. If provided, only files modified after this time are scanned.
+        include_patterns: List of glob patterns to include in the scan.
     """
     event_gen = scan_files(
         scan_targets,
@@ -6268,6 +6278,7 @@ def run_scan(
         extra_snippets=extra_snippets,
         fail_threshold=fail_threshold,
         modified_since=modified_since,
+        include_patterns=include_patterns,
     )
 
     def scan_handler(data: Tuple[Any, ...]) -> bool:
@@ -6846,7 +6857,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
                 writer.writerow([record.get(k, '') for k in keys])
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None, include_patterns: Optional[List[str]] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -6858,6 +6869,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         output_format: Format of the output ('csv', 'tsv', 'json', 'ndjson', 'jsonl', 'sarif', 'html', 'markdown', 'xml', 'yaml', or 'report'). Defaults to 'csv'.
         dry_run: Whether to simulate the scan.
         exclude_patterns: List of glob patterns to exclude from the scan.
+        include_patterns: List of glob patterns to include in the scan.
         fail_threshold: Threat level threshold to trigger a failure count.
         output_file: Path to a file where results should be saved.
         extra_snippets: List of (name, content) tuples to scan as in-memory buffers.
@@ -6936,6 +6948,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             fail_threshold=fail_threshold,
             modified_since=modified_since,
             max_depth=max_depth,
+            include_patterns=include_patterns,
         )
 
     for event_type, data in event_gen:
@@ -10478,6 +10491,11 @@ def main():
         help="Only scan these file types (for example: 'py,js')."
     )
     scan_group.add_argument(
+        '-i', '--include',
+        nargs='*',
+        help="Only scan files or folders matching these patterns (for example: '*.py' 'src/*')."
+    )
+    scan_group.add_argument(
         '-e', '--exclude',
         nargs='*',
         help="Ignore files or folders matching these patterns (for example: 'node_modules/*')."
@@ -11360,7 +11378,8 @@ def main():
             paths_only=args.paths_only,
             files_without_matches=args.files_without_matches,
             reverse_sort=args.reverse_sort,
-            max_depth=args.max_depth
+            max_depth=args.max_depth,
+            include_patterns=args.include,
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
