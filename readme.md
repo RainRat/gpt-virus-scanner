@@ -835,17 +835,6 @@ To run all tests, run the command for your operating system:
     python -m pytest
     ```
 
-If you are using Python 3.12, some training tests might fail due to TensorFlow library compatibility. In Python 3.12, you can ignore the training tests with this command:
-
-*   **macOS and Linux:**
-    ```bash
-    python3 -m pytest --ignore=tests/test_train.py
-    ```
-*   **Windows:**
-    ```cmd
-    python -m pytest --ignore=tests/test_train.py
-    ```
-
 ## How it works
 1.  **Local Filter:** The tool uses a quick scan model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
 2.  **AI Analysis:** If a file looks suspicious, you can ask an AI for a second opinion. The AI will explain *why* it thinks the code is dangerous, helping you decide what to do.
