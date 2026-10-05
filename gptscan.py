@@ -1819,7 +1819,7 @@ def get_browser_bookmarks_snippets() -> List[Tuple[str, bytes]]:
                         snippets.append((f"[{browser} Bookmark] {title or 'Untitled'}", url.encode('utf-8')))
                 finally:
                     conn.close()
-            except Exception:
+            except (sqlite3.Error, OSError, IOError):
                 pass
             finally:
                 if tmp_path and os.path.exists(tmp_path):
@@ -1844,7 +1844,7 @@ def get_browser_bookmarks_snippets() -> List[Tuple[str, bytes]]:
                 for root_node in roots.values():
                     if isinstance(root_node, dict):
                         find_bookmarklets([root_node])
-            except Exception:
+            except (json.JSONDecodeError, OSError, IOError, AttributeError, TypeError):
                 pass
 
     return snippets
