@@ -543,6 +543,12 @@ Filter out known findings using a previous scan report as a baseline and save by
 python3 gptscan.py ./my_project --baseline previous_report.json --baseline-output bypassed.json --cli
 ```
 
+Run a scan using a built-in preset or a custom JSON/YAML preset file:
+```bash
+python3 gptscan.py ./my_project --preset quick --cli
+python3 gptscan.py ./my_project --preset my_scan_preset.yaml --cli
+```
+
 Save scan results to a file (CSV, JSON, HTML, etc.):
 ```bash
 python3 gptscan.py ./my_project --output results.html --cli
@@ -635,6 +641,7 @@ You can customize terminal scans using these command line options.
 *   `target`: The folder, file, pattern, or web link to scan.
 *   `files`: Additional folders, files, patterns, or web links to scan.
 *   `-p`, `--path <path>`: Alternative way to specify a folder, file, or web link to scan.
+*   `-P`, `--preset <name_or_file>`: Load scan configuration from a built-in preset (`quick`, `ci`, `strict`, `audit`) or a custom JSON/YAML file.
 *   `-d`, `--deep`: Scan the whole file instead of just the beginning and end. This is more thorough but slower.
 *   `--dry-run`: Preview which files would be scanned without checking them.
 *   `--extensions <exts>`: Only scan these file types (for example: `py,js`).

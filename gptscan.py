@@ -2797,6 +2797,80 @@ def parse_duration(duration_str: str) -> Optional[float]:
     return value * units[unit]
 
 
+BUILTIN_PRESETS = {
+    "quick": {
+        "threshold": 70,
+        "max_depth": 2,
+    },
+    "ci": {
+        "fail_threshold": 50,
+        "threshold": 30,
+        "deep": True,
+        "all_files": True,
+    },
+    "strict": {
+        "fail_threshold": 50,
+        "threshold": 30,
+        "deep": True,
+        "all_files": True,
+    },
+    "audit": {
+        "audit": True,
+        "deep": True,
+        "all_files": True,
+    },
+}
+
+
+def load_preset_config(preset_input: str) -> Dict[str, Any]:
+    """Load a preset scan configuration dictionary from a built-in preset name or JSON/YAML file path.
+
+    Args:
+        preset_input: Name of a built-in preset ('quick', 'ci', 'strict', 'audit') or path to a JSON/YAML configuration file.
+
+    Returns:
+        A dictionary containing preset configuration options.
+
+    Raises:
+        ValueError: If the preset name is unknown, file format is unsupported, or JSON/YAML parsing fails.
+        FileNotFoundError: If the specified preset file does not exist.
+    """
+    if not preset_input or not preset_input.strip():
+        raise ValueError("Preset name or file path cannot be empty.")
+
+    key = preset_input.strip().lower()
+    if key in BUILTIN_PRESETS:
+        return dict(BUILTIN_PRESETS[key])
+
+    preset_path = os.path.expanduser(preset_input.strip())
+    if not os.path.exists(preset_path):
+        raise FileNotFoundError(f"Preset file '{preset_input}' not found.")
+
+    ext = os.path.splitext(preset_path)[1].lower()
+    with open(preset_path, "r", encoding="utf-8", errors="replace") as f:
+        content = f.read()
+
+    if ext in (".yaml", ".yml") or (ext not in (".json",) and ("\n" in content or ":" in content) and not content.strip().startswith("{")):
+        try:
+            import yaml
+            try:
+                data = yaml.safe_load(content)
+            except Exception as e:
+                raise ValueError(f"Failed to parse YAML preset file '{preset_input}': {e}")
+        except ImportError:
+            raise ValueError(f"PyYAML package is required to load YAML preset file '{preset_input}'.")
+    else:
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to parse JSON preset file '{preset_input}': {e}")
+
+    if not isinstance(data, dict):
+        raise ValueError(f"Preset configuration file '{preset_input}' must contain a dictionary/object at the top level.")
+
+    return data
+
+
 def parse_size_string(size_str: str) -> int:
     """Convert a human-readable size string (e.g., "10MB", "500KB") to bytes.
 
@@ -10436,6 +10510,51 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
 
 def main():
     import argparse
+
+    # Pre-parse --preset / -P flag to allow setting parser defaults
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument('-P', '--preset', type=str)
+    pre_args, _ = pre_parser.parse_known_args()
+
+    preset_defaults = {}
+    if pre_args.preset:
+        try:
+            preset_opts = load_preset_config(pre_args.preset)
+            for p_key, p_val in preset_opts.items():
+                norm_key = p_key.replace("-", "_").lower()
+                if norm_key in ("threshold", "min_threat", "min_threat_level"):
+                    preset_defaults["threshold"] = int(p_val)
+                elif norm_key == "fail_threshold":
+                    preset_defaults["fail_threshold"] = int(p_val)
+                elif norm_key == "deep":
+                    preset_defaults["deep"] = bool(p_val)
+                elif norm_key == "all_files":
+                    preset_defaults["all_files"] = bool(p_val)
+                elif norm_key == "max_depth":
+                    preset_defaults["max_depth"] = int(p_val)
+                elif norm_key == "max_size":
+                    preset_defaults["max_size"] = str(p_val)
+                elif norm_key == "audit":
+                    preset_defaults["audit"] = bool(p_val)
+                elif norm_key == "use_gpt":
+                    preset_defaults["use_gpt"] = bool(p_val)
+                elif norm_key == "provider":
+                    preset_defaults["provider"] = str(p_val)
+                elif norm_key == "model":
+                    preset_defaults["model"] = str(p_val)
+                elif norm_key == "format":
+                    preset_defaults["format"] = str(p_val).lower()
+                elif norm_key == "exclude":
+                    if isinstance(p_val, list):
+                        preset_defaults["exclude"] = [str(x) for x in p_val]
+                    elif isinstance(p_val, str):
+                        preset_defaults["exclude"] = [p_val]
+                elif norm_key == "extensions":
+                    preset_defaults["extensions"] = str(p_val)
+        except Exception as e:
+            # We'll raise the error via parser.error after parser creation
+            pass
+
     parser = argparse.ArgumentParser(
         description="Scan scripts, project files, and web links for dangerous code using AI. Works with archives, Notebooks, project and build files, automation tasks, Docker, deceptive filenames, and Git changes.",
         epilog="Examples:\n"
@@ -10470,6 +10589,11 @@ def main():
 
     scan_group = parser.add_argument_group("Scan Options")
     scan_group.add_argument('-p', '--path', type=str, help='A folder, file, or web link to scan.')
+    scan_group.add_argument(
+        '-P', '--preset',
+        type=str,
+        help="Load scan options from a preset name ('quick', 'ci', 'strict', 'audit') or a JSON/YAML configuration file."
+    )
     scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. This is slower but more thorough.')
     scan_group.add_argument('--dry-run', action='store_true', help='Preview which files would be scanned without checking them.')
     scan_group.add_argument(
@@ -10858,7 +10982,17 @@ def main():
         help='Set the minimum threat level (0-100) to include in results.'
     )
 
+    if preset_defaults:
+        parser.set_defaults(**preset_defaults)
+
     args = parser.parse_args()
+
+    if args.preset:
+        try:
+            # Re-run load_preset_config to catch and display any invalid preset error properly
+            load_preset_config(args.preset)
+        except Exception as e:
+            parser.error(f"Could not load preset '{args.preset}': {e}")
 
     if args.top is not None and args.top <= 0:
         parser.error("Value for --top / --limit must be a positive integer.")
