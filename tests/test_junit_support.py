@@ -69,6 +69,53 @@ def test_parse_junit_content_invalid():
         gptscan.parse_junit_content("<testsuites>unclosed tag")
 
 
+def test_parse_junit_content_clean_testcase():
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+    <testsuite name="gptscan">
+        <testcase classname="clean_script.py" name="Line 10 - Threat 0%"/>
+    </testsuite>
+</testsuites>"""
+    parsed = gptscan.parse_junit_content(xml_content)
+    assert len(parsed) == 1
+    assert parsed[0]["path"] == "clean_script.py"
+    assert parsed[0]["line"] == "10"
+    assert parsed[0]["own_conf"] == "0%"
+    assert parsed[0]["admin_desc"] == ""
+    assert parsed[0]["snippet"] == ""
+
+
+def test_parse_junit_content_failure_message_fallback():
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+    <testsuite name="gptscan">
+        <testcase classname="fallback.py" name="Line 33 - Threat 65%">
+            <failure message="General security violation">
+Path: fallback.py
+Local Conf: 65%
+GPT Conf: 70%
+</failure>
+        </testcase>
+    </testsuite>
+</testsuites>"""
+    parsed = gptscan.parse_junit_content(xml_content)
+    assert len(parsed) == 1
+    assert parsed[0]["path"] == "fallback.py"
+    assert parsed[0]["line"] == "33"
+    assert parsed[0]["own_conf"] == "65%"
+    assert parsed[0]["gpt_conf"] == "70%"
+    assert parsed[0]["admin_desc"] == "General security violation"
+
+
+def test_parse_junit_content_unrecognized_root_no_testcases():
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<unknown_root>
+    <something_else name="test"/>
+</unknown_root>"""
+    parsed = gptscan.parse_junit_content(xml_content)
+    assert parsed == []
+
+
 def test_parse_report_content_auto_detect_junit():
     results = [
         {
