@@ -241,7 +241,7 @@ The scanner includes shortcuts for faster navigation.
 | **Results List** | |
 | `Space` / `Enter` | View Details |
 | `F5` / `r` | Rescan |
-| `Delete` | Exclude |
+| `Delete` / `Backspace` | Exclude |
 | `Ctrl+A` | Select All |
 | `Ctrl+C` | Copy File Path |
 | `Ctrl+Shift+C` | Copy as Markdown Table |
@@ -261,13 +261,13 @@ The scanner includes shortcuts for faster navigation.
 | `Alt+Up` / `Alt+Down` | Force Previous / Next Result |
 | `Ctrl+PageUp` / `Ctrl+PageDown` | Force Previous / Next Result |
 | `F5` / `r` | Rescan |
-| `Delete` | Exclude |
+| `Delete` / `Backspace` | Exclude |
 | `Ctrl+U` | Toggle Full Source |
 | `Ctrl++` / `Ctrl+-` | Zoom In / Out Code Viewer |
 | `Ctrl+0` | Reset Code Viewer Zoom |
 | `Ctrl+S` | Copy Code Snippet |
 | `Ctrl+Shift+C` | Copy AI Analysis |
-| `Ctrl+Shift+P` | Copy File Path |
+| `Ctrl+C` / `Ctrl+Shift+P` | Copy File Path |
 | `Ctrl+H` | Copy SHA-256 Hash |
 | `Ctrl+J` | Copy JSON Data |
 | `Ctrl+G` | Analyze with AI |
