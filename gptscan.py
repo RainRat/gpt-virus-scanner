@@ -9989,8 +9989,12 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     bind_hover_message(dry_checkbox, "Simulate the scan process without running checks.")
 
     size_frame = ttk.Frame(options_frame)
-    size_frame.grid(row=2, column=0, columnspan=2, sticky='w', padx=10, pady=5)
-    ttk.Label(size_frame, text="Max File Size (MB):").pack(side=tk.LEFT)
+    size_frame.grid(row=2, column=0, columnspan=2, sticky='ew', padx=10, pady=5)
+    size_frame.columnconfigure(0, weight=1)
+
+    max_size_subframe = ttk.Frame(size_frame)
+    max_size_subframe.pack(side=tk.LEFT)
+    ttk.Label(max_size_subframe, text="Max File Size (MB):").pack(side=tk.LEFT)
 
     def on_max_size_change():
         try:
@@ -9999,23 +10003,23 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         except ValueError:
             pass
 
-    max_size_spin = ttk.Spinbox(size_frame, from_=1, to=1024, width=5, command=on_max_size_change)
+    max_size_spin = ttk.Spinbox(max_size_subframe, from_=1, to=1024, width=5, command=on_max_size_change)
     max_size_spin.delete(0, tk.END)
     max_size_spin.insert(0, str(int(Config.MAX_FILE_SIZE / (1024 * 1024))))
     max_size_spin.pack(side=tk.LEFT, padx=5)
     max_size_spin.bind('<KeyRelease>', lambda e: on_max_size_change())
     bind_hover_message(max_size_spin, "Skip files larger than this size (in Megabytes).")
 
-    # --- Provider Frame ---
-    provider_frame = ttk.LabelFrame(boxes_frame, text="AI Analysis", padding=10)
-    provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
-
-    cmd_bar = ttk.Frame(settings_frame)
-    cmd_bar.pack(side=tk.TOP, fill=tk.X, pady=(5, 0))
+    cmd_bar = ttk.Frame(size_frame)
+    cmd_bar.pack(side=tk.RIGHT)
 
     copy_cmd_button = ttk.Button(cmd_bar, text="Copy CLI Command", command=copy_cli_command)
     copy_cmd_button.pack(side=tk.RIGHT)
     bind_hover_message(copy_cmd_button, "Copy the current scan settings as a CLI command for use in scripts or automation.")
+
+    # --- Provider Frame ---
+    provider_frame = ttk.LabelFrame(boxes_frame, text="AI Analysis", padding=10)
+    provider_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
     provider_frame.columnconfigure(1, weight=1)
     provider_frame.columnconfigure(3, weight=1)
