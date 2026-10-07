@@ -257,9 +257,11 @@ The scanner includes shortcuts for faster navigation.
 | **Details Window** | |
 | `Esc` | Close Window |
 | `Left` / `Right` | Previous / Next Result |
+| `Home` / `End` | First / Last Result |
 | `Alt+Left` / `Alt+Right` | Force Previous / Next Result |
 | `Alt+Up` / `Alt+Down` | Force Previous / Next Result |
 | `Ctrl+PageUp` / `Ctrl+PageDown` | Force Previous / Next Result |
+| `Ctrl+Home` / `Ctrl+End` | Force First / Last Result |
 | `F5` / `r` | Rescan |
 | `Delete` | Exclude |
 | `Ctrl+U` | Toggle Full Source |
