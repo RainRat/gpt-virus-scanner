@@ -795,6 +795,7 @@ The scanner provides several ways to analyze and manage your results:
 ## Customizing the Scanner
 You can tailor the scanner to your needs:
 *   **Git Changes Only:** Only scan files that have been modified or are untracked in Git. Use the **Git changes only** checkbox or the `--git-changes` flag.
+*   **Git Staged & Untracked Files:** Scan only files currently staged for commit (`--git-staged`) or untracked files (`--git-untracked`) in your Git repository.
 *   **Exclusions:** Ignore specific files or folders by using **File > Manage Exclusions...** or by adding patterns to a `.gptscanignore` file. In the terminal, use the `-e` or `--exclude` flag, or provide a pattern file using `--exclude-file`.
 *   **Extensions:** Control which file types are scanned by using **File > Manage Extensions...** or by editing the `extensions.txt` file. In the terminal, use the `--extensions` flag.
 *   **File Size:** The scanner skips files larger than 10MB during folder scans. You can adjust this limit in the **Scan Options** panel or by using the `--max-size` flag. Files you select individually are always scanned, regardless of their size.
