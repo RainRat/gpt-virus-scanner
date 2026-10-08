@@ -616,6 +616,9 @@ class Config:
 
         cls.ignore_patterns = parse_ignore_file('.gptscanignore')
 
+        cls.base_extensions_set = set(cls.extensions_set)
+        cls.base_ignore_patterns = list(cls.ignore_patterns)
+
         cls.load_settings()
         cls.load_cache()
 
@@ -9563,6 +9566,21 @@ def copy_cli_command(event: Optional[tk.Event] = None) -> None:
     # Threshold
     if Config.THRESHOLD != 50:
         cmd_parts.extend(["--threshold", str(Config.THRESHOLD)])
+
+    # Extensions
+    base_exts = getattr(Config, 'base_extensions_set', set(Config.DEFAULT_EXTENSIONS))
+    if Config.extensions_set and Config.extensions_set != base_exts:
+        ext_strs = sorted([e.lstrip('.') for e in Config.extensions_set if e])
+        if ext_strs:
+            cmd_parts.extend(["--extensions", ",".join(ext_strs)])
+
+    # Exclusions
+    base_ignores = getattr(Config, 'base_ignore_patterns', [])
+    custom_excludes = [p for p in Config.ignore_patterns if p not in base_ignores]
+    if custom_excludes:
+        cmd_parts.append("--exclude")
+        for pat in custom_excludes:
+            cmd_parts.append(_quote_for_ui(pat))
 
     # AI Analysis
     if gpt_var and gpt_var.get():
