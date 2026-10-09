@@ -4661,6 +4661,8 @@ def show_keyboard_shortcuts() -> None:
         ("Alt+Left / Right", "Force Previous / Next Result"),
         ("Alt+Up / Down", "Force Previous / Next Result"),
         (f"{mod}+PageUp / PageDown", "Force Previous / Next Result"),
+        ("Home / End", "First / Last Result (when input not active)"),
+        (f"{mod}+Home / End", "Force First / Last Result"),
         ("F5 / R", "Rescan Current Item"),
         ("Delete / Backspace", "Exclude Current Item"),
         (f"{mod}+U", "Toggle between Full Source & Snippet"),
@@ -8781,22 +8783,26 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             idx = all_visible.index(new_id)
             has_prev = idx > 0
             has_next = idx < total - 1
+            first_btn.config(state='normal' if has_prev else 'disabled')
             prev_btn.config(state='normal' if has_prev else 'disabled')
             next_btn.config(state='normal' if has_next else 'disabled')
+            last_btn.config(state='normal' if has_next else 'disabled')
             count_label.config(text=f"Result {idx + 1} of {total}")
             details_win.title(f"Result {idx + 1} of {total} - {os.path.basename(path)}")
 
             # Gracefully manage focus transitions if navigating boundary disables current focused button
             focused = details_win.focus_get()
-            if str(focused) == str(next_btn) and not has_next:
+            if str(focused) in (str(next_btn), str(last_btn)) and not has_next:
                 if has_prev:
                     prev_btn.focus_set()
-            elif str(focused) == str(prev_btn) and not has_prev:
+            elif str(focused) in (str(prev_btn), str(first_btn)) and not has_prev:
                 if has_next:
                     next_btn.focus_set()
         except ValueError:
+            first_btn.config(state='disabled')
             prev_btn.config(state='disabled')
             next_btn.config(state='disabled')
+            last_btn.config(state='disabled')
             count_label.config(text="")
             details_win.title(f"Result Details - {os.path.basename(path)}")
 
@@ -8865,6 +8871,24 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
                 pass
         return False
 
+    def navigate_first(event: Optional[tk.Event] = None) -> None:
+        """Navigate to the first scan result in the details view."""
+        all_visible = tree.get_children()
+        if all_visible:
+            new_id = all_visible[0]
+            tree.selection_set(new_id)
+            tree.see(new_id)
+            refresh_content(new_id)
+
+    def navigate_last(event: Optional[tk.Event] = None) -> None:
+        """Navigate to the last scan result in the details view."""
+        all_visible = tree.get_children()
+        if all_visible:
+            new_id = all_visible[-1]
+            tree.selection_set(new_id)
+            tree.see(new_id)
+            refresh_content(new_id)
+
     def navigate_prev(event: Optional[tk.Event] = None) -> None:
         """Navigate to the previous scan result in the details view."""
         all_visible = tree.get_children()
@@ -8891,6 +8915,16 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         except ValueError:
             pass
 
+    def on_first():
+        if is_input_focused():
+            return
+        navigate_first()
+
+    def on_last():
+        if is_input_focused():
+            return
+        navigate_last()
+
     def on_prev():
         if is_input_focused():
             return
@@ -8901,16 +8935,24 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             return
         navigate_next()
 
+    first_btn = ttk.Button(nav_header, text="|< First", command=on_first)
+    first_btn.pack(side=tk.LEFT, padx=(0, 2), ipady=2)
+    bind_hover_message(first_btn, "View the first scan result. (Home, Ctrl+Home, or Cmd+Home)", label=status_bar)
+
     prev_btn = ttk.Button(nav_header, text="< Previous", command=on_prev)
-    prev_btn.pack(side=tk.LEFT, ipady=2)
+    prev_btn.pack(side=tk.LEFT, padx=2, ipady=2)
     bind_hover_message(prev_btn, "View the previous scan result. (Left Arrow, Alt+Left, or Ctrl+PageUp)", label=status_bar)
 
     count_label = ttk.Label(nav_header, text="", font=('TkDefaultFont', 9, 'bold'))
-    count_label.pack(side=tk.LEFT, padx=20)
+    count_label.pack(side=tk.LEFT, padx=15)
 
     next_btn = ttk.Button(nav_header, text="Next >", command=on_next)
-    next_btn.pack(side=tk.LEFT, ipady=2)
+    next_btn.pack(side=tk.LEFT, padx=2, ipady=2)
     bind_hover_message(next_btn, "View the next scan result. (Right Arrow, Alt+Right, or Ctrl+PageDown)", label=status_bar)
+
+    last_btn = ttk.Button(nav_header, text="Last >|", command=on_last)
+    last_btn.pack(side=tk.LEFT, padx=(2, 0), ipady=2)
+    bind_hover_message(last_btn, "View the last scan result. (End, Ctrl+End, or Cmd+End)", label=status_bar)
 
     details_win.bind('<Left>', lambda e: on_prev())
     details_win.bind('<Right>', lambda e: on_next())
@@ -8922,6 +8964,12 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Control-Next>', navigate_next)
     details_win.bind('<Command-Prior>', navigate_prev)
     details_win.bind('<Command-Next>', navigate_next)
+    details_win.bind('<Home>', lambda e: on_first())
+    details_win.bind('<End>', lambda e: on_last())
+    details_win.bind('<Control-Home>', navigate_first)
+    details_win.bind('<Control-End>', navigate_last)
+    details_win.bind('<Command-Home>', navigate_first)
+    details_win.bind('<Command-End>', navigate_last)
     details_win.bind('<Delete>', lambda e: on_exclude() if not is_input_focused() else None)
     details_win.bind('<BackSpace>', lambda e: on_exclude() if not is_input_focused() else None)
     details_win.bind('<Escape>', lambda e: details_win.destroy())

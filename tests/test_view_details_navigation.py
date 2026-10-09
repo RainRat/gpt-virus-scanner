@@ -199,8 +199,10 @@ def test_navigate_prev_and_next_flow(mock_details_navigation_env):
 
     gptscan.view_details(item_id="item2")
 
+    first_btn, on_first_cmd = captured_buttons["|< First"]
     prev_btn, on_prev_cmd = captured_buttons["< Previous"]
     next_btn, on_next_cmd = captured_buttons["Next >"]
+    last_btn, on_last_cmd = captured_buttons["Last >|"]
 
     # Navigate Next: item2 -> item3
     on_next_cmd()
@@ -223,6 +225,44 @@ def test_navigate_prev_and_next_flow(mock_details_navigation_env):
     mock_tree.selection_set.reset_mock()
     on_prev_cmd()
     mock_tree.selection_set.assert_not_called()
+
+    # Navigate Last: item1 -> item3
+    on_last_cmd()
+    mock_tree.selection_set.assert_called_with("item3")
+
+    # Navigate First: item3 -> item1
+    on_first_cmd()
+    mock_tree.selection_set.assert_called_with("item1")
+
+
+def test_navigate_home_end_shortcuts(mock_details_navigation_env):
+    mock_tree, mock_toplevel, captured_bindings, captured_buttons = (
+        mock_details_navigation_env
+    )
+    _populate_tree_items(mock_tree, ["item1", "item2", "item3"])
+    mock_toplevel.focus_get.return_value = None
+
+    gptscan.view_details(item_id="item2")
+
+    # Home shortcut handler
+    home_handler = captured_bindings["<Home>"]
+    home_handler(None)
+    mock_tree.selection_set.assert_called_with("item1")
+
+    # End shortcut handler
+    end_handler = captured_bindings["<End>"]
+    end_handler(None)
+    mock_tree.selection_set.assert_called_with("item3")
+
+    # Ctrl+Home shortcut handler
+    ctrl_home_handler = captured_bindings["<Control-Home>"]
+    ctrl_home_handler(None)
+    mock_tree.selection_set.assert_called_with("item1")
+
+    # Ctrl+End shortcut handler
+    ctrl_end_handler = captured_bindings["<Control-End>"]
+    ctrl_end_handler(None)
+    mock_tree.selection_set.assert_called_with("item3")
 
 
 def test_navigate_shortcuts_unfocused(mock_details_navigation_env):
