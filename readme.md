@@ -517,6 +517,11 @@ Scan only specific file extensions (for example, Python and JavaScript files):
 python3 gptscan.py ./my_project --extensions py,js --cli
 ```
 
+Only scan files or folders matching specific patterns:
+```bash
+python3 gptscan.py ./my_project --include "*.py" "src/*" --cli
+```
+
 Scan every file in a folder, including non-script files:
 ```bash
 python3 gptscan.py ./my_project --all-files --cli
@@ -669,6 +674,7 @@ You can customize terminal scans using these command line options.
 *   `-d`, `--deep`: Scan the whole file instead of just the beginning and end. This is more thorough but slower.
 *   `--dry-run`: Preview which files would be scanned without checking them.
 *   `--extensions <exts>`: Only scan these file types (for example: `py,js`).
+*   `-i`, `--include <patterns>`: Only scan files or folders matching these patterns (for example: `*.py`, `src/*`).
 *   `-e`, `--exclude <patterns>`: Ignore files or folders matching these patterns (for example: `node_modules/*`).
 *   `--exclude-file <file>`: Read a list of exclude patterns from a file.
 *   `--config <file>` / `--config-file <file>`: Load scan options and defaults from a JSON configuration file.
