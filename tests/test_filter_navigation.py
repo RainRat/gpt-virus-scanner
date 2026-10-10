@@ -42,17 +42,17 @@ def test_on_filter_return_transitions_to_tree(mock_ui_env):
     mock_ui_env['tree'].selection_set.assert_not_called()
     assert res == "break"
 
-def test_on_filter_return_selects_first_item_if_none_selected(mock_ui_env):
-    """Test that on_filter_return selects the first item if tree selection is empty."""
+def test_on_filter_return_selects_best_item_if_none_selected(mock_ui_env, monkeypatch):
+    """Test that on_filter_return delegates to _auto_select_best_result if tree selection is empty."""
     mock_ui_env['tree'].selection.return_value = ()
     mock_ui_env['tree'].get_children.return_value = ("item1", "item2")
+    mock_auto_select = MagicMock()
+    monkeypatch.setattr(gptscan, '_auto_select_best_result', mock_auto_select)
 
     res = gptscan.on_filter_return()
 
     mock_ui_env['tree'].focus_set.assert_called_once()
-    mock_ui_env['tree'].selection_set.assert_called_with("item1")
-    mock_ui_env['tree'].focus.assert_called_with("item1")
-    mock_ui_env['tree'].see.assert_called_with("item1")
+    mock_auto_select.assert_called_once()
     assert res == "break"
 
 def test_on_filter_return_handles_empty_tree(mock_ui_env):
