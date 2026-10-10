@@ -187,3 +187,23 @@ def test_discover_local_ignore_patterns_rglob_exception(tmp_path, monkeypatch):
 def test_discover_local_ignore_patterns_nonexistent_and_invalid_targets():
     ignore_rules = gptscan.discover_local_ignore_patterns(["/nonexistent/path/for/test"])
     assert ignore_rules == []
+
+
+def test_exclude_file_unreadable_cli_main(tmp_path, monkeypatch):
+    import sys
+    non_existent = tmp_path / "non_existent_exclude.txt"
+
+    test_args = [
+        "gptscan.py",
+        "some_folder",
+        "--cli",
+        "--exclude-file", str(non_existent)
+    ]
+
+    mock_run_cli = MagicMock(return_value=0)
+    monkeypatch.setattr(gptscan, "run_cli", mock_run_cli)
+    monkeypatch.setattr(sys, "argv", test_args)
+
+    with pytest.raises(SystemExit) as exc_info:
+        gptscan.main()
+    assert exc_info.value.code != 0
