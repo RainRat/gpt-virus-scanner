@@ -11104,22 +11104,24 @@ def main():
         except ValueError as e:
             parser.error(str(e))
 
+    cli_targets_or_flags = [
+        args.config_file, args.stdin, args.clipboard, args.import_results, args.baseline,
+        args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_staged, args.git_untracked, args.git_ignored, args.git_hooks, args.git_config,
+        args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
+        args.running_processes, args.scheduled_tasks, args.startup_items,
+        args.system_services, args.audit, args.modified, args.downloads, args.desktop,
+        args.python_packages, args.nodejs_packages, args.ruby_gems, args.php_packages,
+        args.rust_packages, args.go_packages, args.java_packages, args.dotnet_packages,
+        args.browser_bookmarks, args.browser_extensions, args.editor_extensions, args.ssh_config, args.network_config, args.temp, args.documents
+    ]
+
     if args.clear_cache:
         Config.gpt_cache = {}
         Config.save_cache()
         if not args.quiet:
             print("AI Analysis cache cleared.", file=sys.stderr)
         # If we ONLY wanted to clear cache, exit now.
-        if not any([
-            args.target, args.path, args.stdin, args.clipboard, args.import_results, args.baseline, args.files,
-            args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_staged, args.git_hooks, args.git_config,
-            args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
-            args.running_processes, args.scheduled_tasks, args.startup_items,
-            args.system_services, args.audit, args.modified, args.downloads, args.desktop,
-            args.python_packages, args.nodejs_packages, args.ruby_gems, args.php_packages,
-            args.rust_packages, args.go_packages, args.java_packages, args.dotnet_packages,
-            args.browser_extensions, args.editor_extensions, args.ssh_config, args.network_config, args.temp, args.documents
-        ]):
+        if not args.target and not args.path and not args.files and not any(cli_targets_or_flags):
             sys.exit(0)
 
     # Provider & API settings
@@ -11206,16 +11208,7 @@ def main():
 
     scan_target = args.target or args.path
 
-    cli_targets_or_flags = [
-        args.config_file, args.stdin, args.clipboard, args.import_results, args.baseline,
-        args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_staged, args.git_untracked, args.git_ignored, args.git_hooks, args.git_config,
-        args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
-        args.running_processes, args.scheduled_tasks, args.startup_items,
-        args.system_services, args.audit, args.modified, args.downloads, args.desktop,
-        args.python_packages, args.nodejs_packages, args.ruby_gems, args.php_packages,
-        args.rust_packages, args.go_packages, args.java_packages, args.dotnet_packages,
-        args.browser_bookmarks, args.browser_extensions, args.editor_extensions, args.ssh_config, args.network_config, args.temp, args.documents
-    ]
+
     cli_mode = args.cli or any(cli_targets_or_flags)
 
     if not cli_mode:
