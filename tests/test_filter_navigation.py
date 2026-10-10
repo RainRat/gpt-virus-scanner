@@ -187,8 +187,8 @@ def test_filter_tooltips_include_keyboard_shortcuts(monkeypatch):
     assert "(Esc)" in bound_messages[mock_btn]
 
 
-def test_filter_entry_down_arrow_binding(monkeypatch):
-    """Test that filter_entry binds <Down> to on_filter_return during GUI creation."""
+def test_filter_entry_up_down_arrow_bindings(monkeypatch):
+    """Test that filter_entry binds <Down> and <Up> to on_filter_return during GUI creation."""
     mock_filter_entry = MagicMock()
     filter_bindings = {}
     mock_filter_entry.bind.side_effect = lambda event, func: filter_bindings.update({event: func})
@@ -214,6 +214,8 @@ def test_filter_entry_down_arrow_binding(monkeypatch):
 
     assert '<Down>' in filter_bindings
     assert filter_bindings['<Down>'] == gptscan.on_filter_return
+    assert '<Up>' in filter_bindings
+    assert filter_bindings['<Up>'] == gptscan.on_filter_return
 
 
 def test_apply_filter_auto_selects_best_result_and_updates_button_states(monkeypatch):
