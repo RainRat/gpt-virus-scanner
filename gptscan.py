@@ -7005,7 +7005,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
                 writer.writerow([record.get(k, '') for k in keys])
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None, include_patterns: Optional[List[str]] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, stats_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None, include_patterns: Optional[List[str]] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -7030,6 +7030,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         top_limit: If provided, restrict the output results to the top N highest-threat findings.
         count_only: Whether to print only the total count of matching findings.
         summary_only: Whether to print only the scan summary banner without individual findings.
+        stats_only: Whether to print scan statistics and metrics in structured format.
         sort_by: Optional field to sort results by ('threat', 'path', or 'line').
         paths_only: Whether to print only unique file paths of suspicious findings line-by-line.
         files_without_matches: Whether to print only unique file paths of clean scanned files line-by-line.
@@ -7042,7 +7043,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
     out_stream = open(output_file, 'w', encoding='utf-8') if output_file else sys.stdout
 
-    if output_format in ('csv', 'tsv') and not count_only and not summary_only and not paths_only and not files_without_matches:
+    if output_format in ('csv', 'tsv') and not count_only and not summary_only and not stats_only and not paths_only and not files_without_matches:
         writer = csv.writer(out_stream, delimiter='\t' if output_format == 'tsv' else ',')
         writer.writerow(keys)
 
@@ -7129,7 +7130,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 else:
                     medium_risk_found += 1
 
-            if count_only or summary_only:
+            if count_only or summary_only or stats_only:
                 pass
             elif reverse_sort or paths_only or files_without_matches or sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml', 'junit'):
                 result_buffer.append(record)
@@ -7217,21 +7218,56 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     if top_limit is not None and top_limit > 0:
         result_buffer = result_buffer[:top_limit]
 
-    if summary_only:
+    if stats_only or summary_only:
         total_scanned = metrics.get('total_files', final_progress[1] if final_progress is not None else 0)
-        use_summary_color = out_stream.isatty() if hasattr(out_stream, 'isatty') else False
-        summary_text = format_scan_summary(
-            total_scanned,
-            threats_found,
-            metrics.get('total_bytes'),
-            metrics.get('elapsed_time'),
-            use_color=use_summary_color,
-            high_risk=high_risk_found,
-            medium_risk=medium_risk_found
-        )
+        stats_payload = {
+            "scanned_files": total_scanned,
+            "threats_found": threats_found,
+            "high_risk": high_risk_found,
+            "medium_risk": medium_risk_found,
+            "scanned_bytes": metrics.get('total_bytes', 0),
+            "elapsed_seconds": round(metrics.get('elapsed_time', 0.0), 4) if metrics.get('elapsed_time') is not None else 0.0
+        }
         if baseline_file:
-            summary_text += f" (Bypassed {matched_baseline_count} baseline findings)"
-        print(summary_text, file=out_stream)
+            stats_payload["bypassed_baseline"] = matched_baseline_count
+
+        if stats_only or (summary_only and output_format in ('json', 'ndjson', 'jsonl', 'yaml', 'yml')):
+            if output_format in ('json', 'ndjson', 'jsonl') or (stats_only and output_format not in ('yaml', 'yml', 'csv', 'tsv')):
+                print(json.dumps(stats_payload, indent=2 if output_format == 'json' or stats_only else None), file=out_stream)
+            elif output_format in ('yaml', 'yml'):
+                print(generate_yaml([stats_payload]), file=out_stream)
+            elif output_format in ('csv', 'tsv'):
+                writer = csv.writer(out_stream, delimiter='\t' if output_format == 'tsv' else ',')
+                writer.writerow(list(stats_payload.keys()))
+                writer.writerow(list(stats_payload.values()))
+            else:
+                use_summary_color = out_stream.isatty() if hasattr(out_stream, 'isatty') else False
+                summary_text = format_scan_summary(
+                    total_scanned,
+                    threats_found,
+                    metrics.get('total_bytes'),
+                    metrics.get('elapsed_time'),
+                    use_color=use_summary_color,
+                    high_risk=high_risk_found,
+                    medium_risk=medium_risk_found
+                )
+                if baseline_file:
+                    summary_text += f" (Bypassed {matched_baseline_count} baseline findings)"
+                print(summary_text, file=out_stream)
+        else:
+            use_summary_color = out_stream.isatty() if hasattr(out_stream, 'isatty') else False
+            summary_text = format_scan_summary(
+                total_scanned,
+                threats_found,
+                metrics.get('total_bytes'),
+                metrics.get('elapsed_time'),
+                use_color=use_summary_color,
+                high_risk=high_risk_found,
+                medium_risk=medium_risk_found
+            )
+            if baseline_file:
+                summary_text += f" (Bypassed {matched_baseline_count} baseline findings)"
+            print(summary_text, file=out_stream)
     elif count_only:
         final_count = threats_found
         if top_limit is not None and top_limit >= 0:
@@ -11119,6 +11155,12 @@ def main():
         help='Print only the scan summary banner without individual findings.'
     )
     output_group.add_argument(
+        '--stats', '--metrics',
+        action='store_true',
+        dest='stats_only',
+        help='Print scan statistics and metrics in structured format.'
+    )
+    output_group.add_argument(
         '-l', '--paths-only', '--files-with-matches',
         action='store_true',
         dest='paths_only',
@@ -11176,7 +11218,7 @@ def main():
             parser.error(str(e))
 
     cli_targets_or_flags = [
-        args.config_file, args.stdin, args.clipboard, args.import_results, args.baseline,
+        args.config_file, args.stdin, args.clipboard, args.import_results, args.baseline, args.stats_only,
         args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_staged, args.git_untracked, args.git_ignored, args.git_hooks, args.git_config,
         args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
         args.running_processes, args.scheduled_tasks, args.startup_items,
@@ -11739,6 +11781,7 @@ def main():
             top_limit=args.top,
             count_only=args.count_only,
             summary_only=args.summary_only,
+            stats_only=args.stats_only,
             sort_by=args.sort_by,
             paths_only=args.paths_only,
             files_without_matches=args.files_without_matches,

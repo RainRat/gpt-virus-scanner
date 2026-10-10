@@ -607,7 +607,8 @@ By default, the scanner prints human-readable text to the terminal. You can cust
 *   `--yaml` / `--yml`: Create a YAML report (requires the `pyyaml` package).
 *   `--report`: Output a detailed triage report to the terminal.
 *   `-C`, `--count`: Print only the total count of suspicious findings.
-*   `-s`, `--summary-only`: Print only the scan summary banner without individual findings.
+*   `-s`, `--summary-only`: Print only the scan summary banner without individual findings (or structured metrics if combined with `--json`, `--yaml`, or `--csv`).
+*   `--stats` / `--metrics`: Print scan statistics and metrics (scanned files, threats found, risk counts, bytes scanned, elapsed time) in structured format.
 *   `-l`, `--paths-only`, `--files-with-matches`: Print only unique file paths of suspicious findings line-by-line.
 *   `-L`, `--files-without-matches`: Print only unique file paths of clean scanned files line-by-line.
 
@@ -771,7 +772,8 @@ You can customize terminal scans using these command line options.
 *   `--report`: Output a detailed triage report to the terminal.
 *   `--top <N>` / `--limit <N>`: Limit output results to the top N highest-risk findings.
 *   `-C`, `--count`: Print only the total count of matching findings.
-*   `-s`, `--summary-only`: Print only the scan summary banner without individual findings.
+*   `-s`, `--summary-only`: Print only the scan summary banner without individual findings (or structured metrics if combined with structured format flags).
+*   `--stats` / `--metrics`: Print scan statistics and metrics in structured format.
 *   `-l`, `--paths-only`, `--files-with-matches`: Print only unique file paths of suspicious findings line-by-line.
 *   `-L`, `--files-without-matches`: Print only unique file paths of clean scanned files line-by-line.
 *   `--sort-by <field>` / `--sort <field>`: Sort scan results by `threat` (highest threat score first), `path` (file path alphabetically), or `line` (line number numerically).
