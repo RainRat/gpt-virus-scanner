@@ -521,6 +521,11 @@ Ignore files or folders using patterns listed in a text file:
 python3 gptscan.py ./my_project --exclude-file .gptscanignore --cli
 ```
 
+Load default scan options from a JSON configuration file:
+```bash
+python3 gptscan.py --config config.json --cli
+```
+
 Filter results by setting a minimum threat score threshold (0 to 100):
 ```bash
 python3 gptscan.py ./my_project --min-threat 70 --cli
@@ -640,6 +645,7 @@ You can customize terminal scans using these command line options.
 *   `--extensions <exts>`: Only scan these file types (for example: `py,js`).
 *   `-e`, `--exclude <patterns>`: Ignore files or folders matching these patterns (for example: `node_modules/*`).
 *   `--exclude-file <file>`: Read a list of exclude patterns from a file.
+*   `--config <file>` / `--config-file <file>`: Load scan options and defaults from a JSON configuration file.
 *   `--file-list <file>`: Read a list of files to scan from a text file.
 *   `--all-files`: Scan every file, even if it is not a script.
 *   `--fail-threshold <num>`: Exit with code `1` if any file has a threat level at or above this number (0-100).
