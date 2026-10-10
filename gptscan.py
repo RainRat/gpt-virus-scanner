@@ -9688,15 +9688,12 @@ def on_target_escape(event: Optional[tk.Event] = None) -> str:
         return "break"
 
     if textbox:
-        try:
-            val = textbox.get()
-            if isinstance(val, str) and val.strip():
-                textbox.delete(0, tk.END)
-                update_clear_target_visibility()
-                textbox.focus_set()
-                return "break"
-        except Exception:
-            pass
+        val = textbox.get()
+        if val.strip():
+            textbox.delete(0, tk.END)
+            update_clear_target_visibility()
+            textbox.focus_set()
+            return "break"
 
     return on_root_escape(event)
 
