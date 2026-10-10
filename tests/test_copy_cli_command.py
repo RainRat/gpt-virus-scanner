@@ -41,6 +41,10 @@ def reset_config():
     orig_api_base = Config.api_base
     orig_last_path = Config.last_path
     orig_max_file_size = Config.MAX_FILE_SIZE
+    orig_extensions_set = set(Config.extensions_set)
+    orig_base_extensions_set = set(getattr(Config, 'base_extensions_set', set()))
+    orig_ignore_patterns = list(Config.ignore_patterns)
+    orig_base_ignore_patterns = list(getattr(Config, 'base_ignore_patterns', []))
 
     yield
 
@@ -50,6 +54,10 @@ def reset_config():
     Config.api_base = orig_api_base
     Config.last_path = orig_last_path
     Config.MAX_FILE_SIZE = orig_max_file_size
+    Config.extensions_set = orig_extensions_set
+    Config.base_extensions_set = orig_base_extensions_set
+    Config.ignore_patterns = orig_ignore_patterns
+    Config.base_ignore_patterns = orig_base_ignore_patterns
 
 def test_copy_cli_command_basic(mock_gui_vars):
     with patch('gptscan.root', MagicMock()) as mock_root, \
@@ -158,3 +166,21 @@ def test_copy_cli_command_widget_vars(mock_gui_vars):
         assert "--provider openrouter" in command
         assert "--model anthropic/claude-3.5-sonnet" in command
         assert "--api-base https://custom.openrouter.ai/api/v1" in command
+
+def test_copy_cli_command_custom_extensions(mock_gui_vars):
+    Config.base_extensions_set = {'.py', '.js'}
+    Config.extensions_set = {'.py', '.js', '.sh', '.rb'}
+    with patch('gptscan.root', MagicMock()) as mock_root, \
+         patch('gptscan.update_status'):
+        gptscan.copy_cli_command()
+        command = mock_root.clipboard_append.call_args[0][0]
+        assert "--extensions js,py,rb,sh" in command
+
+def test_copy_cli_command_exclusions(mock_gui_vars):
+    Config.base_ignore_patterns = []
+    Config.ignore_patterns = ["node_modules/*", "*.tmp"]
+    with patch('gptscan.root', MagicMock()) as mock_root, \
+         patch('gptscan.update_status'):
+        gptscan.copy_cli_command()
+        command = mock_root.clipboard_append.call_args[0][0]
+        assert "--exclude 'node_modules/*' '*.tmp'" in command or "--exclude node_modules/* *.tmp" in command
