@@ -2060,7 +2060,7 @@ def get_git_submodule_paths(path: str = ".") -> List[str]:
                             abs_path = os.path.join(toplevel, rel_path)
                             if os.path.exists(abs_path):
                                 paths.append(abs_path)
-            except Exception:
+            except (OSError, IOError):
                 pass
 
     return sorted(set(paths))
