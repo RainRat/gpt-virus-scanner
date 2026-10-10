@@ -561,3 +561,137 @@ def test_center_window():
     mock_window = MagicMock()
     mock_window.winfo_width.side_effect = TypeError("Mocked TypeError")
     gptscan.center_window(mock_window, mock_parent)
+
+
+def test_view_details_analyze_now_cancel_event_active(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py")
+
+    analyze_cmd = captured["btn_Analyze with AI"][1]
+
+    monkeypatch.setattr(gptscan, "current_cancel_event", MagicMock())
+    mock_request = MagicMock()
+    monkeypatch.setattr(gptscan, "request_single_gpt_analysis", mock_request)
+
+    analyze_cmd()
+
+    mock_request.assert_not_called()
+
+
+def test_view_details_analyze_now_disabled(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py")
+
+    analyze_cmd = captured["btn_Analyze with AI"][1]
+
+    monkeypatch.setattr(gptscan, "current_cancel_event", None)
+    monkeypatch.setattr(gptscan.Config, "GPT_ENABLED", False)
+
+    analyze_cmd()
+
+    mock_msgbox.showwarning.assert_called_once_with(
+        "AI Disabled", "AI Analysis is disabled (task.txt not found or API key missing)."
+    )
+
+
+def test_view_details_analyze_now_failed(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py")
+
+    analyze_cmd = captured["btn_Analyze with AI"][1]
+    analyze_btn_mock = captured["btn_Analyze with AI"][0]
+
+    monkeypatch.setattr(gptscan, "current_cancel_event", None)
+    monkeypatch.setattr(gptscan.Config, "GPT_ENABLED", True)
+    monkeypatch.setattr(gptscan, "request_single_gpt_analysis", MagicMock(return_value=None))
+    monkeypatch.setattr(gptscan.threading.Thread, "start", lambda self: self._target(*self._args, **self._kwargs))
+    monkeypatch.setattr(gptscan, "enqueue_ui_update", lambda func, *args, **kwargs: func(*args, **kwargs))
+
+    analyze_cmd()
+
+    mock_msgbox.showerror.assert_called_once_with(
+        "AI Analysis Failed", "Could not obtain a response from the AI."
+    )
+    analyze_btn_mock.config.assert_any_call(state="normal", text="Analyze with AI")
+
+
+def test_view_details_analyze_now_exception(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py")
+
+    analyze_cmd = captured["btn_Analyze with AI"][1]
+    analyze_btn_mock = captured["btn_Analyze with AI"][0]
+
+    monkeypatch.setattr(gptscan, "current_cancel_event", None)
+    monkeypatch.setattr(gptscan.Config, "GPT_ENABLED", True)
+    monkeypatch.setattr(
+        gptscan,
+        "request_single_gpt_analysis",
+        MagicMock(side_effect=RuntimeError("Connection timeout")),
+    )
+    monkeypatch.setattr(gptscan.threading.Thread, "start", lambda self: self._target(*self._args, **self._kwargs))
+    monkeypatch.setattr(gptscan, "enqueue_ui_update", lambda func, *args, **kwargs: func(*args, **kwargs))
+
+    analyze_cmd()
+
+    mock_msgbox.showerror.assert_called_once_with(
+        "Error", "An unexpected error occurred: Connection timeout"
+    )
+    analyze_btn_mock.config.assert_any_call(state="normal", text="Analyze with AI")
+
+
+def test_view_details_analyze_now_prepends_existing_notes(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(
+        mock_view_details_env,
+        "item1",
+        "test.py",
+        admin="Existing Admin Note",
+        user="Existing User Note",
+    )
+
+    analyze_cmd = captured["btn_Analyze with AI"][1]
+    mock_result = {
+        "administrator": "New AI Admin Note",
+        "end-user": "New AI User Note",
+        "threat-level": 88,
+    }
+
+    monkeypatch.setattr(gptscan, "current_cancel_event", None)
+    monkeypatch.setattr(gptscan.Config, "GPT_ENABLED", True)
+    monkeypatch.setattr(gptscan, "request_single_gpt_analysis", MagicMock(return_value=mock_result))
+    monkeypatch.setattr(gptscan.threading.Thread, "start", lambda self: self._target(*self._args, **self._kwargs))
+    monkeypatch.setattr(gptscan, "enqueue_ui_update", lambda func, *args, **kwargs: func(*args, **kwargs))
+
+    mock_update_tree = MagicMock(
+        side_effect=lambda item_id, values: mock_tree._item_values.update({item_id: values})
+    )
+    monkeypatch.setattr(gptscan, "update_tree_row", mock_update_tree)
+
+    analyze_cmd()
+
+    item1_vals = mock_tree._item_values["item1"]
+    assert item1_vals[2] == "Existing Admin Note\n\nNew AI Admin Note"
+    assert item1_vals[3] == "Existing User Note\n\nNew AI User Note"
+
+
+def test_view_details_rescan_exception(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py")
+
+    rescan_cmd = captured["btn_Rescan"][1]
+
+    monkeypatch.setattr(
+        gptscan, "run_rescan", MagicMock(side_effect=RuntimeError("Rescan failed"))
+    )
+    monkeypatch.setattr(gptscan.threading.Thread, "start", lambda self: self._target(*self._args, **self._kwargs))
+    monkeypatch.setattr(gptscan, "enqueue_ui_update", lambda func, *args, **kwargs: func(*args, **kwargs))
+    mock_finish_scan = MagicMock()
+    monkeypatch.setattr(gptscan, "finish_scan_state", mock_finish_scan)
+
+    rescan_cmd()
+
+    mock_msgbox.showerror.assert_called_once_with(
+        "Error", "An unexpected error occurred: Rescan failed"
+    )
+    mock_finish_scan.assert_called_once()
