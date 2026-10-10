@@ -4668,7 +4668,7 @@ def show_keyboard_shortcuts() -> None:
         (f"{mod}+0", "Reset Code Viewer Zoom"),
         (f"{mod}+S", "Copy Code Snippet"),
         (f"{mod}+Shift+C", "Copy AI Analysis"),
-        (f"{mod}+Shift+P", "Copy File Path"),
+        (f"{mod}+C / {mod}+Shift+P", "Copy File Path"),
         (f"{mod}+H", "Copy SHA-256 Hash"),
         (f"{mod}+J", "Copy JSON Data"),
         (f"{mod}+G", "Analyze with AI"),
@@ -8937,6 +8937,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     details_win.bind('<Command-j>', lambda e: copy_as_json_details())
     details_win.bind('<Control-Shift-R>', lambda e: copy_as_report_details())
     details_win.bind('<Command-Shift-R>', lambda e: copy_as_report_details())
+    details_win.bind('<Control-c>', lambda e: copy_path_details() if not is_input_focused() else None)
+    details_win.bind('<Command-c>', lambda e: copy_path_details() if not is_input_focused() else None)
     details_win.bind('<Control-Shift-P>', lambda e: copy_path_details())
     details_win.bind('<Command-Shift-P>', lambda e: copy_path_details())
     details_win.bind('<Control-h>', lambda e: copy_sha256_details())

@@ -140,7 +140,7 @@ def test_show_keyboard_shortcuts_darwin_modifier(mock_shortcuts_env, monkeypatch
     # Verify Cmd+F is used on Mac
     assert "Cmd+F" in label_texts
     assert "Cmd+O" in label_texts
-    assert "Cmd+Shift+P" in label_texts
+    assert any("Cmd+Shift+P" in txt for txt in label_texts)
     assert "Cmd+H" in label_texts
     assert "Cmd+G" in label_texts
     assert "Cmd+T" in label_texts
@@ -161,7 +161,7 @@ def test_show_keyboard_shortcuts_linux_modifier(mock_shortcuts_env, monkeypatch)
     # Verify Ctrl+F is used on Linux
     assert "Ctrl+F" in label_texts
     assert "Ctrl+O" in label_texts
-    assert "Ctrl+Shift+P" in label_texts
+    assert any("Ctrl+Shift+P" in txt for txt in label_texts)
     assert "Ctrl+H" in label_texts
     assert "Ctrl+G" in label_texts
     assert "Ctrl+T" in label_texts
