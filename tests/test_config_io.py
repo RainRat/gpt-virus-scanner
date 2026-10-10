@@ -43,7 +43,7 @@ def test_save_apikey_error_handling(capsys):
 
 def test_save_extensions_error_handling(capsys):
     """Test error handling when saving extensions fails."""
-    with patch("builtins.open", side_effect=Exception("Disk full")):
+    with patch("builtins.open", side_effect=OSError("Disk full")):
         Config.save_extensions()
 
     captured = capsys.readouterr()

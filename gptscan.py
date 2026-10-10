@@ -519,7 +519,7 @@ class Config:
         try:
             with open('apikey.txt', 'w', encoding='utf-8') as f:
                 f.write(cls.apikey)
-        except Exception as e:
+        except OSError as e:
             print(f"Warning: Could not save API key: {e}", file=sys.stderr)
 
     @classmethod
@@ -529,7 +529,7 @@ class Config:
             with open('extensions.txt', 'w', encoding='utf-8') as f:
                 for ext in sorted(cls.extensions_set):
                     f.write(f"{ext}\n")
-        except Exception as e:
+        except OSError as e:
             print(f"Warning: Could not save extensions: {e}", file=sys.stderr)
 
     @classmethod
@@ -553,7 +553,7 @@ class Config:
         try:
             with open(cls.SETTINGS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(settings, f, indent=4)
-        except Exception as e:
+        except (OSError, TypeError) as e:
             print(f"Warning: Could not save settings: {e}", file=sys.stderr)
 
     @classmethod
@@ -580,7 +580,7 @@ class Config:
                 recent = settings.get("recent_paths", cls.recent_paths)
                 if isinstance(recent, list):
                     cls.recent_paths = [str(p) for p in recent]
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, TypeError) as e:
             print(f"Warning: Could not load settings: {e}", file=sys.stderr)
 
     @classmethod
@@ -589,7 +589,7 @@ class Config:
         try:
             with open(cls.CACHE_FILE, 'w', encoding='utf-8') as f:
                 json.dump(cls.gpt_cache, f, indent=4)
-        except Exception as e:
+        except (OSError, TypeError) as e:
             print(f"Warning: Could not save AI cache: {e}", file=sys.stderr)
 
     @classmethod
@@ -600,7 +600,7 @@ class Config:
         try:
             with open(cls.CACHE_FILE, 'r', encoding='utf-8') as f:
                 cls.gpt_cache = json.load(f)
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, TypeError) as e:
             print(f"Warning: Could not load AI cache: {e}", file=sys.stderr)
 
     @classmethod
