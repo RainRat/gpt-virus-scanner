@@ -81,6 +81,19 @@ def test_parse_yaml_content_missing_yaml_module(monkeypatch):
     with pytest.raises(ImportError, match="PyYAML is required for YAML import"):
         gptscan.parse_yaml_content("path: test.py")
 
+def test_generate_yaml_missing_yaml_module(monkeypatch):
+    import builtins
+    orig_import = builtins.__import__
+
+    def mock_import(name, *args, **kwargs):
+        if name == 'yaml':
+            raise ImportError("No module named 'yaml'")
+        return orig_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, '__import__', mock_import)
+    with pytest.raises(ImportError, match="PyYAML is required for YAML export"):
+        gptscan.generate_yaml([{"path": "test.py"}])
+
 def test_parse_report_content_auto_detect_yaml():
     """Verify that parse_report_content correctly auto-detects and parses YAML."""
     yaml_input = """
