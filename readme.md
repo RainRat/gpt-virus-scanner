@@ -611,6 +611,7 @@ By default, the scanner prints human-readable text to the terminal. You can cust
 *   `--stats` / `--metrics`: Print scan statistics and metrics (scanned files, threats found, risk counts, bytes scanned, elapsed time) in structured format.
 *   `-l`, `--paths-only`, `--files-with-matches`: Print only unique file paths of suspicious findings line-by-line.
 *   `-L`, `--files-without-matches`: Print only unique file paths of clean scanned files line-by-line.
+*   `-Z`, `--null`, `--print0`: Print output file paths delimited by a null character (`\0`) instead of a newline (useful for `xargs -0`).
 
 To save the formatted output directly to a file, combine any format flag with the `--output` (or `-o`) option:
 ```bash
@@ -776,6 +777,7 @@ You can customize terminal scans using these command line options.
 *   `--stats` / `--metrics`: Print scan statistics and metrics in structured format.
 *   `-l`, `--paths-only`, `--files-with-matches`: Print only unique file paths of suspicious findings line-by-line.
 *   `-L`, `--files-without-matches`: Print only unique file paths of clean scanned files line-by-line.
+*   `-Z`, `--null`, `--print0`: Print output file paths delimited by a null character (`\0`) instead of a newline (useful for `xargs -0`).
 *   `--sort-by <field>` / `--sort <field>`: Sort scan results by `threat` (highest threat score first), `path` (file path alphabetically), or `line` (line number numerically).
 *   `-r`, `--reverse`: Reverse the sort order of scan results.
 *   `--min-threat <num>` / `--min-threat-level <num>`: Set the minimum threat level threshold (0-100) to include in output results.

@@ -7005,7 +7005,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
                 writer.writerow([record.get(k, '') for k in keys])
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, stats_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None, include_patterns: Optional[List[str]] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, stats_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None, include_patterns: Optional[List[str]] = None, null_delimited: bool = False) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -7035,11 +7035,14 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         paths_only: Whether to print only unique file paths of suspicious findings line-by-line.
         files_without_matches: Whether to print only unique file paths of clean scanned files line-by-line.
         reverse_sort: Whether to reverse the sort order of scan results.
+        null_delimited: Whether to output file paths separated by a null character ('\0') instead of a newline.
 
     Returns:
         The number of suspicious files detected.
     """
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
+    if null_delimited and not paths_only and not files_without_matches:
+        paths_only = True
 
     out_stream = open(output_file, 'w', encoding='utf-8') if output_file else sys.stdout
 
@@ -7284,7 +7287,12 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 seen_paths.add(p)
                 unique_paths.append(p)
         for p in unique_paths:
-            print(p, file=out_stream)
+            if null_delimited:
+                out_stream.write(f"{p}\0")
+            else:
+                print(p, file=out_stream)
+        if null_delimited:
+            out_stream.flush()
     elif files_without_matches:
         suspicious_paths = set()
         all_scanned_paths = []
@@ -7300,7 +7308,12 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
                 all_scanned_paths.append(p)
         for p in all_scanned_paths:
             if p not in suspicious_paths:
-                print(p, file=out_stream)
+                if null_delimited:
+                    out_stream.write(f"{p}\0")
+                else:
+                    print(p, file=out_stream)
+        if null_delimited:
+            out_stream.flush()
     elif output_format == 'sarif':
         sarif_log = generate_sarif(result_buffer)
         print(json.dumps(sarif_log, indent=2), file=out_stream)
@@ -11173,6 +11186,12 @@ def main():
         help='Print only unique file paths of clean scanned files line-by-line.'
     )
     output_group.add_argument(
+        '-Z', '--null', '--print0',
+        action='store_true',
+        dest='null_delimited',
+        help='Print output file paths delimited by a null character (\\0) instead of a newline (useful for xargs -0).'
+    )
+    output_group.add_argument(
         '--sort-by', '--sort',
         type=str,
         choices=['threat', 'path', 'line'],
@@ -11218,7 +11237,7 @@ def main():
             parser.error(str(e))
 
     cli_targets_or_flags = [
-        args.config_file, args.stdin, args.clipboard, args.import_results, args.baseline, args.stats_only,
+        args.config_file, args.stdin, args.clipboard, args.import_results, args.baseline, args.stats_only, args.null_delimited,
         args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_staged, args.git_untracked, args.git_ignored, args.git_hooks, args.git_config,
         args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
         args.running_processes, args.scheduled_tasks, args.startup_items,
@@ -11788,6 +11807,7 @@ def main():
             reverse_sort=args.reverse_sort,
             max_depth=args.max_depth,
             include_patterns=args.include,
+            null_delimited=args.null_delimited,
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
