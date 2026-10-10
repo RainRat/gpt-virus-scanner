@@ -260,3 +260,53 @@ def test_auto_select_best_result_focus_tree_parameter(monkeypatch):
     gptscan._auto_select_best_result(focus_tree=True)
     mock_tree.selection_set.assert_called_with("item1")
     mock_tree.focus_set.assert_called_once()
+
+
+def test_clear_filter_callback_auto_selects_and_updates_buttons(monkeypatch):
+    """Test that clear_filter() in create_gui resets query, auto-selects best result, and syncs button states."""
+    mock_filter_entry = MagicMock()
+    mock_filter_var = MagicMock()
+    mock_tree = MagicMock()
+    mock_tree.get_children.return_value = ["item1"]
+    mock_root = MagicMock()
+    mock_combo = MagicMock()
+    mock_combo.get.return_value = "openai"
+
+    mock_auto_select = MagicMock()
+    mock_update_buttons = MagicMock()
+
+    monkeypatch.setattr(gptscan, 'filter_entry', mock_filter_entry)
+    monkeypatch.setattr(gptscan, 'tree', mock_tree)
+    monkeypatch.setattr(gptscan, 'root', mock_root)
+    monkeypatch.setattr(gptscan, '_auto_select_best_result', mock_auto_select)
+    monkeypatch.setattr(gptscan, 'update_button_states', mock_update_buttons)
+
+    clear_filter_func = None
+
+    def mock_button(*args, **kwargs):
+        nonlocal clear_filter_func
+        btn = MagicMock()
+        if 'command' in kwargs and kwargs.get('text') == "×":
+            clear_filter_func = kwargs['command']
+        return btn
+
+    def mock_stringvar(*args, **kwargs):
+        return mock_filter_var
+
+    with monkeypatch.context() as m:
+        m.setattr(gptscan.tk, 'Tk', lambda: mock_root)
+        m.setattr(gptscan.tk, 'StringVar', mock_stringvar)
+        m.setattr(gptscan.ttk, 'Entry', lambda *a, **kw: mock_filter_entry)
+        m.setattr(gptscan.ttk, 'Combobox', lambda *a, **kw: mock_combo)
+        m.setattr(gptscan.ttk, 'Treeview', lambda *a, **kw: mock_tree)
+        m.setattr(gptscan.ttk, 'Button', mock_button)
+
+        gptscan.create_gui()
+
+    assert clear_filter_func is not None
+    clear_filter_func()
+
+    mock_filter_var.set.assert_called_once_with("")
+    mock_auto_select.assert_called_with(focus_tree=False)
+    mock_update_buttons.assert_called()
+    mock_filter_entry.focus_set.assert_called()
