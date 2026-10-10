@@ -4380,7 +4380,7 @@ def exclude_paths(paths: List[str], confirm: bool = True) -> bool:
         update_status(f"Excluded {len(paths)} file(s).")
         return True
 
-    except Exception as e:
+    except (OSError, IOError) as e:
         messagebox.showerror("Error", f"Could not update .gptscanignore: {e}")
         return False
 
