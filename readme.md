@@ -101,8 +101,8 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
             ```bash
             sudo pacman -S tk
             ```
-    *   **PyYAML (for training models and YAML reports):**
-        If you want to train your own local scanner models or export/import YAML reports, install PyYAML using pip:
+    *   **PyYAML (for training models, preset files, and YAML reports):**
+        If you want to train your own local scanner models, load YAML preset files, or export/import YAML reports, install PyYAML using pip:
 
         *   **macOS and Linux:**
             ```bash
@@ -680,7 +680,11 @@ You can customize terminal scans using these command line options.
 *   `target`: The folder, file, pattern, or web link to scan.
 *   `files`: Additional folders, files, patterns, or web links to scan.
 *   `-p`, `--path <path>`: Alternative way to specify a folder, file, or web link to scan.
-*   `-P`, `--preset <name_or_file>`: Load scan configuration from a built-in preset (`quick`, `ci`, `strict`, `audit`) or a custom JSON/YAML file.
+*   `-P`, `--preset <name_or_file>`: Load scan options from a built-in preset or a custom JSON/YAML configuration file. Built-in presets include:
+    *   `quick`: Sets minimum threat level to 70 and limits folder depth to 2 (`--threshold 70 --max-depth 2`).
+    *   `ci`: Sets failure threshold to 50, threat level to 30, and scans all files thoroughly (`--fail-threshold 50 --threshold 30 --deep --all-files`).
+    *   `strict`: Sets failure threshold to 50, threat level to 30, and scans all files thoroughly (`--fail-threshold 50 --threshold 30 --deep --all-files`).
+    *   `audit`: Runs a full system audit with deep scanning across all files (`--audit --deep --all-files`).
 *   `-d`, `--deep`: Scan the whole file instead of just the beginning and end. This is more thorough but slower.
 *   `--dry-run`: Preview which files would be scanned without checking them.
 *   `--extensions <exts>`: Only scan these file types (for example: `py,js`).
