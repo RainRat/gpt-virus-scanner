@@ -44,7 +44,11 @@ try:
 except ImportError:
     TK_AVAILABLE = False
     HAS_TKINTER = False
+    class DummyTclError(Exception):
+        pass
+
     tk = Dummy()
+    tk.TclError = DummyTclError
     scrolledtext = Dummy()
     messagebox = Dummy()
     filedialog = Dummy()
@@ -826,6 +830,7 @@ def process_ui_queue() -> None:
 
 def center_window(window: tk.Toplevel, parent: tk.Tk) -> None:
     """Center a Toplevel window relative to its parent window."""
+    tcl_err = tk.TclError if isinstance(getattr(tk, "TclError", None), type) and issubclass(tk.TclError, BaseException) else Exception
     try:
         window.update_idletasks()
         width = window.winfo_width()
@@ -852,7 +857,7 @@ def center_window(window: tk.Toplevel, parent: tk.Tk) -> None:
         y = max(0, y)
 
         window.geometry(f"{width}x{height}+{x}+{y}")
-    except Exception:
+    except (tcl_err, ValueError, AttributeError, TypeError):
         pass
 
 
