@@ -338,3 +338,63 @@ def test_manage_extensions_keyboard_return_remove(mock_gui_env, monkeypatch):
 
     assert ".js" not in Config.extensions_set
     assert ".py" in Config.extensions_set
+
+def test_manage_extensions_add_save_error(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py"}
+    mock_sd.askstring.return_value = "rb"
+
+    monkeypatch.setattr(Config, "save_extensions", MagicMock(side_effect=OSError("Disk full")))
+
+    manage_extensions()
+    add_btn, add_cmd = captured['buttons']['Add Extension...']
+    add_cmd()
+
+    mock_mb.showerror.assert_called_once()
+    assert "Disk full" in mock_mb.showerror.call_args[0][1]
+
+def test_manage_extensions_add_from_file_save_error(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py"}
+
+    mock_fd = MagicMock()
+    mock_fd.askopenfilename.return_value = "/path/to/script.ts"
+    monkeypatch.setattr(gptscan, 'filedialog', mock_fd)
+    monkeypatch.setattr(Config, "save_extensions", MagicMock(side_effect=OSError("Permission denied")))
+
+    manage_extensions()
+    add_fd_btn, add_fd_cmd = captured['buttons']['Add from File...']
+    add_fd_cmd()
+
+    mock_mb.showerror.assert_called_once()
+    assert "Permission denied" in mock_mb.showerror.call_args[0][1]
+
+def test_manage_extensions_remove_save_error(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py", ".js"}
+    mock_mb.askyesno.return_value = True
+    monkeypatch.setattr(Config, "save_extensions", MagicMock(side_effect=OSError("Write error")))
+
+    manage_extensions()
+    lb = captured['listbox']
+    lb.selection = [0]
+
+    remove_btn, remove_cmd = captured['buttons']['Remove Selected']
+    remove_cmd()
+
+    mock_mb.showerror.assert_called_once()
+    assert "Write error" in mock_mb.showerror.call_args[0][1]
+
+def test_manage_extensions_reset_save_error(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".custom"}
+    mock_mb.askyesno.return_value = True
+    monkeypatch.setattr(Config, "save_extensions", MagicMock(side_effect=OSError("Save failed")))
+
+    manage_extensions()
+
+    reset_btn, reset_cmd = captured['buttons']['Reset to Defaults']
+    reset_cmd()
+
+    mock_mb.showerror.assert_called_once()
+    assert "Save failed" in mock_mb.showerror.call_args[0][1]
