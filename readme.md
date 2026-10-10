@@ -511,6 +511,26 @@ Scan only specific file extensions (for example, Python and JavaScript files):
 python3 gptscan.py ./my_project --extensions py,js --cli
 ```
 
+Scan every file in a folder, including non-script files:
+```bash
+python3 gptscan.py ./my_project --all-files --cli
+```
+
+Scan the entire file content instead of just the beginning and end:
+```bash
+python3 gptscan.py ./my_project --deep --cli
+```
+
+Preview which files will be scanned without checking them:
+```bash
+python3 gptscan.py ./my_project --dry-run --cli
+```
+
+Set a custom maximum file size limit (for example, 20MB):
+```bash
+python3 gptscan.py ./my_project --max-size 20MB --cli
+```
+
 Ignore files or folders matching specific patterns:
 ```bash
 python3 gptscan.py ./my_project --exclude "node_modules/*" "*.tmp" --cli
