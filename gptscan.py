@@ -722,7 +722,7 @@ def get_model() -> Any:
                 _tf_module = tf
             try:
                 _model_cache = _tf_module.keras.models.load_model('scripts.h5', compile=False)
-            except Exception:
+            except (TypeError, ValueError, AttributeError, ImportError, OSError):
                 import tf_keras
                 _model_cache = tf_keras.models.load_model('scripts.h5', compile=False)
     return _model_cache
