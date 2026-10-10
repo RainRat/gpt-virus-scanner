@@ -27,6 +27,7 @@ import gptscan
         ("--dotnet-packages", "get_dotnet_packages_paths", ["/mock/nuget"], False),
         ("--documents", "get_documents_paths", ["/mock/Documents"], False),
         ("--env-files", "get_env_file_paths", ["/mock/.env"], False),
+        ("--env-vars", "get_environment_variable_snippets", [("[EnvVar]", b"SECRET=123")], True),
         ("--desktop", "get_desktop_paths", ["/mock/Desktop"], False),
         ("--temp", "get_temp_paths", ["/mock/tmp"], False),
     ],
@@ -111,6 +112,7 @@ def test_cli_system_services_flag_not_found_warning(monkeypatch, capsys):
         ("--java-packages", "get_java_packages_paths", "No Java package folders were found."),
         ("--dotnet-packages", "get_dotnet_packages_paths", "No .NET NuGet package folders were found."),
         ("--env-files", "get_env_file_paths", "No common .env files were found."),
+        ("--env-vars", "get_environment_variable_snippets", "No non-empty environment variables were found."),
     ],
 )
 def test_cli_system_scan_flags_not_found_warning_and_quiet_suppression(monkeypatch, capsys, flag, func_name, expected_warning):
@@ -147,3 +149,11 @@ def test_cli_mode_implied_by_scan_flags(monkeypatch, flag):
     gptscan.main()
 
     assert called_run_cli is True
+
+
+def test_cli_modified_invalid_duration(monkeypatch, capsys):
+    monkeypatch.setattr("sys.argv", ["gptscan.py", "--cli", "--modified", "invalid_time"])
+    with pytest.raises(SystemExit):
+        gptscan.main()
+    captured = capsys.readouterr()
+    assert "Invalid format for --modified" in captured.err
