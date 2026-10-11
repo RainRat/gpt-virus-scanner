@@ -7,6 +7,10 @@ import gptscan
 def restore_config_and_gui_state():
     orig_max_file_size = gptscan.Config.MAX_FILE_SIZE
     orig_threshold = gptscan.Config.THRESHOLD
+    orig_apikey = gptscan.Config.apikey
+    orig_api_base = gptscan.Config.api_base
+    orig_model_name = gptscan.Config.model_name
+    orig_async_client = getattr(gptscan, "_async_openai_client", None)
     orig_root = getattr(gptscan, "root", None)
     orig_tree = getattr(gptscan, "tree", None)
     orig_textbox = getattr(gptscan, "textbox", None)
@@ -14,11 +18,19 @@ def restore_config_and_gui_state():
     orig_filter_entry = getattr(gptscan, "filter_entry", None)
     orig_api_key_entry = getattr(gptscan, "api_key_entry", None)
     orig_api_entry = getattr(gptscan, "api_entry", None)
+    orig_api_key_var = getattr(gptscan, "api_key_var", None)
+    orig_api_base_var = getattr(gptscan, "api_base_var", None)
+    orig_model_var = getattr(gptscan, "model_var", None)
+    orig_provider_var = getattr(gptscan, "provider_var", None)
 
     yield
 
     gptscan.Config.MAX_FILE_SIZE = orig_max_file_size
     gptscan.Config.THRESHOLD = orig_threshold
+    gptscan.Config.apikey = orig_apikey
+    gptscan.Config.api_base = orig_api_base
+    gptscan.Config.model_name = orig_model_name
+    gptscan._async_openai_client = orig_async_client
     gptscan.root = orig_root
     gptscan.tree = orig_tree
     gptscan.textbox = orig_textbox
@@ -26,6 +38,10 @@ def restore_config_and_gui_state():
     gptscan.filter_entry = orig_filter_entry
     gptscan.api_key_entry = orig_api_key_entry
     gptscan.api_entry = orig_api_entry
+    gptscan.api_key_var = orig_api_key_var
+    gptscan.api_base_var = orig_api_base_var
+    gptscan.model_var = orig_model_var
+    gptscan.provider_var = orig_provider_var
 
 
 def create_mock_combo(*args, **kwargs):
@@ -226,3 +242,49 @@ def test_on_threshold_change_valid_and_clamped(monkeypatch):
     threshold_sb.set_val("invalid")
     threshold_cmd()
     assert gptscan.Config.THRESHOLD == 100
+
+
+def test_api_settings_trace_callbacks(monkeypatch):
+    mock_root = MagicMock()
+    mock_root.after = MagicMock()
+
+    monkeypatch.setattr(gptscan.tk, "Tk", lambda: mock_root)
+    monkeypatch.setattr(gptscan.tk, "StringVar", lambda value="", **kw: MagicMock())
+    monkeypatch.setattr(gptscan.ttk, "Combobox", create_mock_combo)
+    monkeypatch.setattr(gptscan.ttk, "Treeview", create_mock_tree)
+    monkeypatch.setattr(gptscan.ttk, "LabelFrame", gptscan.ttk.Frame)
+
+    gptscan.create_gui()
+
+    # Extract the trace callback functions registered on the mocked StringVars
+    on_api_key_change = gptscan.api_key_var.trace_add.call_args[0][1]
+    on_api_base_change = gptscan.api_base_var.trace_add.call_args[0][1]
+    on_model_change = gptscan.model_var.trace_add.call_args[0][1]
+
+    # Set initial client mock to verify reset
+    gptscan._async_openai_client = MagicMock()
+
+    # Test api_key_var trace callback (on_api_key_change)
+    gptscan.api_key_var.get.return_value = "  sk-test-12345  "
+    on_api_key_change()
+    assert gptscan.Config.apikey == "sk-test-12345"
+    assert gptscan._async_openai_client is None
+
+    # Test api_base_var trace callback (on_api_base_change) with non-empty URL
+    gptscan._async_openai_client = MagicMock()
+    gptscan.api_base_var.get.return_value = "  http://localhost:11434/v1  "
+    on_api_base_change()
+    assert gptscan.Config.api_base == "http://localhost:11434/v1"
+    assert gptscan._async_openai_client is None
+
+    # Test api_base_var trace callback with whitespace-only string
+    gptscan._async_openai_client = MagicMock()
+    gptscan.api_base_var.get.return_value = "   "
+    on_api_base_change()
+    assert gptscan.Config.api_base is None
+    assert gptscan._async_openai_client is None
+
+    # Test model_var trace callback (on_model_change)
+    gptscan.model_var.get.return_value = "gpt-4o-mini"
+    on_model_change()
+    assert gptscan.Config.model_name == "gpt-4o-mini"
