@@ -695,3 +695,34 @@ def test_view_details_rescan_exception(mock_view_details_env, monkeypatch):
         "Error", "An unexpected error occurred: Rescan failed"
     )
     mock_finish_scan.assert_called_once()
+
+
+def test_view_details_on_analyze_now_disables_buttons(mock_view_details_env, monkeypatch):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py")
+
+    analyze_btn = captured["btn_Analyze with AI"][0]
+    analyze_cmd = captured["btn_Analyze with AI"][1]
+    rescan_btn = captured["btn_Rescan"][0]
+    exclude_btn = captured["btn_Exclude"][0]
+
+    monkeypatch.setattr(gptscan, "current_cancel_event", None)
+    monkeypatch.setattr(gptscan.Config, "GPT_ENABLED", True)
+    monkeypatch.setattr(gptscan, "request_single_gpt_analysis", MagicMock(return_value={"administrator": "Admin", "end-user": "User", "threat-level": 90}))
+
+    # Verify buttons are disabled when thread runs
+    def mock_thread_start(self):
+        # rescan_btn and exclude_btn should be disabled when thread starts
+        assert rescan_btn.config.call_args[1]["state"] == "disabled"
+        assert exclude_btn.config.call_args[1]["state"] == "disabled"
+        self._target(*self._args, **self._kwargs)
+
+    monkeypatch.setattr(gptscan.threading.Thread, "start", mock_thread_start)
+    monkeypatch.setattr(gptscan, "enqueue_ui_update", lambda func, *args, **kwargs: func(*args, **kwargs))
+
+    analyze_cmd()
+
+    # After completion, buttons should be restored to normal
+    assert analyze_btn.config.call_args[1]["state"] == "normal"
+    assert rescan_btn.config.call_args[1]["state"] == "normal"
+    assert exclude_btn.config.call_args[1]["state"] == "normal"
