@@ -594,7 +594,7 @@ python3 gptscan.py ./my_project --output results.html --cli
 
 #### Output Formats
 By default, the scanner prints human-readable text to the terminal. You can customize the output format with these flags:
-*   `-f <format>`, `--format <format>`: Set output format (`json`, `ndjson`, `csv`, `tsv`, `sarif`, `html`, `markdown`, `xml`, `junit`, `yaml`, `report`).
+*   `-f <format>`, `--format <format>`: Set output format (`json`, `ndjson`, `csv`, `tsv`, `sarif`, `html`, `markdown`, `xml`, `junit`, `yaml`, `github`, `report`).
 *   `--json`: Print or save results in JSON format.
 *   `--ndjson` / `--jsonl`: Print or save results in NDJSON (JSON Lines) format.
 *   `--csv`: Print or save results in CSV format.
@@ -605,6 +605,7 @@ By default, the scanner prints human-readable text to the terminal. You can cust
 *   `--xml`: Create an XML report.
 *   `--junit`: Save results in JUnit XML format (useful for CI/CD test reporting).
 *   `--yaml` / `--yml`: Create a YAML report (requires the `pyyaml` package).
+*   `-f github` / `annotations`: Format findings as GitHub Actions Workflow Commands (`::error` / `::warning`) for CI/CD annotations.
 *   `--report`: Output a detailed triage report to the terminal.
 *   `-C`, `--count`: Print only the total count of suspicious findings.
 *   `-s`, `--summary-only`: Print only the scan summary banner without individual findings (or structured metrics if combined with `--json`, `--yaml`, or `--csv`).
@@ -839,8 +840,8 @@ The scanner provides several ways to analyze and manage your results:
     *   **Check on VirusTotal:** Search for the file's hash on VirusTotal.
     *   **View Online:** Open the source file in your web browser (for Git projects and remote web links).
 *   **Export & Import:**
-    *   **Export Results:** Save your scan to a file (CSV, TSV, Markdown, HTML, JSON, NDJSON, SARIF, XML, JUnit XML, or YAML) via **File > Export Results...**.
-    *   **Import Results:** Load previous scan results from any supported format (JSON, NDJSON, SARIF, CSV, TSV, Markdown, HTML, XML, JUnit XML, YAML, Triage Reports) via **File > Import Results...** or by pasting from your clipboard (`Ctrl+V`).
+    *   **Export Results:** Save your scan to a file (CSV, TSV, Markdown, HTML, JSON, NDJSON, SARIF, XML, JUnit XML, YAML, or GitHub Annotations) via **File > Export Results...**.
+    *   **Import Results:** Load previous scan results from any supported format (JSON, NDJSON, SARIF, CSV, TSV, Markdown, HTML, XML, JUnit XML, YAML, GitHub Actions Annotations, Triage Reports) via **File > Import Results...** or by pasting from your clipboard (`Ctrl+V`).
 
 ## Customizing the Scanner
 You can tailor the scanner to your needs:
