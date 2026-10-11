@@ -8661,6 +8661,8 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             return
 
         analyze_btn.config(state='disabled', text="Analyzing...")
+        rescan_btn.config(state='disabled')
+        exclude_btn.config(state='disabled')
 
         def run_thread(target_id):
             try:
@@ -8699,7 +8701,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             except Exception as e:
                 enqueue_ui_update(messagebox.showerror, "Error", f"An unexpected error occurred: {e}")
             finally:
-                enqueue_ui_update(lambda: analyze_btn.config(state='normal', text="Analyze with AI"))
+                def restore_buttons():
+                    analyze_btn.config(state='disabled' if current_cancel_event is not None or not Config.GPT_ENABLED else 'normal', text="Analyze with AI")
+                    vals = _get_item_raw_values(current_item_id)
+                    path = str(vals[0]) if vals else ""
+                    is_virtual = path.startswith("[")
+                    rescan_btn.config(state='disabled' if current_cancel_event is not None or is_virtual else 'normal')
+                    exclude_btn.config(state='disabled' if current_cancel_event is not None or is_virtual else 'normal')
+                enqueue_ui_update(restore_buttons)
 
         threading.Thread(target=run_thread, args=(current_item_id,), daemon=True).start()
 
