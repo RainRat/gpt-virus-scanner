@@ -6987,6 +6987,8 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
             print(generate_junit(results), file=out_stream)
         elif fmt in ('yaml', 'yml'):
             print(generate_yaml(results), file=out_stream)
+        elif fmt in ('github', 'annotations'):
+            print(generate_github_annotations(results), file=out_stream)
         elif fmt == 'report':
             report = generate_console_report(results, use_color=False)
             print(report, file=out_stream)
@@ -7312,8 +7314,10 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         print(generate_xml(result_buffer), file=out_stream)
     elif output_format == 'junit':
         print(generate_junit(result_buffer), file=out_stream)
-    elif output_format == 'yaml':
+    elif output_format in ('yaml', 'yml'):
         print(generate_yaml(result_buffer), file=out_stream)
+    elif output_format in ('github', 'annotations'):
+        print(generate_github_annotations(result_buffer), file=out_stream)
     elif output_format == 'report':
         # Use color only if the output stream is a terminal
         use_color_output = out_stream.isatty() if hasattr(out_stream, 'isatty') else False
@@ -7769,6 +7773,103 @@ def parse_markdown_content(content: str) -> List[Dict[str, Any]]:
     return results
 
 
+def generate_github_annotations(results: List[Dict[str, Any]]) -> str:
+    """Generate GitHub Actions Workflow Commands (Annotations) string from scan findings.
+
+    Args:
+        results: A list of result dictionaries.
+
+    Returns:
+        A multi-line string containing GitHub Actions workflow commands (::error or ::warning).
+    """
+    lines = []
+    for item in results:
+        raw_path = str(item.get("path", "")).strip()
+        if raw_path.startswith("[URL] "):
+            raw_path = raw_path[6:].strip()
+
+        # Determine level (::error or ::warning) based on threat percentage
+        own_conf_str = str(item.get("own_conf", "0%"))
+        conf_val = parse_percent(own_conf_str)
+        level = "error" if conf_val >= 50.0 else "warning"
+
+        line_num = str(item.get("line", "1")).strip()
+        if not line_num or line_num == "-" or not line_num.isdigit():
+            line_str = "1"
+        else:
+            line_str = line_num
+
+        title = f"GPT Scan {own_conf_str} Threat Detected"
+        admin = str(item.get("admin_desc", "")).strip()
+        user = str(item.get("end-user_desc", "")).strip()
+        desc_parts = [p for p in (admin, user) if p]
+        msg = " | ".join(desc_parts) if desc_parts else f"Suspicious activity detected in {raw_path} ({own_conf_str})"
+
+        # GitHub workflow commands escape % \r \n
+        escaped_title = title.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+        escaped_msg = msg.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+        escaped_path = raw_path.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+
+        lines.append(f"::{level} file={escaped_path},line={line_str},title={escaped_title}::{escaped_msg}")
+
+    return "\n".join(lines)
+
+
+def parse_github_annotations_content(content: str) -> List[Dict[str, Any]]:
+    """Parse scan findings from GitHub Actions Workflow Commands (Annotations) string.
+
+    Args:
+        content: The raw string containing GitHub Actions workflow annotation commands.
+
+    Returns:
+        A list of standardized result dictionaries.
+    """
+    if not content or not content.strip():
+        return []
+
+    data_to_import = []
+    # Match lines like ::error file=path,line=10,title=Title::Message or ::warning file=path,line=1...
+    annotation_pattern = re.compile(r'^::(error|warning)\s+file=([^,]+),line=(\d+)(?:,title=([^:]+))?::(.*)$', re.IGNORECASE)
+
+    for line in content.splitlines():
+        line_clean = line.strip()
+        match = annotation_pattern.match(line_clean)
+        if match:
+            level, file_path, line_num, title, message = match.groups()
+
+            # Unescape workflow command encodings
+            file_path = file_path.replace('%0A', '\n').replace('%0D', '\r').replace('%25', '%')
+            line_num = line_num.strip()
+            title = (title or "").replace('%0A', '\n').replace('%0D', '\r').replace('%25', '%')
+            message = message.replace('%0A', '\n').replace('%0D', '\r').replace('%25', '%')
+
+            # Extract threat level percentage if available in title or message
+            own_conf = "80%" if level.lower() == "error" else "40%"
+            conf_match = re.search(r'(\d+%)', title + " " + message)
+            if conf_match:
+                own_conf = conf_match.group(1)
+
+            admin_desc = message
+            user_desc = ""
+            if " | " in message:
+                parts = message.split(" | ", 1)
+                admin_desc = parts[0]
+                user_desc = parts[1]
+
+            item = {
+                "path": file_path,
+                "line": line_num,
+                "own_conf": own_conf,
+                "gpt_conf": "",
+                "admin_desc": admin_desc,
+                "end-user_desc": user_desc,
+                "snippet": ""
+            }
+            data_to_import.append(item)
+
+    return data_to_import
+
+
 def parse_html_content(content: str) -> List[Dict[str, Any]]:
     """Parse scan findings from an HTML report string.
 
@@ -7835,7 +7936,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     if filename_hint:
         ext = os.path.splitext(filename_hint)[1].lower()
 
-    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.tsv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml', '.junit'):
+    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.tsv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml', '.junit', '.annotations'):
         raise ValueError(f"Unsupported file extension: {ext}")
 
     data_to_import = []
@@ -7868,7 +7969,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
         f = io.StringIO(content)
         reader = csv.DictReader(f, delimiter='\t')
         data_to_import = list(reader)
-    elif ext == '.csv' or (content.splitlines() and ',' in content.splitlines()[0]):
+    elif ext == '.csv' or (content.splitlines() and ',' in content.splitlines()[0] and not content.strip().startswith('::')):
         # CSV format
         f = io.StringIO(content)
         reader = csv.DictReader(f)
@@ -7882,6 +7983,9 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     elif ext in ('.yaml', '.yml') or (content.strip().startswith('-') and 'path:' in content):
         # YAML report format
         data_to_import = parse_yaml_content(content)
+    elif ext == '.annotations' or content.strip().startswith('::error') or content.strip().startswith('::warning') or '::error ' in content or '::warning ' in content:
+        # GitHub Actions Annotations format
+        data_to_import = parse_github_annotations_content(content)
     else:
         # Last resort: try JSON parsing anyway
         try:
@@ -8814,6 +8918,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             root.clipboard_append(json.dumps(sarif_log, indent=2))
             set_local_status("Result copied as SARIF.", temporary=True)
 
+    def copy_as_github_annotations_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            content = generate_github_annotations(results)
+            root.clipboard_clear()
+            root.clipboard_append(content)
+            set_local_status("Result copied as GitHub Annotations.", temporary=True)
+
     def copy_sha256_details():
         path = path_entry.get()
         snippet = snippet_text.get("1.0", tk.END).strip()
@@ -8904,6 +9016,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_menu.add_command(label="Copy as XML", command=copy_as_xml_details)
     copy_menu.add_command(label="Copy as JUnit XML", command=copy_as_junit_details)
     copy_menu.add_command(label="Copy as YAML", command=copy_as_yaml_details)
+    copy_menu.add_command(label="Copy as GitHub Annotations", command=copy_as_github_annotations_details)
     copy_menu.add_command(label="Copy Code", command=copy_code, accelerator="Ctrl+S")
     copy_menu_btn["menu"] = copy_menu
 
@@ -9590,6 +9703,23 @@ def copy_as_sarif(event: Optional[tk.Event] = None) -> None:
     tree.clipboard_clear()
     tree.clipboard_append(json.dumps(sarif_log, indent=2))
     update_status(f"Copied {len(results)} item(s) as SARIF.")
+
+
+def copy_as_github_annotations(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as GitHub Actions Workflow Annotations to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+    content = generate_github_annotations(results)
+
+    tree.clipboard_clear()
+    tree.clipboard_append(content)
+    update_status(f"Copied {len(results)} item(s) as GitHub Annotations.")
 
 
 def view_online(event_or_path: Union[tk.Event, str, None] = None, line: Optional[Union[int, str]] = None) -> None:
@@ -10571,6 +10701,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     copy_submenu.add_command(label="As YAML", command=copy_as_yaml)
     copy_submenu.add_command(label="As XML", command=copy_as_xml)
     copy_submenu.add_command(label="As JUnit XML", command=copy_as_junit)
+    copy_submenu.add_command(label="As GitHub Annotations", command=copy_as_github_annotations)
     copy_submenu.add_command(label="As Triage Report", command=copy_as_report, accelerator="Ctrl+Shift+R")
     context_menu.add_cascade(label="Copy", menu=copy_submenu)
 
@@ -11121,7 +11252,7 @@ def main():
     output_group.add_argument(
         '-f', '--format',
         type=str.lower,
-        choices=['json', 'ndjson', 'jsonl', 'csv', 'tsv', 'sarif', 'html', 'md', 'markdown', 'xml', 'junit', 'yaml', 'yml', 'report'],
+        choices=['json', 'ndjson', 'jsonl', 'csv', 'tsv', 'sarif', 'html', 'md', 'markdown', 'xml', 'junit', 'yaml', 'yml', 'github', 'annotations', 'report'],
         help='Set output format (json, ndjson, csv, tsv, sarif, html, markdown, xml, junit, yaml, report).'
     )
     output_group.add_argument('-j', '--json', action='store_true', help='Print or save scan results in JSON format.')
@@ -11522,6 +11653,8 @@ def main():
                 output_format = 'xml'
             elif ext in ('.yaml', '.yml'):
                 output_format = 'yaml'
+            elif ext == '.annotations':
+                output_format = 'github'
             elif ext in ('.txt', '.log'):
                 output_format = 'report'
 
