@@ -175,3 +175,54 @@ def test_ndjson_roundtrip_import(tmp_path):
     assert imported[0]["path"] == "app.py"
     assert str(imported[0]["line"]) == "10"
     assert imported[0]["own_conf"] == "90%"
+
+
+def test_generate_ndjson():
+    """Verify generate_ndjson function handles empty, single, and multiple records."""
+    assert gptscan.generate_ndjson([]) == ""
+
+    sample = [{"path": "a.py", "line": 1}, {"path": "b.py", "line": 2}]
+    res = gptscan.generate_ndjson(sample)
+    lines = res.splitlines()
+    assert len(lines) == 2
+    assert json.loads(lines[0])["path"] == "a.py"
+    assert json.loads(lines[1])["path"] == "b.py"
+
+
+def test_copy_as_ndjson(monkeypatch):
+    """Verify copy_as_ndjson copies selected Treeview rows as NDJSON to clipboard."""
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ["item1", "item2"]
+    monkeypatch.setattr(gptscan, "tree", mock_tree)
+
+    def mock_get_dicts(selection):
+        return [
+            {"path": "f1.py", "line": 10},
+            {"path": "f2.py", "line": 20}
+        ]
+
+    monkeypatch.setattr(gptscan, "_get_tree_results_as_dicts", mock_get_dicts)
+    mock_status = MagicMock()
+    monkeypatch.setattr(gptscan, "update_status", mock_status)
+
+    gptscan.copy_as_ndjson()
+
+    mock_tree.clipboard_clear.assert_called_once()
+    mock_tree.clipboard_append.assert_called_once()
+    copied_str = mock_tree.clipboard_append.call_args[0][0]
+    lines = copied_str.splitlines()
+    assert len(lines) == 2
+    assert json.loads(lines[0])["path"] == "f1.py"
+    assert mock_status.called
+
+
+def test_copy_as_ndjson_no_selection_or_tree(monkeypatch):
+    """Verify copy_as_ndjson returns early if tree is None or no items are selected."""
+    monkeypatch.setattr(gptscan, "tree", None)
+    gptscan.copy_as_ndjson()  # Should not raise exception
+
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = []
+    monkeypatch.setattr(gptscan, "tree", mock_tree)
+    gptscan.copy_as_ndjson()
+    assert not mock_tree.clipboard_append.called

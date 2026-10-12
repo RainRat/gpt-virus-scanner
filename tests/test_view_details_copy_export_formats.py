@@ -155,6 +155,23 @@ def test_view_details_copy_as_markdown_details(mock_details_copy_env):
     copied_content = mock_root.clipboard_append.call_args[0][0]
     assert "test.py" in copied_content
 
+
+def test_view_details_copy_as_ndjson_details(mock_details_copy_env):
+    captured_commands, mock_root = mock_details_copy_env
+    assert "Copy as NDJSON" in captured_commands
+    cmd = captured_commands["Copy as NDJSON"]
+
+    mock_root.clipboard_clear.reset_mock()
+    mock_root.clipboard_append.reset_mock()
+
+    cmd()
+
+    mock_root.clipboard_clear.assert_called_once()
+    assert mock_root.clipboard_append.called
+    copied_content = mock_root.clipboard_append.call_args[0][0]
+    parsed = json.loads(copied_content.strip())
+    assert parsed["path"] == "test.py"
+
 def test_view_details_copy_as_sarif_details(mock_details_copy_env):
     captured_commands, mock_root = mock_details_copy_env
     assert "Copy as SARIF" in captured_commands
