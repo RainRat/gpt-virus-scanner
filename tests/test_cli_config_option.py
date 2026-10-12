@@ -120,3 +120,105 @@ def test_cli_explicit_flags_override_config(tmp_path, monkeypatch):
     assert captured["deep"] is True
     assert captured["output_format"] == "csv"
     assert gptscan.Config.THRESHOLD == 30
+
+
+def test_cli_config_file_missing_error(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["gptscan.py", "--cli", "--config", "non_existent_config.json"])
+    monkeypatch.setattr(gptscan, "TK_AVAILABLE", False)
+
+    with pytest.raises(SystemExit):
+        gptscan.main()
+
+
+def test_cli_config_file_options_processing(tmp_path, monkeypatch):
+    test_file = tmp_path / "sample.py"
+    test_file.write_text("print('hello')", encoding="utf-8")
+
+    config_data = {
+        "target": str(test_file),
+        "api_key": "test_cfg_key",
+        "api_base": "https://custom.api.base/v1",
+        "provider": "ollama",
+        "extensions": "py,js,sh",
+        "rate_limit": 120,
+        "format": "yaml",
+        "use_gpt": True
+    }
+    cfg_file = tmp_path / "config.json"
+    cfg_file.write_text(json.dumps(config_data), encoding="utf-8")
+
+    monkeypatch.setattr("sys.argv", ["gptscan.py", "--cli", "--config", str(cfg_file)])
+
+    captured = {}
+    def mock_run_cli(scan_targets, deep, show_all, use_gpt, rate_limit, output_format=None, **kwargs):
+        captured["use_gpt"] = use_gpt
+        captured["rate_limit"] = rate_limit
+        captured["output_format"] = output_format
+        return 0
+
+    monkeypatch.setattr(gptscan, "run_cli", mock_run_cli)
+    monkeypatch.setattr(gptscan, "TK_AVAILABLE", False)
+    monkeypatch.setattr(gptscan.Config, "save_apikey", lambda: None)
+
+    try:
+        gptscan.main()
+    except SystemExit:
+        pass
+
+    assert gptscan.Config.apikey == "test_cfg_key"
+    assert gptscan.Config.api_base == "https://custom.api.base/v1"
+    assert gptscan.Config.model_name == "llama3.2"
+    assert ".py" in gptscan.Config.extensions_set
+    assert captured["use_gpt"] is True
+    assert captured["rate_limit"] == 120
+    assert captured["output_format"] == "yaml"
+
+
+def test_cli_config_file_invalid_max_depth_error(tmp_path, monkeypatch):
+    test_file = tmp_path / "sample.py"
+    test_file.write_text("print('hello')", encoding="utf-8")
+
+    config_data = {
+        "target": str(test_file),
+        "max_depth": -1
+    }
+    cfg_file = tmp_path / "config.json"
+    cfg_file.write_text(json.dumps(config_data), encoding="utf-8")
+
+    monkeypatch.setattr("sys.argv", ["gptscan.py", "--cli", "--config", str(cfg_file)])
+    monkeypatch.setattr(gptscan, "TK_AVAILABLE", False)
+
+    with pytest.raises(SystemExit):
+        gptscan.main()
+
+
+def test_cli_config_file_invalid_rate_limit_handled(tmp_path, monkeypatch):
+    test_file = tmp_path / "sample.py"
+    test_file.write_text("print('hello')", encoding="utf-8")
+
+    config_data = {
+        "target": str(test_file),
+        "rate_limit": "invalid_int",
+        "max_depth": "invalid_depth"
+    }
+    cfg_file = tmp_path / "config.json"
+    cfg_file.write_text(json.dumps(config_data), encoding="utf-8")
+
+    monkeypatch.setattr("sys.argv", ["gptscan.py", "--cli", "--config", str(cfg_file)])
+
+    captured = {}
+    def mock_run_cli(scan_targets, deep, show_all, use_gpt, rate_limit, output_format=None, **kwargs):
+        captured["rate_limit"] = rate_limit
+        captured["max_depth"] = kwargs.get("max_depth")
+        return 0
+
+    monkeypatch.setattr(gptscan, "run_cli", mock_run_cli)
+    monkeypatch.setattr(gptscan, "TK_AVAILABLE", False)
+
+    try:
+        gptscan.main()
+    except SystemExit:
+        pass
+
+    assert captured["rate_limit"] == 60
+    assert captured["max_depth"] is None

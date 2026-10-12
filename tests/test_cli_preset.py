@@ -100,3 +100,12 @@ def test_cli_preset_parameter_precedence(monkeypatch):
     call_kwargs = mock_run_cli.call_args[1]
     assert call_kwargs["max_depth"] == 5
     assert gptscan.Config.THRESHOLD == 85
+
+
+def test_cli_preset_invalid_preset_error(monkeypatch):
+    test_args = ["gptscan.py", "--cli", "--preset", "invalid_nonexistent_preset_123"]
+    monkeypatch.setattr(sys, "argv", test_args)
+    monkeypatch.setattr(gptscan, "TK_AVAILABLE", False)
+
+    with pytest.raises(SystemExit):
+        gptscan.main()
