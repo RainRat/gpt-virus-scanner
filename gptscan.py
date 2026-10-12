@@ -10739,7 +10739,7 @@ def main():
                         preset_defaults["exclude"] = [p_val]
                 elif norm_key == "extensions":
                     preset_defaults["extensions"] = str(p_val)
-        except Exception as e:
+        except (ValueError, FileNotFoundError, OSError, AttributeError):
             # We'll raise the error via parser.error after parser creation
             pass
 
