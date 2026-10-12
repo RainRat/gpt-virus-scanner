@@ -6969,6 +6969,20 @@ def generate_yaml(results: List[Dict[str, Any]]) -> str:
     return yaml.safe_dump(results, default_flow_style=False, sort_keys=False)
 
 
+def generate_ndjson(results: List[Dict[str, Any]]) -> str:
+    """Generate an NDJSON (JSON Lines) report string from the scan results.
+
+    Args:
+        results: List of standardized result dictionaries.
+
+    Returns:
+        The NDJSON report as a string with one JSON object per line.
+    """
+    if not results:
+        return ""
+    return "\n".join(json.dumps(r) for r in results)
+
+
 def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output_format: str = 'csv') -> None:
     """Helper function to save scan finding dicts to a file in the specified format."""
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
@@ -6991,8 +7005,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
             report = generate_console_report(results, use_color=False)
             print(report, file=out_stream)
         elif fmt in ('json', 'ndjson', 'jsonl'):
-            for record in results:
-                print(json.dumps(record), file=out_stream)
+            print(generate_ndjson(results), file=out_stream)
         elif fmt == 'tsv':
             writer = csv.writer(out_stream, delimiter='\t')
             writer.writerow(keys)
@@ -8814,6 +8827,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             root.clipboard_append(json.dumps(sarif_log, indent=2))
             set_local_status("Result copied as SARIF.", temporary=True)
 
+    def copy_as_ndjson_details():
+        results = _get_tree_results_as_dicts([current_item_id])
+        if results:
+            ndjson_content = generate_ndjson(results)
+            root.clipboard_clear()
+            root.clipboard_append(ndjson_content)
+            set_local_status("Result copied as NDJSON.", temporary=True)
+
     def copy_sha256_details():
         path = path_entry.get()
         snippet = snippet_text.get("1.0", tk.END).strip()
@@ -8898,6 +8919,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     copy_menu.add_command(label="Copy as TSV", command=copy_as_tsv_details)
     copy_menu.add_command(label="Copy as HTML", command=copy_as_html_details)
     copy_menu.add_command(label="Copy as JSON", command=copy_as_json_details, accelerator="Ctrl+J")
+    copy_menu.add_command(label="Copy as NDJSON", command=copy_as_ndjson_details)
     copy_menu.add_command(label="Copy as Markdown", command=copy_as_markdown_details)
     copy_menu.add_command(label="Copy as SARIF", command=copy_as_sarif_details)
     copy_menu.add_command(label="Copy as Triage Report", command=copy_as_report_details, accelerator="Ctrl+Shift+R")
@@ -9590,6 +9612,23 @@ def copy_as_sarif(event: Optional[tk.Event] = None) -> None:
     tree.clipboard_clear()
     tree.clipboard_append(json.dumps(sarif_log, indent=2))
     update_status(f"Copied {len(results)} item(s) as SARIF.")
+
+
+def copy_as_ndjson(event: Optional[tk.Event] = None) -> None:
+    """Copy the selected rows as NDJSON (JSON Lines) to the clipboard."""
+    if not tree:
+        return
+
+    selection = tree.selection()
+    if not selection:
+        return
+
+    results = _get_tree_results_as_dicts(selection)
+    ndjson_content = generate_ndjson(results)
+
+    tree.clipboard_clear()
+    tree.clipboard_append(ndjson_content)
+    update_status(f"Copied {len(results)} item(s) as NDJSON.")
 
 
 def view_online(event_or_path: Union[tk.Event, str, None] = None, line: Optional[Union[int, str]] = None) -> None:
@@ -10567,6 +10606,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     copy_submenu.add_command(label="As HTML", command=copy_as_html)
     copy_submenu.add_command(label="As Markdown Table", command=copy_as_markdown, accelerator="Ctrl+Shift+C")
     copy_submenu.add_command(label="As JSON Array", command=copy_as_json, accelerator="Ctrl+J")
+    copy_submenu.add_command(label="As NDJSON / JSON Lines", command=copy_as_ndjson)
     copy_submenu.add_command(label="As SARIF", command=copy_as_sarif)
     copy_submenu.add_command(label="As YAML", command=copy_as_yaml)
     copy_submenu.add_command(label="As XML", command=copy_as_xml)
