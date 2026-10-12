@@ -9827,13 +9827,18 @@ def copy_cli_command(event: Optional[tk.Event] = None) -> None:
     # AI Analysis
     if gpt_var and gpt_var.get():
         cmd_parts.append("--use-gpt")
-        provider_val = provider_var.get() if provider_var else Config.provider
+        provider_raw = provider_var.get() if provider_var else None
+        provider_val = provider_raw if isinstance(provider_raw, str) else Config.provider
         if provider_val and provider_val != "openai":
             cmd_parts.extend(["--provider", provider_val])
-        model_val = model_var.get().strip() if model_var else Config.model_name
+
+        model_raw = model_var.get() if model_var else None
+        model_val = model_raw.strip() if isinstance(model_raw, str) and model_raw.strip() else Config.model_name
         if model_val:
             cmd_parts.extend(["--model", model_val])
-        api_base_val = api_base_var.get().strip() if api_base_var else Config.api_base
+
+        api_base_raw = api_base_var.get() if api_base_var else None
+        api_base_val = api_base_raw.strip() if isinstance(api_base_raw, str) and api_base_raw.strip() else Config.api_base
         if api_base_val:
             cmd_parts.extend(["--api-base", api_base_val])
 
@@ -9870,7 +9875,7 @@ def on_target_escape(event: Optional[tk.Event] = None) -> str:
 
     if textbox:
         val = textbox.get()
-        if val.strip():
+        if val:
             textbox.delete(0, tk.END)
             update_clear_target_visibility()
             textbox.focus_set()
