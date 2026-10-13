@@ -312,6 +312,99 @@ def load_config_file(file_path: str) -> Dict[str, Any]:
         raise ValueError(f"Could not read configuration file: {e}")
 
 
+def generate_config_export(
+    provider: Optional[str] = None,
+    api_base: Optional[str] = None,
+    model: Optional[str] = None,
+    extensions: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
+    include: Optional[List[str]] = None,
+    threshold: Optional[int] = None,
+    max_size: Optional[Union[int, str]] = None,
+    max_depth: Optional[int] = None,
+    rate_limit: Optional[int] = None,
+    deep: Optional[bool] = None,
+    all_files: Optional[bool] = None,
+    use_gpt: Optional[bool] = None,
+    format_opt: Optional[str] = None,
+    targets: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Build a standardized scanner configuration dictionary from provided options.
+
+    Args:
+        provider: AI model provider ('openai', 'openrouter', 'ollama').
+        api_base: Custom API base URL.
+        model: AI model name.
+        extensions: List of file extensions to scan.
+        exclude: List of exclusion glob patterns.
+        include: List of inclusion glob patterns.
+        threshold: Minimum threat level threshold (0-100).
+        max_size: Maximum file size limit in bytes or formatted string.
+        max_depth: Maximum directory traversal depth.
+        rate_limit: Maximum API requests per minute.
+        deep: Whether deep scanning is enabled.
+        all_files: Whether all files are scanned regardless of extension.
+        use_gpt: Whether AI analysis is enabled.
+        format_opt: Default output report format.
+        targets: List of scan target paths or links.
+
+    Returns:
+        A dictionary containing non-None configuration settings.
+    """
+    config: Dict[str, Any] = {}
+    if provider is not None:
+        config['provider'] = provider
+    if api_base is not None:
+        config['api_base'] = api_base
+    if model is not None:
+        config['model'] = model
+    if extensions is not None:
+        config['extensions'] = list(extensions)
+    if exclude is not None:
+        config['exclude'] = list(exclude)
+    if include is not None:
+        config['include'] = list(include)
+    if threshold is not None:
+        config['threshold'] = threshold
+    if max_size is not None:
+        config['max_size'] = max_size
+    if max_depth is not None:
+        config['max_depth'] = max_depth
+    if rate_limit is not None:
+        config['rate_limit'] = rate_limit
+    if deep is not None:
+        config['deep'] = bool(deep)
+    if all_files is not None:
+        config['all_files'] = bool(all_files)
+    if use_gpt is not None:
+        config['use_gpt'] = bool(use_gpt)
+    if format_opt is not None:
+        config['format'] = format_opt
+    if targets is not None:
+        config['targets'] = list(targets)
+    return config
+
+
+def export_config_to_string(config_data: Dict[str, Any], format_type: str = 'json') -> str:
+    """Export a configuration dictionary as a JSON or YAML formatted string.
+
+    Args:
+        config_data: Configuration dictionary to export.
+        format_type: Output format ('json' or 'yaml'). Defaults to 'json'.
+
+    Returns:
+        A formatted configuration string.
+    """
+    fmt = format_type.lower().strip()
+    if fmt in ('yaml', 'yml'):
+        try:
+            import yaml
+            return yaml.safe_dump(config_data, sort_keys=False, default_flow_style=False)
+        except ImportError:
+            raise ValueError("PyYAML module is required to export configuration in YAML format.")
+    return json.dumps(config_data, indent=2)
+
+
 def fetch_url_content(url: str, timeout: int = 10, max_size: Optional[int] = None) -> bytes:
     """Fetches content from a web link with safety limits. Automatically resolves GitHub/GitLab links.
 
@@ -613,7 +706,7 @@ class Config:
             # Fallback to environment variables if apikey.txt is missing or empty
             cls.apikey = os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY") or ""
 
-        is_help_or_version = any(arg in sys.argv for arg in ['-h', '--help', '-v', '--version'])
+        is_help_or_version = any(arg in sys.argv for arg in ['-h', '--help', '-v', '--version', '--dump-config', '--export-config'])
         is_cli_without_gpt = ('--cli' in sys.argv or any(arg in sys.argv for arg in [
             '--audit', '--git-changes', '--git-diff', '--git-staged', '--git-hooks', '--git-config',
             '--git-stash', '--git-conflicts', '--git-history', '--git-reflog', '--git-submodules',
@@ -10811,6 +10904,13 @@ def main():
         help='Load default scan settings from a JSON configuration file.'
     )
     scan_group.add_argument(
+        '--dump-config', '--export-config',
+        nargs='?',
+        const='-',
+        type=str,
+        help='Dump active or resolved scan configuration options as JSON (or YAML) to stdout or a file and exit.'
+    )
+    scan_group.add_argument(
         '--file-list',
         type=argparse.FileType('r'),
         help='Read a list of files to scan from a text file.'
@@ -11218,7 +11318,7 @@ def main():
             parser.error(str(e))
 
     cli_targets_or_flags = [
-        args.config_file, args.stdin, args.clipboard, args.import_results, args.baseline, args.stats_only,
+        args.config_file, args.dump_config, args.stdin, args.clipboard, args.import_results, args.baseline, args.stats_only,
         args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_staged, args.git_untracked, args.git_ignored, args.git_hooks, args.git_config,
         args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
         args.running_processes, args.scheduled_tasks, args.startup_items,
@@ -11318,6 +11418,86 @@ def main():
             Config.THRESHOLD = args.threshold
     else:
         Config.THRESHOLD = args.threshold
+
+    if args.dump_config is not None:
+        active_exts = sorted(list(Config.extensions_set)) if hasattr(Config, 'extensions_set') and Config.extensions_set else None
+
+        active_excludes = []
+        if args.exclude:
+            active_excludes.extend(args.exclude)
+        if 'exclude' in config_opts:
+            cex = config_opts['exclude']
+            if isinstance(cex, list):
+                active_excludes.extend(cex)
+            elif isinstance(cex, str):
+                active_excludes.append(cex)
+
+        active_includes = []
+        if args.include:
+            active_includes.extend(args.include)
+        if 'include' in config_opts:
+            cin = config_opts['include']
+            if isinstance(cin, list):
+                active_includes.extend(cin)
+            elif isinstance(cin, str):
+                active_includes.append(cin)
+
+        targets_export = []
+        if args.target:
+            targets_export.append(args.target)
+        if args.path:
+            targets_export.append(args.path)
+        if args.files:
+            targets_export.extend(args.files)
+        if not targets_export and config_opts.get('targets'):
+            cfg_t = config_opts.get('targets')
+            if isinstance(cfg_t, list):
+                targets_export.extend(cfg_t)
+            elif isinstance(cfg_t, str):
+                targets_export.append(cfg_t)
+
+        cfg_data = generate_config_export(
+            provider=Config.provider,
+            api_base=Config.api_base,
+            model=Config.model_name,
+            extensions=active_exts,
+            exclude=sorted(list(set(active_excludes))) if active_excludes else None,
+            include=sorted(list(set(active_includes))) if active_includes else None,
+            threshold=Config.THRESHOLD,
+            max_size=Config.MAX_FILE_SIZE,
+            max_depth=args.max_depth,
+            rate_limit=args.rate_limit,
+            deep=bool(args.deep),
+            all_files=bool(Config.scan_all_files),
+            use_gpt=bool(args.use_gpt),
+            format_opt=args.format or config_opts.get('format', 'csv'),
+            targets=targets_export if targets_export else None,
+        )
+
+        dump_dest = args.dump_config
+        fmt_type = 'json'
+        if dump_dest != '-' and dump_dest.lower().endswith(('.yaml', '.yml')):
+            fmt_type = 'yaml'
+        elif args.format and args.format.lower() in ('yaml', 'yml'):
+            fmt_type = 'yaml'
+
+        try:
+            exported_str = export_config_to_string(cfg_data, format_type=fmt_type)
+        except ValueError as e:
+            parser.error(str(e))
+
+        if dump_dest == '-' or not dump_dest:
+            print(exported_str)
+        else:
+            try:
+                with open(dump_dest, 'w', encoding='utf-8') as f:
+                    f.write(exported_str if exported_str.endswith('\n') else exported_str + '\n')
+                if not args.quiet:
+                    print(f"Configuration exported to {dump_dest}", file=sys.stderr)
+            except OSError as e:
+                parser.error(f"Could not write configuration to {dump_dest}: {e}")
+
+        sys.exit(0)
 
     scan_target = args.target or args.path
 

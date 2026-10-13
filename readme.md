@@ -688,6 +688,7 @@ You can customize terminal scans using these command line options.
 *   `-e`, `--exclude <patterns>`: Ignore files or folders matching these patterns (for example: `node_modules/*`).
 *   `--exclude-file <file>`: Read a list of exclude patterns from a file.
 *   `--config <file>` / `--config-file <file>`: Load scan options and defaults from a JSON configuration file.
+*   `--dump-config [file]` / `--export-config [file]`: Dump resolved scan configuration options as JSON (or YAML) to terminal `stdout` or a specified file and exit.
 *   `--file-list <file>`: Read a list of files to scan from a text file.
 *   `--all-files`: Scan every file, even if it is not a script.
 *   `--fail-threshold <num>`: Exit with code `1` if any file has a threat level at or above this number (0-100).
