@@ -8268,7 +8268,7 @@ def _get_tree_results_as_dicts(item_ids: Iterable[str]) -> List[Dict[str, Any]]:
 
 
 def export_results(event: Optional[tk.Event] = None) -> None:
-    """Save the current Treeview contents to a file chosen by the user.
+    """Save the current Treeview contents or active selection to a file chosen by the user.
 
     Supports CSV, Markdown, HTML, JSON, YAML, SARIF, XML, and Console Triage Report formats.
 
@@ -8279,6 +8279,9 @@ def export_results(event: Optional[tk.Event] = None) -> None:
     """
     if not tree:
         return
+
+    selection = tree.selection()
+    is_selected_export = isinstance(selection, (tuple, list)) and bool(selection)
 
     file_path = filedialog.asksaveasfilename(
         defaultextension=".csv",
@@ -8296,13 +8299,14 @@ def export_results(event: Optional[tk.Event] = None) -> None:
             ("Triage reports", "*.txt;*.log"),
             ("All files", "*.*")
         ],
-        title="Export Scan Results",
+        title="Export Selected Scan Results" if is_selected_export else "Export Scan Results",
         initialdir=_get_initial_dir()
     )
     if not file_path:
         return
 
-    results = _get_tree_results_as_dicts(tree.get_children())
+    target_items = selection if is_selected_export else tree.get_children()
+    results = _get_tree_results_as_dicts(target_items)
     ext = os.path.splitext(file_path)[1].lower()
 
     try:
@@ -8346,7 +8350,9 @@ def export_results(event: Optional[tk.Event] = None) -> None:
                 for r in results:
                     writer.writerow([r[col] for col in columns])
 
-        messagebox.showinfo("Export Successful", f"Results saved to {os.path.basename(file_path)}")
+        msg_prefix = "Selected results" if is_selected_export else "Results"
+        messagebox.showinfo("Export Successful", f"{msg_prefix} saved to {os.path.basename(file_path)}")
+        update_status(f"Exported {len(results)} {'selected ' if is_selected_export else ''}item(s) to {os.path.basename(file_path)}.")
 
     except Exception as err:
         messagebox.showerror("Export Failed", f"Could not save results:\n{err}")

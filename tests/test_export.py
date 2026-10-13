@@ -104,3 +104,84 @@ def test_export_results_triage_report(monkeypatch, tmp_path):
     assert "Admin: Highly suspicious eval instruction." in content
     assert "User: This file evaluates untrusted input." in content
     assert "> eval(user_input)" in content
+
+
+def test_export_results_with_selection(monkeypatch, tmp_path):
+    """Verify that export_results prioritizes selected Treeview items when a selection exists."""
+    file_path = tmp_path / "selected_export.csv"
+    dialog_titles = []
+
+    def mock_dialog(**kwargs):
+        dialog_titles.append(kwargs.get("title"))
+        return str(file_path)
+
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', mock_dialog)
+
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ("item1",)
+    mock_tree.get_children.return_value = ("item1", "item2")
+
+    captured_item_ids = []
+
+    def mock_get_dicts(item_ids):
+        captured_item_ids.append(tuple(item_ids))
+        return [
+            {
+                "path": "sel.py",
+                "line": "1",
+                "own_conf": "90%",
+                "gpt_conf": "",
+                "admin_desc": "",
+                "end-user_desc": "",
+                "snippet": "code"
+            }
+        ]
+
+    monkeypatch.setattr(gptscan, "_get_tree_results_as_dicts", mock_get_dicts)
+    monkeypatch.setattr(gptscan, "tree", mock_tree, raising=False)
+
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, "messagebox", mock_msgbox)
+    mock_update_status = MagicMock()
+    monkeypatch.setattr(gptscan, "update_status", mock_update_status)
+
+    gptscan.export_results()
+
+    assert file_path.exists()
+    assert captured_item_ids == [("item1",)]
+    assert "Export Selected Scan Results" in dialog_titles
+    mock_update_status.assert_called_once()
+    assert "selected" in mock_update_status.call_args[0][0].lower()
+
+
+def test_export_results_selection_fallback(monkeypatch, tmp_path):
+    """Verify that export_results falls back to all children when selection is empty."""
+    file_path = tmp_path / "all_export.csv"
+    dialog_titles = []
+
+    def mock_dialog(**kwargs):
+        dialog_titles.append(kwargs.get("title"))
+        return str(file_path)
+
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', mock_dialog)
+
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ()
+    mock_tree.get_children.return_value = ("item1", "item2")
+
+    captured_item_ids = []
+
+    def mock_get_dicts(item_ids):
+        captured_item_ids.append(tuple(item_ids))
+        return []
+
+    monkeypatch.setattr(gptscan, "_get_tree_results_as_dicts", mock_get_dicts)
+    monkeypatch.setattr(gptscan, "tree", mock_tree, raising=False)
+
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, "messagebox", mock_msgbox)
+
+    gptscan.export_results()
+
+    assert captured_item_ids == [("item1", "item2")]
+    assert "Export Scan Results" in dialog_titles
