@@ -39,6 +39,21 @@ def test_update_clear_target_visibility_handles_none_widgets(monkeypatch):
     gptscan.update_clear_target_visibility()
 
 
+def test_update_clear_target_visibility_handles_exceptions(monkeypatch):
+    mock_btn = MagicMock()
+    mock_textbox = MagicMock()
+
+    # Test AttributeError handling
+    mock_textbox.get.side_effect = AttributeError("textbox destroyed")
+    monkeypatch.setattr(gptscan, 'clear_target_btn', mock_btn)
+    monkeypatch.setattr(gptscan, 'textbox', mock_textbox)
+    gptscan.update_clear_target_visibility()
+
+    # Test tk.TclError handling
+    mock_textbox.get.side_effect = gptscan.tk.TclError("invalid widget")
+    gptscan.update_clear_target_visibility()
+
+
 def test_set_scan_target_updates_visibility(monkeypatch):
     mock_btn = MagicMock()
     mock_textbox = MagicMock()
