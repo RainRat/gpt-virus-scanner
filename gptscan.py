@@ -9272,7 +9272,7 @@ def open_file(event_or_path: Union[tk.Event, str, None] = None) -> None:
             else:
                 subprocess.run(["xdg-open", file_path])
             opened_count += 1
-        except Exception as e:
+        except (OSError, subprocess.SubprocessError) as e:
             messagebox.showerror("Error", f"Could not open file '{file_path}': {e}")
 
     if opened_count > 0:
@@ -9670,7 +9670,7 @@ def show_in_folder(event_or_path: Union[tk.Event, str, None] = None) -> None:
                     subprocess.run(["xdg-open", folder])
                     linux_dirs.add(folder)
                     revealed_count += 1
-        except Exception as e:
+        except (OSError, subprocess.SubprocessError) as e:
             messagebox.showerror("Error", f"Could not reveal file '{file_path}': {e}")
 
     if revealed_count > 0:
