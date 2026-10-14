@@ -22,7 +22,21 @@ def test_import_from_url_success(monkeypatch):
     # Mock GUI components
     mock_tree = MagicMock()
     monkeypatch.setattr(gptscan, "tree", mock_tree)
-    monkeypatch.setattr(gptscan.tkinter.simpledialog, "askstring", lambda *args, **kwargs: mock_url)
+    monkeypatch.setattr(gptscan.simpledialog, "askstring", lambda *args, **kwargs: mock_url)
+
+    mock_fetch = MagicMock(return_value=content)
+    monkeypatch.setattr(gptscan, "fetch_url_content", mock_fetch)
+    mock_finalize = MagicMock()
+    monkeypatch.setattr(gptscan, "_finalize_import", mock_finalize)
+    monkeypatch.setattr(gptscan, "update_status", MagicMock())
+
+    gptscan.import_from_url()
+
+    mock_fetch.assert_called_once_with(mock_url)
+    mock_finalize.assert_called_once()
+    args, _ = mock_finalize.call_args
+    assert args[0][0]["path"] == "test.py"
+    assert args[1] == mock_url
 
 def test_import_from_url_prefills_clipboard_url(monkeypatch):
     """Test that import_from_url pre-fills initialvalue if clipboard contains an http/https URL."""
@@ -77,7 +91,7 @@ def test_import_from_url_schemeless(monkeypatch):
     # Mock GUI components
     mock_tree = MagicMock()
     monkeypatch.setattr(gptscan, "tree", mock_tree)
-    monkeypatch.setattr(gptscan.tkinter.simpledialog, "askstring", lambda *args, **kwargs: input_url)
+    monkeypatch.setattr(gptscan.simpledialog, "askstring", lambda *args, **kwargs: input_url)
 
     # Mock network call
     mock_fetch = MagicMock(return_value=content)
@@ -99,7 +113,7 @@ def test_import_from_url_schemeless(monkeypatch):
 def test_import_from_url_cancelled(monkeypatch):
     """Test that cancelling the URL dialog does nothing."""
     monkeypatch.setattr(gptscan, "tree", MagicMock())
-    monkeypatch.setattr(gptscan.tkinter.simpledialog, "askstring", lambda *args, **kwargs: None)
+    monkeypatch.setattr(gptscan.simpledialog, "askstring", lambda *args, **kwargs: None)
 
     mock_fetch = MagicMock()
     monkeypatch.setattr(gptscan, "fetch_url_content", mock_fetch)
@@ -110,7 +124,7 @@ def test_import_from_url_cancelled(monkeypatch):
 def test_import_from_url_invalid(monkeypatch):
     """Test that an invalid URL input is rejected immediately without fetching."""
     monkeypatch.setattr(gptscan, "tree", MagicMock())
-    monkeypatch.setattr(gptscan.tkinter.simpledialog, "askstring", lambda *args, **kwargs: "file:///etc/passwd")
+    monkeypatch.setattr(gptscan.simpledialog, "askstring", lambda *args, **kwargs: "file:///etc/passwd")
 
     mock_msgbox = MagicMock()
     monkeypatch.setattr(gptscan, "messagebox", mock_msgbox)
@@ -125,11 +139,36 @@ def test_import_from_url_invalid(monkeypatch):
         "Unsupported protocol 'file://'. Only 'http://' and 'https://' are supported."
     )
 
+def test_import_from_url_empty_results(monkeypatch):
+    """Test that importing empty or invalid report content from URL shows a warning dialog."""
+    mock_url = "https://example.com/empty_results.json"
+    content = b"[]"
+
+    monkeypatch.setattr(gptscan, "tree", MagicMock())
+    monkeypatch.setattr(gptscan.simpledialog, "askstring", lambda *args, **kwargs: mock_url)
+
+    mock_fetch = MagicMock(return_value=content)
+    monkeypatch.setattr(gptscan, "fetch_url_content", mock_fetch)
+    mock_finalize = MagicMock()
+    monkeypatch.setattr(gptscan, "_finalize_import", mock_finalize)
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, "messagebox", mock_msgbox)
+    monkeypatch.setattr(gptscan, "update_status", MagicMock())
+
+    gptscan.import_from_url()
+
+    mock_fetch.assert_called_once_with(mock_url)
+    mock_msgbox.showwarning.assert_called_once_with(
+        "Import Warning",
+        "No valid scan results found at the provided web link."
+    )
+    mock_finalize.assert_not_called()
+
 def test_import_from_url_error(monkeypatch):
     """Test error handling when fetching from URL fails."""
     mock_url = "https://example.com/results.json"
     monkeypatch.setattr(gptscan, "tree", MagicMock())
-    monkeypatch.setattr(gptscan.tkinter.simpledialog, "askstring", lambda *args, **kwargs: mock_url)
+    monkeypatch.setattr(gptscan.simpledialog, "askstring", lambda *args, **kwargs: mock_url)
 
     def mock_fetch_error(url):
         raise ValueError("Network error")
