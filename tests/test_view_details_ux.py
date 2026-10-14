@@ -42,6 +42,28 @@ def test_view_details_copy_path_moved(mock_view_details_env):
     copy_path_cmd()
     mock_root.clipboard_append.assert_called_with("test.py")
 
+def test_view_details_copy_path_tooltip(mock_view_details_env):
+    import sys
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "test.py")
+
+    assert "btn_Copy Path" in captured
+    btn_mock, _ = captured["btn_Copy Path"]
+
+    mod_key = "Cmd" if sys.platform == "darwin" else "Ctrl"
+    expected_msg = f"Copy the full file path to the clipboard. ({mod_key}+C or {mod_key}+Shift+P)"
+
+    enter_binding = None
+    for call in btn_mock.bind.call_args_list:
+        if call[0][0] == "<Enter>":
+            enter_binding = call[0][1]
+            break
+
+    assert enter_binding is not None
+    status_bar = captured['labels'][0]
+    enter_binding(None)
+    assert status_bar.config_data.get('text') == expected_msg
+
 def test_view_details_shortcuts(mock_view_details_env):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     setup_details(mock_view_details_env, "item1", "test.py", snippet="snippet_content")
