@@ -6969,6 +6969,62 @@ def generate_yaml(results: List[Dict[str, Any]]) -> str:
     return yaml.safe_dump(results, default_flow_style=False, sort_keys=False)
 
 
+def generate_compact(results: List[Dict[str, Any]]) -> str:
+    """Generate a single-line compiler/GNU-style report from scan results.
+
+    Format:
+        filepath:line: [threat%] description
+
+    Args:
+        results: List of standardized result dictionaries.
+
+    Returns:
+        A string containing findings formatted as single-line compiler/GNU error messages.
+    """
+    if not results:
+        return ""
+
+    lines = []
+    for r in results:
+        path = str(r.get("path", "unknown"))
+        line = r.get("line", 1)
+        try:
+            line_num = int(line)
+        except (ValueError, TypeError):
+            line_num = 1
+        if line_num <= 0:
+            line_num = 1
+
+        own_conf = r.get("own_conf", "")
+        gpt_conf = r.get("gpt_conf", "")
+        conf_raw = gpt_conf or own_conf or "0%"
+
+        if isinstance(conf_raw, (int, float)):
+            val = float(conf_raw)
+            if val <= 1.0 and val > 0:
+                conf_str = f"{int(round(val * 100))}%"
+            else:
+                conf_str = f"{int(round(val))}%"
+        else:
+            conf_str = str(conf_raw).strip()
+            if conf_str and not conf_str.endswith("%"):
+                try:
+                    v = float(conf_str)
+                    conf_str = f"{int(round(v * 100 if v <= 1.0 else v))}%"
+                except ValueError:
+                    conf_str = f"{conf_str}%"
+
+        admin = r.get("admin_desc", "")
+        user = r.get("end-user_desc", "")
+        snippet = r.get("snippet", "")
+        desc = admin or user or snippet or "Suspicious pattern detected"
+        desc_clean = " ".join(desc.strip().splitlines())
+
+        lines.append(f"{path}:{line_num}: [{conf_str}] {desc_clean}")
+
+    return "\n".join(lines)
+
+
 def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output_format: str = 'csv') -> None:
     """Helper function to save scan finding dicts to a file in the specified format."""
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
@@ -6987,6 +7043,8 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
             print(generate_junit(results), file=out_stream)
         elif fmt in ('yaml', 'yml'):
             print(generate_yaml(results), file=out_stream)
+        elif fmt in ('compact', 'gnu', 'gcc'):
+            print(generate_compact(results), file=out_stream)
         elif fmt == 'report':
             report = generate_console_report(results, use_color=False)
             print(report, file=out_stream)
@@ -7132,7 +7190,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
 
             if count_only or summary_only or stats_only:
                 pass
-            elif reverse_sort or paths_only or files_without_matches or sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml', 'junit'):
+            elif reverse_sort or paths_only or files_without_matches or sort_by is not None or top_limit is not None or output_format in ('sarif', 'html', 'markdown', 'report', 'xml', 'yaml', 'junit', 'compact', 'gnu', 'gcc'):
                 result_buffer.append(record)
             elif not is_threat and not show_all:
                 # If this record was emitted because files_without_matches forced show_all, skip printing in standard format
@@ -7314,6 +7372,8 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         print(generate_junit(result_buffer), file=out_stream)
     elif output_format == 'yaml':
         print(generate_yaml(result_buffer), file=out_stream)
+    elif output_format in ('compact', 'gnu', 'gcc'):
+        print(generate_compact(result_buffer), file=out_stream)
     elif output_format == 'report':
         # Use color only if the output stream is a terminal
         use_color_output = out_stream.isatty() if hasattr(out_stream, 'isatty') else False
@@ -7657,6 +7717,71 @@ def parse_yaml_content(content: str) -> List[Dict[str, Any]]:
         raise ValueError(f"Failed to parse YAML content: {e}")
 
 
+def parse_compact_content(content: str) -> List[Dict[str, Any]]:
+    """Parse scan findings from a single-line compiler/GNU-style formatted string.
+
+    Args:
+        content: The raw text string in compact/GNU format (e.g. 'path/file.py:42: [85%] Threat description').
+
+    Returns:
+        A list of standardized result dictionaries.
+    """
+    content = content.strip()
+    if not content:
+        return []
+
+    pattern = re.compile(
+        r'^(?P<path>.+?):(?P<line>\d+)(?::\d+)?:?\s*(?:\[(?P<conf>\d+(?:\.\d+)?%?)\])?\s*(?P<desc>.*)$'
+    )
+
+    results = []
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        m = pattern.match(line)
+        if m:
+            filepath = m.group("path").strip()
+            line_str = m.group("line")
+            try:
+                line_num = int(line_str)
+            except (ValueError, TypeError):
+                line_num = 1
+            conf = m.group("conf")
+            conf_str = f"{conf.rstrip('%')}%" if conf else "50%"
+            desc = m.group("desc").strip() if m.group("desc") else "Suspicious pattern detected"
+            results.append({
+                "path": filepath,
+                "line": line_num,
+                "own_conf": conf_str,
+                "gpt_conf": "",
+                "admin_desc": desc,
+                "end-user_desc": desc,
+                "snippet": ""
+            })
+        else:
+            parts = line.split(":", 2)
+            if len(parts) >= 2:
+                filepath = parts[0].strip()
+                second = parts[1].strip()
+                if second.isdigit():
+                    line_num = int(second)
+                    desc = parts[2].strip() if len(parts) > 2 else "Suspicious pattern detected"
+                else:
+                    line_num = 1
+                    desc = second if len(parts) == 2 else parts[2].strip()
+                results.append({
+                    "path": filepath,
+                    "line": line_num,
+                    "own_conf": "50%",
+                    "gpt_conf": "",
+                    "admin_desc": desc,
+                    "end-user_desc": desc,
+                    "snippet": ""
+                })
+    return results
+
+
 def parse_markdown_content(content: str) -> List[Dict[str, Any]]:
     """Parse scan findings from a Markdown string.
 
@@ -7835,7 +7960,7 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     if filename_hint:
         ext = os.path.splitext(filename_hint)[1].lower()
 
-    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.tsv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml', '.junit'):
+    if ext and ext not in ('.json', '.jsonl', '.ndjson', '.sarif', '.csv', '.tsv', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml', '.junit', '.compact', '.gnu', '.gcc'):
         raise ValueError(f"Unsupported file extension: {ext}")
 
     data_to_import = []
@@ -7882,6 +8007,9 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
     elif ext in ('.yaml', '.yml') or (content.strip().startswith('-') and 'path:' in content):
         # YAML report format
         data_to_import = parse_yaml_content(content)
+    elif ext in ('.compact', '.gnu', '.gcc') or any(re.match(r'^.+?:\d+(?::\d+)?:?\s*(?:\[\d+(?:\.\d+)?%?\])?\s*.*$', line.strip()) for line in content.splitlines()[:5] if line.strip()):
+        # Compact/GNU error format
+        data_to_import = parse_compact_content(content)
     else:
         # Last resort: try JSON parsing anyway
         try:
@@ -7910,7 +8038,7 @@ def load_report_file(file_path: str) -> List[Dict[str, Any]]:
         return parse_report_content(content)
 
     if os.path.isdir(file_path):
-        supported_exts = ('.json', '.jsonl', '.ndjson', '.csv', '.tsv', '.sarif', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml')
+        supported_exts = ('.json', '.jsonl', '.ndjson', '.csv', '.tsv', '.sarif', '.md', '.markdown', '.html', '.htm', '.xhtml', '.txt', '.log', '.xml', '.yaml', '.yml', '.compact', '.gnu', '.gcc')
         all_results = []
         files = []
         for r_dir, _, filenames in os.walk(file_path):
@@ -8294,6 +8422,7 @@ def export_results(event: Optional[tk.Event] = None) -> None:
             ("XML files", "*.xml"),
             ("JUnit XML files", "*.junit;*.junit.xml"),
             ("Triage reports", "*.txt;*.log"),
+            ("Compact/GNU reports", "*.compact;*.gnu;*.gcc"),
             ("All files", "*.*")
         ],
         title="Export Scan Results",
@@ -8336,6 +8465,9 @@ def export_results(event: Optional[tk.Event] = None) -> None:
         elif ext in ('.txt', '.log'):
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(generate_console_report(results, use_color=False))
+        elif ext in ('.compact', '.gnu', '.gcc'):
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(generate_compact(results))
         elif ext == '.tsv':
             export_results_to_file(file_path, results, output_format='tsv')
         else: # Default to CSV
@@ -11121,9 +11253,11 @@ def main():
     output_group.add_argument(
         '-f', '--format',
         type=str.lower,
-        choices=['json', 'ndjson', 'jsonl', 'csv', 'tsv', 'sarif', 'html', 'md', 'markdown', 'xml', 'junit', 'yaml', 'yml', 'report'],
-        help='Set output format (json, ndjson, csv, tsv, sarif, html, markdown, xml, junit, yaml, report).'
+        choices=['json', 'ndjson', 'jsonl', 'csv', 'tsv', 'sarif', 'html', 'md', 'markdown', 'xml', 'junit', 'yaml', 'yml', 'report', 'compact', 'gnu', 'gcc'],
+        help='Set output format (json, ndjson, csv, tsv, sarif, html, markdown, xml, junit, yaml, report, compact, gnu).'
     )
+    output_group.add_argument('--compact', action='store_true', help='Print or save scan results in single-line compact format (file:line: [threat%] description).')
+    output_group.add_argument('--gnu', '--gcc', action='store_true', dest='compact', help='Print or save scan results in single-line GNU/compiler error format.')
     output_group.add_argument('-j', '--json', action='store_true', help='Print or save scan results in JSON format.')
     output_group.add_argument('--ndjson', '--jsonl', action='store_true', help='Print or save scan results in NDJSON (JSON Lines) format.')
     output_group.add_argument('--csv', action='store_true', help='Print or save scan results in CSV format.')
@@ -11289,7 +11423,7 @@ def main():
         except (ValueError, TypeError):
             pass
 
-    if 'format' in config_opts and not args.format and not args.json and not args.ndjson and not args.csv and not args.tsv and not args.sarif and not args.html and not args.markdown and not args.xml and not args.junit and not args.yaml and not args.report:
+    if 'format' in config_opts and not args.format and not args.json and not args.ndjson and not args.csv and not args.tsv and not args.sarif and not args.html and not args.markdown and not args.xml and not args.junit and not args.yaml and not args.report and not args.compact:
         args.format = str(config_opts['format']).lower()
 
     max_size_val = args.max_size if args.max_size is not None else config_opts.get('max_size')
@@ -11475,6 +11609,9 @@ def main():
                 'yaml': 'yaml',
                 'yml': 'yaml',
                 'report': 'report',
+                'compact': 'compact',
+                'gnu': 'compact',
+                'gcc': 'compact',
             }
             output_format = fmt_map.get(fmt_lower, fmt_lower)
         elif args.json:
@@ -11499,6 +11636,8 @@ def main():
             output_format = 'yaml'
         elif args.report:
             output_format = 'report'
+        elif args.compact:
+            output_format = 'compact'
         elif args.output:
             # Infer format from extension
             ext = Path(args.output).suffix.lower()
@@ -11524,6 +11663,8 @@ def main():
                 output_format = 'yaml'
             elif ext in ('.txt', '.log'):
                 output_format = 'report'
+            elif ext in ('.compact', '.gnu', '.gcc'):
+                output_format = 'compact'
 
         exclude_file_patterns = []
         if args.exclude_file:

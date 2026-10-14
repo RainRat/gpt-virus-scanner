@@ -594,7 +594,8 @@ python3 gptscan.py ./my_project --output results.html --cli
 
 #### Output Formats
 By default, the scanner prints human-readable text to the terminal. You can customize the output format with these flags:
-*   `-f <format>`, `--format <format>`: Set output format (`json`, `ndjson`, `csv`, `tsv`, `sarif`, `html`, `markdown`, `xml`, `junit`, `yaml`, `report`).
+*   `-f <format>`, `--format <format>`: Set output format (`json`, `ndjson`, `csv`, `tsv`, `sarif`, `html`, `markdown`, `xml`, `junit`, `yaml`, `report`, `compact`, `gnu`).
+*   `--compact` / `--gnu`: Output or save findings in single-line compiler/GNU error format (`file:line: [threat%] description`).
 *   `--json`: Print or save results in JSON format.
 *   `--ndjson` / `--jsonl`: Print or save results in NDJSON (JSON Lines) format.
 *   `--csv`: Print or save results in CSV format.
@@ -758,7 +759,8 @@ You can customize terminal scans using these command line options.
 *   `-q`, `--quiet`: Suppress progress updates and summary banners in terminal output.
 *   `-a`, `--show-all`: Show all scanned files, even safe ones (threat level under threshold).
 *   `-o`, `--output <file>`: Save the scan results to a file.
-*   `-f <format>`, `--format <format>`: Set output format (`json`, `ndjson`, `csv`, `tsv`, `sarif`, `html`, `markdown`, `xml`, `junit`, `yaml`, `report`).
+*   `-f <format>`, `--format <format>`: Set output format (`json`, `ndjson`, `csv`, `tsv`, `sarif`, `html`, `markdown`, `xml`, `junit`, `yaml`, `report`, `compact`, `gnu`).
+*   `--compact`, `--gnu`: Output or save findings in single-line compiler/GNU error format (`file:line: [threat%] description`).
 *   `-j`, `--json`: Output or save results in JSON format.
 *   `--ndjson`, `--jsonl`: Output or save results in NDJSON (JSON Lines) format.
 *   `--csv`: Output or save results in CSV format.
