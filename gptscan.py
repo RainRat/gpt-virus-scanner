@@ -9062,7 +9062,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         if focused:
             try:
                 return focused.winfo_class() in ("Text", "Entry", "TEntry")
-            except Exception:
+            except (AttributeError, RuntimeError, tk.TclError):
                 pass
         return False
 
