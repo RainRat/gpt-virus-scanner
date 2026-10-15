@@ -187,13 +187,24 @@ def test_view_details_open_window(mock_view_details_env):
     assert "User Notes" in all_content
     assert "snippet content" in all_content
 
+def test_view_details_medium_risk(mock_view_details_env):
+    captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
+    setup_details(mock_view_details_env, "item1", "medium.py", own_conf="60%", admin="", user="", gpt_conf="", snippet="medium")
+
+    risk_badges = [l for l in captured['labels'] if l.cget('text') == "MEDIUM RISK"]
+    assert len(risk_badges) == 1
+    assert risk_badges[0].cget('background') == "#fff0cc"
+    assert risk_badges[0].cget('foreground') == "#8a4500"
+
+
 def test_view_details_low_risk(mock_view_details_env):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     setup_details(mock_view_details_env, "item1", "safe.py", own_conf="10%", admin="", user="", gpt_conf="", snippet="safe")
 
     risk_badges = [l for l in captured['labels'] if l.cget('text') == "LOW RISK"]
     assert len(risk_badges) == 1
-    assert risk_badges[0].cget('background') == "lightgrey"
+    assert risk_badges[0].cget('background') == "#e6e6e6"
+    assert risk_badges[0].cget('foreground') == "#4a4a4a"
 
 def test_view_details_no_selection(mock_view_details_env, monkeypatch):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
