@@ -9014,9 +9014,9 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         if risk == 'high':
             risk_badge.config(text="HIGH RISK", background="#ffcccc", foreground="darkred")
         elif risk == 'medium':
-            risk_badge.config(text="MEDIUM RISK", background="#fff0cc", foreground="darkorange")
+            risk_badge.config(text="MEDIUM RISK", background="#fff0cc", foreground="#8a4500")
         else:
-            risk_badge.config(text="LOW RISK", background="lightgrey", foreground="grey")
+            risk_badge.config(text="LOW RISK", background="#e6e6e6", foreground="#4a4a4a")
 
         if gpt_conf:
             ai_conf_prefix.grid(row=0, column=3, sticky="w")
