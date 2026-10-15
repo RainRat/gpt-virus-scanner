@@ -493,6 +493,11 @@ Scan files changed in your project:
 python3 gptscan.py --git-changes --cli
 ```
 
+Scan files changed in a specific Git revision or branch:
+```bash
+python3 gptscan.py --git-revision main --cli
+```
+
 Scan the last 5 Git commits:
 ```bash
 python3 gptscan.py --git-history --cli
@@ -716,6 +721,7 @@ You can customize terminal scans using these command line options.
 *   `--git-submodules`: Scan all Git submodules in the repository.
 *   `--git-history [<count>]`: Scan recent Git commits. You can optionally set the number of commits (default is 5).
 *   `--git-reflog [<count>]`: Scan recent entries in your Git reflog. You can optionally set the number of entries (default is 5).
+*   `--git-revision [<commit>]`: Scan files changed in a specific Git revision, branch, or commit (for example: `main`, `v1.0.0`, `HEAD~2`).
 
 ##### System Scans
 *   `--audit`: Run a complete system audit (includes shell profiles, history, system PATH, processes, scheduled tasks, startup items, system services, and more).
