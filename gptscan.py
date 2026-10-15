@@ -10949,6 +10949,12 @@ def main():
         const=5,
         help='Scan recent entries in the Git reflog. Optionally provide the number of entries (default is 5).'
     )
+    git_group.add_argument(
+        '--git-revision',
+        nargs='?',
+        const='HEAD',
+        help='Scan files changed in a specific Git revision, branch, or commit (for example: "main", "v1.0.0", "HEAD~2").'
+    )
 
     system_group = parser.add_argument_group("System Scans")
     system_group.add_argument(
@@ -11219,7 +11225,7 @@ def main():
 
     cli_targets_or_flags = [
         args.config_file, args.stdin, args.clipboard, args.import_results, args.baseline, args.stats_only,
-        args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_staged, args.git_untracked, args.git_ignored, args.git_hooks, args.git_config,
+        args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_revision, args.git_diff, args.git_staged, args.git_untracked, args.git_ignored, args.git_hooks, args.git_config,
         args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
         args.running_processes, args.scheduled_tasks, args.startup_items,
         args.system_services, args.audit, args.modified, args.downloads, args.desktop,
@@ -11351,15 +11357,16 @@ def main():
                 if line:
                     scan_targets.append(line)
 
-        if args.git_changes:
+        if args.git_changes or args.git_revision:
+            git_ref = args.git_revision if args.git_revision is not None else args.git_changes
             # Use specified targets as git roots, or current folder if none.
             git_roots = scan_targets if scan_targets else ["."]
             git_files = []
             for root_dir in git_roots:
-                git_files.extend(get_git_changed_files(root_dir, ref=args.git_changes))
+                git_files.extend(get_git_changed_files(root_dir, ref=git_ref))
 
             if not git_files:
-                print(f"No git changes detected in provided targets (ref: {args.git_changes}).", file=sys.stderr)
+                print(f"No git changes detected in provided targets (ref: {git_ref}).", file=sys.stderr)
             # Scan only changed files
             scan_targets = git_files
 
@@ -11453,7 +11460,7 @@ def main():
                 elif isinstance(cfg_target, str) and cfg_target.strip():
                     scan_targets.append(cfg_target.strip())
 
-        if not scan_targets and not args.git_changes and not args.git_diff and not args.git_staged and not args.git_untracked and not args.git_ignored and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_conflicts and not args.git_history and not args.git_reflog and not args.git_submodules and not args.clipboard and not extra_snippets:
+        if not scan_targets and not args.git_changes and not args.git_revision and not args.git_diff and not args.git_staged and not args.git_untracked and not args.git_ignored and not args.git_hooks and not args.git_config and not args.git_stash and not args.git_conflicts and not args.git_history and not args.git_reflog and not args.git_submodules and not args.clipboard and not extra_snippets:
             # Default to current folder if no targets provided and NOT using git-changes
             scan_targets = ["."]
 
