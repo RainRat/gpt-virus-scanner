@@ -559,9 +559,10 @@ Load default scan options from a JSON configuration file:
 python3 gptscan.py --config config.json --cli
 ```
 
-Filter results by setting a minimum threat score threshold (0 to 100):
+Filter results by setting a minimum or maximum threat score threshold (0 to 100):
 ```bash
 python3 gptscan.py ./my_project --min-threat 70 --cli
+python3 gptscan.py ./my_project --min-threat 30 --max-threat 70 --cli
 ```
 
 Limit directory traversal depth when scanning folders (for example, top-level files only):
@@ -779,6 +780,7 @@ You can customize terminal scans using these command line options.
 *   `--sort-by <field>` / `--sort <field>`: Sort scan results by `threat` (highest threat score first), `path` (file path alphabetically), or `line` (line number numerically).
 *   `-r`, `--reverse`: Reverse the sort order of scan results.
 *   `--min-threat <num>` / `--min-threat-level <num>`: Set the minimum threat level threshold (0-100) to include in output results.
+*   `--max-threat <num>` / `--max-threat-level <num>`: Set the maximum threat level threshold (0-100) to include in output results.
 
 ### Setting up AI Analysis
 To use AI analysis, you need an API key for OpenAI or OpenRouter, or have Ollama running locally.
