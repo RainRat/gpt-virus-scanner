@@ -62,3 +62,48 @@ def test_clear_results_resets_summary_variable(monkeypatch):
     gptscan.clear_results()
 
     assert gptscan._last_scan_summary == ""
+
+
+def test_update_status_preserves_active_hover_state(monkeypatch):
+    """Test that update_status preserves the active hover text on status_label and updates the restore text."""
+    mock_widget = MagicMock()
+    mock_status_label = MagicMock()
+    mock_status_label.cget.return_value = "Ready"
+
+    monkeypatch.setattr(gptscan, 'status_label', mock_status_label)
+    monkeypatch.setattr(gptscan, 'current_cancel_event', None)
+    monkeypatch.setattr(gptscan, '_active_hover_state', None)
+
+    # Simulated event bindings
+    enter_cb = None
+    leave_cb = None
+
+    def fake_bind(seq, func):
+        nonlocal enter_cb, leave_cb
+        if seq == "<Enter>":
+            enter_cb = func
+        elif seq == "<Leave>":
+            leave_cb = func
+
+    mock_widget.bind = fake_bind
+
+    gptscan.bind_hover_message(mock_widget, "Hover Tooltip Message")
+
+    # 1. Simulate mouse enter
+    enter_cb(MagicMock())
+    assert gptscan._active_hover_state is not None
+    assert mock_status_label.config.called
+    mock_status_label.config.assert_called_with(text="Hover Tooltip Message")
+
+    # 2. Trigger status update while hovered (e.g. from background filter refresh)
+    gptscan.update_status("Showing 1 of 5 results")
+
+    # Verify status_label still shows the hover message, not the background status message
+    mock_status_label.config.assert_called_with(text="Hover Tooltip Message")
+
+    # 3. Simulate mouse leave
+    leave_cb(MagicMock())
+
+    # Verify status_label restores the updated status message ("Showing 1 of 5 results")
+    mock_status_label.config.assert_called_with(text="Showing 1 of 5 results")
+    assert gptscan._active_hover_state is None
