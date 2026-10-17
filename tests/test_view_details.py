@@ -444,6 +444,10 @@ def test_view_details_rescan(mock_view_details_env, monkeypatch):
     rescan_btn_mock.config.assert_any_call(state='disabled', text='Rescanning...')
     rescan_btn_mock.config.assert_any_call(state='normal', text='Rescan')
 
+    # Verify status bar updated with feedback
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "Re-scan complete."
+
 
 def test_view_details_copy_code_button(mock_view_details_env):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
