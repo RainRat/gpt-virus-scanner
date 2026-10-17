@@ -985,7 +985,7 @@ def _get_initial_dir() -> Optional[str]:
         try:
             val = textbox.get()
             path_str = val.strip()
-        except Exception:
+        except (AttributeError, RuntimeError, tk.TclError):
             pass
 
     if not path_str:
@@ -1009,7 +1009,7 @@ def _get_initial_dir() -> Optional[str]:
         if p.exists():
             return str(p if p.is_dir() else p.parent)
         return None
-    except Exception:
+    except (ValueError, TypeError, OSError, RuntimeError):
         return None
 
 
