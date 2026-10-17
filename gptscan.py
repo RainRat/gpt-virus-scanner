@@ -8610,6 +8610,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         current_cancel_event = threading.Event()
         set_scanning_state(True)
         rescan_btn.config(state='disabled', text="Rescanning...")
+        set_local_status(f"Re-scanning {os.path.basename(path)}...")
 
         def run_thread(target_id, target_path):
             try:
@@ -8623,6 +8624,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
                 if current_item_id == target_id:
                     enqueue_ui_update(refresh_content, target_id)
+                    enqueue_ui_update(set_local_status, "Re-scan complete.", True)
             except Exception as e:
                 enqueue_ui_update(messagebox.showerror, "Error", f"An unexpected error occurred: {e}")
                 enqueue_ui_update(finish_scan_state)
