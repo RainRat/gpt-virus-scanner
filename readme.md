@@ -594,7 +594,7 @@ python3 gptscan.py ./my_project --output results.html --cli
 
 #### Output Formats
 By default, the scanner prints human-readable text to the terminal. You can customize the output format with these flags:
-*   `-f <format>`, `--format <format>`: Set output format (`json`, `ndjson`, `csv`, `tsv`, `sarif`, `html`, `markdown`, `xml`, `junit`, `yaml`, `report`).
+*   `-f <format>`, `--format <format>`: Set output format (`json`, `ndjson`, `csv`, `tsv`, `sarif`, `html`, `markdown`, `xml`, `junit`, `yaml`, `github`, `report`).
 *   `--json`: Print or save results in JSON format.
 *   `--ndjson` / `--jsonl`: Print or save results in NDJSON (JSON Lines) format.
 *   `--csv`: Print or save results in CSV format.
@@ -605,6 +605,7 @@ By default, the scanner prints human-readable text to the terminal. You can cust
 *   `--xml`: Create an XML report.
 *   `--junit`: Save results in JUnit XML format (useful for CI/CD test reporting).
 *   `--yaml` / `--yml`: Create a YAML report (requires the `pyyaml` package).
+*   `--github-annotations` / `--github`: Output results in GitHub Actions Workflow Annotations format (`::error` / `::warning`) for inline PR diff annotations.
 *   `--report`: Output a detailed triage report to the terminal.
 *   `-C`, `--count`: Print only the total count of suspicious findings.
 *   `-s`, `--summary-only`: Print only the scan summary banner without individual findings (or structured metrics if combined with `--json`, `--yaml`, or `--csv`).
@@ -666,7 +667,7 @@ jobs:
 
       - name: Run GPT Scanner
         run: |
-          python3 gptscan.py . --cli --fail-threshold 70
+          python3 gptscan.py . --cli -f github --fail-threshold 70
 ```
 
 #### CLI Options Reference
@@ -758,7 +759,7 @@ You can customize terminal scans using these command line options.
 *   `-q`, `--quiet`: Suppress progress updates and summary banners in terminal output.
 *   `-a`, `--show-all`: Show all scanned files, even safe ones (threat level under threshold).
 *   `-o`, `--output <file>`: Save the scan results to a file.
-*   `-f <format>`, `--format <format>`: Set output format (`json`, `ndjson`, `csv`, `tsv`, `sarif`, `html`, `markdown`, `xml`, `junit`, `yaml`, `report`).
+*   `-f <format>`, `--format <format>`: Set output format (`json`, `ndjson`, `csv`, `tsv`, `sarif`, `html`, `markdown`, `xml`, `junit`, `yaml`, `github`, `report`).
 *   `-j`, `--json`: Output or save results in JSON format.
 *   `--ndjson`, `--jsonl`: Output or save results in NDJSON (JSON Lines) format.
 *   `--csv`: Output or save results in CSV format.
@@ -769,6 +770,7 @@ You can customize terminal scans using these command line options.
 *   `--xml`: Create an XML report.
 *   `--junit`: Save results in JUnit XML format.
 *   `--yaml`, `--yml`: Create a YAML report.
+*   `--github-annotations` / `--github`: Output results in GitHub Actions Workflow Annotations format (`::error` / `::warning`).
 *   `--report`: Output a detailed triage report to the terminal.
 *   `--top <N>` / `--limit <N>`: Limit output results to the top N highest-risk findings.
 *   `-C`, `--count`: Print only the total count of matching findings.
