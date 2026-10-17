@@ -67,6 +67,7 @@ root: Optional[tk.Tk] = None
 textbox: Optional[ttk.Entry] = None
 progress_bar: Optional[ttk.Progressbar] = None
 status_label: Optional[ttk.Label] = None
+_active_hover_state: Optional[Dict[str, Any]] = None
 deep_var: Optional[tk.BooleanVar] = None
 all_var: Optional[tk.BooleanVar] = None
 scan_all_var: Optional[tk.BooleanVar] = None
@@ -764,8 +765,14 @@ def update_status(message: str) -> None:
     Args:
         message: The message to display in the status label.
     """
-    if status_label:
-        status_label.config(text=message)
+    global _active_hover_state
+    if _active_hover_state and _active_hover_state.get("label") == status_label:
+        _active_hover_state["previous_message"][0] = message
+        if status_label:
+            status_label.config(text=_active_hover_state["hover_message"])
+    else:
+        if status_label:
+            status_label.config(text=message)
     if root:
         root.update_idletasks()
 
@@ -870,19 +877,28 @@ def bind_hover_message(widget: tk.Widget, message: str, label: Optional[ttk.Labe
     previous_message: List[str] = ["Ready"]
 
     def on_enter(event):
+        global _active_hover_state
         target_label = label or status_label
         if target_label and current_cancel_event is None:
             # Save current text, defaulting to Ready if empty
             current_text = target_label.cget("text")
             previous_message[0] = current_text if current_text else "Ready"
+            _active_hover_state = {
+                "label": target_label,
+                "hover_message": message,
+                "previous_message": previous_message
+            }
             target_label.config(text=message)
             if root:
                 root.update_idletasks()
 
     def on_leave(event):
+        global _active_hover_state
         target_label = label or status_label
         if target_label and current_cancel_event is None:
             target_label.config(text=previous_message[0])
+            if _active_hover_state and _active_hover_state.get("label") == target_label:
+                _active_hover_state = None
             if root:
                 root.update_idletasks()
 
