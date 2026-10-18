@@ -8268,7 +8268,7 @@ def _get_tree_results_as_dicts(item_ids: Iterable[str]) -> List[Dict[str, Any]]:
 
 
 def export_results(event: Optional[tk.Event] = None) -> None:
-    """Save the current Treeview contents to a file chosen by the user.
+    """Save the current Treeview contents (or selected items) to a file chosen by the user.
 
     Supports CSV, Markdown, HTML, JSON, YAML, SARIF, XML, and Console Triage Report formats.
 
@@ -8279,6 +8279,10 @@ def export_results(event: Optional[tk.Event] = None) -> None:
     """
     if not tree:
         return
+
+    selection = tree.selection()
+    is_selection_active = selection and isinstance(selection, (tuple, list)) and len(selection) > 0
+    export_title = "Export Selected Results" if is_selection_active else "Export Scan Results"
 
     file_path = filedialog.asksaveasfilename(
         defaultextension=".csv",
@@ -8296,13 +8300,14 @@ def export_results(event: Optional[tk.Event] = None) -> None:
             ("Triage reports", "*.txt;*.log"),
             ("All files", "*.*")
         ],
-        title="Export Scan Results",
+        title=export_title,
         initialdir=_get_initial_dir()
     )
     if not file_path:
         return
 
-    results = _get_tree_results_as_dicts(tree.get_children())
+    items_to_export = selection if is_selection_active else tree.get_children()
+    results = _get_tree_results_as_dicts(items_to_export)
     ext = os.path.splitext(file_path)[1].lower()
 
     try:
@@ -8347,6 +8352,7 @@ def export_results(event: Optional[tk.Event] = None) -> None:
                     writer.writerow([r[col] for col in columns])
 
         messagebox.showinfo("Export Successful", f"Results saved to {os.path.basename(file_path)}")
+        update_status(f"Exported {len(results)} result(s) to {os.path.basename(file_path)}.")
 
     except Exception as err:
         messagebox.showerror("Export Failed", f"Could not save results:\n{err}")

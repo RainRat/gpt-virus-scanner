@@ -104,3 +104,36 @@ def test_export_results_triage_report(monkeypatch, tmp_path):
     assert "Admin: Highly suspicious eval instruction." in content
     assert "User: This file evaluates untrusted input." in content
     assert "> eval(user_input)" in content
+
+
+def test_export_results_with_selection(monkeypatch, tmp_path):
+    """Verify that export_results exports only selected items when tree selection is active."""
+    file_path = tmp_path / "export_selected.csv"
+    captured_dialog_kwargs = {}
+
+    def mock_asksaveasfilename(**kwargs):
+        captured_dialog_kwargs.update(kwargs)
+        return str(file_path)
+
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', mock_asksaveasfilename)
+
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = ("item2",)
+    mock_tree.get_children.return_value = ("item1", "item2", "item3")
+    monkeypatch.setattr(gptscan, "tree", mock_tree, raising=False)
+
+    exported_ids = []
+    def mock_get_results(item_ids):
+        exported_ids.extend(item_ids)
+        return [{"path": "selected.py", "line": "1", "own_conf": "90%", "gpt_conf": "", "admin_desc": "", "end-user_desc": "", "snippet": ""}]
+
+    monkeypatch.setattr(gptscan, "_get_tree_results_as_dicts", mock_get_results)
+    monkeypatch.setattr(gptscan, "messagebox", MagicMock())
+    mock_status = MagicMock()
+    monkeypatch.setattr(gptscan, "update_status", mock_status)
+
+    gptscan.export_results()
+
+    assert captured_dialog_kwargs.get("title") == "Export Selected Results"
+    assert exported_ids == ["item2"]
+    mock_status.assert_called_once_with(f"Exported 1 result(s) to {file_path.name}.")
