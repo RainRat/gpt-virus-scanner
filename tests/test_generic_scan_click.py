@@ -1,14 +1,18 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import gptscan
-from typing import List, Tuple
 
-def test_generic_scan_click_paths_success(mocker):
+def test_generic_scan_click_paths_success(monkeypatch):
     mock_get_data = MagicMock(return_value=["/path/1", "/path/2"])
-    mock_set_target = mocker.patch("gptscan._set_scan_target")
-    mock_button_click = mocker.patch("gptscan.button_click")
-    mock_showinfo = mocker.patch("tkinter.messagebox.showinfo")
-    mock_showwarning = mocker.patch("tkinter.messagebox.showwarning")
+    mock_set_target = MagicMock()
+    mock_button_click = MagicMock()
+    mock_showinfo = MagicMock()
+    mock_showwarning = MagicMock()
+
+    monkeypatch.setattr(gptscan, "_set_scan_target", mock_set_target)
+    monkeypatch.setattr(gptscan, "button_click", mock_button_click)
+    monkeypatch.setattr("tkinter.messagebox.showinfo", mock_showinfo)
+    monkeypatch.setattr("tkinter.messagebox.showwarning", mock_showwarning)
 
     gptscan._generic_scan_click(mock_get_data, "Test Title", "No data", "Error Title")
 
@@ -18,13 +22,18 @@ def test_generic_scan_click_paths_success(mocker):
     mock_showinfo.assert_not_called()
     mock_showwarning.assert_not_called()
 
-def test_generic_scan_click_snippets_success(mocker):
+def test_generic_scan_click_snippets_success(monkeypatch):
     snippets = [("snippet1", b"content1"), ("snippet2", b"content2")]
     mock_get_data = MagicMock(return_value=snippets)
-    mock_set_target = mocker.patch("gptscan._set_scan_target")
-    mock_button_click = mocker.patch("gptscan.button_click")
-    mock_showinfo = mocker.patch("tkinter.messagebox.showinfo")
-    mock_showwarning = mocker.patch("tkinter.messagebox.showwarning")
+    mock_set_target = MagicMock()
+    mock_button_click = MagicMock()
+    mock_showinfo = MagicMock()
+    mock_showwarning = MagicMock()
+
+    monkeypatch.setattr(gptscan, "_set_scan_target", mock_set_target)
+    monkeypatch.setattr(gptscan, "button_click", mock_button_click)
+    monkeypatch.setattr("tkinter.messagebox.showinfo", mock_showinfo)
+    monkeypatch.setattr("tkinter.messagebox.showwarning", mock_showwarning)
 
     gptscan._generic_scan_click(mock_get_data, "Test Title", "No data", "Error Title", is_snippets=True)
 
@@ -34,12 +43,17 @@ def test_generic_scan_click_snippets_success(mocker):
     mock_showinfo.assert_not_called()
     mock_showwarning.assert_not_called()
 
-def test_generic_scan_click_no_data(mocker):
+def test_generic_scan_click_no_data(monkeypatch):
     mock_get_data = MagicMock(return_value=[])
-    mock_set_target = mocker.patch("gptscan._set_scan_target")
-    mock_button_click = mocker.patch("gptscan.button_click")
-    mock_showinfo = mocker.patch("tkinter.messagebox.showinfo")
-    mock_showwarning = mocker.patch("tkinter.messagebox.showwarning")
+    mock_set_target = MagicMock()
+    mock_button_click = MagicMock()
+    mock_showinfo = MagicMock()
+    mock_showwarning = MagicMock()
+
+    monkeypatch.setattr(gptscan, "_set_scan_target", mock_set_target)
+    monkeypatch.setattr(gptscan, "button_click", mock_button_click)
+    monkeypatch.setattr("tkinter.messagebox.showinfo", mock_showinfo)
+    monkeypatch.setattr("tkinter.messagebox.showwarning", mock_showwarning)
 
     gptscan._generic_scan_click(mock_get_data, "Test Title", "Failure Message", "Error Title")
 
@@ -49,12 +63,17 @@ def test_generic_scan_click_no_data(mocker):
     mock_showinfo.assert_called_once_with("Test Title", "Failure Message")
     mock_showwarning.assert_not_called()
 
-def test_generic_scan_click_exception(mocker):
+def test_generic_scan_click_exception(monkeypatch):
     mock_get_data = MagicMock(side_effect=Exception("Test Error"))
-    mock_set_target = mocker.patch("gptscan._set_scan_target")
-    mock_button_click = mocker.patch("gptscan.button_click")
-    mock_showinfo = mocker.patch("tkinter.messagebox.showinfo")
-    mock_showwarning = mocker.patch("tkinter.messagebox.showwarning")
+    mock_set_target = MagicMock()
+    mock_button_click = MagicMock()
+    mock_showinfo = MagicMock()
+    mock_showwarning = MagicMock()
+
+    monkeypatch.setattr(gptscan, "_set_scan_target", mock_set_target)
+    monkeypatch.setattr(gptscan, "button_click", mock_button_click)
+    monkeypatch.setattr("tkinter.messagebox.showinfo", mock_showinfo)
+    monkeypatch.setattr("tkinter.messagebox.showwarning", mock_showwarning)
 
     gptscan._generic_scan_click(mock_get_data, "Test Title", "No data", "Error Title")
 
@@ -62,16 +81,16 @@ def test_generic_scan_click_exception(mocker):
     mock_set_target.assert_not_called()
     mock_button_click.assert_not_called()
     mock_showinfo.assert_not_called()
-    # Check that it includes the error title and mentions "test title" in lowercase
     args, kwargs = mock_showwarning.call_args
     assert args[0] == "Error Title"
     assert "test title" in args[1]
     assert "Test Error" in args[1]
 
-def test_refactored_scan_downloads_click(mocker):
-    """Verify one of the refactored functions to ensure it correctly calls the helper."""
-    mock_get_paths = mocker.patch("gptscan.get_downloads_paths", return_value=["/downloads"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
+def test_refactored_scan_downloads_click(monkeypatch):
+    mock_get_paths = MagicMock(return_value=["/downloads"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "get_downloads_paths", mock_get_paths)
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
     gptscan.scan_downloads_click()
 
@@ -82,10 +101,11 @@ def test_refactored_scan_downloads_click(mocker):
         "Downloads Error"
     )
 
-def test_refactored_scan_env_vars_click(mocker):
-    """Verify a snippet-based refactored function."""
-    mock_get_snippets = mocker.patch("gptscan.get_environment_variable_snippets", return_value=[("env", b"val")])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
+def test_refactored_scan_env_vars_click(monkeypatch):
+    mock_get_snippets = MagicMock(return_value=[("env", b"val")])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "get_environment_variable_snippets", mock_get_snippets)
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
     gptscan.scan_env_vars_click()
 
@@ -97,11 +117,13 @@ def test_refactored_scan_env_vars_click(mocker):
         is_snippets=True
     )
 
+def test_scan_ssh_config_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_ssh_config_paths", lambda: ["/ssh"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_ssh_config_click(mocker):
-    mocker.patch("gptscan.get_ssh_config_paths", return_value=["/ssh"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_ssh_config_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_ssh_config_paths,
         "SSH Configuration",
@@ -109,11 +131,13 @@ def test_scan_ssh_config_click(mocker):
         "SSH Configuration Error"
     )
 
+def test_scan_network_config_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_network_config_paths", lambda: ["/network"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_network_config_click(mocker):
-    mocker.patch("gptscan.get_network_config_paths", return_value=["/network"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_network_config_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_network_config_paths,
         "Network Configuration",
@@ -121,11 +145,13 @@ def test_scan_network_config_click(mocker):
         "Network Configuration Error"
     )
 
+def test_scan_python_packages_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_python_package_paths", lambda: ["/python"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_python_packages_click(mocker):
-    mocker.patch("gptscan.get_python_package_paths", return_value=["/python"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_python_packages_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_python_package_paths,
         "Python Packages",
@@ -133,11 +159,13 @@ def test_scan_python_packages_click(mocker):
         "Python Packages Error"
     )
 
+def test_scan_env_files_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_env_file_paths", lambda: [".env"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_env_files_click(mocker):
-    mocker.patch("gptscan.get_env_file_paths", return_value=[".env"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_env_files_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_env_file_paths,
         "Env Files",
@@ -145,11 +173,13 @@ def test_scan_env_files_click(mocker):
         "Env Files Error"
     )
 
+def test_scan_nodejs_packages_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_nodejs_package_paths", lambda: ["/node"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_nodejs_packages_click(mocker):
-    mocker.patch("gptscan.get_nodejs_package_paths", return_value=["/node"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_nodejs_packages_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_nodejs_package_paths,
         "Node.js Packages",
@@ -157,11 +187,13 @@ def test_scan_nodejs_packages_click(mocker):
         "Node.js Packages Error"
     )
 
+def test_scan_browser_bookmarks_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_browser_bookmarks_snippets", lambda: [("bm", b"js")])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_browser_bookmarks_click(mocker):
-    mocker.patch("gptscan.get_browser_bookmarks_snippets", return_value=[("bm", b"js")])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_browser_bookmarks_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_browser_bookmarks_snippets,
         "Browser Bookmarks",
@@ -170,11 +202,13 @@ def test_scan_browser_bookmarks_click(mocker):
         is_snippets=True
     )
 
+def test_scan_browser_extensions_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_browser_extensions_paths", lambda: ["/extensions"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_browser_extensions_click(mocker):
-    mocker.patch("gptscan.get_browser_extensions_paths", return_value=["/extensions"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_browser_extensions_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_browser_extensions_paths,
         "Browser Extensions",
@@ -182,11 +216,13 @@ def test_scan_browser_extensions_click(mocker):
         "Browser Extensions Error"
     )
 
+def test_scan_editor_extensions_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_editor_extensions_paths", lambda: ["/editor"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_editor_extensions_click(mocker):
-    mocker.patch("gptscan.get_editor_extensions_paths", return_value=["/editor"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_editor_extensions_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_editor_extensions_paths,
         "Editor Extensions",
@@ -194,11 +230,13 @@ def test_scan_editor_extensions_click(mocker):
         "Editor Extensions Error"
     )
 
+def test_scan_desktop_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_desktop_paths", lambda: ["/desktop"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_desktop_click(mocker):
-    mocker.patch("gptscan.get_desktop_paths", return_value=["/desktop"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_desktop_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_desktop_paths,
         "Desktop",
@@ -206,11 +244,13 @@ def test_scan_desktop_click(mocker):
         "Desktop Error"
     )
 
+def test_scan_temp_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_temp_paths", lambda: ["/temp"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_temp_click(mocker):
-    mocker.patch("gptscan.get_temp_paths", return_value=["/temp"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_temp_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_temp_paths,
         "Temporary Folders",
@@ -218,11 +258,13 @@ def test_scan_temp_click(mocker):
         "Temporary Folders Error"
     )
 
+def test_scan_ruby_gems_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_ruby_gems_paths", lambda: ["/gems"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_ruby_gems_click(mocker):
-    mocker.patch("gptscan.get_ruby_gems_paths", return_value=["/gems"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_ruby_gems_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_ruby_gems_paths,
         "Ruby Gems",
@@ -230,11 +272,13 @@ def test_scan_ruby_gems_click(mocker):
         "Ruby Gems Error"
     )
 
+def test_scan_php_packages_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_php_packages_paths", lambda: ["/php"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_php_packages_click(mocker):
-    mocker.patch("gptscan.get_php_packages_paths", return_value=["/php"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_php_packages_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_php_packages_paths,
         "PHP Packages",
@@ -242,11 +286,13 @@ def test_scan_php_packages_click(mocker):
         "PHP Packages Error"
     )
 
+def test_scan_rust_packages_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_rust_packages_paths", lambda: ["/rust"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_rust_packages_click(mocker):
-    mocker.patch("gptscan.get_rust_packages_paths", return_value=["/rust"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_rust_packages_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_rust_packages_paths,
         "Rust Packages",
@@ -254,11 +300,13 @@ def test_scan_rust_packages_click(mocker):
         "Rust Packages Error"
     )
 
+def test_scan_go_packages_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_go_packages_paths", lambda: ["/go"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_go_packages_click(mocker):
-    mocker.patch("gptscan.get_go_packages_paths", return_value=["/go"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_go_packages_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_go_packages_paths,
         "Go Packages",
@@ -266,11 +314,13 @@ def test_scan_go_packages_click(mocker):
         "Go Packages Error"
     )
 
+def test_scan_java_packages_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_java_packages_paths", lambda: ["/java"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_java_packages_click(mocker):
-    mocker.patch("gptscan.get_java_packages_paths", return_value=["/java"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_java_packages_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_java_packages_paths,
         "Java Packages",
@@ -278,11 +328,13 @@ def test_scan_java_packages_click(mocker):
         "Java Packages Error"
     )
 
+def test_scan_dotnet_packages_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_dotnet_packages_paths", lambda: ["/dotnet"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_dotnet_packages_click(mocker):
-    mocker.patch("gptscan.get_dotnet_packages_paths", return_value=["/dotnet"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_dotnet_packages_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_dotnet_packages_paths,
         ".NET Packages",
@@ -290,11 +342,13 @@ def test_scan_dotnet_packages_click(mocker):
         ".NET Packages Error"
     )
 
+def test_scan_documents_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_documents_paths", lambda: ["/docs"])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_documents_click(mocker):
-    mocker.patch("gptscan.get_documents_paths", return_value=["/docs"])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_documents_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_documents_paths,
         "Documents",
@@ -302,11 +356,13 @@ def test_scan_documents_click(mocker):
         "Documents Error"
     )
 
+def test_scan_startup_items_click(monkeypatch):
+    monkeypatch.setattr(gptscan, "get_startup_item_commands", lambda: [("startup", b"cmd")])
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
 
-def test_scan_startup_items_click(mocker):
-    mocker.patch("gptscan.get_startup_item_commands", return_value=[("startup", b"cmd")])
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
     gptscan.scan_startup_items_click()
+
     mock_generic.assert_called_once_with(
         gptscan.get_startup_item_commands,
         "Startup Items",

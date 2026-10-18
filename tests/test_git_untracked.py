@@ -89,9 +89,10 @@ def test_get_git_untracked_files_real_git(tmp_path):
     assert os.path.abspath(tracked_file) not in result_paths
 
 
-def test_scan_git_untracked_click(mocker):
+def test_scan_git_untracked_click(monkeypatch):
     """Test that scan_git_untracked_click calls _generic_scan_click properly."""
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
     scan_git_untracked_click()
     assert mock_generic.call_count == 1
     args, kwargs = mock_generic.call_args
@@ -100,7 +101,7 @@ def test_scan_git_untracked_click(mocker):
     assert args[3] == "Git Untracked Files Error"
 
 
-def test_cli_git_untracked_flag(tmp_path, mocker):
+def test_cli_git_untracked_flag(tmp_path, monkeypatch):
     """Test running CLI with --git-untracked."""
     untracked = tmp_path / "untracked.py"
     untracked.write_text("print('test')")
@@ -111,8 +112,8 @@ def test_cli_git_untracked_flag(tmp_path, mocker):
         scan_called_targets.extend(scan_targets)
         return 0
 
-    mocker.patch("gptscan.run_cli", mock_run_cli)
-    mocker.patch("gptscan.get_git_untracked_files", return_value=[str(untracked)])
+    monkeypatch.setattr(gptscan, "run_cli", mock_run_cli)
+    monkeypatch.setattr(gptscan, "get_git_untracked_files", lambda *a, **kw: [str(untracked)])
 
     with patch("sys.argv", ["gptscan.py", str(tmp_path), "--git-untracked", "--cli"]):
         gptscan.main()
@@ -120,7 +121,7 @@ def test_cli_git_untracked_flag(tmp_path, mocker):
     assert scan_called_targets == [str(untracked)]
 
 
-def test_cli_git_untracked_auto_cli(tmp_path, mocker):
+def test_cli_git_untracked_auto_cli(tmp_path, monkeypatch):
     """Test that --git-untracked triggers CLI mode without explicit --cli flag."""
     untracked = tmp_path / "untracked.py"
     untracked.write_text("print('test')")
@@ -131,8 +132,8 @@ def test_cli_git_untracked_auto_cli(tmp_path, mocker):
         scan_called.extend(scan_targets)
         return 0
 
-    mocker.patch("gptscan.run_cli", mock_run_cli)
-    mocker.patch("gptscan.get_git_untracked_files", return_value=[str(untracked)])
+    monkeypatch.setattr(gptscan, "run_cli", mock_run_cli)
+    monkeypatch.setattr(gptscan, "get_git_untracked_files", lambda *a, **kw: [str(untracked)])
 
     with patch("sys.argv", ["gptscan.py", "--git-untracked"]):
         gptscan.main()
