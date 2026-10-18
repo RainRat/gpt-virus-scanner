@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
 from gptscan import Config, scan_files
+import gptscan
 import os
 
 def test_is_supported_file_extension():
@@ -101,10 +102,10 @@ def test_is_supported_file_shebang(tmp_path):
 def test_is_supported_file_explicit():
     assert Config.is_supported_file(Path("anything.txt"), is_explicit=True) is True
 
-def test_scan_files_detection_logic(tmp_path, mocker):
+def test_scan_files_detection_logic(tmp_path, monkeypatch):
     # Mock model and tensorflow to avoid loading them
-    mocker.patch('gptscan.get_model')
-    mocker.patch('gptscan._tf_module')
+    monkeypatch.setattr(gptscan, "get_model", lambda: None)
+    monkeypatch.setattr(gptscan, "_tf_module", None)
 
     # Setup files
     script_no_ext = tmp_path / "shebang_script"

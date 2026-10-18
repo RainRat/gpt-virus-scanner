@@ -93,9 +93,10 @@ def test_get_git_staged_files_real_git(tmp_path):
     assert os.path.abspath(untracked_file) not in result_paths
 
 
-def test_scan_git_staged_click(mocker):
+def test_scan_git_staged_click(monkeypatch):
     """Test that scan_git_staged_click calls _generic_scan_click properly."""
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
     scan_git_staged_click()
     assert mock_generic.call_count == 1
     args, kwargs = mock_generic.call_args
@@ -104,7 +105,7 @@ def test_scan_git_staged_click(mocker):
     assert args[3] == "Git Staged Files Error"
 
 
-def test_cli_git_staged_flag(tmp_path, mocker):
+def test_cli_git_staged_flag(tmp_path, monkeypatch):
     """Test running CLI with --git-staged."""
     staged = tmp_path / "staged.py"
     staged.write_text("print('test')")
@@ -115,8 +116,8 @@ def test_cli_git_staged_flag(tmp_path, mocker):
         scan_called_targets.extend(scan_targets)
         return 0
 
-    mocker.patch("gptscan.run_cli", mock_run_cli)
-    mocker.patch("gptscan.get_git_staged_files", return_value=[str(staged)])
+    monkeypatch.setattr(gptscan, "run_cli", mock_run_cli)
+    monkeypatch.setattr(gptscan, "get_git_staged_files", lambda *a, **kw: [str(staged)])
 
     with patch("sys.argv", ["gptscan.py", str(tmp_path), "--git-staged", "--cli"]):
         gptscan.main()

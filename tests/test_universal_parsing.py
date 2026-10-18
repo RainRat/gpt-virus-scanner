@@ -181,14 +181,14 @@ def test_unpack_corrupted_zip_exception_handling():
     assert results == [("corrupt.zip", corrupted_zip_content)]
 
 
-def test_unpack_corrupted_tar_exception_handling(mocker):
-    mocker.patch("tarfile.is_tarfile", side_effect=OSError("Disk read error"))
+def test_unpack_corrupted_tar_exception_handling(monkeypatch):
+    monkeypatch.setattr(tarfile, "is_tarfile", MagicMock(side_effect=OSError("Disk read error")))
     results = list(unpack_content("corrupt.bin", b"not_a_valid_tar_file"))
     assert results == []
 
 
-def test_unpack_tar_open_exception_handling(mocker):
+def test_unpack_tar_open_exception_handling(monkeypatch):
     dummy_tar_header = b"\x00" * 257 + b"ustar" + b"\x00" * 100
-    mocker.patch("tarfile.open", side_effect=tarfile.ReadError("Corrupted archive"))
+    monkeypatch.setattr(tarfile, "open", MagicMock(side_effect=tarfile.ReadError("Corrupted archive")))
     results = list(unpack_content("header.tar", dummy_tar_header))
     assert results == [("header.tar", dummy_tar_header)]

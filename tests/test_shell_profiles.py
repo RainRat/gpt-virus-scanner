@@ -30,10 +30,14 @@ def test_get_shell_profile_paths_windows(mock_exists, mock_check_output, tmp_pat
         paths = gptscan.get_shell_profile_paths()
         assert "C:\\Users\\user\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1" in paths
 
-def test_scan_shell_profiles_click_success(mocker):
-    mock_get_paths = mocker.patch("gptscan.get_shell_profile_paths", return_value=["/fake/.bashrc"])
-    mock_set_target = mocker.patch("gptscan._set_scan_target")
-    mock_button_click = mocker.patch("gptscan.button_click")
+def test_scan_shell_profiles_click_success(monkeypatch):
+    mock_get_paths = MagicMock(return_value=["/fake/.bashrc"])
+    mock_set_target = MagicMock()
+    mock_button_click = MagicMock()
+
+    monkeypatch.setattr(gptscan, "get_shell_profile_paths", mock_get_paths)
+    monkeypatch.setattr(gptscan, "_set_scan_target", mock_set_target)
+    monkeypatch.setattr(gptscan, "button_click", mock_button_click)
 
     gptscan.scan_shell_profiles_click()
 
@@ -41,9 +45,12 @@ def test_scan_shell_profiles_click_success(mocker):
     mock_set_target.assert_called_once_with(["/fake/.bashrc"])
     mock_button_click.assert_called_once()
 
-def test_scan_shell_profiles_click_no_files(mocker):
-    mock_get_paths = mocker.patch("gptscan.get_shell_profile_paths", return_value=[])
-    mock_messagebox = mocker.patch("tkinter.messagebox.showinfo")
+def test_scan_shell_profiles_click_no_files(monkeypatch):
+    mock_get_paths = MagicMock(return_value=[])
+    mock_messagebox = MagicMock()
+
+    monkeypatch.setattr(gptscan, "get_shell_profile_paths", mock_get_paths)
+    monkeypatch.setattr("tkinter.messagebox.showinfo", mock_messagebox)
 
     gptscan.scan_shell_profiles_click()
 

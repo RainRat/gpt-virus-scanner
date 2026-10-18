@@ -91,9 +91,10 @@ def test_get_git_ignored_files_real_git(tmp_path):
     assert os.path.abspath(tracked_file) not in result_paths
 
 
-def test_scan_git_ignored_click(mocker):
+def test_scan_git_ignored_click(monkeypatch):
     """Test that scan_git_ignored_click calls _generic_scan_click properly."""
-    mock_generic = mocker.patch("gptscan._generic_scan_click")
+    mock_generic = MagicMock()
+    monkeypatch.setattr(gptscan, "_generic_scan_click", mock_generic)
     scan_git_ignored_click()
     assert mock_generic.call_count == 1
     args, kwargs = mock_generic.call_args
@@ -102,7 +103,7 @@ def test_scan_git_ignored_click(mocker):
     assert args[3] == "Git Ignored Files Error"
 
 
-def test_cli_git_ignored_flag(tmp_path, mocker):
+def test_cli_git_ignored_flag(tmp_path, monkeypatch):
     """Test running CLI with --git-ignored."""
     ignored = tmp_path / "ignored.py"
     ignored.write_text("print('test')")
@@ -113,8 +114,8 @@ def test_cli_git_ignored_flag(tmp_path, mocker):
         scan_called_targets.extend(scan_targets)
         return 0
 
-    mocker.patch("gptscan.run_cli", mock_run_cli)
-    mocker.patch("gptscan.get_git_ignored_files", return_value=[str(ignored)])
+    monkeypatch.setattr(gptscan, "run_cli", mock_run_cli)
+    monkeypatch.setattr(gptscan, "get_git_ignored_files", lambda *a, **kw: [str(ignored)])
 
     with patch("sys.argv", ["gptscan.py", str(tmp_path), "--git-ignored", "--cli"]):
         gptscan.main()
@@ -122,7 +123,7 @@ def test_cli_git_ignored_flag(tmp_path, mocker):
     assert scan_called_targets == [str(ignored)]
 
 
-def test_cli_git_ignored_auto_cli(tmp_path, mocker):
+def test_cli_git_ignored_auto_cli(tmp_path, monkeypatch):
     """Test that --git-ignored triggers CLI mode without explicit --cli flag."""
     ignored = tmp_path / "ignored.py"
     ignored.write_text("print('test')")
@@ -133,8 +134,8 @@ def test_cli_git_ignored_auto_cli(tmp_path, mocker):
         scan_called.extend(scan_targets)
         return 0
 
-    mocker.patch("gptscan.run_cli", mock_run_cli)
-    mocker.patch("gptscan.get_git_ignored_files", return_value=[str(ignored)])
+    monkeypatch.setattr(gptscan, "run_cli", mock_run_cli)
+    monkeypatch.setattr(gptscan, "get_git_ignored_files", lambda *a, **kw: [str(ignored)])
 
     with patch("sys.argv", ["gptscan.py", "--git-ignored"]):
         gptscan.main()
