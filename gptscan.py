@@ -10790,6 +10790,11 @@ def main():
         help="Only scan these file types (for example: 'py,js')."
     )
     scan_group.add_argument(
+        '--extensions-file',
+        type=str,
+        help='Read a list of file extensions to scan from a file.'
+    )
+    scan_group.add_argument(
         '-i', '--include',
         nargs='*',
         help="Only scan files or folders matching these patterns (for example: '*.py' 'src/*')."
@@ -11258,12 +11263,35 @@ def main():
         Config.model_name = 'llama3.2'
 
     # Extensions & Scan flags
-    ext_val = args.extensions if args.extensions is not None else config_opts.get('extensions')
+    ext_file_target = getattr(args, 'extensions_file', None) or config_opts.get('extensions_file')
+    ext_file_list = []
+    if ext_file_target:
+        try:
+            with open(ext_file_target, "r", encoding="utf-8", errors="replace") as ef:
+                for line in ef:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        parts = line.split('#', 1)
+                        content = parts[0].strip()
+                        if content:
+                            for item in content.split(','):
+                                ext_item = item.strip()
+                                if ext_item:
+                                    ext_file_list.append(ext_item)
+        except OSError as e:
+            parser.error(f"Could not read extensions file '{ext_file_target}': {e}")
+
+    ext_val = args.extensions if getattr(args, 'extensions', None) is not None else config_opts.get('extensions')
+    extension_list = []
+    if ext_file_list:
+        extension_list.extend(ext_file_list)
     if ext_val:
         if isinstance(ext_val, list):
-            extension_list = [str(ext).strip() for ext in ext_val if str(ext).strip()]
+            extension_list.extend([str(ext).strip() for ext in ext_val if str(ext).strip()])
         else:
-            extension_list = [ext.strip() for ext in str(ext_val).split(',') if ext.strip()]
+            extension_list.extend([ext.strip() for ext in str(ext_val).split(',') if ext.strip()])
+
+    if extension_list:
         Config.set_extensions(extension_list, missing=False)
 
     if args.all_files or config_opts.get('all_files'):
