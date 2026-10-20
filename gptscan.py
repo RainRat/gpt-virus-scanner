@@ -4540,6 +4540,21 @@ def manage_exclusions() -> None:
         except Exception as e:
             messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
 
+    def clear_all():
+        if not Config.ignore_patterns:
+            messagebox.showinfo("Manage Exclusions", "There are no exclusion patterns to clear.", parent=manage_win)
+            return
+
+        if not messagebox.askyesno("Confirm Clear All", f"Clear all {len(Config.ignore_patterns)} exclusion pattern(s)?", parent=manage_win):
+            return
+
+        try:
+            remove_from_ignore_file(set(Config.ignore_patterns))
+            refresh_list()
+            _apply_filter()
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not update .gptscanignore: {e}", parent=manage_win)
+
     def select_all(event=None):
         ignore_listbox.select_set(0, tk.END)
         return "break"
@@ -4558,6 +4573,7 @@ def manage_exclusions() -> None:
     ttk.Button(btn_frame, text="Add File...", command=add_file).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Add Folder...", command=add_folder).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5, ipady=5)
+    ttk.Button(btn_frame, text="Clear All", command=clear_all).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT, ipady=5)
 
     center_window(manage_win, root)

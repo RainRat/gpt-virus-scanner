@@ -374,6 +374,55 @@ def test_manage_exclusions_initial_focus_and_selection(mock_gui_env):
     assert getattr(lb, 'activated', None) == 0
     assert getattr(lb, 'seen', None) == 0
 
+def test_manage_exclusions_clear_all_confirm(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = ["p1", "p2", "p3"]
+    mock_mb.askyesno.return_value = True
+
+    manage_exclusions()
+    clear_btn, clear_cmd = captured['buttons']['Clear All']
+    clear_cmd()
+
+    assert len(Config.ignore_patterns) == 0
+    assert captured['listbox'].items == []
+    assert mock_mb.askyesno.called
+    assert gptscan._apply_filter.called
+
+def test_manage_exclusions_clear_all_cancel(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = ["p1", "p2"]
+    mock_mb.askyesno.return_value = False
+
+    manage_exclusions()
+    clear_btn, clear_cmd = captured['buttons']['Clear All']
+    clear_cmd()
+
+    assert Config.ignore_patterns == ["p1", "p2"]
+    assert mock_mb.askyesno.called
+
+def test_manage_exclusions_clear_all_empty(mock_gui_env):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = []
+
+    manage_exclusions()
+    clear_btn, clear_cmd = captured['buttons']['Clear All']
+    clear_cmd()
+
+    mock_mb.showinfo.assert_called_with("Manage Exclusions", "There are no exclusion patterns to clear.", parent=mock_top)
+    mock_mb.askyesno.assert_not_called()
+
+def test_manage_exclusions_clear_all_error(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
+    Config.ignore_patterns = ["p1"]
+    mock_mb.askyesno.return_value = True
+    monkeypatch.setattr(gptscan, "remove_from_ignore_file", MagicMock(side_effect=Exception("File Error")))
+
+    manage_exclusions()
+    clear_btn, clear_cmd = captured['buttons']['Clear All']
+    clear_cmd()
+
+    mock_mb.showerror.assert_called_with("Error", "Could not update .gptscanignore: File Error", parent=mock_top)
+
 def test_manage_exclusions_remove_activates_and_scrolls(mock_gui_env):
     captured, mock_sd, mock_fd, mock_mb, mock_top = mock_gui_env
     Config.ignore_patterns = ["p1", "p2", "p3"]
