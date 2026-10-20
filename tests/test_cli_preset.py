@@ -65,6 +65,38 @@ def test_load_preset_config_errors():
             gptscan.load_preset_config("invalid_top_level.json")
 
 
+def test_load_preset_config_invalid_json(tmp_path):
+    preset_file = tmp_path / "invalid.json"
+    preset_file.write_text("{invalid json:", encoding="utf-8")
+    with pytest.raises(ValueError, match="Failed to parse JSON preset file"):
+        gptscan.load_preset_config(str(preset_file))
+
+
+def test_load_preset_config_invalid_yaml(tmp_path):
+    preset_file = tmp_path / "invalid.yaml"
+    preset_file.write_text("threshold: [unclosed list", encoding="utf-8")
+    with pytest.raises(ValueError, match="Failed to parse YAML preset file"):
+        gptscan.load_preset_config(str(preset_file))
+
+
+def test_load_preset_config_yaml_missing_pyyaml(tmp_path, monkeypatch):
+    import builtins
+    preset_file = tmp_path / "custom.yaml"
+    preset_file.write_text("threshold: 50", encoding="utf-8")
+
+    orig_import = builtins.__import__
+
+    def mock_import(name, *args, **kwargs):
+        if name == "yaml":
+            raise ImportError("No module named 'yaml'")
+        return orig_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", mock_import)
+
+    with pytest.raises(ValueError, match="PyYAML package is required"):
+        gptscan.load_preset_config(str(preset_file))
+
+
 def test_cli_preset_builtin_expansion(monkeypatch):
     test_args = ["gptscan.py", "--cli", "--preset", "quick", "--dry-run", "."]
     monkeypatch.setattr(sys, "argv", test_args)
