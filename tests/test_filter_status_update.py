@@ -40,7 +40,7 @@ def test_apply_filter_updates_status(monkeypatch):
     # 3. Test filter with no results
     mock_filter_var.get.return_value = "nothing"
     gptscan._apply_filter()
-    mock_status_label.config.assert_any_call(text="Showing 0 of 2 results matching 'nothing'")
+    mock_status_label.config.assert_any_call(text="Showing 0 of 2 results matching 'nothing' (press Esc to clear)")
 
 def test_finish_scan_updates_summary_variable(monkeypatch):
     """Test that finish_scan_state updates the _last_scan_summary global."""
