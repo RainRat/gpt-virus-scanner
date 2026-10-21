@@ -3338,6 +3338,8 @@ def _apply_filter(*args: Any) -> None:
             msg = f"Showing {match_count} of {total_count} results"
             if query:
                 msg += f" matching '{query}'"
+            if match_count == 0 and total_count > 0 and query:
+                msg += " (press Esc to clear)"
             update_status(msg)
         elif _last_scan_summary:
             update_status(_last_scan_summary)
