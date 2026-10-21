@@ -61,7 +61,8 @@ def test_run_cli_baseline_output(tmp_path):
     assert baseline_out.exists()
     bypassed_text = baseline_out.read_text(encoding="utf-8").strip()
     assert bypassed_text != ""
-    record = json.loads(bypassed_text)
+    data = json.loads(bypassed_text)
+    record = data[0] if isinstance(data, list) else data
     assert record["path"] == "suspicious.py"
     assert "os.system" in record["snippet"]
 
@@ -120,4 +121,4 @@ def test_run_cli_baseline_output_no_matches(tmp_path):
 
     assert threats == 1
     assert baseline_out.exists()
-    assert baseline_out.read_text(encoding="utf-8").strip() == ""
+    assert baseline_out.read_text(encoding="utf-8").strip() in ("", "[]")

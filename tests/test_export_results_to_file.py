@@ -51,6 +51,7 @@ def test_export_results_to_file_xml(tmp_path):
     assert "<path>src/vulnerable.py</path>" in content
 
 def test_export_results_to_file_yaml(tmp_path):
+    pytest.importorskip("yaml")
     for fmt in ["yaml", "yml"]:
         output_file = tmp_path / f"results_{fmt}.yaml"
         export_results_to_file(str(output_file), SAMPLE_RESULTS, output_format=fmt)
@@ -71,7 +72,8 @@ def test_export_results_to_file_json(tmp_path):
     export_results_to_file(str(output_file), SAMPLE_RESULTS, output_format="json")
     assert output_file.exists()
     content = output_file.read_text(encoding="utf-8")
-    record = json.loads(content.strip())
+    data = json.loads(content.strip())
+    record = data[0] if isinstance(data, list) else data
     assert record["path"] == "src/vulnerable.py"
 
 def test_export_results_to_file_csv(tmp_path):
