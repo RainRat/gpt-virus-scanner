@@ -6969,6 +6969,36 @@ def generate_yaml(results: List[Dict[str, Any]]) -> str:
     return yaml.safe_dump(results, default_flow_style=False, sort_keys=False)
 
 
+def generate_compact(results: List[Dict[str, Any]]) -> str:
+    """Generate a GNU/compiler-style single-line compact report from scan results.
+
+    Format: filepath:line: [threat%] description
+
+    Args:
+        results: List of standardized result dictionaries.
+
+    Returns:
+        The compact single-line report string.
+    """
+    lines = []
+    for r in results:
+        path = str(r.get("path", "unknown"))
+        line = r.get("line", 1)
+        try:
+            line_num = int(line) if line != "-" else 1
+        except (ValueError, TypeError):
+            line_num = 1
+
+        threat = str(r.get("gpt_conf", "") or r.get("own_conf", "") or "0%").strip()
+        if threat and not threat.endswith("%"):
+            threat = f"{threat}%"
+
+        desc = str(r.get("end-user_desc", "") or r.get("admin_desc", "") or r.get("snippet", "") or "Suspicious code").strip()
+        desc = " ".join(desc.splitlines())  # Ensure single line per result
+        lines.append(f"{path}:{line_num}: [{threat}] {desc}")
+    return "\n".join(lines)
+
+
 def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output_format: str = 'csv') -> None:
     """Helper function to save scan finding dicts to a file in the specified format."""
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
@@ -6987,6 +7017,8 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
             print(generate_junit(results), file=out_stream)
         elif fmt in ('yaml', 'yml'):
             print(generate_yaml(results), file=out_stream)
+        elif fmt in ('compact', 'gnu'):
+            print(generate_compact(results), file=out_stream)
         elif fmt == 'report':
             report = generate_console_report(results, use_color=False)
             print(report, file=out_stream)
@@ -7630,6 +7662,41 @@ def parse_junit_content(content: str) -> List[Dict[str, Any]]:
         raise ValueError(f"Failed to parse JUnit XML content: {e}")
 
 
+def parse_compact_content(content: str) -> List[Dict[str, Any]]:
+    """Parse scan findings from GNU/compiler-style single-line compact formatted string.
+
+    Format: filepath:line: [threat%] description
+
+    Args:
+        content: The compact formatted report string.
+
+    Returns:
+        A list of result dictionaries.
+    """
+    results = []
+    pattern = re.compile(r'^(.*?):(\d+):\s*(?:\[(\d+(?:\.\d+)?%?)\]\s*)?(.*)$')
+    for line in content.splitlines():
+        line_str = line.strip()
+        if not line_str:
+            continue
+        match = pattern.match(line_str)
+        if match:
+            path, line_num, threat, desc = match.groups()
+            threat_str = threat if threat else "0%"
+            if threat_str and not threat_str.endswith("%"):
+                threat_str = f"{threat_str}%"
+            results.append({
+                "path": path.strip(),
+                "line": int(line_num),
+                "own_conf": threat_str,
+                "gpt_conf": threat_str,
+                "admin_desc": desc.strip(),
+                "end-user_desc": desc.strip(),
+                "snippet": desc.strip()
+            })
+    return results
+
+
 def parse_yaml_content(content: str) -> List[Dict[str, Any]]:
     """Parse scan findings from a YAML string.
 
@@ -7862,7 +7929,12 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
                 data_to_import = [parsed_json]
         except json.JSONDecodeError:
             # Fallback to NDJSON
-            data_to_import = [json.loads(line) for line in content.splitlines() if line.strip()]
+            ndjson_items = []
+            for line in content.splitlines():
+                line_str = line.strip()
+                if line_str:
+                    ndjson_items.append(json.loads(line_str))
+            data_to_import = ndjson_items
     elif ext == '.tsv' or (ext != '.csv' and content.splitlines() and '\t' in content.splitlines()[0] and '|' not in content.splitlines()[0]):
         # TSV format
         f = io.StringIO(content)
@@ -7877,8 +7949,12 @@ def parse_report_content(content: str, filename_hint: Optional[str] = None) -> L
         # Markdown format
         data_to_import = parse_markdown_content(content)
     elif ext in ('.txt', '.log') or '--- GPT SCAN - CONSOLE TRIAGE REPORT' in content:
-        # Triage Report format
-        data_to_import = parse_triage_report(content)
+        # Check for compact/GNU format (filepath:line: [threat%])
+        if re.search(r'^.*:\d+:\s*\[\d+%?\]', content, re.MULTILINE):
+            data_to_import = parse_compact_content(content)
+        else:
+            # Triage Report format
+            data_to_import = parse_triage_report(content)
     elif ext in ('.yaml', '.yml') or (content.strip().startswith('-') and 'path:' in content):
         # YAML report format
         data_to_import = parse_yaml_content(content)
@@ -11121,8 +11197,8 @@ def main():
     output_group.add_argument(
         '-f', '--format',
         type=str.lower,
-        choices=['json', 'ndjson', 'jsonl', 'csv', 'tsv', 'sarif', 'html', 'md', 'markdown', 'xml', 'junit', 'yaml', 'yml', 'report'],
-        help='Set output format (json, ndjson, csv, tsv, sarif, html, markdown, xml, junit, yaml, report).'
+        choices=['json', 'ndjson', 'jsonl', 'csv', 'tsv', 'sarif', 'html', 'md', 'markdown', 'xml', 'junit', 'yaml', 'yml', 'compact', 'gnu', 'report'],
+        help='Set output format (json, ndjson, csv, tsv, sarif, html, markdown, xml, junit, yaml, compact, report).'
     )
     output_group.add_argument('-j', '--json', action='store_true', help='Print or save scan results in JSON format.')
     output_group.add_argument('--ndjson', '--jsonl', action='store_true', help='Print or save scan results in NDJSON (JSON Lines) format.')
@@ -11134,6 +11210,7 @@ def main():
     output_group.add_argument('--xml', action='store_true', help='Create an XML report.')
     output_group.add_argument('--junit', action='store_true', help='Save scan results in JUnit XML format.')
     output_group.add_argument('--yaml', '--yml', action='store_true', dest='yaml', help='Create a YAML report.')
+    output_group.add_argument('--compact', '--gnu', action='store_true', dest='compact', help='Create a single-line GNU/compiler error style report.')
     output_group.add_argument('--report', action='store_true', help='Print a detailed triage report to the terminal.')
     output_group.add_argument(
         '--top', '--limit',
@@ -11474,6 +11551,8 @@ def main():
                 'junit': 'junit',
                 'yaml': 'yaml',
                 'yml': 'yaml',
+                'compact': 'compact',
+                'gnu': 'compact',
                 'report': 'report',
             }
             output_format = fmt_map.get(fmt_lower, fmt_lower)
@@ -11497,6 +11576,8 @@ def main():
             output_format = 'junit'
         elif args.yaml:
             output_format = 'yaml'
+        elif getattr(args, 'compact', False):
+            output_format = 'compact'
         elif args.report:
             output_format = 'report'
         elif args.output:
