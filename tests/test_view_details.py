@@ -343,6 +343,9 @@ def test_view_details_analyze_now(mock_view_details_env, monkeypatch):
     assert item1_vals[2] == "New Admin Info"
     assert item1_vals[3] == "New User Info"
 
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "AI analysis complete."
+
 def test_view_details_persistent_full_source(mock_view_details_env, monkeypatch):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     raw1 = ["file1.py", "10%", "", "", "", "snippet1", 1]
@@ -613,6 +616,9 @@ def test_view_details_analyze_now_failed(mock_view_details_env, monkeypatch):
         "AI Analysis Failed", "Could not obtain a response from the AI."
     )
     analyze_btn_mock.config.assert_any_call(state="normal", text="Analyze with AI")
+
+    status_bar = captured['labels'][0]
+    assert status_bar.config_data.get('text') == "AI analysis failed."
 
 
 def test_view_details_analyze_now_exception(mock_view_details_env, monkeypatch):
