@@ -8661,6 +8661,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
             return
 
         analyze_btn.config(state='disabled', text="Analyzing...")
+        set_local_status(f"Analyzing {os.path.basename(path_entry.get())} with AI...")
 
         def run_thread(target_id):
             try:
@@ -8694,9 +8695,12 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
                     # Only refresh the details view if the user is still viewing the same item
                     if current_item_id == target_id:
                         enqueue_ui_update(refresh_content, target_id)
+                    enqueue_ui_update(set_local_status, "AI analysis complete.", True)
                 else:
+                    enqueue_ui_update(set_local_status, "AI analysis failed.", True)
                     enqueue_ui_update(messagebox.showerror, "AI Analysis Failed", "Could not obtain a response from the AI.")
             except Exception as e:
+                enqueue_ui_update(set_local_status, "AI analysis failed.", True)
                 enqueue_ui_update(messagebox.showerror, "Error", f"An unexpected error occurred: {e}")
             finally:
                 enqueue_ui_update(lambda: analyze_btn.config(state='normal', text="Analyze with AI"))
