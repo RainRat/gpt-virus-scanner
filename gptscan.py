@@ -969,7 +969,7 @@ def _generic_scan_click(get_data_func: Callable[[], Any], title: str, failure_ms
                 button_click()
         else:
             messagebox.showinfo(title, failure_msg)
-    except Exception as e:
+    except (OSError, RuntimeError, tk.TclError, ValueError, TypeError) as e:
         messagebox.showwarning(error_title, f"Could not scan {title.lower()}: {e}")
 
 
@@ -985,7 +985,7 @@ def _get_initial_dir() -> Optional[str]:
         try:
             val = textbox.get()
             path_str = val.strip()
-        except Exception:
+        except (AttributeError, RuntimeError, tk.TclError):
             pass
 
     if not path_str:
@@ -1009,7 +1009,7 @@ def _get_initial_dir() -> Optional[str]:
         if p.exists():
             return str(p if p.is_dir() else p.parent)
         return None
-    except Exception:
+    except (ValueError, TypeError, OSError, RuntimeError):
         return None
 
 
