@@ -431,6 +431,7 @@ class Config:
     api_base: Optional[str] = None
     ignore_patterns: List[str] = []
     THRESHOLD: int = 50
+    MAX_THRESHOLD: int = 100
     last_path: str = ""
     recent_paths: List[str] = []
     deep_scan: bool = False
@@ -550,6 +551,7 @@ class Config:
             "model_name": cls.model_name,
             "api_base": cls.api_base,
             "threshold": cls.THRESHOLD,
+            "max_threshold": cls.MAX_THRESHOLD,
             "max_file_size": cls.MAX_FILE_SIZE,
             "max_source_view_size": cls.MAX_SOURCE_VIEW_SIZE,
             "recent_paths": cls.recent_paths,
@@ -578,6 +580,7 @@ class Config:
                 cls.model_name = settings.get("model_name", cls.model_name)
                 cls.api_base = settings.get("api_base", cls.api_base)
                 cls.THRESHOLD = cls._get_setting_int(settings, "threshold", cls.THRESHOLD)
+                cls.MAX_THRESHOLD = cls._get_setting_int(settings, "max_threshold", cls.MAX_THRESHOLD)
                 cls.MAX_FILE_SIZE = cls._get_setting_int(settings, "max_file_size", cls.MAX_FILE_SIZE)
                 cls.MAX_SOURCE_VIEW_SIZE = cls._get_setting_int(settings, "max_source_view_size", cls.MAX_SOURCE_VIEW_SIZE)
 
@@ -7005,7 +7008,7 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
                 writer.writerow([record.get(k, '') for k in keys])
 
 
-def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, stats_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None, include_patterns: Optional[List[str]] = None) -> int:
+def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt: bool, rate_limit: int, output_format: str = 'csv', dry_run: bool = False, exclude_patterns: Optional[List[str]] = None, fail_threshold: Optional[int] = None, output_file: Optional[str] = None, extra_snippets: Optional[List[Tuple[str, bytes]]] = None, import_file: Optional[str] = None, modified_since: Optional[float] = None, baseline_file: Optional[str] = None, baseline_output_file: Optional[str] = None, quiet: bool = False, top_limit: Optional[int] = None, count_only: bool = False, summary_only: bool = False, stats_only: bool = False, sort_by: Optional[str] = None, paths_only: bool = False, files_without_matches: bool = False, reverse_sort: bool = False, max_depth: Optional[int] = None, include_patterns: Optional[List[str]] = None, max_threat: Optional[int] = None) -> int:
     """Run scans and show results in the terminal or save them to a file.
 
     Args:
@@ -7035,6 +7038,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
         paths_only: Whether to print only unique file paths of suspicious findings line-by-line.
         files_without_matches: Whether to print only unique file paths of clean scanned files line-by-line.
         reverse_sort: Whether to reverse the sort order of scan results.
+        max_threat: Upper bound threat level score threshold (0-100) to include in results.
 
     Returns:
         The number of suspicious files detected.
@@ -7042,6 +7046,7 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
 
     out_stream = open(output_file, 'w', encoding='utf-8') if output_file else sys.stdout
+    effective_max_threat = max_threat if max_threat is not None else getattr(Config, 'MAX_THRESHOLD', 100)
 
     if output_format in ('csv', 'tsv') and not count_only and not summary_only and not stats_only and not paths_only and not files_without_matches:
         writer = csv.writer(out_stream, delimiter='\t' if output_format == 'tsv' else ',')
@@ -7117,9 +7122,9 @@ def run_cli(targets: Union[str, List[str]], deep: bool, show_all: bool, use_gpt:
             # Determine if this finding counts as a threat based on the threshold
             is_threat = False
             if fail_threshold is not None:
-                if conf >= fail_threshold:
+                if fail_threshold <= conf <= effective_max_threat:
                     is_threat = True
-            elif conf >= Config.THRESHOLD:
+            elif Config.THRESHOLD <= conf <= effective_max_threat:
                 is_threat = True
 
             if is_threat:
@@ -9808,6 +9813,8 @@ def copy_cli_command(event: Optional[tk.Event] = None) -> None:
     # Threshold
     if Config.THRESHOLD != 50:
         cmd_parts.extend(["--threshold", str(Config.THRESHOLD)])
+    if getattr(Config, 'MAX_THRESHOLD', 100) < 100:
+        cmd_parts.extend(["--max-threat", str(Config.MAX_THRESHOLD)])
 
     # Extensions
     base_exts = getattr(Config, 'base_extensions_set', set(Config.DEFAULT_EXTENSIONS))
@@ -10712,6 +10719,8 @@ def main():
                 norm_key = p_key.replace("-", "_").lower()
                 if norm_key in ("threshold", "min_threat", "min_threat_level"):
                     preset_defaults["threshold"] = int(p_val)
+                elif norm_key in ("max_threat", "max_threat_level"):
+                    preset_defaults["max_threat"] = int(p_val)
                 elif norm_key == "fail_threshold":
                     preset_defaults["fail_threshold"] = int(p_val)
                 elif norm_key == "deep":
@@ -11191,6 +11200,12 @@ def main():
         dest='min_threat',
         help='Set the minimum threat level (0-100) to include in results.'
     )
+    output_group.add_argument(
+        '--max-threat', '--max-threat-level',
+        type=int,
+        dest='max_threat',
+        help='Set the maximum threat level (0-100) to include in results.'
+    )
 
     if preset_defaults:
         parser.set_defaults(**preset_defaults)
@@ -11307,8 +11322,12 @@ def main():
             )
 
     if '--min-threat' in sys.argv or '--min-threat-level' in sys.argv:
+        if args.min_threat is not None and not (0 <= args.min_threat <= 100):
+            parser.error("Value for --min-threat must be between 0 and 100.")
         Config.THRESHOLD = args.min_threat
     elif '-t' in sys.argv or '--threshold' in sys.argv:
+        if args.threshold is not None and not (0 <= args.threshold <= 100):
+            parser.error("Value for --threshold must be between 0 and 100.")
         Config.THRESHOLD = args.threshold
     elif 'threshold' in config_opts or 'min_threat' in config_opts:
         thresh_val = config_opts.get('min_threat', config_opts.get('threshold'))
@@ -11318,6 +11337,25 @@ def main():
             Config.THRESHOLD = args.threshold
     else:
         Config.THRESHOLD = args.threshold
+
+    if '--max-threat' in sys.argv or '--max-threat-level' in sys.argv:
+        if args.max_threat is not None:
+            if not (0 <= args.max_threat <= 100):
+                parser.error("Value for --max-threat / --max-threat-level must be between 0 and 100.")
+            Config.MAX_THRESHOLD = args.max_threat
+    elif 'max_threat' in config_opts or 'max_threat_level' in config_opts:
+        max_thresh_val = config_opts.get('max_threat', config_opts.get('max_threat_level'))
+        try:
+            val = int(max_thresh_val)
+            if not (0 <= val <= 100):
+                parser.error("Value for max_threat in config file must be between 0 and 100.")
+            Config.MAX_THRESHOLD = val
+        except (ValueError, TypeError):
+            pass
+    elif args.max_threat is not None:
+        if not (0 <= args.max_threat <= 100):
+            parser.error("Value for --max-threat / --max-threat-level must be between 0 and 100.")
+        Config.MAX_THRESHOLD = args.max_threat
 
     scan_target = args.target or args.path
 
@@ -11788,6 +11826,7 @@ def main():
             reverse_sort=args.reverse_sort,
             max_depth=args.max_depth,
             include_patterns=args.include,
+            max_threat=args.max_threat,
         )
         if args.fail_threshold is not None and threats > 0:
             sys.exit(1)
