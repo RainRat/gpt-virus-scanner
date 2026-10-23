@@ -104,3 +104,69 @@ def test_export_results_triage_report(monkeypatch, tmp_path):
     assert "Admin: Highly suspicious eval instruction." in content
     assert "User: This file evaluates untrusted input." in content
     assert "> eval(user_input)" in content
+
+
+def test_export_results_junit_extension(monkeypatch, tmp_path):
+    file_path = tmp_path / "export.junit"
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', lambda **k: str(file_path))
+
+    mock_tree = MagicMock()
+    monkeypatch.setattr(gptscan, "tree", mock_tree, raising=False)
+
+    sample_results = [
+        {
+            "path": "vulnerable.py",
+            "line": "42",
+            "own_conf": "90%",
+            "gpt_conf": "85%",
+            "admin_desc": "Command injection vulnerability",
+            "end-user_desc": "Executes shell commands",
+            "snippet": "os.system(cmd)"
+        }
+    ]
+    monkeypatch.setattr(gptscan, "_get_tree_results_as_dicts", lambda item_ids: sample_results)
+
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, "messagebox", mock_msgbox)
+
+    gptscan.export_results()
+
+    assert file_path.exists()
+    content = file_path.read_text(encoding="utf-8")
+    assert "<testsuites" in content
+    assert 'name="gptscan"' in content
+    assert "vulnerable.py" in content
+    assert "Command injection vulnerability" in content
+
+
+def test_export_results_junit_xml_filename(monkeypatch, tmp_path):
+    file_path = tmp_path / "report_junit_results.xml"
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', lambda **k: str(file_path))
+
+    mock_tree = MagicMock()
+    monkeypatch.setattr(gptscan, "tree", mock_tree, raising=False)
+
+    sample_results = [
+        {
+            "path": "auth.py",
+            "line": "15",
+            "own_conf": "80%",
+            "gpt_conf": "75%",
+            "admin_desc": "Hardcoded secret key",
+            "end-user_desc": "Secret leak",
+            "snippet": "SECRET = '12345'"
+        }
+    ]
+    monkeypatch.setattr(gptscan, "_get_tree_results_as_dicts", lambda item_ids: sample_results)
+
+    mock_msgbox = MagicMock()
+    monkeypatch.setattr(gptscan, "messagebox", mock_msgbox)
+
+    gptscan.export_results()
+
+    assert file_path.exists()
+    content = file_path.read_text(encoding="utf-8")
+    assert "<testsuites" in content
+    assert 'name="gptscan"' in content
+    assert "auth.py" in content
+    assert "Hardcoded secret key" in content

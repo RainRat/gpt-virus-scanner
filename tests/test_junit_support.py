@@ -212,3 +212,19 @@ def test_copy_as_junit_clipboard(monkeypatch):
     appended_text = mock_tree.clipboard_append.call_args[0][0]
     assert "<testsuites" in appended_text
     assert "Reverse shell" in appended_text
+
+
+def test_copy_as_junit_no_tree(monkeypatch):
+    monkeypatch.setattr(gptscan, "tree", None, raising=False)
+    gptscan.copy_as_junit()
+
+
+def test_copy_as_junit_empty_selection(monkeypatch):
+    mock_tree = MagicMock()
+    mock_tree.selection.return_value = []
+    monkeypatch.setattr(gptscan, "tree", mock_tree, raising=False)
+
+    gptscan.copy_as_junit()
+
+    mock_tree.clipboard_clear.assert_not_called()
+    mock_tree.clipboard_append.assert_not_called()
