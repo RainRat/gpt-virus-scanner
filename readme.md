@@ -33,7 +33,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 ### Prerequisites
 *   **Python:** Install **Python 3.9, 3.10, 3.11, or 3.12**.
 *   **Git:** Install **Git** to clone the repository and use Git integration features.
-*   **Data files:** The repository already includes the `scripts.h5` model and `task.txt` instruction files. Keep these in the project folder.
+*   **Data files:** The repository already includes the `scripts.h5` model, `task.txt` instruction file, and `extensions.txt` file. Keep these in the project folder.
 
 ### Setup
 1.  **Clone the repository:**
@@ -922,9 +922,9 @@ Here are solutions to common issues you might run into when installing or using 
     * *PowerShell:* `$env:OPENROUTER_API_KEY="your-key"`
   * **Ollama (Local AI):** Run Ollama on your computer first, then start the scanner with `--provider ollama` and `--model llama3.2`. If you use a custom Ollama port or host, specify it with `--api-base http://your-custom-address:port/v1`.
 
-### 5. Missing File Errors (e.g., scripts.h5 or task.txt not found)
+### 5. Missing File Errors (e.g., scripts.h5, task.txt, or extensions.txt not found)
 * **The Issue:** The scanner complains that a critical data file is missing.
-* **The Solution:** The scanner expects these files to be in the folder where the `gptscan.py` script resides. Make sure you do not delete `scripts.h5` or `task.txt`, and always run the command from the repository root directory.
+* **The Solution:** The scanner expects these files to be in the folder where the `gptscan.py` script resides. Make sure you do not delete `scripts.h5`, `task.txt`, or `extensions.txt`, and always run the command from the repository root directory.
 
 ## License
 This project is licensed under the GNU Lesser General Public License v2.1.
