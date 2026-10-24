@@ -284,6 +284,26 @@ def test_navigate_shortcuts_unfocused(mock_details_navigation_env):
     alt_left_handler(None)
     mock_tree.selection_set.assert_called_with("item1")
 
+    # Down Arrow (<Down>) shortcut direct call
+    down_handler = captured_bindings["<Down>"]
+    down_handler(None)
+    mock_tree.selection_set.assert_called_with("item2")
+
+    # Up Arrow (<Up>) shortcut direct call
+    up_handler = captured_bindings["<Up>"]
+    up_handler(None)
+    mock_tree.selection_set.assert_called_with("item1")
+
+    # PageDown (<Next>) shortcut direct call
+    next_handler = captured_bindings["<Next>"]
+    next_handler(None)
+    mock_tree.selection_set.assert_called_with("item2")
+
+    # PageUp (<Prior>) shortcut direct call
+    prior_handler = captured_bindings["<Prior>"]
+    prior_handler(None)
+    mock_tree.selection_set.assert_called_with("item1")
+
 
 def test_navigate_value_error_fallback(mock_details_navigation_env):
     mock_tree, mock_toplevel, captured_bindings, captured_buttons = (

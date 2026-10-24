@@ -4803,7 +4803,8 @@ def show_keyboard_shortcuts() -> None:
 
     details_shortcuts = [
         ("Esc", "Close Details Window"),
-        ("Left / Right", "Previous / Next Result (when input not active)"),
+        ("Left / Right / Up / Down", "Previous / Next Result (when input not active)"),
+        ("PageUp / PageDown", "Previous / Next Result (when input not active)"),
         ("Alt+Left / Right", "Force Previous / Next Result"),
         ("Alt+Up / Down", "Force Previous / Next Result"),
         (f"{mod}+PageUp / PageDown", "Force Previous / Next Result"),
@@ -9136,14 +9137,14 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     prev_btn = ttk.Button(nav_header, text="< Previous", command=on_prev)
     prev_btn.pack(side=tk.LEFT, padx=2, ipady=2)
-    bind_hover_message(prev_btn, "View the previous scan result. (Left Arrow, Alt+Left, or Ctrl+PageUp)", label=status_bar)
+    bind_hover_message(prev_btn, "View the previous scan result. (Up/Left Arrow, PageUp, Alt+Left, or Ctrl+PageUp)", label=status_bar)
 
     count_label = ttk.Label(nav_header, text="", font=('TkDefaultFont', 9, 'bold'))
     count_label.pack(side=tk.LEFT, padx=15)
 
     next_btn = ttk.Button(nav_header, text="Next >", command=on_next)
     next_btn.pack(side=tk.LEFT, padx=2, ipady=2)
-    bind_hover_message(next_btn, "View the next scan result. (Right Arrow, Alt+Right, or Ctrl+PageDown)", label=status_bar)
+    bind_hover_message(next_btn, "View the next scan result. (Down/Right Arrow, PageDown, Alt+Right, or Ctrl+PageDown)", label=status_bar)
 
     last_btn = ttk.Button(nav_header, text="Last >|", command=on_last)
     last_btn.pack(side=tk.LEFT, padx=(2, 0), ipady=2)
@@ -9151,6 +9152,10 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
 
     details_win.bind('<Left>', lambda e: on_prev())
     details_win.bind('<Right>', lambda e: on_next())
+    details_win.bind('<Up>', lambda e: on_prev())
+    details_win.bind('<Down>', lambda e: on_next())
+    details_win.bind('<Prior>', lambda e: on_prev())
+    details_win.bind('<Next>', lambda e: on_next())
     details_win.bind('<Alt-Left>', navigate_prev)
     details_win.bind('<Alt-Right>', navigate_next)
     details_win.bind('<Alt-Up>', navigate_prev)
