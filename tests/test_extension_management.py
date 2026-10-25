@@ -398,3 +398,63 @@ def test_manage_extensions_reset_save_error(mock_gui_env, monkeypatch):
 
     mock_mb.showerror.assert_called_once()
     assert "Save failed" in mock_mb.showerror.call_args[0][1]
+
+def test_manage_extensions_clear_all_confirmed(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py", ".js", ".bat"}
+    mock_mb.askyesno.return_value = True
+    monkeypatch.setattr(Config, "save_extensions", MagicMock())
+
+    manage_extensions()
+    lb = captured['listbox']
+
+    clear_btn, clear_cmd = captured['buttons']['Clear All']
+    clear_cmd()
+
+    assert len(Config.extensions_set) == 0
+    assert lb.items == []
+    Config.save_extensions.assert_called_once()
+
+def test_manage_extensions_clear_all_cancelled(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py", ".js"}
+    mock_mb.askyesno.return_value = False
+    monkeypatch.setattr(Config, "save_extensions", MagicMock())
+
+    manage_extensions()
+    lb = captured['listbox']
+
+    clear_btn, clear_cmd = captured['buttons']['Clear All']
+    clear_cmd()
+
+    assert len(Config.extensions_set) == 2
+    assert ".py" in Config.extensions_set
+    assert ".js" in Config.extensions_set
+    Config.save_extensions.assert_not_called()
+
+def test_manage_extensions_clear_all_empty(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = set()
+    monkeypatch.setattr(Config, "save_extensions", MagicMock())
+
+    manage_extensions()
+
+    clear_btn, clear_cmd = captured['buttons']['Clear All']
+    clear_cmd()
+
+    mock_mb.askyesno.assert_not_called()
+    Config.save_extensions.assert_not_called()
+
+def test_manage_extensions_clear_all_save_error(mock_gui_env, monkeypatch):
+    captured, mock_sd, mock_mb, mock_top = mock_gui_env
+    Config.extensions_set = {".py", ".js"}
+    mock_mb.askyesno.return_value = True
+    monkeypatch.setattr(Config, "save_extensions", MagicMock(side_effect=OSError("Write failed")))
+
+    manage_extensions()
+
+    clear_btn, clear_cmd = captured['buttons']['Clear All']
+    clear_cmd()
+
+    mock_mb.showerror.assert_called_once()
+    assert "Write failed" in mock_mb.showerror.call_args[0][1]
