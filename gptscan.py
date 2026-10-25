@@ -4683,6 +4683,19 @@ def manage_extensions() -> None:
         except Exception as e:
             messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
 
+    def clear_all():
+        if not Config.extensions_set:
+            return
+        if not messagebox.askyesno("Confirm Clear All", "Remove all scanned extension patterns?", parent=manage_win):
+            return
+
+        try:
+            Config.extensions_set.clear()
+            Config.save_extensions()
+            refresh_list()
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not update extensions: {e}", parent=manage_win)
+
     def reset_defaults():
         if not messagebox.askyesno("Confirm Reset", "Reset extensions to default list?", parent=manage_win):
             return
@@ -4716,6 +4729,7 @@ def manage_extensions() -> None:
     ttk.Button(btn_frame, text="Add Extension...", command=add_extension).pack(side=tk.LEFT, padx=(0, 5), ipady=5)
     ttk.Button(btn_frame, text="Add from File...", command=add_from_file).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Remove Selected", command=remove_selected).pack(side=tk.LEFT, padx=5, ipady=5)
+    ttk.Button(btn_frame, text="Clear All", command=clear_all).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Reset to Defaults", command=reset_defaults).pack(side=tk.LEFT, padx=5, ipady=5)
     ttk.Button(btn_frame, text="Close", command=manage_win.destroy).pack(side=tk.RIGHT, ipady=5)
 
