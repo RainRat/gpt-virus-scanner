@@ -4775,7 +4775,7 @@ def show_keyboard_shortcuts() -> None:
     general_shortcuts = [
         ("Enter", "Start Scan"),
         ("Esc", "Cancel Scan / Close Dialog"),
-        (f"{mod}+F", "Focus Filter Bar"),
+        (f"{mod}+F", "Focus Filter Bar / Target Path"),
         (f"{mod}+O", "Import Results"),
         (f"{mod}+E", "Export Results"),
         (f"{mod}+V", "Import Results from Clipboard"),
@@ -9855,8 +9855,15 @@ def on_root_return(event: Optional[tk.Event] = None) -> None:
 
 
 def focus_filter(event: Optional[tk.Event] = None) -> str:
-    """Set focus to the filter entry and select all text for easy replacement."""
-    if filter_entry:
+    """Toggle focus between the filter entry and target path entry, selecting all text."""
+    focused = root.focus_get() if root else None
+    if filter_entry and str(focused) == str(filter_entry) and textbox:
+        textbox.focus_set()
+        if hasattr(textbox, "selection_range"):
+            textbox.selection_range(0, tk.END)
+        elif hasattr(textbox, "select_range"):
+            textbox.select_range(0, tk.END)
+    elif filter_entry:
         filter_entry.focus_set()
         filter_entry.selection_range(0, tk.END)
     return "break"
