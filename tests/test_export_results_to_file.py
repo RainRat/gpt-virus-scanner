@@ -71,8 +71,10 @@ def test_export_results_to_file_json(tmp_path):
     export_results_to_file(str(output_file), SAMPLE_RESULTS, output_format="json")
     assert output_file.exists()
     content = output_file.read_text(encoding="utf-8")
-    record = json.loads(content.strip())
-    assert record["path"] == "src/vulnerable.py"
+    records = json.loads(content.strip())
+    assert isinstance(records, list)
+    assert len(records) == 1
+    assert records[0]["path"] == "src/vulnerable.py"
 
 def test_export_results_to_file_csv(tmp_path):
     output_file = tmp_path / "results.csv"
