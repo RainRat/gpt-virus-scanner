@@ -16,13 +16,33 @@ def mock_ui_env(monkeypatch):
         'filter_entry': mock_filter_entry
     }
 
-def test_focus_filter_sets_focus_and_selects_all(mock_ui_env):
-    """Test that focus_filter sets focus to filter_entry and selects all text."""
+def test_focus_filter_sets_focus_and_selects_all(mock_ui_env, monkeypatch):
+    """Test that focus_filter sets focus to filter_entry and selects all text when filter_entry is not focused."""
+    mock_root = MagicMock()
+    mock_root.focus_get.return_value = "other_widget"
+    monkeypatch.setattr(gptscan, 'root', mock_root)
+
     res = gptscan.focus_filter()
 
     mock_ui_env['filter_entry'].focus_set.assert_called_once()
     # tk.END is mocked to "end" in conftest.py
     mock_ui_env['filter_entry'].selection_range.assert_called_once_with(0, "end")
+    assert res == "break"
+
+def test_focus_filter_toggles_to_textbox_when_filter_focused(mock_ui_env, monkeypatch):
+    """Test that focus_filter toggles focus to textbox and selects all text when filter_entry is already focused."""
+    mock_textbox = MagicMock()
+    mock_root = MagicMock()
+    mock_root.focus_get.return_value = mock_ui_env['filter_entry']
+
+    monkeypatch.setattr(gptscan, 'textbox', mock_textbox)
+    monkeypatch.setattr(gptscan, 'root', mock_root)
+
+    res = gptscan.focus_filter()
+
+    mock_textbox.focus_set.assert_called_once()
+    mock_textbox.selection_range.assert_called_once_with(0, "end")
+    mock_ui_env['filter_entry'].focus_set.assert_not_called()
     assert res == "break"
 
 def test_focus_filter_handles_none_entry(monkeypatch):

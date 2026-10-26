@@ -209,7 +209,7 @@ The scanner includes shortcuts for faster navigation.
 | **General** | |
 | `Enter` | Start Scan |
 | `Esc` | Cancel Scan |
-| `Ctrl+F` | Focus Filter Bar |
+| `Ctrl+F` | Focus Filter Bar / Target Path |
 | `Ctrl+O` | Import Results |
 | `Ctrl+E` | Export Results |
 | `Ctrl+V` | Import Results from Clipboard |
