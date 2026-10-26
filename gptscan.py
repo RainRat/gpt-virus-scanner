@@ -6952,6 +6952,18 @@ def generate_junit(results: List[Dict[str, Any]]) -> str:
     return '<?xml version="1.0" encoding="utf-8"?>\n' + raw_bytes.decode("utf-8")
 
 
+def generate_json(results: List[Dict[str, Any]]) -> str:
+    """Generate a formatted JSON report array from the scan results.
+
+    Args:
+        results: List of standardized result dictionaries.
+
+    Returns:
+        The JSON report as a formatted string.
+    """
+    return json.dumps(results, indent=2)
+
+
 def generate_yaml(results: List[Dict[str, Any]]) -> str:
     """Generate a YAML report from the scan results.
 
@@ -6987,10 +6999,12 @@ def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output
             print(generate_junit(results), file=out_stream)
         elif fmt in ('yaml', 'yml'):
             print(generate_yaml(results), file=out_stream)
+        elif fmt == 'json':
+            print(generate_json(results), file=out_stream)
         elif fmt == 'report':
             report = generate_console_report(results, use_color=False)
             print(report, file=out_stream)
-        elif fmt in ('json', 'ndjson', 'jsonl'):
+        elif fmt in ('ndjson', 'jsonl'):
             for record in results:
                 print(json.dumps(record), file=out_stream)
         elif fmt == 'tsv':
