@@ -30,7 +30,10 @@ def test_view_details_copy_code(mock_view_details_env):
     status_bar = captured['labels'][0]
     assert status_bar.config_data.get('text') == "Code copied to clipboard."
 
-def test_view_details_copy_path_moved(mock_view_details_env):
+def test_view_details_copy_path_moved(mock_view_details_env, monkeypatch):
+    mock_bind_hover = MagicMock()
+    monkeypatch.setattr(gptscan, 'bind_hover_message', mock_bind_hover)
+
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env
     setup_details(mock_view_details_env, "item1", "test.py")
 
@@ -41,6 +44,18 @@ def test_view_details_copy_path_moved(mock_view_details_env):
     from gptscan import root as mock_root
     copy_path_cmd()
     mock_root.clipboard_append.assert_called_with("test.py")
+
+    import sys
+    mod_key = "Cmd" if sys.platform == "darwin" else "Ctrl"
+    expected_hint = f"({mod_key}+C or {mod_key}+Shift+P)"
+
+    found_hover = False
+    for call in mock_bind_hover.call_args_list:
+        args, kwargs = call
+        if len(args) >= 2 and "Copy the full file path" in str(args[1]):
+            found_hover = True
+            assert expected_hint in str(args[1])
+    assert found_hover
 
 def test_view_details_shortcuts(mock_view_details_env):
     captured, mock_msgbox, mock_tree, mock_toplevel = mock_view_details_env

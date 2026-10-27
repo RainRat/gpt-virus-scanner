@@ -8640,9 +8640,10 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
         root.clipboard_append(path_entry.get())
         set_local_status("File path copied to clipboard.", temporary=True)
 
+    mod_key = "Cmd" if sys.platform == "darwin" else "Ctrl"
     path_copy_btn = ttk.Button(header_frame, text="Copy Path", width=11, command=copy_path_details)
     path_copy_btn.grid(row=1, column=2, padx=2)
-    bind_hover_message(path_copy_btn, "Copy the full file path to the clipboard.", label=status_bar)
+    bind_hover_message(path_copy_btn, f"Copy the full file path to the clipboard. ({mod_key}+C or {mod_key}+Shift+P)", label=status_bar)
 
     reveal_btn = ttk.Button(header_frame, text="Show in Folder", width=14, command=lambda: show_in_folder(path_entry.get()))
     reveal_btn.grid(row=1, column=3, padx=2)
