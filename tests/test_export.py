@@ -104,3 +104,63 @@ def test_export_results_triage_report(monkeypatch, tmp_path):
     assert "Admin: Highly suspicious eval instruction." in content
     assert "User: This file evaluates untrusted input." in content
     assert "> eval(user_input)" in content
+
+
+def test_export_results_junit_extension(monkeypatch, tmp_path):
+    """Verify exporting results to a .junit file generates valid JUnit XML."""
+    file_path = tmp_path / "export.junit"
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', lambda **k: str(file_path))
+
+    mock_tree = MagicMock()
+    monkeypatch.setattr(gptscan, "tree", mock_tree, raising=False)
+
+    sample_results = [
+        {
+            "path": "test.py",
+            "line": "123",
+            "own_conf": "95%",
+            "gpt_conf": "85%",
+            "admin_desc": "Highly suspicious eval instruction.",
+            "end-user_desc": "This file evaluates untrusted input.",
+            "snippet": "eval(user_input)"
+        }
+    ]
+    monkeypatch.setattr(gptscan, "_get_tree_results_as_dicts", lambda item_ids: sample_results)
+    monkeypatch.setattr(gptscan, "messagebox", MagicMock())
+
+    gptscan.export_results()
+
+    assert file_path.exists()
+    content = file_path.read_text(encoding="utf-8")
+    assert "<testsuites" in content
+    assert "Highly suspicious eval instruction." in content
+
+
+def test_export_results_xml_junit_name(monkeypatch, tmp_path):
+    """Verify exporting results to a .xml file with junit in name generates valid JUnit XML."""
+    file_path = tmp_path / "export_junit.xml"
+    monkeypatch.setattr(gptscan.tkinter.filedialog, 'asksaveasfilename', lambda **k: str(file_path))
+
+    mock_tree = MagicMock()
+    monkeypatch.setattr(gptscan, "tree", mock_tree, raising=False)
+
+    sample_results = [
+        {
+            "path": "test.py",
+            "line": "123",
+            "own_conf": "95%",
+            "gpt_conf": "85%",
+            "admin_desc": "Highly suspicious eval instruction.",
+            "end-user_desc": "This file evaluates untrusted input.",
+            "snippet": "eval(user_input)"
+        }
+    ]
+    monkeypatch.setattr(gptscan, "_get_tree_results_as_dicts", lambda item_ids: sample_results)
+    monkeypatch.setattr(gptscan, "messagebox", MagicMock())
+
+    gptscan.export_results()
+
+    assert file_path.exists()
+    content = file_path.read_text(encoding="utf-8")
+    assert "<testsuites" in content
+    assert "Highly suspicious eval instruction." in content
