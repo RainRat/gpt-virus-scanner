@@ -10885,9 +10885,11 @@ def main():
     git_group = parser.add_argument_group("Git Integration")
     git_group.add_argument(
         '--git-changes',
+        '--git-revision',
+        dest='git_changes',
         nargs='?',
         const='HEAD',
-        help='Only scan files changed in Git. Optionally provide a branch or commit (for example: "main").'
+        help='Only scan files changed in Git or a specific revision/branch. Optionally provide a branch, revision, or commit (for example: "main").'
     )
     git_group.add_argument(
         '--git-diff',

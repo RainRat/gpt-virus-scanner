@@ -488,9 +488,10 @@ Scan recent entries in the Git reflog:
 python3 gptscan.py --git-reflog 5 --cli
 ```
 
-Scan files changed in your project:
+Scan files changed in your project or a specific Git revision:
 ```bash
 python3 gptscan.py --git-changes --cli
+python3 gptscan.py --git-revision main --cli
 ```
 
 Scan the last 5 Git commits:
@@ -704,7 +705,7 @@ You can customize terminal scans using these command line options.
 *   `--desktop`: Scan your standard Desktop folder.
 
 ##### Git Integration
-*   `--git-changes [<commit>]`: Only scan files changed in Git. You can optionally provide a branch or commit (default is `HEAD`).
+*   `--git-changes [<commit>]` / `--git-revision [<commit>]`: Only scan files changed in Git or a specific Git branch, revision, or commit (default is `HEAD`).
 *   `--git-diff [<commit>]`: Scan current Git changes as a diff. You can optionally provide a branch or commit (default is `HEAD`).
 *   `--git-staged`: Scan files currently staged in Git.
 *   `--git-untracked`: Scan files currently untracked in Git.
