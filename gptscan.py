@@ -10782,7 +10782,7 @@ def main():
         type=str,
         help="Load scan options from a preset name ('quick', 'ci', 'strict', 'audit') or a JSON/YAML configuration file."
     )
-    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. This is slower but more thorough.')
+    scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file instead of just the beginning and end.')
     scan_group.add_argument('--dry-run', action='store_true', help='Preview which files would be scanned without checking them.')
     scan_group.add_argument(
         '--extensions',
@@ -10823,13 +10823,13 @@ def main():
     scan_group.add_argument(
         '--fail-threshold',
         type=int,
-        help='Stop with an error if a file has a threat level at or above this number (0-100).'
+        help='Exit with code 1 if any file has a threat level at or above this score (0-100).'
     )
     scan_group.add_argument(
         '--threshold', '-t',
         type=int,
         default=50,
-        help='Set the minimum threat level (0-100) to show in results. Default is 50.'
+        help='Set the minimum threat level score (0-100) to show in results (default: 50).'
     )
     scan_group.add_argument(
         '--stdin',
@@ -11116,23 +11116,23 @@ def main():
     output_group = parser.add_argument_group("Output")
     output_group.add_argument('--cli', action='store_true', help='Run in the terminal instead of opening a window.')
     output_group.add_argument('-q', '--quiet', action='store_true', help='Suppress progress and summary messages in terminal output.')
-    output_group.add_argument('-a', '--show-all', action='store_true', help='Show all scanned files, even safe ones.')
-    output_group.add_argument('-o', '--output', type=str, help='Save the results to a file.')
+    output_group.add_argument('-a', '--show-all', action='store_true', help='Display all scanned files, including safe ones.')
+    output_group.add_argument('-o', '--output', type=str, help='Save the scan results to a file.')
     output_group.add_argument(
         '-f', '--format',
         type=str.lower,
         choices=['json', 'ndjson', 'jsonl', 'csv', 'tsv', 'sarif', 'html', 'md', 'markdown', 'xml', 'junit', 'yaml', 'yml', 'report'],
         help='Set output format (json, ndjson, csv, tsv, sarif, html, markdown, xml, junit, yaml, report).'
     )
-    output_group.add_argument('-j', '--json', action='store_true', help='Print or save scan results in JSON format.')
-    output_group.add_argument('--ndjson', '--jsonl', action='store_true', help='Print or save scan results in NDJSON (JSON Lines) format.')
-    output_group.add_argument('--csv', action='store_true', help='Print or save scan results in CSV format.')
-    output_group.add_argument('--tsv', action='store_true', help='Print or save scan results in TSV format.')
-    output_group.add_argument('--sarif', action='store_true', help='Save scan results in SARIF format.')
+    output_group.add_argument('-j', '--json', action='store_true', help='Print or save results in JSON format.')
+    output_group.add_argument('--ndjson', '--jsonl', action='store_true', help='Print or save results in NDJSON (JSON Lines) format.')
+    output_group.add_argument('--csv', action='store_true', help='Print or save results in CSV format.')
+    output_group.add_argument('--tsv', action='store_true', help='Print or save results in TSV format.')
+    output_group.add_argument('--sarif', action='store_true', help='Save results in SARIF format.')
     output_group.add_argument('--html', action='store_true', help='Create an interactive HTML report.')
     output_group.add_argument('--md', '--markdown', action='store_true', dest='markdown', help='Create a Markdown report.')
     output_group.add_argument('--xml', action='store_true', help='Create an XML report.')
-    output_group.add_argument('--junit', action='store_true', help='Save scan results in JUnit XML format.')
+    output_group.add_argument('--junit', action='store_true', help='Save results in JUnit XML format.')
     output_group.add_argument('--yaml', '--yml', action='store_true', dest='yaml', help='Create a YAML report.')
     output_group.add_argument('--report', action='store_true', help='Print a detailed triage report to the terminal.')
     output_group.add_argument(
@@ -11177,19 +11177,19 @@ def main():
         type=str,
         choices=['threat', 'path', 'line'],
         dest='sort_by',
-        help='Sort output results by "threat" (highest threat first), "path" (file path alphabetically), or "line" (line number numerically).'
+        help='Sort results by "threat" (highest threat score first), "path" (file path alphabetically), or "line" (line number numerically).'
     )
     output_group.add_argument(
         '-r', '--reverse',
         action='store_true',
         dest='reverse_sort',
-        help='Reverse the sort order of scan results.'
+        help='Reverse the sorting order of scan results.'
     )
     output_group.add_argument(
         '--min-threat', '--min-threat-level',
         type=int,
         dest='min_threat',
-        help='Set the minimum threat level (0-100) to include in results.'
+        help='Set the minimum threat level score (0-100) to include in results.'
     )
 
     if preset_defaults:
