@@ -877,13 +877,21 @@ Install the required testing packages by running the appropriate command:
 #### 2. Run the full test suite
 To run all tests, run the command for your operating system:
 
-*   **macOS and Linux:**
+*   **macOS and Linux (Python 3.9 - 3.11):**
     ```bash
     python3 -m pytest
     ```
-*   **Windows:**
+*   **macOS and Linux (Python 3.12):**
+    ```bash
+    python3 -m pytest --ignore=tests/test_train.py
+    ```
+*   **Windows (Python 3.9 - 3.11):**
     ```cmd
     python -m pytest
+    ```
+*   **Windows (Python 3.12):**
+    ```cmd
+    python -m pytest --ignore=tests/test_train.py
     ```
 
 ## How it works
