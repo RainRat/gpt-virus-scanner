@@ -10782,6 +10782,11 @@ def main():
         type=str,
         help="Load scan options from a preset name ('quick', 'ci', 'strict', 'audit') or a JSON/YAML configuration file."
     )
+    scan_group.add_argument(
+        '--list-presets',
+        action='store_true',
+        help='List all available built-in scan presets and exit.'
+    )
     scan_group.add_argument('-d', '--deep', action='store_true', help='Scan the whole file. This is slower but more thorough.')
     scan_group.add_argument('--dry-run', action='store_true', help='Preview which files would be scanned without checking them.')
     scan_group.add_argument(
@@ -11218,7 +11223,7 @@ def main():
             parser.error(str(e))
 
     cli_targets_or_flags = [
-        args.config_file, args.stdin, args.clipboard, args.import_results, args.baseline, args.stats_only,
+        args.config_file, args.stdin, args.clipboard, args.import_results, args.baseline, args.stats_only, args.list_presets,
         args.env_vars, args.env_files, args.file_list, args.git_changes, args.git_diff, args.git_staged, args.git_untracked, args.git_ignored, args.git_hooks, args.git_config,
         args.git_stash, args.git_conflicts, args.git_history, args.git_reflog, args.git_submodules, args.shell_profiles, args.shell_history, args.system_path,
         args.running_processes, args.scheduled_tasks, args.startup_items,
@@ -11227,6 +11232,16 @@ def main():
         args.rust_packages, args.go_packages, args.java_packages, args.dotnet_packages,
         args.browser_bookmarks, args.browser_extensions, args.editor_extensions, args.ssh_config, args.network_config, args.temp, args.documents
     ]
+
+    if args.list_presets:
+        if args.json:
+            print(json.dumps(BUILTIN_PRESETS, indent=2))
+        else:
+            print("Available Built-in Scan Presets:\n")
+            for name, config in BUILTIN_PRESETS.items():
+                opts_str = ", ".join(f"{k}={v}" for k, v in config.items())
+                print(f"  * {name}: {opts_str}")
+        sys.exit(0)
 
     if args.clear_cache:
         Config.gpt_cache = {}

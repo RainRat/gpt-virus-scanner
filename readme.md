@@ -681,6 +681,7 @@ You can customize terminal scans using these command line options.
 *   `files`: Additional folders, files, patterns, or web links to scan.
 *   `-p`, `--path <path>`: Alternative way to specify a folder, file, or web link to scan.
 *   `-P`, `--preset <name_or_file>`: Load scan configuration from a built-in preset (`quick`, `ci`, `strict`, `audit`) or a custom JSON/YAML file.
+*   `--list-presets`: List all available built-in scan presets and exit.
 *   `-d`, `--deep`: Scan the whole file instead of just the beginning and end. This is more thorough but slower.
 *   `--dry-run`: Preview which files would be scanned without checking them.
 *   `--extensions <exts>`: Only scan these file types (for example: `py,js`).

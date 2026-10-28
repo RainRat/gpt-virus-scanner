@@ -100,3 +100,36 @@ def test_cli_preset_parameter_precedence(monkeypatch):
     call_kwargs = mock_run_cli.call_args[1]
     assert call_kwargs["max_depth"] == 5
     assert gptscan.Config.THRESHOLD == 85
+
+
+def test_cli_list_presets_text(monkeypatch, capsys):
+    test_args = ["gptscan.py", "--cli", "--list-presets"]
+    monkeypatch.setattr(sys, "argv", test_args)
+
+    with pytest.raises(SystemExit) as exc_info:
+        gptscan.main()
+
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+    assert "Available Built-in Scan Presets:" in captured.out
+    assert "quick:" in captured.out
+    assert "ci:" in captured.out
+    assert "strict:" in captured.out
+    assert "audit:" in captured.out
+
+
+def test_cli_list_presets_json(monkeypatch, capsys):
+    test_args = ["gptscan.py", "--cli", "--list-presets", "--json"]
+    monkeypatch.setattr(sys, "argv", test_args)
+
+    with pytest.raises(SystemExit) as exc_info:
+        gptscan.main()
+
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert "quick" in data
+    assert "ci" in data
+    assert "strict" in data
+    assert "audit" in data
+    assert data["quick"]["threshold"] == 70
