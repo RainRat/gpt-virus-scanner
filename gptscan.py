@@ -6969,6 +6969,26 @@ def generate_yaml(results: List[Dict[str, Any]]) -> str:
     return yaml.safe_dump(results, default_flow_style=False, sort_keys=False)
 
 
+def generate_csv(results: List[Dict[str, Any]], delimiter: str = ',', fields: Optional[List[str]] = None) -> str:
+    """Generate CSV or TSV formatted string from scan results.
+
+    Args:
+        results: List of standardized result dictionaries.
+        delimiter: Column delimiter string (e.g. ',' or '\t').
+        fields: Optional list of field names for column ordering.
+
+    Returns:
+        The formatted CSV/TSV string.
+    """
+    if fields is None:
+        fields = ["path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet"]
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=fields, delimiter=delimiter, extrasaction='ignore')
+    writer.writeheader()
+    writer.writerows(results)
+    return output.getvalue()
+
+
 def export_results_to_file(file_path: str, results: List[Dict[str, Any]], output_format: str = 'csv') -> None:
     """Helper function to save scan finding dicts to a file in the specified format."""
     keys = ["path", "own_conf", "admin_desc", "end-user_desc", "gpt_conf", "snippet", "line"]
@@ -8737,25 +8757,17 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     def copy_as_csv_details():
         results = _get_tree_results_as_dicts([current_item_id])
         if results:
-            output = io.StringIO()
-            fields = ["path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet"]
-            writer = csv.DictWriter(output, fieldnames=fields)
-            writer.writeheader()
-            writer.writerows(results)
+            csv_content = generate_csv(results, delimiter=',')
             root.clipboard_clear()
-            root.clipboard_append(output.getvalue())
+            root.clipboard_append(csv_content)
             set_local_status("Result copied as CSV.", temporary=True)
 
     def copy_as_tsv_details():
         results = _get_tree_results_as_dicts([current_item_id])
         if results:
-            output = io.StringIO()
-            fields = ["path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet"]
-            writer = csv.DictWriter(output, fieldnames=fields, delimiter='\t')
-            writer.writeheader()
-            writer.writerows(results)
+            tsv_content = generate_csv(results, delimiter='\t')
             root.clipboard_clear()
-            root.clipboard_append(output.getvalue())
+            root.clipboard_append(tsv_content)
             set_local_status("Result copied as TSV.", temporary=True)
 
     def copy_as_report_details():
@@ -9475,14 +9487,10 @@ def copy_as_csv(event: Optional[tk.Event] = None) -> None:
         return
 
     results = _get_tree_results_as_dicts(selection)
-    output = io.StringIO()
-    fields = ["path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet"]
-    writer = csv.DictWriter(output, fieldnames=fields)
-    writer.writeheader()
-    writer.writerows(results)
+    csv_content = generate_csv(results, delimiter=',')
 
     tree.clipboard_clear()
-    tree.clipboard_append(output.getvalue())
+    tree.clipboard_append(csv_content)
     update_status(f"Copied {len(results)} item(s) as CSV.")
 
 
@@ -9496,14 +9504,10 @@ def copy_as_tsv(event: Optional[tk.Event] = None) -> None:
         return
 
     results = _get_tree_results_as_dicts(selection)
-    output = io.StringIO()
-    fields = ["path", "line", "own_conf", "gpt_conf", "admin_desc", "end-user_desc", "snippet"]
-    writer = csv.DictWriter(output, fieldnames=fields, delimiter='\t')
-    writer.writeheader()
-    writer.writerows(results)
+    tsv_content = generate_csv(results, delimiter='\t')
 
     tree.clipboard_clear()
-    tree.clipboard_append(output.getvalue())
+    tree.clipboard_append(tsv_content)
     update_status(f"Copied {len(results)} item(s) as TSV.")
 
 
