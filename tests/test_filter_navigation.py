@@ -310,3 +310,41 @@ def test_clear_filter_callback_auto_selects_and_updates_buttons(monkeypatch):
     mock_auto_select.assert_called_with(focus_tree=False)
     mock_update_buttons.assert_called()
     mock_filter_entry.focus_set.assert_called()
+
+
+def test_clear_filter_hides_clear_filter_button(monkeypatch):
+    """Test that calling clear_filter() hides clear_filter_btn."""
+    mock_filter_entry = MagicMock()
+    mock_filter_var = MagicMock()
+    mock_tree = MagicMock()
+    mock_root = MagicMock()
+    mock_combo = MagicMock()
+    mock_combo.get.return_value = "openai"
+
+    mock_btn = MagicMock()
+
+    clear_filter_func = None
+
+    def mock_button(*args, **kwargs):
+        nonlocal clear_filter_func
+        if kwargs.get('text') == "×":
+            clear_filter_func = kwargs['command']
+            return mock_btn
+        return MagicMock()
+
+    with monkeypatch.context() as m:
+        m.setattr(gptscan.tk, 'Tk', lambda: mock_root)
+        m.setattr(gptscan.tk, 'StringVar', lambda *a, **kw: mock_filter_var)
+        m.setattr(gptscan.ttk, 'Entry', lambda *a, **kw: mock_filter_entry)
+        m.setattr(gptscan.ttk, 'Combobox', lambda *a, **kw: mock_combo)
+        m.setattr(gptscan.ttk, 'Treeview', lambda *a, **kw: mock_tree)
+        m.setattr(gptscan.ttk, 'Button', mock_button)
+
+        gptscan.create_gui()
+
+    assert clear_filter_func is not None
+    mock_btn.grid_remove.reset_mock()
+
+    clear_filter_func()
+
+    mock_btn.grid_remove.assert_called()

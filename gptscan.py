@@ -10383,6 +10383,8 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
     def clear_filter():
         filter_var.set("")
         _apply_filter()
+        if clear_filter_btn is not None:
+            clear_filter_btn.grid_remove()
         if tree and tree.get_children():
             _auto_select_best_result(focus_tree=False)
             update_button_states()
