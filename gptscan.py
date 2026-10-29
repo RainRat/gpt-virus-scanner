@@ -3545,7 +3545,7 @@ def get_cli_clipboard_content() -> Optional[str]:
     if sys.platform == 'darwin':
         try:
             return subprocess.check_output(['pbpaste'], text=True, stderr=subprocess.DEVNULL)
-        except Exception:
+        except (subprocess.SubprocessError, OSError):
             pass
 
     # 2. Try powershell on Windows
@@ -3558,7 +3558,7 @@ def get_cli_clipboard_content() -> Optional[str]:
                 stderr=subprocess.DEVNULL
             )
             return out
-        except Exception:
+        except (subprocess.SubprocessError, OSError):
             pass
 
     # 3. Try xclip or xsel on Linux/Unix
@@ -3566,7 +3566,7 @@ def get_cli_clipboard_content() -> Optional[str]:
         for tool, args in [('xclip', ['-selection', 'clipboard', '-o']), ('xsel', ['--clipboard', '--output'])]:
             try:
                 return subprocess.check_output([tool] + args, text=True, stderr=subprocess.DEVNULL)
-            except Exception:
+            except (subprocess.SubprocessError, OSError):
                 continue
 
     # 4. Fallback: Try Tkinter if a display/GUI session is available
@@ -3578,7 +3578,7 @@ def get_cli_clipboard_content() -> Optional[str]:
         temp_root.destroy()
         if content:
             return str(content)
-    except Exception:
+    except (AttributeError, RuntimeError, ImportError, tk.TclError):
         pass
 
     return None
