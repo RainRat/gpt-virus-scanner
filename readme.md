@@ -33,7 +33,7 @@ Scan your files for dangerous code with AI. This tool uses a quick scan model to
 ### Prerequisites
 *   **Python:** Install **Python 3.9, 3.10, 3.11, or 3.12**.
 *   **Git:** Install **Git** to clone the repository and use Git integration features.
-*   **Data files:** The repository already includes the `scripts.h5` model and `task.txt` instruction files. Keep these in the project folder.
+*   **Data files:** The repository already includes the `scripts.h5` model, `task.txt` instruction file, and `extensions.txt` target file extensions list. Keep these in the project folder.
 
 ### Setup
 1.  **Clone the repository:**
@@ -867,24 +867,34 @@ Install the required testing packages by running the appropriate command:
 
 *   **macOS and Linux:**
     ```bash
-    python3 -m pip install pytest pytest-asyncio pytest-mock pytest-cov pyyaml
+    python3 -m pip install pytest pytest-asyncio pytest-cov pyyaml
     ```
 *   **Windows:**
     ```cmd
-    python -m pip install pytest pytest-asyncio pytest-mock pytest-cov pyyaml
+    python -m pip install pytest pytest-asyncio pytest-cov pyyaml
     ```
 
 #### 2. Run the full test suite
-To run all tests, run the command for your operating system:
+To run all tests, choose the command based on your operating system and Python version:
 
 *   **macOS and Linux:**
-    ```bash
-    python3 -m pytest
-    ```
+    *   **For Python 3.9, 3.10, or 3.11:**
+        ```bash
+        python3 -m pytest
+        ```
+    *   **For Python 3.12:**
+        ```bash
+        python3 -m pytest --ignore=tests/test_train.py
+        ```
 *   **Windows:**
-    ```cmd
-    python -m pytest
-    ```
+    *   **For Python 3.9, 3.10, or 3.11:**
+        ```cmd
+        python -m pytest
+        ```
+    *   **For Python 3.12:**
+        ```cmd
+        python -m pytest --ignore=tests/test_train.py
+        ```
 
 ## How it works
 1.  **Local Filter:** The tool uses a quick scan model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
