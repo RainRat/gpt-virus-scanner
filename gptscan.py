@@ -3523,14 +3523,16 @@ def finish_scan_state(total_scanned: Optional[int] = None, threats_found: Option
     current_cancel_event = None
     set_scanning_state(False)
 
+    update_tree_columns()
+    _auto_select_best_result()
+
     if total_scanned is not None and threats_found is not None:
         summary = format_scan_summary(total_scanned, threats_found, total_bytes, elapsed_time, high_risk=high_risk, medium_risk=medium_risk)
         global _last_scan_summary
         _last_scan_summary = summary
         update_status(summary)
-
-    update_tree_columns()
-    _auto_select_best_result()
+    elif _last_scan_summary:
+        update_status(_last_scan_summary)
 
 
 def get_cli_clipboard_content() -> Optional[str]:
@@ -9767,6 +9769,55 @@ def update_button_states(event: Optional[tk.Event] = None) -> None:
             context_menu.entryconfig("View Online", state=safe_online_state)
         except tk.TclError:
             pass # Menu might not be fully initialized or entry labels differ
+
+    # Update Status Bar selection feedback when not currently scanning
+    if not is_scanning:
+        if has_selection:
+            sel_count = len(selection)
+            if sel_count == 1:
+                vals = _get_item_raw_values(selection[0])
+                if vals:
+                    item_path = str(vals[0])
+                    fname = os.path.basename(item_path) if item_path else "item"
+                    conf = get_effective_threat_level(vals[1], vals[4] if len(vals) > 4 else "")
+                    conf_str = format_percent(conf)
+                    update_status(f"Selected 1 item ({fname} - {conf_str} Threat)")
+                else:
+                    update_status("Selected 1 item")
+            else:
+                high_count = 0
+                med_count = 0
+                for item_id in selection:
+                    vals = _get_item_raw_values(item_id)
+                    if vals:
+                        conf = get_effective_threat_level(vals[1], vals[4] if len(vals) > 4 else "")
+                        risk = get_risk_category(conf, Config.THRESHOLD)
+                        if risk == 'high':
+                            high_count += 1
+                        elif risk == 'medium':
+                            med_count += 1
+                risk_summary = []
+                if high_count > 0:
+                    risk_summary.append(f"{high_count} high risk")
+                if med_count > 0:
+                    risk_summary.append(f"{med_count} medium risk")
+                if risk_summary:
+                    update_status(f"Selected {sel_count} items ({', '.join(risk_summary)})")
+                else:
+                    update_status(f"Selected {sel_count} items")
+        else:
+            query = filter_var.get().strip() if filter_var else ""
+            total_count = len(_all_results_cache)
+            visible_count = len(tree.get_children())
+            if query or visible_count < total_count:
+                msg = f"Showing {visible_count} of {total_count} results"
+                if query:
+                    msg += f" matching '{query}'"
+                update_status(msg)
+            elif _last_scan_summary:
+                update_status(_last_scan_summary)
+            else:
+                update_status("Ready")
 
 
 def copy_cli_command(event: Optional[tk.Event] = None) -> None:
