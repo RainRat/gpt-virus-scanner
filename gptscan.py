@@ -10174,6 +10174,7 @@ def create_gui(initial_path: Optional[str] = None) -> tk.Tk:
         if textbox:
             textbox.delete(0, tk.END)
         update_clear_target_visibility()
+        update_status("Target path cleared.")
         if textbox:
             textbox.focus_set()
 
