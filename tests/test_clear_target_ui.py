@@ -58,19 +58,23 @@ def test_set_scan_target_updates_visibility(monkeypatch):
 
 
 def test_clear_target_functionality(monkeypatch):
-    """Test clear_target clears textbox, updates visibility, and refocuses textbox."""
+    """Test clear_target clears textbox, updates visibility, sets status bar message, and refocuses textbox."""
     mock_btn = MagicMock()
     mock_textbox = MagicMock()
     mock_textbox.get.return_value = ""
+    mock_update_status = MagicMock()
 
     monkeypatch.setattr(gptscan, 'clear_target_btn', mock_btn)
     monkeypatch.setattr(gptscan, 'textbox', mock_textbox)
+    monkeypatch.setattr(gptscan, 'update_status', mock_update_status)
 
     # Simulate clear_target callback logic
     mock_textbox.delete(0, "end")
     gptscan.update_clear_target_visibility()
+    gptscan.update_status("Target path cleared.")
     mock_textbox.focus_set()
 
     mock_textbox.delete.assert_called_once_with(0, "end")
     mock_btn.grid_remove.assert_called_once()
+    mock_update_status.assert_called_once_with("Target path cleared.")
     mock_textbox.focus_set.assert_called_once()
