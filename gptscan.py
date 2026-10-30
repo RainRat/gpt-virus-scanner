@@ -6952,6 +6952,18 @@ def generate_junit(results: List[Dict[str, Any]]) -> str:
     return '<?xml version="1.0" encoding="utf-8"?>\n' + raw_bytes.decode("utf-8")
 
 
+def generate_json(results: Union[List[Dict[str, Any]], Dict[str, Any]]) -> str:
+    """Generate a formatted JSON string report from scan result dictionary or list of dictionaries.
+
+    Args:
+        results: Standardized scan result dictionary or list of result dictionaries.
+
+    Returns:
+        Formatted JSON string representation with 2-space indentation.
+    """
+    return json.dumps(results, indent=2)
+
+
 def generate_yaml(results: List[Dict[str, Any]]) -> str:
     """Generate a YAML report from the scan results.
 
@@ -8308,7 +8320,7 @@ def export_results(event: Optional[tk.Event] = None) -> None:
     try:
         if ext == '.json':
             with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(results, f, indent=2)
+                f.write(generate_json(results))
         elif ext in ('.ndjson', '.jsonl'):
             export_results_to_file(file_path, results, output_format='ndjson')
         elif ext in ('.yaml', '.yml'):
@@ -8729,7 +8741,7 @@ def view_details(event: Optional[tk.Event] = None, item_id: Optional[str] = None
     def copy_as_json_details():
         results = _get_tree_results_as_dicts([current_item_id])
         if results:
-            js = json.dumps(results[0], indent=2)
+            js = generate_json(results[0])
             root.clipboard_clear()
             root.clipboard_append(js)
             set_local_status("Result copied as JSON.", temporary=True)
@@ -9442,7 +9454,7 @@ def copy_as_json(event: Optional[tk.Event] = None) -> None:
 
     results = _get_tree_results_as_dicts(selection)
 
-    js = json.dumps(results, indent=2)
+    js = generate_json(results)
     tree.clipboard_clear()
     tree.clipboard_append(js)
     update_status(f"Copied {len(results)} item(s) as JSON.")
