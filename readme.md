@@ -702,6 +702,7 @@ You can customize terminal scans using these command line options.
 *   `--modified <time>`: Only scan files changed within this time (for example: `24h`, `1h`, `7d`).
 *   `--downloads`: Scan the standard Downloads folder.
 *   `--desktop`: Scan your standard Desktop folder.
+*   `--clear-history` / `--clear-path-history`: Clear the recent target path history before starting the scan (or standalone to reset history).
 
 ##### Git Integration
 *   `--git-changes [<commit>]`: Only scan files changed in Git. You can optionally provide a branch or commit (default is `HEAD`).
