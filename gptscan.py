@@ -10881,6 +10881,12 @@ def main():
         action='store_true',
         help="Scan the user's Desktop folder."
     )
+    scan_group.add_argument(
+        '--clear-history', '--clear-path-history',
+        action='store_true',
+        dest='clear_history',
+        help='Clear the recent target path history.'
+    )
 
     git_group = parser.add_argument_group("Git Integration")
     git_group.add_argument(
@@ -11227,6 +11233,14 @@ def main():
         args.rust_packages, args.go_packages, args.java_packages, args.dotnet_packages,
         args.browser_bookmarks, args.browser_extensions, args.editor_extensions, args.ssh_config, args.network_config, args.temp, args.documents
     ]
+
+    if args.clear_history:
+        Config.recent_paths = []
+        Config.save_settings()
+        if not args.quiet:
+            print("Path history cleared.", file=sys.stderr)
+        if not args.target and not args.path and not args.files and not any(cli_targets_or_flags):
+            sys.exit(0)
 
     if args.clear_cache:
         Config.gpt_cache = {}
