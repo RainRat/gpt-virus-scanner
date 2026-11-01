@@ -875,16 +875,28 @@ Install the required testing packages by running the appropriate command:
     ```
 
 #### 2. Run the full test suite
-To run all tests, run the command for your operating system:
+To run the tests, run the command for your operating system and Python version:
 
 *   **macOS and Linux:**
-    ```bash
-    python3 -m pytest
-    ```
+    *   **For Python 3.9, 3.10, or 3.11:**
+        ```bash
+        python3 -m pytest
+        ```
+    *   **For Python 3.12:**
+        ```bash
+        python3 -m pytest --ignore=tests/test_train.py
+        ```
+        *Note: The `--ignore=tests/test_train.py` flag ignores incompatible training-related tests on Python 3.12.*
 *   **Windows:**
-    ```cmd
-    python -m pytest
-    ```
+    *   **For Python 3.9, 3.10, or 3.11:**
+        ```cmd
+        python -m pytest
+        ```
+    *   **For Python 3.12:**
+        ```cmd
+        python -m pytest --ignore=tests/test_train.py
+        ```
+        *Note: The `--ignore=tests/test_train.py` flag ignores incompatible training-related tests on Python 3.12.*
 
 ## How it works
 1.  **Local Filter:** The tool uses a quick scan model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
