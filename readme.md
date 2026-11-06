@@ -874,17 +874,29 @@ Install the required testing packages by running the appropriate command:
     python -m pip install pytest pytest-asyncio pytest-mock pytest-cov pyyaml
     ```
 
-#### 2. Run the full test suite
-To run all tests, run the command for your operating system:
+#### 2. Run the test suite
+Choose the command based on your operating system and Python version:
 
 *   **macOS and Linux:**
-    ```bash
-    python3 -m pytest
-    ```
+    *   **For Python 3.9, 3.10, or 3.11:**
+        ```bash
+        python3 -m pytest
+        ```
+    *   **For Python 3.12:**
+        ```bash
+        python3 -m pytest --ignore=tests/test_train.py
+        ```
 *   **Windows:**
-    ```cmd
-    python -m pytest
-    ```
+    *   **For Python 3.9, 3.10, or 3.11:**
+        ```cmd
+        python -m pytest
+        ```
+    *   **For Python 3.12:**
+        ```cmd
+        python -m pytest --ignore=tests/test_train.py
+        ```
+
+*Note: On Python 3.12, use `--ignore=tests/test_train.py` to skip training-related tests that require legacy dependencies.*
 
 ## How it works
 1.  **Local Filter:** The tool uses a quick scan model trained on thousands of safe and dangerous scripts. It looks for patterns like hidden code and suspicious commands.
